@@ -8,7 +8,7 @@ function renderSideNav() {
     navList.appendChild(blogItem);
 
     const plotItem = document.createElement('li');
-    plotItem.innerHTML = `<a href="plot/home.html" target="_blank" class="parent-item blog-home-item">🎨 在线科研绘图</a>`;
+    plotItem.innerHTML = `<a href="plot/home.html" target="_blank" class="parent-item blog-home-item">🎨 BioStatPlot</a>`;
     navList.appendChild(plotItem);
 
     toolConfig.forEach((category, catIndex) => {
