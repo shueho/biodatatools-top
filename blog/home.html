@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioDataTools 博客 - 生物信息学工具与教程</title>
+    <!-- 博客专用样式（独立于工具页面） -->
+    <link rel="stylesheet" href="css/blog.css">
+</head>
+<body>
+
+    <!-- 公共页眉占位符 -->
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>地上飞猪个人博客</h2>
+            <p>分享生物信息学工具使用技巧</p>
+        </div>
+
+        <div class="blog-container">
+            <!-- 左侧文章区域 -->
+            <div class="article-wrap">
+                <div class="article-header">博客文章</div>
+                <div class="article-list" id="articleList">正在加载文章...</div>
+            </div>
+
+            <div class="sidebar">
+                <!-- 关于博主 -->
+                <div class="sidebar-card author-info">
+                    <div class="sidebar-title">关于博主</div>
+                    <img src="images/avatar.png" alt="博主头像" class="author-avatar">
+                    <h3>地上飞猪</h3>
+                    <p class="author-desc">摸鱼生信人。</p>
+                </div>
+
+                <div class="sidebar-card">
+                    <div class="sidebar-title">最新公告</div>
+                    <div id="noticeBoard">正在加载公告...</div>
+                </div>
+
+                <!-- 文章分类 -->
+                <div class="sidebar-card">
+                    <div class="sidebar-title">文章分类</div>
+                    <div class="categoryNav" id="categoryNav"></div>
+                </div>
+
+                <!-- 友情链接 -->
+                <div class="sidebar-card">
+                    <div class="sidebar-title">常用链接</div>
+                    <div class="friend-link">
+                        <a href="https://www.ncbi.nlm.nih.gov/" target="_blank">NCBI</a>
+                        <a href="https://www.ebi.ac.uk/" target="_blank">EBI</a>
+                        <a href="https://bioinformatics.tools/" target="_blank">Bioinformatics Tools</a>
+                        <a href="https://www.r-project.org/" target="_blank">R语言官网</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 公共页脚占位符 -->
+    <div id="common-footer"></div>
+
+    <!-- 自定义页眉配置（覆盖默认值） -->
+    <script>
+        window.headerConfig = {
+            author: '生物信息学教程分享',
+            bilibiliUrl: 'https://space.bilibili.com/33053326',
+            bilibiliText: '前往B站主页',
+            githubUrl: 'https://github.com/shueho/BioDataTools',
+            githubText: 'GitHub项目',
+            returnHomeUrl: 'https://biodatatools.top/'
+        };
+    </script>
+
+    <!-- 引入公共组件（页眉、页脚、工具函数） -->
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="./js/footer.js"></script>
+
+    <!-- 博客业务逻辑 -->
+    <script>
+        async function loadArticleList() {
+    try {
+        const res = await fetch('https://biodatatools.top/blog/list.txt');
+        if (!res.ok) throw new Error('文件请求失败');
+        const raw = await res.text();
+        const lines = raw.split(/\r?\n/)
+            .map(s => s.trim())
+            .filter(s => s !== '' && !s.startsWith('#'));
+
+        const categoryMap = new Map();
+        lines.forEach(line => {
+            const cols = line.split('\t');
+            const category = cols[0] || '';
+            const title = cols[1] || '';
+            let path = cols[2] || '';
+            let cover = cols[3] || '';
+            const desc = cols[4] || '暂无简介';
+
+            if (!category || !title) return;
+            
+            // 处理文章链接：如果是 http:// 或 https:// 开头，则为外部链接
+            let isExternalLink = false;
+            if (path.startsWith('http://') || path.startsWith('https://')) {
+                isExternalLink = true;
+            } else {
+                // 本地链接，加上 ./document/ 前缀
+                path = `./document/${path}`;
+            }
+            
+            // 处理封面图：如果是 http:// 或 https:// 开头，直接使用；否则加上 images/ 前缀
+            let coverUrl = cover;
+            if (!(cover.startsWith('http://') || cover.startsWith('https://'))) {
+                coverUrl = `images/${cover}`;
+            }
+            
+            if (!categoryMap.has(category)) {
+                categoryMap.set(category, []);
+            }
+            categoryMap.get(category).push({ title, path, isExternalLink, cover: coverUrl, desc });
+        });
+
+        const catNav = document.getElementById('categoryNav');
+        catNav.innerHTML = '';
+        categoryMap.forEach((_, name) => {
+            const a = document.createElement('a');
+            a.href = `#${name}`;
+            a.textContent = name;
+            catNav.appendChild(a);
+        });
+
+        const artList = document.getElementById('articleList');
+        artList.innerHTML = '';
+        categoryMap.forEach((articles, catName) => {
+            const h3 = document.createElement('h3');
+            h3.className = 'category-title';
+            h3.id = catName;
+            h3.textContent = catName;
+            artList.appendChild(h3);
+
+            articles.forEach(art => {
+                const card = document.createElement('div');
+                card.className = 'article-card';
+                const linkTarget = art.isExternalLink ? 'target="_blank" rel="noopener noreferrer"' : '';
+                card.innerHTML = `
+                    <img src="${art.cover}" alt="${art.title}" class="article-cover" onerror="this.style.display='none'">
+                    <div class="article-info">
+                        <a href="${art.path}" class="article-title" ${linkTarget}>${art.title}</a>
+                        <p class="article-desc">${art.desc}</p>
+                    </div>
+                `;
+                artList.appendChild(card);
+            });
+        });
+    } catch (e) {
+        document.getElementById('articleList').innerHTML = '<p style="color:red;text-align:center;padding:2rem;">文章加载异常</p>';
+        console.error('文章加载错误：', e);
+    }
+}
+
+        async function loadNotice() {
+            try {
+                const res = await fetch('https://biodatatools.top/blog/notice.txt');
+                const text = await res.text();
+                document.getElementById('noticeBoard').innerHTML = `<p class="author-desc">${text.replace(/\n/g, '<br>')}</p>`;
+            } catch (e) {
+                document.getElementById('noticeBoard').innerHTML = '<p class="author-desc">公告加载异常</p>';
+                console.error('公告加载错误：', e);
+            }
+        }
+
+        window.addEventListener('load', function(){
+            loadArticleList();
+            loadNotice();
+        });
+    </script>
+</body>
+</html>

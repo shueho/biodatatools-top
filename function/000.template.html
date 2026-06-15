@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>页眉页脚测试 - BioDataTools 网页版</title>
+    <!-- 仅引入页眉页脚基础样式 -->
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <!-- 后续容器样式可以单独写在这里或单独文件 -->
+</head>
+<body>
+
+    <!-- 页眉占位符 -->
+    <div id="common-header"></div>
+
+    <!-- 主内容区域（目前为空，后续可以添加你的容器） -->
+    <div class="main">
+        <div style="text-align: center; padding: 2rem;">
+            <h2>页眉和页脚组件测试</h2>
+            <p>页眉已包含返回首页按钮，B站/GitHub链接可自定义。页脚包含捐赠二维码（悬浮）和动态版权年份。</p>
+            <p>后续你可在此页面中添加自己的功能容器（例如文件上传、表格等），样式可单独定义。</p>
+        </div>
+    </div>
+
+    <!-- 页脚占位符 -->
+    <div id="common-footer"></div>
+
+    <!-- 可选：自定义页眉配置 -->
+    <script>
+        window.headerConfig = {
+            bilibiliText: 'B站视频教程',
+            githubText: 'GitHub 仓库'
+        };
+    </script>
+    <!-- 引入页眉和页脚组件（使用绝对路径） -->
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+</body>
+</html>

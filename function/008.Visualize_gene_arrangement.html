@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基因排列可视化（基因重排图） - BioDataTools 网页版</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .type-config-grid { display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0; }
+        .type-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 12px; background: #fefefe; min-width: 180px; flex: 1; }
+        .type-card h4 { margin: 0 0 8px 0; font-size: 1rem; border-left: 4px solid; padding-left: 8px; }
+        .custom-list { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
+        .custom-item { background: #f8fafc; border-radius: 12px; padding: 8px 12px; display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .gene-assign-row { display: grid; grid-template-columns: 1.5fr 1.2fr 0.5fr; gap: 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #edf2f7; }
+        .gene-assign-header { background: #f1f5f9; font-weight: 600; position: sticky; top: 0; }
+        .gene-list-scroll { max-height: 320px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; margin-top: 16px; }
+        .param-group { display: flex; flex-wrap: wrap; gap: 16px; background: #f9fafb; padding: 12px 20px; border-radius: 40px; margin-bottom: 16px; }
+        .preview-svg { background: #fff; border-radius: 12px; padding: 16px; overflow-x: auto; border: 1px solid #e2e8f0; min-height: 300px; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .badge { background: #eef2ff; border-radius: 20px; padding: 2px 8px; font-size: 11px; }
+        .desc { font-size: 12px; color: #4b5563; margin-top: 4px; }
+        .result-toolbar { margin-top: 16px; text-align: center; }
+        .empty-tip { color: #999; text-align: center; padding: 20px; font-style: italic; }
+        .format-hint { background: #f8f9fa; padding: 10px 12px; border-radius: 8px; margin-top: 12px; font-size: 0.85rem; color: #4a5568; border-left: 3px solid #1f4068;margin-bottom: 15px;  }
+    </style>
+</head>
+<body>
+
+<div id="common-header"></div>
+
+<div class="main">
+    <div class="page-intro">
+        <h2>基因排列可视化（基因重排图）</h2>
+        <p>用于展示基因排布及基因重排，支持区分正负链及非编码区的可视化</p>
+    </div>
+
+    <!-- 第一步 -->
+    <div class="step-card">
+        <div class="step-title">第一步：导入基因排列文件</div>
+        <div class="radio-box">
+            <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()"> 上传文件 (.txt/.tab)</label>
+            <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()"> 粘贴文本</label>
+        </div>
+        <div class="file-input"><input type="file" id="geneFileInput" accept=".txt,.tab,.tsv,.gene"></div>
+        <div class="text-input"><textarea id="geneTextArea" rows="4" placeholder="粘贴制表符分隔的基因排列内容（支持 - : ! 符号）" disabled></textarea></div>
+        <div id="msgTip" class="tip-text"></div>
+        <div class="format-hint">
+            <strong>📌 文件格式说明</strong><br>
+            • "#" 开头的行为注释行，只显示文字不定义排布，可以用于物种分类注释<br>
+            • 除了注释行，第一列是拉丁名，其余各列为基因名称，不同列之间以制表符（TAB）隔开，在EXCEL中直接复制出来的就是这个格式<br>
+            • 在基因名称前可以标注“-”代表编码于负链；标注“:”标识该基因缺失，多个符号可以混合标注<br>
+            • 标注“!”的名称代表非编码区<br>
+            • 如果你把所有基因都不标注为负链，那么或许你可以得到一个线性的排布图<br>
+            • 如果你对画出来的间距不满意或者图片超过画布，可以使用Adobe Illustrator编辑SVG<br>
+            • 你可以点击“加载示例”查看导入的格式
+        </div>
+        <div><button class="btn" id="loadGeneBtn">导入数据</button><button class="btn" id="loadExampleBtn" style="margin-left:8px;">加载示例</button></div>
+    </div>
+
+    <!-- 第二步：始终显示 -->
+    <div class="step-card">
+        <div class="step-title">第二步：设置呈现类型</div>
+        <div><strong>📌 预设四种类型（不可删除）</strong><span class="badge" style="margin-left:10px;">单字母tRNA（形如：A、K等单字母tRNA编码基因） | 带编号tRNA（形如：S1、L2等带数字的tRNA基因） | 长蛋白/rRNA | 短蛋白（如atp8的序列相对于其他基因短得多）</span></div>
+        <div class="type-config-grid" id="presetTypesContainer"></div>
+        <div class="custom-types">
+            <div class="flex-between"><strong>➕ 自定义类型</strong><button class="btn" id="addCustomTypeBtn">+ 添加新类型</button></div>
+            <div id="customTypesList" class="custom-list"></div>
+        </div>
+        <div class="desc">💡 预设类型有内置自动分配规则（cox1、cox2、nad1以及atp8 等蛋白基因自动归为类型3宽斜体）；短蛋白及自定义类型需手动在第三步分配。</div>
+    </div>
+
+    <!-- 第三步：始终显示 -->
+    <div class="step-card">
+        <div class="step-title">第三步：为基因分配类型</div>
+        <div class="flex-between" style="margin-bottom:12px;">
+            <div><button class="btn" id="autoByRuleBtn">自动分配到预设类型</button>
+            <button class="btn" id="resetToDefaultBtn">重置为初始分配</button></div>
+        </div>
+        <div class="gene-list-scroll">
+            <div class="gene-assign-row gene-assign-header">
+                <div>基因名称</div>
+                <div>分配类型</div>
+                <div>标识</div>
+            </div>
+            <div id="geneAssignList"><div class="empty-tip">暂无基因，请先导入文件</div></div>
+        </div>
+    </div>
+
+    <!-- 第四步：始终显示 -->
+    <div class="step-card">
+        <div class="step-title">第四步：绘图参数</div>
+        <div class="param-group">
+            <label>矩形高 H <input type="number" id="paramH" value="30" step="2"></label>
+            <label>宽矩形 W1 <input type="number" id="paramW1" value="60" step="4"></label>
+            <label>窄矩形 W2 <input type="number" id="paramW2" value="20" step="2"></label>
+            <label>基因间距 <input type="number" id="paramGapG" value="2" step="1"></label>
+            <label>行间距 <input type="number" id="paramGapY" value="20" step="2"></label>
+            <label>起始 X <input type="number" id="paramStartX" value="80" step="10"></label>
+            <label>起始 Y <input type="number" id="paramStartY" value="80" step="10"></label>
+        </div>
+        <div><button class="btn" id="drawSvgBtn">生成基因排序</button></div>
+    </div>
+
+    <!-- 第五步：始终显示 -->
+    <div class="step-card">
+        <div class="step-title">第五步：SVG 预览与导出</div>
+        <div id="svgPreview" class="preview-svg" style="text-align:center; color:#6c757d;">等待生成...</div>
+        <div class="result-toolbar">
+            <button class="btn" id="downloadSvgBtn" disabled>导出 SVG</button>
+        </div>
+    </div>
+</div>
+
+<div id="common-footer"></div>
+
+<script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+            bilibiliUrl: 'https://www.bilibili.com/video/BV1PYJK6CEtx',
+            bilibiliText: '当前工具使用教程视频',
+            githubUrl: 'https://github.com/shueho/BioDataTools',
+            githubText: 'GitHub项目',
+            returnHomeUrl: '../index.html'
+        };
+</script>
+<script src="../COMMON/header.js"></script>
+<script src="../COMMON/footer.js"></script>
+<script src="../COMMON/utils.js"></script>
+
+<script>
+    // ========== 全局数据 ==========
+    let parsedRows = [];
+    let uniqueGeneNames = new Set();   // 仅包含非缺失基因（不含 ! 前缀的基因名）
+    let geneTypeMap = new Map();       // 基因名 -> 类型ID，仅对非缺失基因有效
+    
+    const presetStyles = {
+        "1": { name: "单字母tRNA", widthMode: "narrow", fontStyle: "normal", rotate: false, defaultColor: "#C3D899", desc: "窄正体" },
+        "2": { name: "带编号tRNA", widthMode: "narrow", fontStyle: "normal", rotate: true, defaultColor: "#C3D899", desc: "窄正体旋转" },
+        "3": { name: "长蛋白/rRNA", widthMode: "wide", fontStyle: "italic", rotate: false, defaultColor: "#8FB5E4", desc: "宽斜体" },
+        "4": { name: "短蛋白", widthMode: "narrow", fontStyle: "italic", rotate: true, defaultColor: "#8064A0", desc: "窄斜体旋转" }
+    };
+    let userColors = { "1": "#C3D899", "2": "#C3D899", "3": "#8FB5E4", "4": "#8064A0" };
+    let customTypes = [];
+    let nextCustomId = 1;
+    
+    // ========== 辅助函数 ==========
+    function showMessage(msg, type) {
+        const div = document.getElementById("msgTip");
+        div.innerHTML = `<span class="${type}">${msg}</span>`;
+        setTimeout(() => div.innerHTML = "", 4000);
+        if (window.showToast) window.showToast(msg);
+    }
+    function escapeHtml(str) { return str.replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
+    
+    function parseGeneToken(token) {
+        let hasMinus = false, hasColon = false, hasExclam = false;
+        let geneName = token;
+        for (let i=0; i<token.length; i++) {
+            const ch = token[i];
+            if (ch === '-') hasMinus = true;
+            else if (ch === ':') hasColon = true;
+            else if (ch === '!') hasExclam = true;
+            else if (ch === ' ') continue;
+            else { geneName = token.substring(i).trim().replace(/\s/g, ''); break; }
+        }
+        if (geneName === token && (hasMinus||hasColon||hasExclam)) geneName = "";
+        return { name: geneName, hasMinus, hasColon, hasExclam };
+    }
+    
+    function parseGeneFile(content) {
+        const lines = content.split(/\r?\n/);
+        const rows = [];
+        const genesSet = new Set();   // 只存非缺失基因
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+            const parts = line.split(/\t/);
+            if (parts.length === 0) continue;
+            const firstCol = parts[0];
+            if (firstCol.startsWith('#')) {
+                rows.push({ type: 'header', label: firstCol.substring(1).trim() });
+                continue;
+            }
+            const strainName = firstCol;
+            const geneTokens = parts.slice(1);
+            const genes = [];
+            for (let token of geneTokens) {
+                token = token.trim();
+                if (!token) continue;
+                const parsed = parseGeneToken(token);
+                if (parsed.name === "" && (parsed.hasMinus||parsed.hasColon||parsed.hasExclam)) continue;
+                if (parsed.name) {
+                    // 只有非缺失基因才加入类型选择列表
+                    if (!parsed.hasExclam) genesSet.add(parsed.name);
+                }
+                genes.push(parsed);
+            }
+            rows.push({ type: 'strain', name: strainName, genes: genes });
+        }
+        return { rows, uniqueGenes: genesSet };
+    }
+    
+    function getPresetTypeByGeneName(geneName) {
+        const up = geneName.toUpperCase();
+        if (/^[A-Z]$/.test(geneName) && !/^[BZX]$/i.test(geneName)) return "1";
+        if (/(nad|cox|atp|cytb|cob|rrn)/i.test(up)) return "3";
+        if (/\d/.test(geneName)) return "2";
+        if (/^(rrnS|rrnL)$/i.test(up)) return "2";
+        if (/^atp8$/i.test(up)) return "4";
+        if (geneName.length >= 4) return "3";
+        return "1";
+    }
+    
+    function getAllTypes() {
+        let types = [];
+        for (let [id, style] of Object.entries(presetStyles)) types.push({ id, name: style.name, style });
+        for (let ct of customTypes) types.push({ id: ct.id, name: ct.name, style: ct });
+        return types;
+    }
+    
+    function getTypeStyle(typeId) {
+        if (presetStyles[typeId]) return { ...presetStyles[typeId], color: userColors[typeId] || presetStyles[typeId].defaultColor };
+        const cust = customTypes.find(c => c.id === typeId);
+        if (cust) return { ...cust, color: cust.color };
+        return { ...presetStyles["3"], color: userColors["3"] };
+    }
+    
+    // ========== UI 渲染 ==========
+    function renderPresetTypes() {
+        const container = document.getElementById("presetTypesContainer");
+        container.innerHTML = "";
+        for (let [tid, style] of Object.entries(presetStyles)) {
+            const card = document.createElement('div');
+            card.className = "type-card";
+            card.style.borderTop = `4px solid ${userColors[tid]}`;
+            card.innerHTML = `
+                <h4>${style.name}</h4>
+                <div><input type="color" data-type="${tid}" class="preset-color" value="${userColors[tid]}" style="width:50px; height:35px;"></div>
+                <div class="desc">${style.desc} | ${style.widthMode==='wide'?'宽矩形(W1)':'窄矩形(W2)'} ${style.rotate?'旋转-90°':''}</div>
+            `;
+            container.appendChild(card);
+        }
+        document.querySelectorAll('.preset-color').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                const tid = inp.dataset.type;
+                userColors[tid] = inp.value;
+                showMessage(`预设类型 ${presetStyles[tid].name} 颜色已更新`, "success");
+            });
+        });
+    }
+    
+    function renderCustomTypes() {
+        const container = document.getElementById("customTypesList");
+        container.innerHTML = "";
+        for (let ct of customTypes) {
+            const div = document.createElement('div');
+            div.className = "custom-item";
+            div.innerHTML = `
+                <input type="text" class="custom-name" data-id="${ct.id}" value="${escapeHtml(ct.name)}" style="width:100px;">
+                <select class="custom-width" data-id="${ct.id}">
+                    <option value="narrow" ${ct.widthMode==='narrow'?'selected':''}>窄矩形</option>
+                    <option value="wide" ${ct.widthMode==='wide'?'selected':''}>宽矩形</option>
+                </select>
+                <select class="custom-font" data-id="${ct.id}">
+                    <option value="normal" ${ct.fontStyle==='normal'?'selected':''}>正体</option>
+                    <option value="italic" ${ct.fontStyle==='italic'?'selected':''}>斜体</option>
+                </select>
+                <select class="custom-rotate" data-id="${ct.id}">
+                    <option value="false" ${!ct.rotate?'selected':''}>不旋转</option>
+                    <option value="true" ${ct.rotate?'selected':''}>旋转-90°</option>
+                </select>
+                <input type="color" class="custom-color" data-id="${ct.id}" value="${ct.color}" style="width:45px;">
+                <button class="btn btn-sm delete-custom" data-id="${ct.id}">删除</button>
+            `;
+            container.appendChild(div);
+        }
+        // 绑定修改事件
+        document.querySelectorAll('.custom-name').forEach(inp => inp.addEventListener('change', (e) => {
+            const id = inp.dataset.id;
+            const c = customTypes.find(c=>c.id===id);
+            if(c) c.name = inp.value;
+            renderGeneAssignList();
+        }));
+        document.querySelectorAll('.custom-width').forEach(sel => sel.addEventListener('change', (e) => {
+            const id = sel.dataset.id;
+            const c = customTypes.find(c=>c.id===id);
+            if(c) c.widthMode = sel.value;
+            renderGeneAssignList();
+        }));
+        document.querySelectorAll('.custom-font').forEach(sel => sel.addEventListener('change', (e) => {
+            const id = sel.dataset.id;
+            const c = customTypes.find(c=>c.id===id);
+            if(c) c.fontStyle = sel.value;
+            renderGeneAssignList();
+        }));
+        document.querySelectorAll('.custom-rotate').forEach(sel => sel.addEventListener('change', (e) => {
+            const id = sel.dataset.id;
+            const c = customTypes.find(c=>c.id===id);
+            if(c) c.rotate = sel.value === 'true';
+            renderGeneAssignList();
+        }));
+        document.querySelectorAll('.custom-color').forEach(inp => inp.addEventListener('change', (e) => {
+            const id = inp.dataset.id;
+            const c = customTypes.find(c=>c.id===id);
+            if(c) c.color = inp.value;
+            renderGeneAssignList();
+        }));
+        document.querySelectorAll('.delete-custom').forEach(btn => btn.addEventListener('click', (e) => {
+            const id = btn.dataset.id;
+            customTypes = customTypes.filter(c=>c.id !== id);
+            for(let [gene, tid] of geneTypeMap.entries()) if(tid === id) geneTypeMap.set(gene, "3");
+            renderCustomTypes();
+            renderGeneAssignList();
+            showMessage("自定义类型已删除", "success");
+        }));
+    }
+    
+    function addCustomType() {
+        const newId = `cust_${Date.now()}_${nextCustomId++}`;
+        customTypes.push({ id: newId, name: `新类型${customTypes.length+1}`, widthMode: "narrow", fontStyle: "normal", rotate: false, color: "#AAAAAA" });
+        renderCustomTypes();
+        renderGeneAssignList();
+        showMessage("新类型已添加，请在第三步为基因分配", "success");
+    }
+    
+    function renderGeneAssignList() {
+        const container = document.getElementById("geneAssignList");
+        if (uniqueGeneNames.size === 0) {
+            container.innerHTML = '<div class="empty-tip">暂无基因，请先导入文件</div>';
+            return;
+        }
+        const sorted = Array.from(uniqueGeneNames).sort();
+        container.innerHTML = "";
+        const allTypes = getAllTypes();
+        for (let gene of sorted) {
+            const curType = geneTypeMap.get(gene) || "3";
+            const row = document.createElement('div');
+            row.className = "gene-assign-row";
+            let opts = "";
+            for (let t of allTypes) {
+                let label = t.name + (presetStyles[t.id] ? " (预设)" : " (自定义)");
+                opts += `<option value="${t.id}" ${curType===t.id?'selected':''}>${escapeHtml(label)}</option>`;
+            }
+            row.innerHTML = `<div><strong>${escapeHtml(gene)}</strong></div><div><select class="gene-type-select" data-gene="${gene}">${opts}</select></div><div class="badge">${presetStyles[curType] ? '预设' : '自定义'}</div>`;
+            container.appendChild(row);
+        }
+        document.querySelectorAll('.gene-type-select').forEach(sel => {
+            sel.addEventListener('change', (e) => {
+                const gene = sel.dataset.gene;
+                geneTypeMap.set(gene, sel.value);
+                renderGeneAssignList();
+                showMessage(`${gene} 类型已更新`, "success");
+            });
+        });
+    }
+    
+    function autoAssignByRule() {
+        if (uniqueGeneNames.size === 0) { showMessage("请先导入基因文件", "error"); return; }
+        for (let g of uniqueGeneNames) geneTypeMap.set(g, getPresetTypeByGeneName(g));
+        renderGeneAssignList();
+        showMessage("已按规则自动分配（cox1, cox2, nad1 等为类型3宽斜体）", "success");
+    }
+    function resetToDefault() { autoAssignByRule(); }
+    
+    // ========== SVG 绘图（缺失基因：蓝色带下划线文本 + 水平线） ==========
+    function generateMissingGeneSVG(geneObj, x, y, params) {
+        const { H, gap_g } = params;
+        const geneName = geneObj.name;
+        const nameLen = geneName.length;
+        // 横线位于 y+H 处（矩形下边缘），宽度按字符数*13
+        const lineX1 = x;
+        const lineX2 = x + nameLen * 13;
+        const lineElem = `<line x1="${lineX1}" y1="${y+H}" x2="${lineX2}" y2="${y+H}" stroke="black" stroke-width="1" />`;
+        // 文本位置：根据正负链偏移
+        const offsetY = (geneObj.hasMinus ? 0.5 : -0.5) * 20;
+        const textY = y + H + offsetY;
+        const textX = x + (nameLen * 13) / 2;
+        const textElem = `<text x="${textX}" y="${textY}" font-size="20" font-family="Times New Roman" font-weight="bold" dy="0.35em" fill="blue" text-anchor="middle" font-style="normal" >${escapeHtml(geneName)}</text>`;
+        const usedWidth = nameLen * 13 + gap_g;
+        return { svg: lineElem + "\n" + textElem, width: usedWidth };
+    }
+    
+    // 正常基因（包括冒号 : 强制白色虚线矩形）
+    function generateNormalGeneSVG(geneObj, x, y, params) {
+        const { H, W1, W2 } = params;
+        const geneName = geneObj.name;
+        const typeId = geneTypeMap.get(geneName) || "3";
+        const style = getTypeStyle(typeId);
+        // 冒号 : 强制白色背景、虚线边框
+        const isColonSpecial = geneObj.hasColon;
+        const fillColor = isColonSpecial ? "#FFFFFF" : style.color;
+        const dash = isColonSpecial ? "5,1" : "none";
+        const width = (style.widthMode === 'wide') ? W1 : W2;
+        const fontSize = (typeId === '2' || typeId === '4') ? 15 : 20;
+        const fontStyle = style.fontStyle;
+        const textX = x + width/2;
+        const textY = y + H/2;
+        let transformAttr = "";
+        if (style.rotate) transformAttr = ` transform="rotate(-90, ${textX}, ${textY})"`;
+        const rect = `<rect x="${x}" y="${y}" width="${width}" height="${H}" fill="${fillColor}" stroke="black" stroke-width="1" stroke-dasharray="${dash}" rx="2" ry="2"/>`;
+        const text = `<text x="${textX}" y="${textY}" font-size="${fontSize}" font-family="Times New Roman" dy="0.35em" text-anchor="middle" font-weight="bold" font-style="${fontStyle}" fill="#000000"${transformAttr}>${escapeHtml(geneName)}</text>`;
+        return { svg: rect + "\n" + text, width: width };
+    }
+    
+    function generateGeneListSVG(genes, startY, params) {
+        let curX = params.startX;
+        let parts = [];
+        for (let g of genes) {
+            const yOff = g.hasMinus ? params.H : 0;   // 负链向下偏移 H
+            const rectY = startY + yOff;
+            if (g.hasExclam) {
+                // 缺失基因：画横线 + 蓝色下划线文本
+                const { svg, width } = generateMissingGeneSVG(g, curX, startY, params);
+                parts.push(svg);
+                curX += width;
+            } else {
+                const { svg, width } = generateNormalGeneSVG(g, curX, rectY, params);
+                parts.push(svg);
+                curX += width + params.gap_g;
+            }
+        }
+        return { svg: parts.join('\n'), finalX: curX };
+    }
+    
+    function renderFullSVG(rows, params) {
+        const BASE_X = params.startX, BASE_Y = params.startY;
+        let svg = [], curY = BASE_Y, maxX = BASE_X;
+        for (let row of rows) {
+            if (row.type === 'header') {
+                svg.push(`<text x="${BASE_X}" y="${curY+8}" font-size="30" font-family="Times New Roman" dy="0.35em" text-anchor="start" font-weight="bold" font-style="normal">${escapeHtml(row.label)}</text>`);
+                curY += params.H * 6 / 5;
+                continue;
+            }
+            svg.push(`<text x="${BASE_X}" y="${curY+8}" font-size="25" font-family="Times New Roman" dy="0.35em" text-anchor="start" font-style="italic">${escapeHtml(row.name)}</text>`);
+            curY += params.H * 6 / 5;
+            if (row.genes.length) {
+                const { svg: gsvg, finalX } = generateGeneListSVG(row.genes, curY, params);
+                svg.push(gsvg);
+                if (finalX > maxX) maxX = finalX;
+            }
+            curY += params.H * 2 + params.gap_y;
+        }
+        const viewW = Math.max(maxX + 150, 1000), viewH = Math.max(curY + params.H + 50, 600);
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 ${viewW} ${viewH}" style="background:white; font-family:'Times New Roman',serif;">${svg.join('\n')}</svg>`;
+    }
+    
+    function drawGeneMap() {
+        if (!parsedRows.length) { showMessage("请先加载基因文件", "error"); return; }
+        const params = {
+            H: parseInt(document.getElementById("paramH").value) || 30,
+            W1: parseInt(document.getElementById("paramW1").value) || 60,
+            W2: parseInt(document.getElementById("paramW2").value) || 20,
+            gap_g: parseInt(document.getElementById("paramGapG").value) || 2,
+            gap_y: parseInt(document.getElementById("paramGapY").value) || 20,
+            startX: parseInt(document.getElementById("paramStartX").value) || 80,
+            startY: parseInt(document.getElementById("paramStartY").value) || 80
+        };
+        try {
+            const svgStr = renderFullSVG(parsedRows, params);
+            document.getElementById("svgPreview").innerHTML = svgStr;
+            window.currentSvgString = svgStr;
+            document.getElementById("downloadSvgBtn").disabled = false;
+            showMessage("SVG 生成成功", "success");
+        } catch(e) { showMessage("绘图出错："+e.message, "error"); }
+    }
+    
+    function downloadSvg() {
+        if (!window.currentSvgString) return;
+        const blob = new Blob([window.currentSvgString], {type:"image/svg+xml"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "gene_arrangement.svg";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        if (window.showToast) window.showToast("✅ SVG 已导出");
+        else alert("✅ SVG 已导出");
+    }
+    
+    // ========== 加载数据 ==========
+    function loadFromContent(content) {
+        if (!content.trim()) { showMessage("内容为空","error"); return; }
+        const { rows, uniqueGenes } = parseGeneFile(content);
+        if (rows.length === 0) { showMessage("无有效数据","error"); return; }
+        parsedRows = rows;
+        uniqueGeneNames = uniqueGenes;
+        geneTypeMap.clear();
+        for (let g of uniqueGeneNames) geneTypeMap.set(g, getPresetTypeByGeneName(g));
+        renderGeneAssignList();
+        showMessage(`加载完成：基因排布 ${rows.filter(r=>r.type==='strain').length} 个，基因 ${uniqueGeneNames.size} 个`, "success");
+    }
+    
+    function loadGeneFile() {
+        const mode = document.querySelector('input[name="inputMode"]:checked').value;
+        if (mode === "file") {
+            const file = document.getElementById("geneFileInput").files[0];
+            if (!file) { showMessage("请选择文件","error"); return; }
+            const reader = new FileReader();
+            reader.onload = e => loadFromContent(e.target.result);
+            reader.readAsText(file);
+        } else {
+            const txt = document.getElementById("geneTextArea").value;
+            if (!txt.trim()) { showMessage("请粘贴内容","error"); return; }
+            loadFromContent(txt);
+        }
+    }
+    
+    function loadExample() {
+        const ex = `#Epicaridea
+Gyge ovalis	cox1	L2	cox2	K	D	atp8	atp6	cox3	G	R	nad3	A	-nad1	-L1	N	rrnS	-W	:I	:E	:S1	!-CR	-cob	-T	nad5	F	-H	-nad4	-nad4L	-P	nad6	S2	rrnL	-V	-Q	M	nad2	-C	-Y
+Bopyroides hippolytes	cox1	L2	cox2	:K	D	atp8	atp6	cox3	G	R	nad3	A	-nad1	-L1	N	rrnS	:-W	:I	-S1	-E	!CR	-cob	-T	nad5	F	-H	-nad4	-nad4L	-P	nad6	S2	-rrnL	-V	-Q	M	nad2	-C	-Y`;
+        const radio = document.querySelector('input[name="inputMode"][value="text"]');
+        radio.checked = true;
+        switchInputMode();
+        document.getElementById("geneTextArea").value = ex;
+        loadFromContent(ex);
+    }
+    
+    function switchInputMode() {
+        const mode = document.querySelector('input[name="inputMode"]:checked').value;
+        if (mode === "file") {
+            document.getElementById("geneFileInput").disabled = false;
+            document.getElementById("geneTextArea").disabled = true;
+        } else {
+            document.getElementById("geneFileInput").disabled = true;
+            document.getElementById("geneFileInput").value = "";
+            document.getElementById("geneTextArea").disabled = false;
+        }
+        // 切换模式时重置所有数据
+        parsedRows = [];
+        uniqueGeneNames.clear();
+        geneTypeMap.clear();
+        renderGeneAssignList();
+        document.getElementById("svgPreview").innerHTML = "等待生成...";
+        document.getElementById("downloadSvgBtn").disabled = true;
+        window.currentSvgString = "";
+    }
+    
+    // 事件绑定
+    document.getElementById("loadGeneBtn").addEventListener("click", loadGeneFile);
+    document.getElementById("loadExampleBtn").addEventListener("click", loadExample);
+    document.getElementById("autoByRuleBtn").addEventListener("click", autoAssignByRule);
+    document.getElementById("resetToDefaultBtn").addEventListener("click", resetToDefault);
+    document.getElementById("addCustomTypeBtn").addEventListener("click", addCustomType);
+    document.getElementById("drawSvgBtn").addEventListener("click", drawGeneMap);
+    document.getElementById("downloadSvgBtn").addEventListener("click", downloadSvg);
+    
+    // 初始化渲染（预设类型和自定义类型列表始终显示）
+    renderPresetTypes();
+    renderCustomTypes();
+    renderGeneAssignList();
+</script>
+</body>
+</html>

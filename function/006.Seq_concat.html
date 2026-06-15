@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA/RNA/氨基酸序列拼接 - BioDataTools 网页版</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <!-- 页面特有样式 -->
+    <style>
+        .sequence-list {
+            margin: 15px 0;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .sequence-item {
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            border-bottom: 1px solid #eee;
+            background: #fdfdfd;
+        }
+        .sequence-item:last-child {
+            border-bottom: none;
+        }
+        /* 移除按钮特殊颜色，完全使用全局 .btn 样式 */
+    </style>
+</head>
+<body>
+
+    <!-- 公共页眉占位符 -->
+    <div id="common-header"></div>
+
+    <main class="main">
+        <div class="page-intro">
+            <h2>DNA/RNA/氨基酸序列拼接</h2>
+            <p>核酸（DNA/RNA）和蛋白质序列清洗拼接</p>
+        </div>
+
+        <!-- 第一步：导入 FASTA 序列（统一风格） -->
+        <div class="step-card">
+            <div class="step-title">第一步：导入 FASTA 序列</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="粘贴标准 FASTA 内容（序列标识第一个空格前的内容将作为基因名称）" disabled></textarea>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:15px;">
+                <button id="loadBtn" class="btn">加载序列</button>
+            </div>
+            <div id="seqListWrap" class="hide">
+                <h4 style="margin:15px 0 8px;">已加载序列（调整顺序、设置反向互补）</h4>
+                <div id="seqList" class="sequence-list"></div>
+            </div>
+        </div>
+
+        <!-- 第二步：参数设置 -->
+        <div class="step-card">
+            <div class="step-title">第二步：参数设置</div>
+
+            <!-- 序列类型切换 -->
+            <div class="mode-switch">
+                <label>
+                    <input type="radio" name="seqType" value="dna" checked> 蛋白编码核酸模式
+                </label>
+                <label>
+                    <input type="radio" name="seqType" value="protein"> 非蛋白编码核酸/蛋白质模式 (直接拼接)
+                </label>
+            </div>
+
+            <!-- 核酸专属参数区域 -->
+            <div id="dnaParams">
+                <div class="three-inline">
+                    <div class="form-group">
+                        <label>反向互补执行时机</label>
+                        <select id="compTime">
+                            <option value="none">不处理反向互补</option>
+                            <option value="before">先反向互补，再处理终止密码子/残基</option>
+                            <option value="after">先处理终止密码子/残基，再反向互补</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>碱基清洗：将非 ATGC/- 替换为 N</label>
+                        <select id="baseFilter">
+                            <option value="1">启用替换</option>
+                            <option value="0">不替换</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>终止密码子处理方式</label>
+                    <select id="stopAction">
+                        <option value="keep">保留终止密码子</option>
+                        <option value="remove_codon">删除末尾终止密码子与非3倍数残基</option>
+                        <option value="remove_remain">仅删除末尾非3倍数残基</option>
+                    </select>
+                </div>
+
+                <!-- 密码子配置区 -->
+                <div id="codonConfigWrap" class="sub-group hide">
+                    <div class="form-group">
+                        <label>终止密码子来源</label>
+                        <div class="radio-box" style="margin:0 0 10px 0;">
+                            <label><input type="radio" name="stopMode" value="table" checked> 使用密码子表</label>
+                            <label><input type="radio" name="stopMode" value="custom"> 自定义</label>
+                        </div>
+                        <label>选择密码子表</label>
+                        <select id="codonTableSel"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>识别的终止密码子（多个英文逗号分隔）</label>
+                        <input type="text" id="stopCodonInput" placeholder="TAA,TAG,TGA">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 蛋白质模式提示 -->
+            <div id="proteinHint" class="tip-text success hide" style="margin-top:10px;">
+                ★ 蛋白质模式：直接拼接原始序列，不进行任何清洗、互补或密码子处理。
+            </div>
+
+            <button id="concatBtn" class="btn">执行序列拼接</button>
+        </div>
+
+        <!-- 结果区 -->
+        <div id="resultWrap" class="step-card">
+            <div class="step-title">拼接结果</div>
+
+            <h4>1. 完整拼接序列</h4>
+            <div class="result-box" id="finalSeq"></div>
+            <div style="margin:8px 0;">
+                <button id="copySeqBtn" class="btn" disabled>复制序列</button>
+                <button id="exportSeqBtn" class="btn" disabled>导出 FASTA 文件</button>
+            </div>
+
+            <div id="resultTip" class="tip-text hide"></div> 
+            <h4 style="margin-top:20px;">2. 各基因位置对照表</h4>
+            <table id="posTable">
+                <thead>
+                    <tr><th>序号</th><th>基因名称</th><th>原始长度</th><th>处理后长度</th><th>起始位置</th><th>结束位置</th></tr>
+                </thead>
+                <tbody id="posTableBody"></tbody>
+            </table>
+            <div style="margin:8px 0;">
+                <button id="copyTableBtn" class="btn" disabled>复制位置表</button>
+                <button id="exportTableBtn" class="btn" disabled>导出位置表(TXT)</button>
+            </div>
+            <div id="tableCopyTip" class="tip-text hide"></div> 
+        </div>
+    </main>
+
+    <!-- 公共页脚占位符 -->
+    <div id="common-footer"></div>
+
+    <!-- 自定义页眉配置 -->
+    <script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+            bilibiliText: '前往B站主页',
+            githubText: 'GitHub项目',
+            returnHomeUrl: '../index.html'
+        };
+    </script>
+
+    <!-- 引入公共组件 -->
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <!-- 外部依赖（密码子表规则） -->
+    <script src="../COMMON/codon_config.js"></script>
+    <script src="../COMMON/sms_genetic_codes.js"></script>
+
+    <!-- 业务逻辑脚本 -->
+    <script>
+        // ---------- 全局变量 ----------
+        let sequences = [];          // { name, seq, revComp }
+        let positionData = [];
+        let currentSeqType = "dna";  // "dna" or "protein"
+
+        // 互补映射（仅核酸模式使用）
+        const complementMap = {
+            'A':'T','T':'A','C':'G','G':'C',
+            'a':'t','t':'a','c':'g','g':'c',
+            'N':'N','n':'N','-':'-'
+        };
+
+        // DOM 元素
+        const fastaFile = document.getElementById('fastaFile');
+        const fastaText = document.getElementById('fastaText');
+        const msgTip = document.getElementById('msgTip');
+        const loadBtn = document.getElementById('loadBtn');
+        const seqListWrap = document.getElementById('seqListWrap');
+        const seqList = document.getElementById('seqList');
+
+        // 导入模式切换（与001一致）
+        function switchInput() {
+            const mode = document.querySelector('input[name="inputMode"]:checked').value;
+            // 清空已有数据
+            sequences = [];
+            positionData = [];
+            seqListWrap.classList.add('hide');
+            disableAllResultBtn();
+            document.getElementById('finalSeq').textContent = '';
+            document.getElementById('posTableBody').innerHTML = '';
+            if (mode === 'file') {
+                fastaFile.disabled = false;
+                fastaText.disabled = true;
+                fastaText.value = '';
+                msgTip.innerHTML = '';
+            } else {
+                fastaFile.disabled = true;
+                fastaFile.value = '';
+                fastaText.disabled = false;
+            }
+        }
+
+        // 读取文件
+        fastaFile.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                fastaText.value = ev.target.result;
+                msgTip.innerHTML = `<span class="success">✅ 已读取：${file.name}</span>`;
+                window.showToast(`✅ 文件 ${file.name} 加载成功`);
+                // 自动加载序列（可选，或保留手动按钮）
+                // 这里保留手动按钮，所以不自动调用 loadSeq
+            };
+            reader.readAsText(file);
+        });
+
+        // 手动加载序列
+        function loadSeq() {
+            const mode = document.querySelector('input[name="inputMode"]:checked').value;
+            let text = '';
+            if (mode === 'file') {
+                text = fastaText.value;
+            } else {
+                text = fastaText.value;
+            }
+            if (!text.trim()) {
+                msgTip.innerHTML = '<span class="error">❌ 请先上传文件或粘贴FASTA内容</span>';
+                return;
+            }
+            parseFasta(text);
+            if (sequences.length === 0) {
+                msgTip.innerHTML = '<span class="error">❌ 未解析到有效FASTA序列</span>';
+                return;
+            }
+            renderSeqList();
+            seqListWrap.classList.remove('hide');
+            disableAllResultBtn();
+            msgTip.innerHTML = `<span class="success">✅ 成功加载 ${sequences.length} 条序列</span>`;
+            window.showToast(`✅ 已加载 ${sequences.length} 条序列`);
+        }
+
+        // 解析FASTA（与原逻辑一致）
+        function parseFasta(fastaText) {
+            const lines = fastaText.split(/\r?\n/);
+            const res = [];
+            let name = '';
+            let seq = '';
+            lines.forEach(line => {
+                const t = line.trim();
+                if (!t) return;
+                if (t.startsWith('>')) {
+                    if (name && seq) {
+                        res.push({ name, seq, revComp: false });
+                    }
+                    const rawName = t.slice(1).trim();
+                    name = rawName.split(/\s+/)[0];
+                    seq = '';
+                } else {
+                    seq += t;
+                }
+            });
+            if (name && seq) {
+                res.push({ name, seq, revComp: false });
+            }
+            sequences = res;
+        }
+
+        // 渲染序列列表
+        function renderSeqList() {
+            seqList.innerHTML = '';
+            const isProteinMode = (currentSeqType === 'protein');
+            sequences.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'sequence-item';
+                const revCompCheckbox = isProteinMode 
+                    ? `<input type="checkbox" disabled> 反向互补` 
+                    : `<input type="checkbox" ${item.revComp ? 'checked' : ''} onchange="setRevComp(${idx})"> 反向互补`;
+                div.innerHTML = `
+                    <div style="flex:1;">
+                        <strong>${escapeHtml(item.name)}</strong>
+                        <span style="margin-left:10px;">长度: ${item.seq.length} bp</span>
+                    </div>
+                    <label>
+                        ${revCompCheckbox}
+                    </label>
+                    <div>
+                        <button class="btn-sm" onclick="moveUp(${idx})">上移</button>
+                        <button class="btn-sm" onclick="moveDown(${idx})">下移</button>
+                        <button class="btn-del btn-sm" onclick="delSeq(${idx})">删除</button>
+                    </div>
+                `;
+                seqList.appendChild(div);
+            });
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        window.setRevComp = function(idx) {
+            if (currentSeqType === 'protein') return;
+            sequences[idx].revComp = !sequences[idx].revComp;
+        };
+        window.moveUp = function(idx) {
+            if (idx <= 0) return;
+            [sequences[idx], sequences[idx-1]] = [sequences[idx-1], sequences[idx]];
+            renderSeqList();
+        };
+        window.moveDown = function(idx) {
+            if (idx >= sequences.length - 1) return;
+            [sequences[idx], sequences[idx+1]] = [sequences[idx+1], sequences[idx]];
+            renderSeqList();
+        };
+        window.delSeq = function(idx) {
+            if (!confirm('确定删除该序列？')) return;
+            sequences.splice(idx, 1);
+            renderSeqList();
+            if (sequences.length === 0) {
+                seqListWrap.classList.add('hide');
+                disableAllResultBtn();
+            }
+        };
+
+        // ---------- 以下为拼接相关函数（完全保留原逻辑） ----------
+        const compTime = document.getElementById('compTime');
+        const baseFilter = document.getElementById('baseFilter');
+        const stopAction = document.getElementById('stopAction');
+        const stopCodonInput = document.getElementById('stopCodonInput');
+        const codonTableSel = document.getElementById('codonTableSel');
+        const concatBtn = document.getElementById('concatBtn');
+        const copySeqBtn = document.getElementById('copySeqBtn');
+        const exportSeqBtn = document.getElementById('exportSeqBtn');
+        const copyTableBtn = document.getElementById('copyTableBtn');
+        const exportTableBtn = document.getElementById('exportTableBtn');
+        const finalSeqDiv = document.getElementById('finalSeq');
+        const posTableBody = document.getElementById('posTableBody');
+        const resultTip = document.getElementById('resultTip');
+        const tableCopyTip = document.getElementById('tableCopyTip');
+
+        function initCodonTableSelect() {
+            if (typeof TABLE_ID_NAME_MAP === 'undefined') {
+                codonTableSel.innerHTML = '<option value="1">标准密码子表</option>';
+                return;
+            }
+            codonTableSel.innerHTML = '';
+            for (const id in TABLE_ID_NAME_MAP) {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = TABLE_ID_NAME_MAP[id];
+                codonTableSel.appendChild(opt);
+            }
+            codonTableSel.value = '1';
+        }
+
+        function getStopCodonsFromTable(tableId) {
+            try {
+                if (typeof getCodonTable === 'function') {
+                    const codonMap = getCodonTable(tableId);
+                    const stopCodons = [];
+                    for (let [rnaCodon, aa] of Object.entries(codonMap)) {
+                        if (aa === 'TER' || aa === '*') {
+                            let dnaCodon = rnaCodon.replace(/U/g, 'T');
+                            stopCodons.push(dnaCodon);
+                        }
+                    }
+                    return [...new Set(stopCodons)];
+                } else {
+                    return ['TAA', 'TAG', 'TGA'];
+                }
+            } catch(e) {
+                return ['TAA', 'TAG', 'TGA'];
+            }
+        }
+
+        function updateStopCodonByTable() {
+            if (stopAction.value !== 'remove_codon') return;
+            const mode = document.querySelector('input[name="stopMode"]:checked').value;
+            if (mode === 'table') {
+                const tableId = codonTableSel.value;
+                const stopList = getStopCodonsFromTable(tableId);
+                stopCodonInput.value = stopList.join(',');
+                stopCodonInput.disabled = true;
+            } else {
+                stopCodonInput.disabled = false;
+                if (!stopCodonInput.value.trim()) {
+                    stopCodonInput.value = 'TAA,TAG,TGA';
+                }
+            }
+        }
+
+        function toggleCodonArea() {
+            const codonWrap = document.getElementById('codonConfigWrap');
+            if (stopAction.value === 'remove_codon') {
+                codonWrap.classList.remove('hide');
+                updateStopCodonByTable();
+            } else {
+                codonWrap.classList.add('hide');
+            }
+        }
+
+        function disableAllResultBtn() {
+            copySeqBtn.disabled = true;
+            exportSeqBtn.disabled = true;
+            copyTableBtn.disabled = true;
+            exportTableBtn.disabled = true;
+        }
+        function enableAllResultBtn() {
+            copySeqBtn.disabled = false;
+            exportSeqBtn.disabled = false;
+            copyTableBtn.disabled = false;
+            exportTableBtn.disabled = false;
+        }
+
+        function showTip(msg, type) {
+            const tip = document.getElementById('tipBox'); // 使用原 tipBox，但我们在新结构中将其改为了 msgTip？需要调整
+            // 为了兼容，我们用 msgTip 来显示提示
+            msgTip.innerHTML = `<span class="${type}">${msg}</span>`;
+            setTimeout(() => { msgTip.innerHTML = ''; }, 4000);
+        }
+        function showResultTip(msg, type) {
+            resultTip.innerHTML = `<span class="${type}">${msg}</span>`;
+            resultTip.classList.remove('hide');
+            setTimeout(() => { resultTip.classList.add('hide'); }, 4000);
+        }
+
+        function filterBase(seq) {
+            const enable = baseFilter.value === '1';
+            if (!enable) return seq;
+            return seq.replace(/[^ATGCatgc\-]/g, 'N');
+        }
+        function reverseComp(seq) {
+            return seq.split('').reverse().map(b => complementMap[b] || b).join('');
+        }
+        function trimStopCodons(seq, stopCodons) {
+            if (!stopCodons || stopCodons.length === 0) return seq;
+            let cur = seq;
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (let cod of stopCodons) {
+                    if (cur.toUpperCase().endsWith(cod)) {
+                        cur = cur.slice(0, -cod.length);
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            cur = trimNonTriplet(cur);
+            return cur;
+        }
+        function trimNonTriplet(seq) {
+            const remainder = seq.length % 3;
+            if (remainder > 0) return seq.slice(0, seq.length - remainder);
+            return seq;
+        }
+
+        function processNucleotideSequence(originSeq, needRev) {
+            const action = stopAction.value;
+            let stopCodons = [];
+            if (action === 'remove_codon') {
+                stopCodons = stopCodonInput.value.split(',').map(c => c.trim().toUpperCase()).filter(c => c);
+            }
+            const effectiveRev = (compTime.value !== 'none') && needRev;
+
+            if (action === 'keep') {
+                if (effectiveRev) return reverseComp(originSeq);
+                return originSeq;
+            }
+            if (action === 'remove_codon') {
+                if (compTime.value === 'before') {
+                    let seq = originSeq;
+                    if (effectiveRev) seq = reverseComp(seq);
+                    seq = trimStopCodons(seq, stopCodons);
+                    return seq;
+                } else if (compTime.value === 'after') {
+                    let seq = originSeq;
+                    seq = trimStopCodons(seq, stopCodons);
+                    if (effectiveRev) seq = reverseComp(seq);
+                    return seq;
+                } else {
+                    let seq = originSeq;
+                    seq = trimStopCodons(seq, stopCodons);
+                    return seq;
+                }
+            }
+            if (action === 'remove_remain') {
+                if (compTime.value === 'before') {
+                    let seq = originSeq;
+                    if (effectiveRev) seq = reverseComp(seq);
+                    seq = trimNonTriplet(seq);
+                    return seq;
+                } else if (compTime.value === 'after') {
+                    let seq = originSeq;
+                    seq = trimNonTriplet(seq);
+                    if (effectiveRev) seq = reverseComp(seq);
+                    return seq;
+                } else {
+                    let seq = originSeq;
+                    seq = trimNonTriplet(seq);
+                    return seq;
+                }
+            }
+            return originSeq;
+        }
+
+        function doConcat() {
+            if (sequences.length === 0) {
+                showTip('请先加载序列', 'error');
+                return;
+            }
+            let totalSeq = '';
+            positionData = [];
+            let currentPos = 1;
+            const isProtein = (currentSeqType === 'protein');
+
+            for (let item of sequences) {
+                let originSeq = item.seq;
+                const originLen = originSeq.length;
+                let finalSeq = '';
+                if (isProtein) {
+                    finalSeq = originSeq;
+                } else {
+                    let cleaned = filterBase(originSeq);
+                    finalSeq = processNucleotideSequence(cleaned, item.revComp);
+                }
+                const finalLen = finalSeq.length;
+                const start = currentPos;
+                const end = (finalLen === 0 ? currentPos - 1 : currentPos + finalLen - 1);
+                positionData.push({
+                    name: item.name,
+                    originLen: originLen,
+                    finalLen: finalLen,
+                    start: start,
+                    end: end >= start ? end : start-1
+                });
+                totalSeq += finalSeq;
+                currentPos = end + 1;
+            }
+
+            if (totalSeq.length === 0) {
+                showTip('拼接后序列为空，请检查序列或参数配置', 'warn');
+                finalSeqDiv.textContent = '>Concatenated_sequence\n(空序列)';
+                enableAllResultBtn();
+                posTableBody.innerHTML = '<tr><td colspan="6">无有效序列</td></tr>';
+                return;
+            }
+
+            const formatSeq = totalSeq.match(/.{1,80}/g)?.join('\n') || totalSeq;
+            finalSeqDiv.textContent = `>Concatenated_sequence\n${formatSeq}`;
+            posTableBody.innerHTML = '';
+            positionData.forEach((d, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${idx+1}</td>
+                    <td style="text-align:left;">${escapeHtml(d.name)}</td>
+                    <td>${d.originLen}</td>
+                    <td>${d.finalLen}</td>
+                    <td>${d.start}</td>
+                    <td>${d.end}</td>
+                `;
+                posTableBody.appendChild(tr);
+            });
+            enableAllResultBtn();
+            showTip('序列拼接完成 ✓', 'success');
+        }
+
+        function copyText(text) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => showResultTip('复制成功', 'success'));
+            } else {
+                fallbackCopy(text);
+            }
+        }
+        function fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showResultTip('复制成功', 'success');
+        }
+        function downloadFile(content, fileName, type) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        function copySeq() {
+            const txt = finalSeqDiv.textContent;
+            if (txt) copyText(txt);
+        }
+        function copyTable() {
+            let txt = '序号\t基因名称\t原始长度\t处理后长度\t起始位置\t结束位置\n';
+            positionData.forEach((d, i) => {
+                txt += `${i+1}\t${d.name}\t${d.originLen}\t${d.finalLen}\t${d.start}\t${d.end}\n`;
+            });
+            copyText(txt);
+        }
+        function exportSeq() {
+            const txt = finalSeqDiv.textContent;
+            if (txt) downloadFile(txt, 'concatenated_seq.fasta', 'text/plain');
+        }
+        function exportTable() {
+            let txt = '序号\t基因名称\t原始长度\t处理后长度\t起始位置\t结束位置\n';
+            positionData.forEach((d, i) => {
+                txt += `${i+1}\t${d.name}\t${d.originLen}\t${d.finalLen}\t${d.start}\t${d.end}\n`;
+            });
+            downloadFile(txt, 'gene_position.txt', 'text/plain');
+        }
+
+        // 序列类型切换处理
+        function onSeqTypeChange() {
+            const typeRadio = document.querySelector('input[name="seqType"]:checked');
+            if (typeRadio) {
+                currentSeqType = typeRadio.value;
+            }
+            const dnaDiv = document.getElementById('dnaParams');
+            const proteinHint = document.getElementById('proteinHint');
+            if (currentSeqType === 'protein') {
+                dnaDiv.classList.add('disabled-param');
+                const inputs = dnaDiv.querySelectorAll('input, select, button');
+                inputs.forEach(el => el.disabled = true);
+                proteinHint.classList.remove('hide');
+            } else {
+                dnaDiv.classList.remove('disabled-param');
+                const inputs = dnaDiv.querySelectorAll('input, select, button');
+                inputs.forEach(el => el.disabled = false);
+                proteinHint.classList.add('hide');
+            }
+            renderSeqList(); // 重新渲染以禁用/启用反向互补复选框
+            disableAllResultBtn();
+            finalSeqDiv.textContent = '';
+            posTableBody.innerHTML = '';
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            loadBtn.addEventListener('click', loadSeq);
+            concatBtn.addEventListener('click', doConcat);
+            copySeqBtn.addEventListener('click', copySeq);
+            exportSeqBtn.addEventListener('click', exportSeq);
+            copyTableBtn.addEventListener('click', copyTable);
+            exportTableBtn.addEventListener('click', exportTable);
+            stopAction.addEventListener('change', toggleCodonArea);
+            document.querySelectorAll('input[name="stopMode"]').forEach(r => r.addEventListener('change', updateStopCodonByTable));
+            codonTableSel.addEventListener('change', updateStopCodonByTable);
+            document.querySelectorAll('input[name="seqType"]').forEach(radio => radio.addEventListener('change', onSeqTypeChange));
+        }
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initCodonTableSelect();
+            bindEvents();
+            switchInput(); // 初始化导入模式状态
+            toggleCodonArea();
+            updateStopCodonByTable();
+            disableAllResultBtn();
+            onSeqTypeChange();
+        });
+    </script>
+</body>
+</html>

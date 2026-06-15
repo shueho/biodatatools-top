@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioDataTools 网页版</title>
+    <link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 侧边栏切换按钮 -->
+    <button class="toggle-side-btn" id="toggleSideBtn">⇆</button>
+
+    <!-- 顶部头部 -->
+    <header>
+        <div class="header-wrap">
+            <div class="site-title">
+                <h1>BioDataTools 网页版</h1>
+                <div class="author">作者：地上飞猪</div>
+            </div>
+            <div>
+                <a href="https://space.bilibili.com/33053326" target="_blank" class="bilibili-link">前往B站主页</a>
+                <a href="https://github.com/shueho/BioDataTools" target="_blank" class="github-link">GitHub 项目</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 左侧导航栏 -->
+    <nav class="side-nav" id="sideNav">
+        <h4>功能导航</h4>
+        <ul id="navList"></ul>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="main">
+        <div class="intro">
+            <h2>生物数据分析工具合集</h2>
+            <p>点击对应工具进入功能页面，功能不断完善中！</p>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="search-bar">
+            <input type="text" id="toolSearchInput" placeholder="🔍 输入工具名称或功能描述中的字段，试试搜索：蛋白质...">
+        </div>
+
+        <div id="toolList"></div>
+    </div>
+
+    <!-- 页脚占位符 -->
+    <div id="common-footer"></div>
+
+    <!-- 引入公共页脚脚本 -->
+    <script src="COMMON/footer.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+
+    <!-- 侧边栏切换交互 -->
+    <script>
+        const toggleSideBtn = document.getElementById('toggleSideBtn');
+        const sideNav = document.querySelector('.side-nav');
+        const mainWrap = document.querySelector('.main');
+
+        toggleSideBtn.addEventListener('click', function() {
+            sideNav.classList.toggle('hidden');
+            mainWrap.classList.toggle('full-width');
+            this.textContent = '⇆';
+        });
+    </script>
+</body>
+</html>

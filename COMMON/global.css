@@ -1,0 +1,563 @@
+/* ============================================
+   BioDataTools 子网页公用样式表
+   仅包含所有页面共用的基础样式（页眉、页脚、卡片、按钮、表单、表格等）
+   特殊样式请在各页面单独定义
+============================================ */
+
+/* 全局重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", "Microsoft Yahei", sans-serif;
+}
+
+body {
+    background-color: #f0f4f8;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* ========== 页眉（配合 header.js） ========== */
+header {
+    background: #1f4068;
+    color: #fff;
+    padding: 1.5rem 2rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 99;
+}
+.header-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.site-title h1 {
+    font-size: 2rem;
+    letter-spacing: 1px;
+}
+.author {
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    opacity: 0.85;
+}
+.bilibili-link, .github-link, .back-home {
+    background: #fb7299;
+    color: #fff;
+    text-decoration: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    transition: 0.3s;
+    font-weight: 500;
+    margin-right: 10px;
+}
+.github-link {
+    background: #24292f;
+}
+.back-home {
+    background: #24292f;
+    margin-right: 0;
+}
+.bilibili-link:hover, .github-link:hover, .back-home:hover {
+    transform: scale(1.05);
+    opacity: 0.9;
+}
+
+/* ========== 页脚（配合 footer.js） ========== */
+footer {
+    text-align: center;
+    padding: 2rem;
+    color: #888;
+    font-size: 0.9rem;
+    background: #fff;
+    margin-top: 3rem;
+    position: relative;
+}
+footer .email {
+    margin: 0.5rem 0;
+}
+.donate-wrap {
+    display: inline-block;
+    position: relative;
+    margin-left: 8px;
+    cursor: pointer;
+    color: #1f4068;
+    font-weight: 500;
+}
+.donate-tip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+    transition: opacity 0.3s, visibility 0.3s;
+    z-index: 100;
+    white-space: nowrap;
+}
+.donate-tip img {
+    display: block;
+    max-width: 400px;
+    height: auto;
+}
+.donate-wrap:hover .donate-tip {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* ========== 主内容容器 ========== */
+.main {
+    max-width: 1500px;
+    margin: 4rem auto;
+    padding: 0 2rem;
+}
+.page-intro {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.page-intro h2 {
+    font-size: 1.8rem;
+    color: #1f4068;
+    margin-bottom: 0.8rem;
+}
+.page-intro p {
+    color: #666;
+    font-size: 1.05rem;
+}
+
+/* ========== 卡片样式 ========== */
+.step-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(31, 64, 104, 0.1);
+    padding: 2rem;
+    margin-bottom: 2.5rem;
+    border: 1px solid #e8edf2;
+}
+.step-title {
+    font-size: 1.4rem;
+    color: #1f4068;
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 2px solid #e8edf2;
+}
+
+/* ========== 表单组件（通用） ========== */
+.radio-box {
+    margin: 10px 0 15px;
+}
+.radio-box label {
+    margin-right: 25px;
+    cursor: pointer;
+}
+.file-input, .text-input {
+    margin: 10px 0;
+}
+textarea {
+    width: 100%;
+    min-height: 180px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    resize: vertical;
+}
+.filter-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 15px 0 0 0;
+    align-items: center;
+}
+.tip-text {
+    margin: 10px 0;
+    font-weight: 500;
+}
+.warn { color: #e67700; }
+.error { color: #dc3545; }
+.success { color: #28a745; }
+
+/* ========== 通用按钮 ========== */
+.btn {
+    padding: 8px 20px;
+    background: #1f4068;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+.btn:disabled {
+    background: #999;
+    cursor: not-allowed;
+}
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 13px;
+    background: #6c757d;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #fff;
+}
+.btn-sm:hover {
+    background: #5a6268;
+}
+.btn-del {
+    background: #dc3545;
+}
+.btn-del:hover {
+    background: #bb2d3b;
+}
+
+/* ========== 结果展示区（通用） ========== */
+.result-item {
+    border: 1px solid #e8edf2;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 10px 0;
+}
+.result-toolbar {
+    margin: 10px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.seq-area {
+    word-break: break-all;
+    font-family: Consolas, monospace;
+    margin-top: 8px;
+    line-height: 1.8;
+}
+
+/* ========== 通用表格 ========== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-family: Consolas, monospace;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 6px 8px;
+    text-align: center;
+}
+th {
+    background-color: #f5f7fa;
+}
+.table-scroll {
+    max-height: 300px;
+    overflow-x: auto;
+    overflow-y: auto;
+}
+.table-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 500px;
+    border: 1px solid #e8edf2;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+.table-container th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* ========== 密码子表预览（四列并排，用于 RSCU 等） ========== */
+.preview-table-wrap {
+    margin-top: 15px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+.codon-preview-row {
+    display: flex;
+    gap: 10px;
+}
+.codon-col {
+    flex: 1;
+}
+.preview-table {
+    width: 100%;
+    font-size: 13px;
+}
+.custom-codon-box {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px dashed #999;
+    border-radius: 6px;
+}
+.hide {
+    display: none;
+}
+
+/* ========== 辅助类 ========== */
+.copy-temp {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ========== 响应式（仅限页眉等全局部分） ========== */
+@media (max-width: 768px) {
+    .header-wrap {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+}
+
+/* ========== 复制成功提示（Toast） ========== */
+.copy-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background-color: #2e7d32;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.copy-toast.show {
+    opacity: 1;
+}
+
+/* ========== 通用表单元素（输入框、下拉框） ========== */
+input[type="text"],
+input[type="number"],
+select {
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    background-color: #fff;
+    font-family: inherit;
+}
+label {
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+/* ========== 表格滚动容器（跨页面复用） ========== */
+.table-scroll {
+    max-height: 300px;
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+/* ========== 以下为新增的公共样式（从 004 页面提取） ========== */
+
+/* 颜色选择器 */
+input[type="color"] {
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 50px;
+    height: 32px;
+    cursor: pointer;
+}
+
+.param-wrap {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px 16px;
+    margin: 8px 0 15px;
+}
+/* 可选：在大屏幕上限制最多4列（但通常 auto-fit 会自动适应，不需要） */
+@media (min-width: 1200px) {
+    .param-wrap {
+        grid-template-columns: repeat(4, minmax(200px, 1fr));
+    }
+}
+
+
+.param-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 文件列表 */
+.file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.file-item {
+    border: 1px solid #e8edf2;
+    border-radius: 6px;
+    padding: 10px 12px;
+    transition: 0.2s;
+}
+.file-item:hover {
+    border-color: #1f4068;
+    background-color: #f7f9fc;
+}
+.file-name {
+    font-weight: 500;
+}
+.file-path {
+    font-size: 0.85rem;
+    color: #666;
+    word-break: break-all;
+    margin-top: 4px;
+}
+
+/* 结果卡片列表 */
+.res-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+.res-card {
+    border: 1px solid #e8edf2;
+    border-radius: 6px;
+    padding: 12px;
+    background: #fff;
+}
+.res-title {
+    font-weight: 500;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+.res-btn-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* 批量下载容器 */
+.batch-container {
+    border: 1px solid #d8e2ec;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 8px;
+}
+.batch-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.batch-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 6px;
+    border-bottom: 1px solid #f0f4f8;
+}
+.batch-item:last-child {
+    border-bottom: none;
+}
+
+
+/* ========== 序列拼接等工具通用样式 ========== */
+
+/* 小按钮和危险按钮 */
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 13px;
+    background: #6c757d;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #fff;
+}
+.btn-sm:hover {
+    background: #5a6268;
+}
+.btn-del {
+    background: #dc3545;
+}
+.btn-del:hover {
+    background: #bb2d3b;
+}
+
+/* 三列内联布局（用于表单分组） */
+.three-inline {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.three-inline .form-group {
+    flex: 1;
+    min-width: 220px;
+}
+
+/* 子分组（带左边框的嵌套区域） */
+.sub-group {
+    margin-left: 1rem;
+    padding-left: 1rem;
+    border-left: 2px solid #e8edf2;
+}
+
+/* 模式切换开关（单选框横排） */
+.mode-switch {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 20px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e8edf2;
+}
+.mode-switch label {
+    font-weight: 600;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* 参数禁用区域 */
+.disabled-param {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* 结果展示框（用于拼接结果的纯文本区域） */
+.result-box {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    margin: 10px 0;
+    font-family: monospace;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+/* 让 SVG 文本完全使用内联 font-family，不受全局 * 干扰 */
+svg text {
+    font-family: inherit;
+}

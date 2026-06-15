@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - 页面未找到 | BioDataTools 网页版</title>
+    <!-- 全局公用样式 -->
+    <link rel="stylesheet" href="COMMON/global.css">
+    <style>
+        /* 404 页面特有样式 */
+        .error-container {
+            text-align: center;
+            padding: 4rem 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .error-code {
+            font-size: 8rem;
+            font-weight: bold;
+            color: #1f4068;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+            margin: 0;
+            line-height: 1;
+        }
+        .error-icon {
+            font-size: 6rem;
+            margin: 1rem 0;
+            opacity: 0.7;
+        }
+        .error-message {
+            font-size: 1.5rem;
+            color: #555;
+            margin: 1rem 0 0.5rem;
+        }
+        .error-desc {
+            color: #777;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+        .error-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+        }
+        .btn-home {
+            background: #1f4068;
+            padding: 12px 24px;
+            font-size: 1rem;
+        }
+        .btn-contact {
+            background: #6c757d;
+            padding: 12px 24px;
+            font-size: 1rem;
+        }
+        .btn-home:hover,
+        .btn-contact:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        .fun-svg {
+            max-width: 300px;
+            margin: 1rem auto;
+            opacity: 0.6;
+        }
+        @media (max-width: 768px) {
+            .error-code { font-size: 5rem; }
+            .error-icon { font-size: 4rem; }
+            .error-message { font-size: 1.2rem; }
+            .error-actions { flex-direction: column; align-items: center; }
+            .btn-home, .btn-contact { width: 80%; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 页眉占位符 -->
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="error-container">
+            <div class="error-code">404</div>
+            <div class="error-icon">🔍</div>
+            <div class="error-message">哎呀！页面走丢了～</div>
+            <div class="error-desc">
+                您访问的页面可能已被移除、链接已失效，或者您输入了错误的地址。
+            </div>
+            <div class="error-actions">
+                <a href="./index.html" class="btn btn-home">🏠 返回首页</a>
+                <a href="mailto:studid@163.com" class="btn btn-contact">📧 联系作者</a>
+            </div>
+            <div class="fun-svg">
+                <!-- 简单 SVG 小插图（可选） -->
+                <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="20" y="20" width="160" height="80" rx="10" fill="#f0f4f8" stroke="#1f4068" stroke-width="2"/>
+                    <circle cx="70" cy="60" r="8" fill="#1f4068" />
+                    <circle cx="130" cy="60" r="8" fill="#1f4068" />
+                    <path d="M80 75 Q100 90 120 75" stroke="#1f4068" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    <text x="100" y="110" text-anchor="middle" fill="#1f4068" font-size="12">BioDataTools</text>
+                </svg>
+            </div>
+            <p style="font-size:0.85rem; color:#aaa; margin-top:2rem;">
+                如果您确认链接正确，请联系管理员反馈问题。
+            </p>
+        </div>
+    </div>
+
+    <!-- 页脚占位符 -->
+
+    <!-- 自定义页眉配置（覆盖返回首页链接为根目录） -->
+    <script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+            bilibiliText: '前往B站主页',
+            githubText: 'GitHub项目',
+            returnHomeUrl: './index.html'   // 404 页面位于根目录，返回首页使用当前目录的 index.html
+        };
+    </script>
+    <!-- 引入公共组件（相对于根目录） -->
+    <script src="COMMON/header.js"></script>
+    <script src="COMMON/utils.js"></script>
+
+</body>
+</html>

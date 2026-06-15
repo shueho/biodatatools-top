@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <title>10,000 Days of 戚茜 | 薛浩写给妻子的星辰情书</title>
+    <!-- Google Fonts: 优雅衬线与现代无衬线组合 -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:opsz,wght@14..32,200;14..32,300;14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #fff9f5 0%, #fdeff2 100%);
+            font-family: 'Inter', sans-serif;
+            color: #3e2a2f;
+            line-height: 1.5;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* 柔光氛围 */
+        .ambient-glow {
+            position: fixed;
+            top: -20%;
+            left: -20%;
+            width: 140%;
+            height: 140%;
+            background: radial-gradient(circle at 30% 40%, rgba(255,215,200,0.4), rgba(245,225,220,0) 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 抽象流动形状 (装饰) */
+        .shape-blob {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 70vmin;
+            height: 70vmin;
+            background: radial-gradient(circle, rgba(245,190,170,0.2) 0%, rgba(235,170,150,0) 80%);
+            border-radius: 62% 38% 72% 28% / 46% 42% 58% 54%;
+            filter: blur(60px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .shape-blob-2 {
+            top: 10%;
+            left: -5%;
+            width: 50vmin;
+            height: 50vmin;
+            background: radial-gradient(circle, rgba(210,160,140,0.15) 0%, rgba(200,140,120,0) 70%);
+            border-radius: 73% 27% 68% 32% / 37% 62% 38% 63%;
+            position: fixed;
+            filter: blur(55px);
+            pointer-events: none;
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 优雅卡片区 */
+        .hero {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 0.85rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: rgba(255, 245, 240, 0.7);
+            backdrop-filter: blur(4px);
+            padding: 0.4rem 1rem;
+            border-radius: 40px;
+            font-weight: 400;
+            color: #b35f6b;
+            border: 0.5px solid rgba(200, 120, 110, 0.2);
+            margin-bottom: 2rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3rem;
+            font-weight: 400;
+            letter-spacing: -0.5px;
+            color: #4a2c2f;
+            margin-bottom: 0.5rem;
+            line-height: 1.2;
+        }
+
+        .hero-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 300;
+            color: #b0737a;
+            margin-bottom: 1rem;
+            letter-spacing: 2px;
+        }
+
+        @media (min-width: 768px) {
+            h1 {
+                font-size: 4.5rem;
+            }
+            .hero-name {
+                font-size: 2rem;
+            }
+        }
+
+        .days-number {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 8rem;
+            font-weight: 500;
+            background: linear-gradient(135deg, #c27e6f, #b25d6a);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            letter-spacing: 8px;
+            line-height: 1;
+            margin: 1rem 0 0.5rem;
+            text-shadow: 2px 4px 12px rgba(0,0,0,0.05);
+        }
+
+        @media (min-width: 768px) {
+            .days-number {
+                font-size: 12rem;
+                letter-spacing: 12px;
+            }
+        }
+
+        .sub {
+            font-size: 1.2rem;
+            font-weight: 300;
+            color: #86616b;
+            border-top: 1px solid rgba(160, 110, 100, 0.2);
+            display: inline-block;
+            padding-top: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        /* 日期区块 */
+        .date-verse {
+            background: rgba(255, 248, 245, 0.7);
+            backdrop-filter: blur(5px);
+            border-radius: 48px;
+            padding: 1.8rem 1.8rem;
+            margin: 2rem auto;
+            max-width: 700px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.02), 0 2px 4px rgba(0,0,0,0.02);
+            border: 0.5px solid rgba(255, 225, 215, 0.8);
+        }
+
+        .date-row {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            row-gap: 1rem;
+        }
+
+        .date-item {
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .date-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 400;
+            color: #b2737a;
+        }
+
+        .date-value {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #4a2e32;
+            font-family: 'Cormorant Garamond', serif;
+            letter-spacing: 0.5px;
+        }
+
+        .heart-divider {
+            color: #d9948b;
+            font-size: 0.8rem;
+            align-self: center;
+        }
+
+        /* 浪漫段落 */
+        .romance-text {
+            text-align: center;
+            max-width: 680px;
+            margin: 2.5rem auto;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            font-weight: 400;
+            line-height: 1.6;
+            color: #553b40;
+            background: rgba(255, 250, 245, 0.5);
+            padding: 1.2rem 1.8rem;
+            border-radius: 60px;
+            backdrop-filter: blur(2px);
+            font-style: italic;
+        }
+
+        /* 有趣的事实 / 时光数据 */
+        .facts-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+            margin: 3rem 0 2rem;
+        }
+
+        .fact-card {
+            background: rgba(255, 245, 240, 0.6);
+            backdrop-filter: blur(3px);
+            border-radius: 32px;
+            padding: 1.2rem 1.8rem;
+            min-width: 140px;
+            text-align: center;
+            border: 0.5px solid rgba(200, 140, 125, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .fact-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 245, 240, 0.8);
+        }
+
+        .fact-number {
+            font-size: 1.8rem;
+            font-weight: 500;
+            background: linear-gradient(120deg, #a36b70, #c38179);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .fact-label {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #8a6068;
+            margin-top: 0.3rem;
+        }
+
+        /* 情书风格段落 */
+        .love-letter {
+            background: #ffffffcc;
+            border-radius: 32px;
+            padding: 2rem 2rem;
+            margin: 3rem 0;
+            box-shadow: 0 10px 25px -12px rgba(0,0,0,0.1);
+            border: 1px solid rgba(220, 180, 165, 0.3);
+            transition: all 0.3s;
+        }
+
+        .love-letter p {
+            font-size: 1rem;
+            line-height: 1.8;
+            font-weight: 350;
+            margin-bottom: 1rem;
+            color: #3f2a2e;
+        }
+
+        .love-letter p:last-child {
+            margin-bottom: 0;
+        }
+
+        .signature {
+            margin-top: 1.5rem;
+            text-align: right;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            font-style: italic;
+            color: #b0756d;
+        }
+
+        /* 漂浮爱心 (极简轻盈) */
+        .floating-hearts {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .heart {
+            position: absolute;
+            font-size: 1rem;
+            opacity: 0.3;
+            animation: floatHeart 12s infinite ease-in-out;
+            color: #e6b2aa;
+            user-select: none;
+        }
+
+        @keyframes floatHeart {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.4;
+            }
+            90% {
+                opacity: 0.3;
+            }
+            100% {
+                transform: translateY(-20vh) rotate(15deg);
+                opacity: 0;
+            }
+        }
+
+        /* 按钮效果 (轻交互) */
+        .whisper-btn {
+            background: none;
+            border: 1px solid #d9b0a7;
+            padding: 0.6rem 2rem;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
+            color: #af7270;
+            cursor: pointer;
+            transition: all 0.25s;
+            margin-top: 1rem;
+            backdrop-filter: blur(4px);
+        }
+
+        .whisper-btn:hover {
+            background: #f3e2dd;
+            border-color: #c2867c;
+            color: #8a5656;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            font-size: 0.7rem;
+            color: #b58981;
+            letter-spacing: 0.5px;
+            border-top: 0.5px solid rgba(150, 100, 90, 0.2);
+            padding-top: 2rem;
+            font-weight: 300;
+        }
+
+        /* 响应调整 & 手机专属优化 */
+        @media (max-width: 560px) {
+            .container {
+                padding: 1.5rem 1rem 3rem;
+            }
+            .days-number {
+                font-size: 4.8rem;
+                letter-spacing: 4px;
+            }
+            .romance-text {
+                font-size: 1.1rem;
+                padding: 1rem;
+            }
+            .date-row {
+                gap: 1rem;
+            }
+            .fact-card {
+                padding: 0.9rem 1.2rem;
+                min-width: 120px;
+            }
+            .fact-number {
+                font-size: 1.5rem;
+            }
+            .love-letter {
+                padding: 1.5rem;
+            }
+            .whisper-btn {
+                padding: 0.5rem 1.5rem;
+            }
+        }
+
+        /* 增加触摸友好区域 */
+        button {
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ambient-glow"></div>
+<div class="shape-blob"></div>
+<div class="shape-blob-2"></div>
+<div class="floating-hearts" id="floatingHearts"></div>
+
+<main class="container">
+    <div class="hero">
+        <div class="badge">✨ 一万次日升月落 · 为你 ✨</div>
+        <h1>My Dearest 戚茜</h1>
+        <div class="hero-name">致我生命中的光</div>
+        <div class="days-number" id="displayDays">10,000</div>
+        <div class="sub">days of grace, laughter, and love</div>
+    </div>
+
+    <!-- 精确日期区块：显示出生日与里程碑日，适配本地日期 -->
+    <div class="date-verse" id="milestoneDates">
+        <div class="date-row">
+            <div class="date-item">
+                <div class="date-label">🌸 你与世界初见</div>
+                <div class="date-value" id="birthDateDisplay">—</div>
+            </div>
+            <div class="heart-divider">✦ ✦ ✦</div>
+            <div class="date-item">
+                <div class="date-label">🌟 第一万天 · 今日</div>
+                <div class="date-value" id="todayDisplay">—</div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 0.8rem; font-size: 0.75rem; color:#b1817a;">
+            <span id="exactDaysMsg"></span>  ·  刚好爱上你一万天
+        </div>
+    </div>
+
+    <div class="romance-text">
+        “ 整整一万个日夜，戚茜，你从时光深处走来，把每个平凡的日子都酿成诗。<br>
+        你的存在本身，就是我此生最盛大的浪漫。”——你的丈夫
+    </div>
+
+    <!-- 时光换算卡片 -->
+    <div class="facts-grid">
+        <div class="fact-card">
+            <div class="fact-number">~27.4</div>
+            <div class="fact-label">年 · 四季因你温柔</div>
+        </div>
+        <div class="fact-card">
+            <div class="fact-number">240,000</div>
+            <div class="fact-label">小时 · 星光流萤</div>
+        </div>
+        <div class="fact-card">
+            <div class="fact-number">14,400,000</div>
+            <div class="fact-label">分钟 · 心动瞬间</div>
+        </div>
+        <div class="fact-card">
+            <div class="fact-number">864 M+</div>
+            <div class="fact-label">秒 · 与世界共振</div>
+        </div>
+    </div>
+
+    <!-- 私语 / 深情段落 (个性化) -->
+    <div class="love-letter">
+        <p>亲爱的茜茜，今天是你来到这个蔚蓝星球的第 <strong style="color:#b85c62;">10,000</strong> 天。这不是一个抽象的数字，而是由你1999年1月26日第一声啼哭开始，每一个清晨的微笑、深夜的耳语、以及我们之间无数默契瞬间堆积而成的银河。</p>
+        <p>一万天前的那个冬夜，宇宙悄悄准备了最珍贵的礼物——那就是你。而我很庆幸，在时光的长河里，命运让我（薛浩）遇见了戚茜。从此，枯燥的数字变得灵动，流逝的时光都有了重量。你让我的世界多了一层玫瑰色的滤镜——柴米油盐皆是温柔，晴雨风雪尽是风景。</p>
+        <p>你是我平淡岁月里最耀眼的星辰，也是我归途中永不熄灭的暖灯。愿未来的每一个一万天，我们依旧并肩看云，煮茶听雨，把寻常日子过成不朽的散文诗。戚茜，一万天快乐，我的妻子。</p>
+        <div class="signature">—— 永远爱你的薛浩</div>
+        <div style="text-align: center; margin-top: 10px;">
+            <button class="whisper-btn" id="whisperBtn">♾️ 给茜茜的悄悄话</button>
+        </div>
+    </div>
+    <footer>
+        ✦ 薛浩 → 戚茜 · 第一万天纪念 ✦ <br>
+        every day with you is a celebration
+    </footer>
+</main>
+
+<script>
+    (function() {
+        // ============================================================
+        // 个性化数据: 戚茜 生于 1999年1月26日
+        // 里程碑: 2026年6月13日 (出生第10000天)
+        // 使用 UTC 确保天数精准, 同时本地化显示日期文字
+        // ============================================================
+        
+        // 本地日期显示 (用户视角: 1999年1月26日 / 2026年6月13日)
+        const birthLocal = new Date(1999, 0, 26);      // 1月26日 (month 0)
+        const milestoneLocal = new Date(2026, 5, 13);  // 6月13日 (month 5)
+        
+        // 用于天数计算的UTC日期 (避免时区偏移)
+        const birthUTC = new Date(Date.UTC(1999, 0, 26, 0, 0, 0));
+        const milestoneUTC = new Date(Date.UTC(2026, 5, 13, 0, 0, 0));
+        
+        const diffTime = milestoneUTC - birthUTC;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        // 优雅格式化日期 (本地时区，展示直观)
+        function formatLocalDate(date) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}年${month}月${day}日`;
+        }
+        
+        // 更新DOM
+        const birthSpan = document.getElementById('birthDateDisplay');
+        const todaySpan = document.getElementById('todayDisplay');
+        const exactMsgSpan = document.getElementById('exactDaysMsg');
+        
+        if (birthSpan) birthSpan.innerText = formatLocalDate(birthLocal);
+        if (todaySpan) todaySpan.innerText = formatLocalDate(milestoneLocal);
+        
+        // 验证精确天数并展示浪漫提示
+        if (exactMsgSpan) {
+            if (diffDays === 10000) {
+                exactMsgSpan.innerHTML = '✓ 见证 · 第一万个晨曦 · 爱意圆满';
+                exactMsgSpan.style.color = '#b87a6e';
+            } else {
+                // 理论上恰好10000，兜底展示差值
+                exactMsgSpan.innerHTML = `✨ 里程碑 · ${diffDays.toLocaleString()} days of wonder ✨`;
+            }
+        }
+        
+        // 展示大数字10000
+        const daysNumberSpan = document.getElementById('displayDays');
+        if (daysNumberSpan) {
+            daysNumberSpan.innerText = diffDays.toLocaleString();
+        }
+        
+        // 可选优雅脉冲动画
+        const daysSpan = document.getElementById('displayDays');
+        if (daysSpan && diffDays === 10000) {
+            daysSpan.style.transition = 'text-shadow 0.2s, transform 0.3s';
+            daysSpan.style.transform = 'scale(1.02)';
+            daysSpan.style.textShadow = '0 0 12px rgba(190, 110, 100, 0.4)';
+            setTimeout(() => {
+                daysSpan.style.transform = 'scale(1)';
+                daysSpan.style.textShadow = 'none';
+            }, 500);
+            console.log('%c✨ 薛浩 → 戚茜：10000天纪念日快乐！ ✨', 'color: #c2786b; font-size: 14px; font-family: monospace;');
+        }
+        
+        // ========== 浪漫小交互：浮动爱心生成 ==========
+        function createFloatingHeart() {
+            const heartsContainer = document.getElementById('floatingHearts');
+            if (!heartsContainer) return;
+            const heart = document.createElement('div');
+            heart.classList.add('heart');
+            heart.innerHTML = ['❤️','🌸','✨','🌙','🕊️','💫','🌹','🍃','💗'][Math.floor(Math.random() * 9)];
+            const size = Math.random() * 16 + 12; // 12px - 28px
+            heart.style.fontSize = size + 'px';
+            heart.style.left = Math.random() * 100 + '%';
+            heart.style.animationDuration = Math.random() * 10 + 8 + 's';
+            heart.style.animationDelay = Math.random() * 5 + 's';
+            heart.style.opacity = Math.random() * 0.4 + 0.1;
+            heartsContainer.appendChild(heart);
+            setTimeout(() => {
+                heart.remove();
+            }, 15000);
+        }
+        
+        // 间隔生成漂浮元素，对手机性能友好 (间隔稍长)
+        let heartInterval = setInterval(() => {
+            if (document.getElementById('floatingHearts')) {
+                createFloatingHeart();
+            } else {
+                clearInterval(heartInterval);
+            }
+        }, 3200);
+        
+        // 初始化爱心
+        for(let i=0;i<5;i++) {
+            setTimeout(() => createFloatingHeart(), i*450);
+        }
+        
+        // ========== 悄悄话按钮：特别为戚茜准备的浪漫短句 ==========
+        const whisperBtn = document.getElementById('whisperBtn');
+        if (whisperBtn) {
+            const whispers = [
+                "💌 戚茜，你的笑容是我见过最温柔的星系。一万天快乐，我的太太。",
+                "🌙 一万天很短，因为爱你是永恒的事。 —— 薛浩",
+                "🍃 我计算过，遇见你的概率比星辰碰撞还小，但我就是如此幸运。",
+                "📖 你是我写不完的诗集，每一页都让人心动。茜茜，永远爱你。",
+                "🎐 今天、明天、每一个一万天，我都会偏爱你。",
+                "🌹 玫瑰到了花期，我很想你。—— 此刻就想抱抱你，戚茜。",
+                "✨ 世界万物，你是归途。谢谢你成为我的妻子。",
+                "🍂 感谢你选择了我，成为你漫长岁月里的同行者，薛浩永远珍惜。",
+                "💎 你是人间第一万种美好，也是我唯一的心之所向。",
+                "🌙 1999.01.26 宇宙亮起一颗星，2026.06.13 我依然为你着迷。"
+            ];
+            let toastDiv = null;
+            
+            function showGentleMessage(msg) {
+                if (toastDiv) {
+                    toastDiv.remove();
+                    toastDiv = null;
+                }
+                const toast = document.createElement('div');
+                toast.innerText = msg;
+                toast.style.position = 'fixed';
+                toast.style.bottom = '20%';
+                toast.style.left = '50%';
+                toast.style.transform = 'translateX(-50%)';
+                toast.style.backgroundColor = '#f8ece6';
+                toast.style.backdropFilter = 'blur(12px)';
+                toast.style.color = '#a45c5a';
+                toast.style.padding = '12px 24px';
+                toast.style.borderRadius = '60px';
+                toast.style.fontFamily = "'Cormorant Garamond', serif";
+                toast.style.fontSize = '1rem';
+                toast.style.fontWeight = '500';
+                toast.style.boxShadow = '0 12px 22px -8px rgba(0,0,0,0.1)';
+                toast.style.border = '1px solid rgba(210, 150, 135, 0.4)';
+                toast.style.zIndex = '1000';
+                toast.style.maxWidth = '85vw';
+                toast.style.whiteSpace = 'normal';
+                toast.style.textAlign = 'center';
+                toast.style.letterSpacing = '0.3px';
+                toast.style.lineHeight = '1.4';
+                document.body.appendChild(toast);
+                toastDiv = toast;
+                setTimeout(() => {
+                    if (toastDiv) {
+                        toastDiv.style.opacity = '0';
+                        toastDiv.style.transition = 'opacity 0.6s';
+                        setTimeout(() => {
+                            if (toastDiv) toastDiv.remove();
+                            if(toastDiv === toast) toastDiv = null;
+                        }, 600);
+                    }
+                }, 3500);
+            }
+            
+            whisperBtn.addEventListener('click', () => {
+                const randomIndex = Math.floor(Math.random() * whispers.length);
+                const message = whispers[randomIndex];
+                showGentleMessage(message);
+            });
+        }
+        
+        // 确保在手机上手感舒服，防止漂浮元素过于拥挤
+        window.addEventListener('load', () => {
+            // 确认精确10000天消息完美
+            if (exactMsgSpan && diffDays === 10000 && exactMsgSpan.innerHTML.indexOf('圆满') === -1) {
+                exactMsgSpan.innerHTML = '✓ 见证 · 第一万个晨曦 · 爱意圆满';
+            }
+            // 增加一抹温馨时光礼物: 若相差不为10000也不影响祝福
+            const dateVerseDiv = document.querySelector('.date-verse');
+            if (dateVerseDiv && diffDays !== 10000) {
+                const gentleNote = document.createElement('div');
+                gentleNote.style.fontSize = '0.7rem';
+                gentleNote.style.marginTop = '8px';
+                gentleNote.style.opacity = '0.6';
+                gentleNote.innerText = '🌟 时光以爱为计量，每一天皆是纪念日 🌟';
+                dateVerseDiv.appendChild(gentleNote);
+            }
+        });
+        
+        // 清理定时器
+        window.addEventListener('beforeunload', () => {
+            if (heartInterval) clearInterval(heartInterval);
+        });
+        
+        // 轻柔的视差背景移动 (增强沉浸)
+        document.addEventListener('mousemove', (e) => {
+            const x = (e.clientX / window.innerWidth) * 20;
+            const y = (e.clientY / window.innerHeight) * 20;
+            const blob1 = document.querySelector('.shape-blob');
+            const blob2 = document.querySelector('.shape-blob-2');
+            if (blob1) {
+                blob1.style.transform = `translate(${x * 0.03}px, ${y * 0.02}px)`;
+            }
+            if (blob2) {
+                blob2.style.transform = `translate(${x * -0.02}px, ${y * -0.01}px)`;
+            }
+        });
+        
+        // 移动端简单触碰视效（轻量）
+        let touchTimeout;
+        document.addEventListener('touchmove', (e) => {
+            if (touchTimeout) return;
+            touchTimeout = setTimeout(() => {
+                const x = (e.touches[0].clientX / window.innerWidth) * 10;
+                const y = (e.touches[0].clientY / window.innerHeight) * 10;
+                const blob1 = document.querySelector('.shape-blob');
+                const blob2 = document.querySelector('.shape-blob-2');
+                if (blob1) blob1.style.transform = `translate(${x * 0.02}px, ${y * 0.02}px)`;
+                if (blob2) blob2.style.transform = `translate(${x * -0.01}px, ${y * -0.01}px)`;
+                touchTimeout = null;
+            }, 20);
+        }, { passive: true });
+        
+    })();
+</script>
+</body>
+</html>

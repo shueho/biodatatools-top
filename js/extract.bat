@@ -1,0 +1,5 @@
+@echo off
+chcp 65001 >nul
+set /p num="请输入工具编号（例如001）: "
+powershell.exe -ExecutionPolicy Bypass -Command "& { $n='%num%'; $f = Get-ChildItem \"..\function\$n.*.html\" | Select-Object -First 1; if (!$f) { Write-Host '未找到文件' -Fore Red; exit }; $h = Get-Content $f.FullName -Raw -Encoding UTF8; if ($h -match '<title>(.*?)</title>') { $t = $matches[1] -replace '\s*-\s*BioDataTools.*$','' } elseif ($h -match '<h2>(.*?)</h2>') { $t = $matches[1] } else { $t = '未命名' }; if ($h -match '(?s)<div class=\"?page-intro\"?>.*?<p>(.*?)</p>') { $d = $matches[1] } elseif ($h -match '<p>(.*?)</p>') { $d = $matches[1] } else { $d = '暂无描述' }; $d = $d -replace '<[^>]+>','' -replace '\s+',' ' -replace '^\s+|\s+$',''; Write-Host ''; Write-Host '{' -Fore Yellow; Write-Host \"    toolName: `\"$t`\",\" -Fore Green; Write-Host \"    toolDesc: `\"$d`\",\" -Fore Green; Write-Host \"    toolIcon: `\"images/$n.png`\",\" -Fore Green; Write-Host \"    link: `\"function/$($f.Name)`\"\" -Fore Green; Write-Host '}' -Fore Yellow }"
+pause
