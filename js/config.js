@@ -25,13 +25,13 @@ const toolConfig = [
     link: "function/006.Seq_concat.html"
 },
 
+{
+    toolName: "批量FASTA转AXT",
+    toolDesc: "将比对好的 FASTA 文件或文本转换为 AXT 成对比对格式",
+    toolIcon: "images/010.png",
+    link: "function/010.Fasta_to_AXT.html"
+}
 
-            {
-                toolName: "待添加功能",
-                toolDesc: "预留空位",
-                toolIcon: "🌳",
-                link: "tool_03.html"
-            }
         ]
     },
     {
@@ -52,9 +52,14 @@ const toolConfig = [
     link: "function/007.Protparam.html"
 },
 
-            { toolName: "待添加功能", toolDesc: "预留空位", toolIcon: "⚙️", link: "module1_02.html" },
-            { toolName: "待添加功能", toolDesc: "预留空位", toolIcon: "⚙️", link: "module1_03.html" },
-            { toolName: "待添加功能", toolDesc: "预留空位", toolIcon: "⚙️", link: "module1_04.html" }
+{
+    toolName: "碱基组成统计",
+    toolDesc: "批量统计 FASTA 序列的碱基频数、GC/AT 含量及 skew 值",
+    toolIcon: "images/009.png",
+    link: "function/009.Base_composition.html"
+},
+
+
         ]
     },
     {
@@ -82,7 +87,7 @@ const toolConfig = [
     link: "function/008.Visualize_gene_arrangement.html"
 },
 
-            { toolName: "待添加功能", toolDesc: "预留空位", toolIcon: "⚙️", link: "module2_04.html" }
+
         ]
     },
     {
@@ -90,9 +95,7 @@ const toolConfig = [
         categoryIcon: "📋",
         tools: [
             { toolName: "线粒体基因组分析流程", toolDesc: "预留空位", toolIcon: "⚙️", link: "module2_01.html" },
-            { toolName: "待添加功能", toolDesc: "预留空位", toolIcon: "⚙️", link: "module2_02.html" },
-            { toolName: "待添加功能", toolDesc: "预留空位", toolIcon: "⚙️", link: "module2_03.html" },
-            { toolName: "待添加功能", toolDesc: "预留空位", toolIcon: "⚙️", link: "module2_04.html" }
+
         ]
     }
 ];

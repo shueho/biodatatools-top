@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量FASTA转AXT - BioDataTools 网页版</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        /* 页面独有样式 */
+        .text-input textarea {
+            min-height: 120px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>批量FASTA转AXT</h2>
+            <p>将比对好的 FASTA 文件或文本转换为 AXT 成对比对格式</p>
+        </div>
+
+        <!-- 第一步：导入 -->
+        <div class="step-card">
+            <div class="step-title">第一步：导入 FASTA 序列</div>
+
+            <div class="mode-tabs">
+                <label>
+                    <input type="radio" name="importMode" value="files" checked onchange="switchMode()">
+                    <span>选择文件 <span class="hint">（可多选）</span></span>
+                </label>
+                <label>
+                    <input type="radio" name="importMode" value="folder" onchange="switchMode()">
+                    <span>选择文件夹 <span class="hint">（读取全部 FASTA）</span></span>
+                </label>
+                <label>
+                    <input type="radio" name="importMode" value="text" onchange="switchMode()">
+                    <span>粘贴文本 <span class="hint">（标准 FASTA 格式）</span></span>
+                </label>
+            </div>
+
+            <!-- 文件模式 -->
+            <div class="file-input" id="fileInputWrap">
+                <input type="file" id="fileInput" multiple accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.mpfa,.txt,.fas">
+                <div class="input-hint">点击选择文件（按住 Ctrl 可多选）</div>
+            </div>
+
+            <!-- 文件夹模式 -->
+            <div class="file-input" id="folderInputWrap" style="display:none;">
+                <input type="file" id="folderInput" webkitdirectory multiple accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.mpfa,.txt,.fas">
+                <div class="input-hint">点击选择整个文件夹，自动读取其中所有 FASTA 文件</div>
+            </div>
+
+            <!-- 文本模式 -->
+            <div class="text-input" id="textInputWrap" style="display:none;">
+                <textarea id="textInput" placeholder="粘贴标准 FASTA 格式内容（支持多条序列）"></textarea>
+                <div class="input-hint">每条序列以 > 开头，序列内容可跨行</div>
+            </div>
+
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="fileListWrap" style="display:none; margin-top:12px;">
+                <div class="file-list" id="fileList"></div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="fileCount">共 0 个 FASTA 文件</span>
+                    <button class="btn btn-sm" id="clearFilesBtn" style="margin-left:12px; background:#dc3545;">清空</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二步：转换 + 结果 -->
+        <div class="step-card">
+            <div class="step-title">第二步：转换参数与结果</div>
+
+            <div class="filter-box">
+                <label>
+                    <input type="checkbox" id="includeName" checked>
+                    记录头包含文件名
+                    <span style="font-weight:400;color:#888;font-size:0.85rem;margin-left:4px;">
+                        （包含：seq1&seq2|filename；不包含：seq1&seq2）
+                    </span>
+                </label>
+                <button class="btn" id="convertBtn" disabled>开始转换</button>
+            </div>
+            <div id="paramTip" class="tip-text"></div>
+
+            <div id="resultArea" style="display:none; margin-top:15px;">
+                <div class="highlight-box">
+                    <div>
+                        <span class="label">📄 merge.axt</span>
+                        <span class="desc">（合并所有文件，共 <span id="totalRecords">0</span> 条记录）</span>
+                    </div>
+                    <button class="btn" id="downloadMergeBtn">下载</button>
+                </div>
+
+                <div style="margin-top:12px;">
+                    <span style="font-weight:500;">各文件单独下载：</span>
+                    <div id="singleDownloadList" style="margin-top:6px;"></div>
+                </div>
+                <div id="toolbarTip" class="tip-text"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip" style="margin-top:15px;">转换完成后显示结果！</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+            bilibiliUrl: 'https://space.bilibili.com/33053326',
+            bilibiliText: '前往B站主页',
+            githubUrl: 'https://github.com/shueho/BioDataTools',
+            githubText: 'GitHub项目',
+            returnHomeUrl: '../index.html'
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('fileInput');
+            const folderInput = document.getElementById('folderInput');
+            const textInput = document.getElementById('textInput');
+            const msgTip = document.getElementById('msgTip');
+            const paramTip = document.getElementById('paramTip');
+            const toolbarTip = document.getElementById('toolbarTip');
+            const fileListWrap = document.getElementById('fileListWrap');
+            const fileList = document.getElementById('fileList');
+            const fileCount = document.getElementById('fileCount');
+            const clearFilesBtn = document.getElementById('clearFilesBtn');
+            const convertBtn = document.getElementById('convertBtn');
+            const includeName = document.getElementById('includeName');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const totalRecords = document.getElementById('totalRecords');
+            const downloadMergeBtn = document.getElementById('downloadMergeBtn');
+            const singleDownloadList = document.getElementById('singleDownloadList');
+
+            let fastaFiles = [];
+            let parsedData = [];
+            let mergeContent = '';
+            let textModeContent = '';
+
+            var VALID_EXTS = ['.fasta', '.fa', '.fna', '.ffn', '.faa', '.frn', '.mpfa', '.txt', '.fas'];
+
+            // ---------- 模式切换 ----------
+            window.switchMode = function() {
+                var mode = document.querySelector('input[name="importMode"]:checked').value;
+                var fileWrap = document.getElementById('fileInputWrap');
+                var folderWrap = document.getElementById('folderInputWrap');
+                var textWrap = document.getElementById('textInputWrap');
+
+                fileWrap.style.display = 'none';
+                folderWrap.style.display = 'none';
+                textWrap.style.display = 'none';
+
+                if (mode === 'files') {
+                    fileWrap.style.display = 'block';
+                    setTimeout(function() { fileInput.click(); }, 100);
+                } else if (mode === 'folder') {
+                    folderWrap.style.display = 'block';
+                    setTimeout(function() { folderInput.click(); }, 100);
+                } else {
+                    textWrap.style.display = 'block';
+                }
+
+                fastaFiles = [];
+                parsedData = [];
+                mergeContent = '';
+                textModeContent = '';
+                fileListWrap.style.display = 'none';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                convertBtn.disabled = true;
+                msgTip.innerHTML = '';
+                paramTip.innerHTML = '';
+                toolbarTip.innerHTML = '';
+                fileInput.value = '';
+                folderInput.value = '';
+            };
+
+            // ---------- 文件类型判断 ----------
+            function isFastaFile(filename) {
+                var lower = filename.toLowerCase();
+                for (var i = 0; i < VALID_EXTS.length; i++) {
+                    if (lower.endsWith(VALID_EXTS[i])) return true;
+                }
+                return false;
+            }
+
+            function processFiles(files) {
+                var list = [];
+                for (var i = 0; i < files.length; i++) {
+                    if (isFastaFile(files[i].name)) {
+                        list.push(files[i]);
+                    }
+                }
+                return list;
+            }
+
+            // ---------- 更新文件列表 ----------
+            function updateFileList() {
+                if (fastaFiles.length === 0) {
+                    fileListWrap.style.display = 'none';
+                    convertBtn.disabled = true;
+                    return;
+                }
+                fileListWrap.style.display = 'block';
+                var html = '';
+                fastaFiles.forEach(function(file) {
+                    var size = (file.size / 1024).toFixed(1);
+                    html += `
+                        <div class="file-item">
+                            <span class="name">${escapeHtml(file.name)}</span>
+                            <span class="size">${size} KB</span>
+                        </div>
+                    `;
+                });
+                fileList.innerHTML = html;
+                fileCount.textContent = '共 ' + fastaFiles.length + ' 个 FASTA 文件';
+                convertBtn.disabled = false;
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                parsedData = [];
+                mergeContent = '';
+                toolbarTip.innerHTML = '';
+                paramTip.innerHTML = '';
+            }
+
+            // ---------- 文本模式检测 ----------
+            function checkTextInput() {
+                var mode = document.querySelector('input[name="importMode"]:checked').value;
+                if (mode !== 'text') return;
+
+                var text = textInput.value.trim();
+                if (!text) {
+                    convertBtn.disabled = true;
+                    return;
+                }
+                // 简单检测是否包含 FASTA 格式
+                if (!text.includes('>')) {
+                    showMsg(msgTip, '⚠️ 未检测到 FASTA 格式（缺少 > 开头）', 'warn');
+                    convertBtn.disabled = true;
+                    return;
+                }
+                convertBtn.disabled = false;
+                msgTip.innerHTML = '';
+            }
+
+            textInput.addEventListener('input', function() {
+                checkTextInput();
+                // 清空之前的结果
+                parsedData = [];
+                mergeContent = '';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                toolbarTip.innerHTML = '';
+                paramTip.innerHTML = '';
+            });
+
+            // ---------- 通用函数 ----------
+            function escapeHtml(s) {
+                if (!s) return '';
+                return s.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === paramTip) setTimeout(() => el.innerHTML = '', 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            // ---------- 文件输入事件 ----------
+            fileInput.addEventListener('change', function(e) {
+                var files = e.target.files;
+                if (files.length === 0) return;
+                var valid = processFiles(files);
+                if (valid.length === 0) {
+                    showMsg(msgTip, '❌ 未找到有效的 FASTA 文件（支持：' + VALID_EXTS.join(', ') + '）', 'error');
+                    return;
+                }
+                fastaFiles = valid;
+                showMsg(msgTip, '✅ 已添加 ' + valid.length + ' 个文件', 'success');
+                toast('✅ 已添加 ' + valid.length + ' 个文件');
+                updateFileList();
+                fileInput.value = '';
+            });
+
+            folderInput.addEventListener('change', function(e) {
+                var files = e.target.files;
+                if (files.length === 0) return;
+                var valid = processFiles(files);
+                if (valid.length === 0) {
+                    showMsg(msgTip, '❌ 文件夹中未找到有效的 FASTA 文件（支持：' + VALID_EXTS.join(', ') + '）', 'error');
+                    return;
+                }
+                fastaFiles = valid;
+                showMsg(msgTip, '✅ 读取成功，共 ' + valid.length + ' 个 FASTA 文件', 'success');
+                toast('✅ 读取成功，共 ' + valid.length + ' 个 FASTA 文件');
+                updateFileList();
+                folderInput.value = '';
+            });
+
+            clearFilesBtn.addEventListener('click', function() {
+                fastaFiles = [];
+                parsedData = [];
+                mergeContent = '';
+                fileListWrap.style.display = 'none';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                convertBtn.disabled = true;
+                msgTip.innerHTML = '';
+                paramTip.innerHTML = '';
+                toolbarTip.innerHTML = '';
+                fileInput.value = '';
+                folderInput.value = '';
+            });
+
+            // ---------- FASTA 解析 ----------
+            function parseFasta(text) {
+                var lines = text.split(/\r?\n/);
+                var seqs = [];
+                var name = '';
+                var seq = '';
+                for (var i = 0; i < lines.length; i++) {
+                    var trimmed = lines[i].trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) { seqs.push({ id: name, seq: seq }); }
+                        name = trimmed.slice(1).trim();
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) { seqs.push({ id: name, seq: seq }); }
+                return seqs;
+            }
+
+            // ---------- 转换 ----------
+            function convertToAxt(sequences, baseName, includeNameFlag) {
+                var content = '';
+                var recordCount = 0;
+                for (var i = 0; i < sequences.length; i++) {
+                    for (var j = i + 1; j < sequences.length; j++) {
+                        var header = sequences[i].id + '&' + sequences[j].id;
+                        if (includeNameFlag) {
+                            header += '|' + baseName;
+                        }
+                        content += header + '\n';
+                        content += sequences[i].seq + '\n';
+                        content += sequences[j].seq + '\n';
+                        content += '\n';
+                        recordCount++;
+                    }
+                }
+                return { content: content, recordCount: recordCount };
+            }
+
+            function readFileAsync(file) {
+                return new Promise(function(resolve, reject) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) { resolve(e.target.result); };
+                    reader.onerror = function() { reject(new Error('读取失败: ' + file.name)); };
+                    reader.readAsText(file);
+                });
+            }
+
+            // ---------- 从文本模式获取数据 ----------
+            function getTextModeData() {
+                var text = textInput.value.trim();
+                if (!text) return null;
+                var seqs = parseFasta(text);
+                if (seqs.length < 2) return null;
+                return seqs;
+            }
+
+            // ---------- 执行转换 ----------
+            async function doConvert() {
+                var mode = document.querySelector('input[name="importMode"]:checked').value;
+                var sourceFiles = [];
+                var isTextMode = (mode === 'text');
+
+                // 文本模式
+                if (isTextMode) {
+                    var seqs = getTextModeData();
+                    if (!seqs) {
+                        showMsg(paramTip, '❌ 请粘贴至少包含 2 条序列的 FASTA 内容', 'error');
+                        return;
+                    }
+                    // 构造一个虚拟文件对象
+                    sourceFiles = [{
+                        name: 'paste_input.fasta',
+                        seqs: seqs,
+                        isText: true
+                    }];
+                } else {
+                    // 文件/文件夹模式
+                    if (fastaFiles.length === 0) {
+                        showMsg(paramTip, '❌ 请先导入 FASTA 文件', 'error');
+                        return;
+                    }
+                    sourceFiles = fastaFiles.map(function(f) {
+                        return { file: f, isText: false };
+                    });
+                }
+
+                convertBtn.disabled = true;
+                convertBtn.textContent = '转换中…';
+                showMsg(paramTip, '⏳ 正在处理，请稍候…', 'warn');
+
+                parsedData = [];
+                var totalRecordsCount = 0;
+                var includeNameFlag = includeName.checked;
+
+                try {
+                    for (var idx = 0; idx < sourceFiles.length; idx++) {
+                        var item = sourceFiles[idx];
+                        var seqs;
+                        var baseName;
+
+                        if (item.isText) {
+                            seqs = item.seqs;
+                            baseName = 'paste_input';
+                        } else {
+                            var text = await readFileAsync(item.file);
+                            seqs = parseFasta(text);
+                            if (seqs.length < 2) continue;
+                            baseName = item.file.name.replace(/\.[^.]+$/, '');
+                        }
+
+                        var result = convertToAxt(seqs, baseName, includeNameFlag);
+                        parsedData.push({
+                            baseName: baseName,
+                            axtContent: result.content,
+                            recordCount: result.recordCount
+                        });
+                        totalRecordsCount += result.recordCount;
+                    }
+
+                    if (parsedData.length === 0) {
+                        showMsg(paramTip, '❌ 所有文件/内容序列数均不足2条，无法生成 AXT', 'error');
+                        convertBtn.disabled = false;
+                        convertBtn.textContent = '开始转换';
+                        return;
+                    }
+
+                    mergeContent = '';
+                    parsedData.forEach(function(item) {
+                        mergeContent += item.axtContent;
+                    });
+
+                    renderResults(totalRecordsCount);
+                    var sourceCount = sourceFiles.length;
+                    showMsg(paramTip, '✅ 转换完成，共 ' + parsedData.length + ' 个文件/内容，' + totalRecordsCount + ' 条记录', 'success');
+                    toast('✅ 转换完成');
+
+                } catch (err) {
+                    showMsg(paramTip, '❌ 转换出错：' + err.message, 'error');
+                    console.error(err);
+                }
+
+                convertBtn.disabled = false;
+                convertBtn.textContent = '开始转换';
+            }
+
+            // ---------- 渲染结果 ----------
+            function renderResults(totalRecordsCount) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                totalRecords.textContent = totalRecordsCount;
+
+                var html = '';
+                parsedData.forEach(function(item, idx) {
+                    var filename = item.baseName + '.axt';
+                    html += `
+                        <div class="download-item">
+                            <span>${escapeHtml(filename)} (${item.recordCount} 条)</span>
+                            <button class="btn btn-sm" data-index="${idx}">下载</button>
+                        </div>
+                    `;
+                });
+                singleDownloadList.innerHTML = html;
+
+                document.querySelectorAll('#singleDownloadList .btn-sm').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var idx = parseInt(this.dataset.index);
+                        var item = parsedData[idx];
+                        downloadFile(item.axtContent, item.baseName + '.axt');
+                        showMsg(toolbarTip, '✅ 已下载 ' + item.baseName + '.axt', 'success');
+                    });
+                });
+            }
+
+            function downloadFile(content, filename) {
+                var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // ---------- 合并下载 ----------
+            downloadMergeBtn.addEventListener('click', function() {
+                if (!mergeContent) return;
+                downloadFile(mergeContent, 'merge.axt');
+                showMsg(toolbarTip, '✅ 已下载 merge.axt', 'success');
+                toast('✅ 已下载 merge.axt');
+            });
+
+            // ---------- 参数变更自动重转 ----------
+            includeName.addEventListener('change', function() {
+                if (parsedData.length > 0) {
+                    doConvert();
+                }
+            });
+
+            // ---------- 事件绑定 ----------
+            convertBtn.addEventListener('click', doConvert);
+
+            // Ctrl+Enter 快捷键（文本模式）
+            textInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    if (!convertBtn.disabled) {
+                        doConvert();
+                    }
+                }
+            });
+
+            // 初始化
+            document.getElementById('fileInputWrap').style.display = 'block';
+            document.getElementById('folderInputWrap').style.display = 'none';
+            document.getElementById('textInputWrap').style.display = 'none';
+            resultArea.style.display = 'none';
+            emptyResult.style.display = 'block';
+            convertBtn.disabled = true;
+        })();
+    </script>
+</body>
+</html>

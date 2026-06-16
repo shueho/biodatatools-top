@@ -561,3 +561,163 @@ input[type="color"] {
 svg text {
     font-family: inherit;
 }
+
+
+/* ===== 通用布局与数字样式 ===== */
+.flex-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 40px;
+    align-items: center;
+}
+.text-ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mono-num {
+    font-family: "Consolas", monospace;
+    text-align: right;
+}
+.bg-total td {
+    background: #f1f5f9;
+    font-weight: 600;
+    border-top: 2px solid #1f4068;
+}
+
+/* ===== 模式切换标签页 ===== */
+.mode-tabs {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0 16px;
+    flex-wrap: wrap;
+}
+.mode-tabs label {
+    cursor: pointer;
+    padding: 6px 18px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: #f8f9fa;
+    font-weight: 400;
+    transition: 0.2s;
+}
+.mode-tabs label:hover {
+    border-color: #1f4068;
+    background: #eef2f7;
+}
+.mode-tabs label:has(input:checked) {
+    background: #1f4068;
+    color: #fff;
+    border-color: #1f4068;
+}
+.mode-tabs label:has(input:checked) .hint {
+    color: #b8d4f0;
+}
+.mode-tabs .hint {
+    font-size: 0.8rem;
+    color: #888;
+    font-weight: 400;
+}
+
+/* ===== 文件列表（通用） ===== */
+.file-list {
+    border: 1px solid #e8edf2;
+    border-radius: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+.file-list .file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e8edf2;
+}
+.file-list .file-item:last-child {
+    border-bottom: none;
+}
+.file-list .file-item .name {
+    font-weight: 500;
+}
+.file-list .file-item .size {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-left: 16px;
+}
+
+/* ===== 下载条目 ===== */
+.download-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f4f8;
+}
+.download-item:last-child {
+    border-bottom: none;
+}
+.download-item .info {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+/* ===== 突出显示框（如合并文件） ===== */
+.highlight-box {
+    background: #f0f7ff;
+    border: 1px solid #b8d4f0;
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.highlight-box .label {
+    font-weight: 600;
+    color: #1f4068;
+}
+.highlight-box .desc {
+    color: #555;
+    font-size: 0.9rem;
+}
+
+/* ===== 输入提示文字 ===== */
+.input-hint {
+    font-size: 0.85rem;
+    color: #888;
+    margin-top: 4px;
+}
+
+/* ===== 模式切换标签页（已存在，但补全完整） ===== */
+.mode-tabs {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0 16px;
+    flex-wrap: wrap;
+}
+.mode-tabs label {
+    cursor: pointer;
+    padding: 6px 18px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: #f8f9fa;
+    font-weight: 400;
+    transition: 0.2s;
+}
+.mode-tabs label:hover {
+    border-color: #1f4068;
+    background: #eef2f7;
+}
+.mode-tabs label:has(input:checked) {
+    background: #1f4068;
+    color: #fff;
+    border-color: #1f4068;
+}
+.mode-tabs label:has(input:checked) .hint {
+    color: #b8d4f0;
+}
+.mode-tabs .hint {
+    font-size: 0.8rem;
+    color: #888;
+    font-weight: 400;
+}

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>碱基组成统计 - BioDataTools 网页版</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .skew-positive { color: #c0392b; }
+        .skew-negative { color: #2980b9; }
+        .skew-neutral { color: #7f8c8d; }
+        .seq-name-col { max-width: 200px; }
+        .result-toolbar .btn { margin-right: 0; }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>碱基组成统计</h2>
+            <p>批量统计 FASTA 序列的碱基频数、GC/AT 含量及 skew 值</p>
+        </div>
+
+        <!-- 第一步：导入 -->
+        <div class="step-card">
+            <div class="step-title">第一步：导入 FASTA 序列</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="粘贴 FASTA 格式序列（支持多条）" disabled></textarea>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="loadBtn">加载并统计</button>
+            </div>
+        </div>
+
+        <!-- 第二步：结果 -->
+        <div class="step-card">
+            <div class="step-title">第二步：统计结果</div>
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-right:8px;">
+                        显示/导出格式：
+                        <select id="exportMode" style="padding:4px 8px;">
+                            <option value="count">频数</option>
+                            <option value="freq">频率 (%)</option>
+                        </select>
+                    </label>
+                    <button class="btn" id="copyBtn" disabled>复制 (TSV)</button>
+                    <button class="btn" id="exportBtn" disabled>导出 CSV</button>
+                    <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
+                </div>
+                <div class="table-container" style="margin-top:10px;">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="rowCount"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">等待统计…</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+            bilibiliUrl: 'https://space.bilibili.com/33053326',
+            bilibiliText: '前往B站主页',
+            githubUrl: 'https://github.com/shueho/BioDataTools',
+            githubText: 'GitHub项目',
+            returnHomeUrl: '../index.html'
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const msgTip = document.getElementById('msgTip');
+            const loadBtn = document.getElementById('loadBtn');
+            const exportMode = document.getElementById('exportMode');
+            const toolbarTip = document.getElementById('toolbarTip');
+            const copyBtn = document.getElementById('copyBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+
+            let sequences = [];
+            let results = [];
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip) setTimeout(() => el.innerHTML = '', 4000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                clearResults();
+                msgTip.innerHTML = '';
+                toolbarTip.innerHTML = '';
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    msgTip.innerHTML = `<span class="success">✅ 已读取：${file.name}</span>`;
+                    toast(`✅ 文件 ${file.name} 加载成功`);
+                    clearResults();
+                };
+                reader.readAsText(file);
+            });
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '';
+                let seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) {
+                            seqs.push({ name: name, seq: seq });
+                        }
+                        name = trimmed.slice(1).trim();
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) {
+                    seqs.push({ name: name, seq: seq });
+                }
+                return seqs;
+            }
+
+            function calcStats(seq) {
+                const upper = seq.toUpperCase();
+                let A = 0,
+                    T = 0,
+                    G = 0,
+                    C = 0,
+                    other = 0;
+                for (const ch of upper) {
+                    if (ch === 'A') A++;
+                    else if (ch === 'T') T++;
+                    else if (ch === 'G') G++;
+                    else if (ch === 'C') C++;
+                    else other++;
+                }
+                const length = A + T + G + C + other;
+                const totalACGT = A + T + G + C;
+                const gcPct = totalACGT > 0 ? ((G + C) / totalACGT) * 100 : 0;
+                const atPct = totalACGT > 0 ? ((A + T) / totalACGT) * 100 : 0;
+                const atSkew = (A + T) > 0 ? (A - T) / (A + T) : 0;
+                const gcSkew = (G + C) > 0 ? (G - C) / (G + C) : 0;
+                return { A, T, G, C, other, length, totalACGT, gcPct, atPct, atSkew, gcSkew };
+            }
+
+            function doStat() {
+                const text = fastaText.value.trim();
+                if (!text) {
+                    showMsg(msgTip, '❌ 请先上传或粘贴序列', 'error');
+                    return;
+                }
+                sequences = parseFasta(text);
+                if (sequences.length === 0) {
+                    showMsg(msgTip, '❌ 未解析到有效序列', 'error');
+                    return;
+                }
+                results = sequences.map(function(item) {
+                    const stat = calcStats(item.seq);
+                    return { name: item.name || 'Unnamed', A: stat.A, T: stat.T, G: stat.G, C: stat.C, other: stat.other, length: stat.length, gcPct: stat.gcPct, atPct: stat.atPct, atSkew: stat.atSkew, gcSkew: stat.gcSkew };
+                });
+                renderResults(exportMode.value);
+                copyBtn.disabled = false;
+                exportBtn.disabled = false;
+                showMsg(msgTip, '✅ 加载 ' + sequences.length + ' 条序列，统计完成', 'success');
+                toast('✅ 统计完成，共 ' + sequences.length + ' 条序列');
+            }
+
+            function renderResults(mode) {
+                if (results.length === 0) {
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+                emptyResult.style.display = 'none';
+                resultArea.style.display = 'block';
+
+                var isFreq = (mode === 'freq');
+                var headers = ['序列名称', '长度(bp)', 'A', 'T', 'G', 'C', '其他', 'GC%', 'AT%', 'AT skew', 'GC skew'];
+                var thead = '<tr>';
+                headers.forEach(function(h) {
+                    thead += '<th>' + h + '</th>';
+                });
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                var tbody = '';
+                results.forEach(function(r) {
+                    var len = r.length;
+                    var aVal = isFreq ? (r.A / len * 100) : r.A;
+                    var tVal = isFreq ? (r.T / len * 100) : r.T;
+                    var gVal = isFreq ? (r.G / len * 100) : r.G;
+                    var cVal = isFreq ? (r.C / len * 100) : r.C;
+                    var oVal = isFreq ? (r.other / len * 100) : r.other;
+                    var fmt = function(v) { return isFreq ? v.toFixed(2) : v; };
+                    tbody += '<tr>';
+                    tbody += '<td class="text-ellipsis seq-name-col" title="' + escapeHtml(r.name) + '">' + escapeHtml(r.name) + '</td>';
+                    tbody += '<td class="mono-num">' + r.length + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(aVal) + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(tVal) + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(gVal) + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(cVal) + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(oVal) + '</td>';
+                    tbody += '<td class="mono-num">' + r.gcPct.toFixed(2) + '</td>';
+                    tbody += '<td class="mono-num">' + r.atPct.toFixed(2) + '</td>';
+                    var atCls = r.atSkew > 0.05 ? 'skew-positive' : (r.atSkew < -0.05 ? 'skew-negative' : 'skew-neutral');
+                    var gcCls = r.gcSkew > 0.05 ? 'skew-positive' : (r.gcSkew < -0.05 ? 'skew-negative' : 'skew-neutral');
+                    tbody += '<td class="mono-num ' + atCls + '">' + r.atSkew.toFixed(4) + '</td>';
+                    tbody += '<td class="mono-num ' + gcCls + '">' + r.gcSkew.toFixed(4) + '</td>';
+                    tbody += '</tr>';
+                });
+                resultBody.innerHTML = tbody;
+                rowCount.textContent = '共 ' + results.length + ' 条序列';
+            }
+
+            function escapeHtml(s) {
+                if (!s) return '';
+                return s.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function clearResults() {
+                results = [];
+                sequences = [];
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                copyBtn.disabled = true;
+                exportBtn.disabled = true;
+                resultHead.innerHTML = '';
+                resultBody.innerHTML = '';
+                rowCount.textContent = '';
+                toolbarTip.innerHTML = '';
+            }
+
+            function getDataRows(mode) {
+                var rows = [];
+                var isFreq = (mode === 'freq');
+                var headers = ['序列名称', '长度(bp)', 'A', 'T', 'G', 'C', '其他', 'GC%', 'AT%', 'AT skew', 'GC skew'];
+                rows.push(headers);
+
+                results.forEach(function(r) {
+                    var len = r.length;
+                    var aVal = isFreq ? (r.A / len * 100) : r.A;
+                    var tVal = isFreq ? (r.T / len * 100) : r.T;
+                    var gVal = isFreq ? (r.G / len * 100) : r.G;
+                    var cVal = isFreq ? (r.C / len * 100) : r.C;
+                    var oVal = isFreq ? (r.other / len * 100) : r.other;
+                    var fmt = function(v) { return isFreq ? v.toFixed(2) : String(v); };
+                    rows.push([
+                        r.name,
+                        String(r.length),
+                        fmt(aVal),
+                        fmt(tVal),
+                        fmt(gVal),
+                        fmt(cVal),
+                        fmt(oVal),
+                        r.gcPct.toFixed(2),
+                        r.atPct.toFixed(2),
+                        r.atSkew.toFixed(4),
+                        r.gcSkew.toFixed(4)
+                    ]);
+                });
+                return rows;
+            }
+
+            function copyResult() {
+                if (results.length === 0) {
+                    showMsg(toolbarTip, '❌ 无数据', 'error');
+                    return;
+                }
+                var rows = getDataRows(exportMode.value);
+                var content = rows.map(function(row) { return row.join('\t'); }).join('\n');
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + content).then(function() {
+                        showMsg(toolbarTip, '✅ 已复制', 'success');
+                        toast('✅ 已复制');
+                    }).catch(function() {
+                        fallbackCopy(content);
+                    });
+                } else {
+                    fallbackCopy(content);
+                }
+            }
+
+            function fallbackCopy(text) {
+                var ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(toolbarTip, '✅ 已复制', 'success');
+                    toast('✅ 已复制');
+                } catch (e) {
+                    showMsg(toolbarTip, '❌ 复制失败', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportCsv() {
+                if (results.length === 0) {
+                    showMsg(toolbarTip, '❌ 无数据', 'error');
+                    return;
+                }
+                var rows = getDataRows(exportMode.value);
+                var content = rows.map(function(row) { return row.join(','); }).join('\n');
+                var blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'base_stat.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(toolbarTip, '✅ CSV 已导出', 'success');
+                toast('✅ CSV 已导出');
+            }
+
+            // 事件绑定
+            loadBtn.addEventListener('click', doStat);
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    doStat();
+                }
+            });
+
+            copyBtn.addEventListener('click', copyResult);
+            exportBtn.addEventListener('click', exportCsv);
+
+            exportMode.addEventListener('change', function() {
+                if (results.length > 0) {
+                    renderResults(exportMode.value);
+                }
+            });
+
+            // 初始化
+            window.switchInput();
+            clearResults();
+        })();
+    </script>
+</body>
+</html>
