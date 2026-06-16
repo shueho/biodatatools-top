@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>环图/饼图 - BioStatPlot</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/common.css">
+    <style>
+        #chartDiv { width: 100%; min-height: 520px; display: block; text-align: left; }
+        #chartDiv svg { display: block; margin: 0; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .param-group { margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; }
+        .param-group h4 { font-size: 1rem; color: #1f4068; margin-bottom: 12px; font-weight: 600; border-left: 4px solid #1f4068; padding-left: 10px; }
+        .param-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+        .param-row label { font-weight: 500; min-width: 110px; font-size: 0.85rem; }
+        .param-row input, .param-row select { flex: 1; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; }
+        .control-tip { font-size: 12px; color: #4b5563; margin-top: 4px; }
+        .simple-table input { width: 95%; padding: 4px; }
+        .plot-sidebar { height: calc(100vh - 130px); overflow-y: auto; }
+        .plot-toolbar { margin-top: 16px; text-align: center; font-size: 13px; background: #f8fafc; padding: 8px; border-radius: 30px; }
+        .label-line { stroke: #888; stroke-width: 1.2; stroke-dasharray: 3 2; fill: none; }
+        .leader-anchor { fill: #e11d48; r: 3; stroke: white; stroke-width: 1; }
+        .draw-error { color: #dc2626; background: #fee2e2; padding: 20px; border-radius: 12px; text-align: center; }
+    </style>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<div id="common-header"></div>
+<script>
+    window.headerConfig = {
+        author: '作者：地上飞猪',
+        //bilibiliUrl: 'https://www.bilibili.com/video/BV1PYJK6CEtx',
+        //bilibiliText: '环图使用教程',
+        //githubUrl: 'https://github.com/shueho/BioDataTools',
+        //githubText: 'GitHub项目',
+        //returnHomeUrl: '../index.html'
+    };
+</script>
+
+<div id="app">
+    <div class="plot-layout">
+        <!-- 左侧数据面板 -->
+        <div class="plot-sidebar">
+            <div class="collapsible-panel" style="margin-bottom:0;">
+                <div class="collapsible-header" style="cursor:default;"><span>📊 数据管理 & 预览</span></div>
+                <div class="collapsible-body">
+                    <div style="margin-bottom: 16px;">
+                        <label style="font-weight:500;">导入数据</label>
+                        <textarea v-model="csvText" rows="4" style="width:100%; font-family:monospace; font-size:12px; margin-top:4px;" placeholder="示例：&#10;A	30&#10;B	25&#10;C	20&#10;D	15"></textarea>
+                        <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap:wrap;">
+                            <button class="btn btn-sm" @click="applyCSV">应用数据</button>
+                            <button class="btn btn-sm btn-outline" @click="exportDataToCSV">导出数据(含颜色)</button>
+                            <label class="btn btn-sm btn-outline" style="cursor:pointer;">上传文件
+                                <input type="file" accept=".csv,.tsv,.txt" style="display:none;" @change="uploadCSV">
+                            </label>
+                        </div>
+                        <div class="control-tip">可以直接从EXCEL复制两列数据，第一列为分类，第二列为值。</div>
+                    </div>
+                    <table class="simple-table">
+                        <thead><tr><th>分类名称</th><th>数值</th><th>颜色</th><th style="width:45px"></th></tr></thead>
+                        <tbody>
+                            <tr v-for="(item, idx) in chartData" :key="idx">
+                                <td><input type="text" v-model="item.name" @change="updateRow"></td>
+                                <td><input type="number" v-model.number="item.value" step="1" min="0" @change="updateRow"></td>
+                                <td><input type="color" v-model="item.color" @change="updateRow"></td>
+                                <td><button class="btn-sm" style="background:#dc3545;" @click="removeRow(idx)">删</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button class="btn btn-sm" @click="addRow" style="margin-top:6px;">+ 添加分类</button>
+                    <div class="control-tip" style="margin-top:12px; background:#eef2ff; padding:8px; border-radius:10px;">总计: <strong>{{ totalValue }}</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间绘图区 -->
+        <div class="plot-main">
+            <div style="background:#ffffff; border-radius:24px; padding:20px;">
+                <div id="chartDiv" ref="chartDiv" style="min-height: 520px; width: 100%;"></div>
+                <div v-if="drawError" class="draw-error">{{ drawError }}</div>
+            </div>
+            <div class="plot-toolbar">小份额扇形 (＜8%) 自动显示外部引导线</div>
+        </div>
+
+        <!-- 右侧参数面板 -->
+        <div class="plot-sidebar">
+            <div class="collapsible-panel" style="margin-bottom:0;">
+                <div class="collapsible-header" style="cursor:default;"><span>⚙️ 图表参数配置</span></div>
+                <div class="collapsible-body" style="padding: 12px 16px;">
+                    <!-- 画布与边距 -->
+                    <div class="param-group"><h4>📐 画布与边距</h4>
+                        <div class="param-row"><label>宽度 (px)</label><input type="number" v-model.number="config.width" min="400" max="1200" step="10" @change="drawChart"></div>
+                        <div class="param-row"><label>高度 (px)</label><input type="number" v-model.number="config.height" min="400" max="1200" step="10" @change="drawChart"></div>
+                        <div class="param-row"><label>上边距</label><input type="number" v-model.number="config.margin.top" min="20" max="150" step="5" @change="drawChart"></div>
+                        <div class="param-row"><label>下边距</label><input type="number" v-model.number="config.margin.bottom" min="20" max="150" step="5" @change="drawChart"></div>
+                        <div class="param-row"><label>左边距</label><input type="number" v-model.number="config.margin.left" min="20" max="150" step="5" @change="drawChart"></div>
+                        <div class="param-row"><label>右边距</label><input type="number" v-model.number="config.margin.right" min="20" max="150" step="5" @change="drawChart"></div>
+                    </div>
+                    <!-- 标题设置 -->
+                    <div class="param-group"><h4>📝 标题设置</h4>
+                        <div class="param-row"><label>显示标题</label><select v-model="config.showTitle" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showTitle"><label>标题文字</label><input type="text" v-model="config.title" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showTitle"><label>标题字号</label><input type="number" v-model.number="config.titleFontSize" min="12" max="42" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showTitle"><label>标题加粗</label><select v-model="config.titleBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showTitle"><label>标题斜体</label><select v-model="config.titleItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showTitle"><label>标题Y偏移 (px)</label><input type="number" v-model.number="config.titleYOffset" step="2" @change="drawChart"></div>
+                    </div>
+                    <!-- 图例设置 -->
+                    <div class="param-group"><h4>📍 图例设置</h4>
+                        <div class="param-row"><label>显示图例</label><select v-model="config.showLegend" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showLegend"><label>显示图例标题</label><select v-model="config.showLegendTitle" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>图例标题</label><input type="text" v-model="config.legendTitle" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>标题字号</label><input type="number" v-model.number="config.legendTitleFontSize" min="10" max="20" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>标题加粗</label><select v-model="config.legendTitleBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>标题斜体</label><select v-model="config.legendTitleItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>标题与图例项间距(px)</label><input type="number" v-model.number="config.legendTitleSpacing" min="0" max="30" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>图例标记大小 (px)</label><input type="number" v-model.number="config.legendMarkerSize" min="8" max="28" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>图例项垂直间距(px)</label><input type="number" v-model.number="config.legendItemSpacing" min="16" max="40" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>图例X (0-1.1)</label><input type="number" v-model.number="config.legendX" min="0" max="1.1" step="0.01" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>图例Y (0-1.1)</label><input type="number" v-model.number="config.legendY" min="0" max="1.1" step="0.01" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>图例项字号</label><input type="number" v-model.number="config.legendFontSize" min="10" max="20" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>图例项加粗</label><select v-model="config.legendBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showLegend"><label>图例项斜体</label><select v-model="config.legendItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                    </div>
+                    <!-- 标注与引导线 -->
+                    <div class="param-group"><h4>🔤 标注与引导线</h4>
+                        <div class="param-row"><label>显示百分比</label><select v-model="config.showPercent" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showPercent"><label>百分比字号</label><input type="number" v-model.number="config.percentFontSize" min="10" max="28" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showPercent"><label>百分比加粗</label><select v-model="config.percentBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showPercent"><label>百分比斜体</label><select v-model="config.percentItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row"><label>显示分类名</label><select v-model="config.showCategory" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showCategory"><label>分类字号</label><input type="number" v-model.number="config.categoryFontSize" min="10" max="24" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showCategory"><label>分类加粗</label><select v-model="config.categoryBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row" v-if="config.showCategory"><label>分类斜体</label><select v-model="config.categoryItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <div class="param-row"><label>文字半径比例</label><input type="range" v-model.number="config.labelRadiusRatio" min="0.5" max="1.0" step="0.01" @input="drawChart"><span>{{ config.labelRadiusRatio.toFixed(2) }}</span></div>
+                        <div class="param-row"><label>小份额引导线(＜8%)</label><select v-model="config.enableLeaderLine" @change="drawChart"><option :value="true">启用外部引导线</option><option :value="false">禁用(留在扇形内)</option></select></div>
+                    </div>
+                    <!-- 环形/饼图样式 -->
+                    <div class="param-group"><h4>🎨 环形/饼图样式</h4>
+                        <div class="param-row"><label>内径比例 (0=饼图)</label><input type="range" v-model.number="config.innerRadiusRatio" min="0" max="0.9" step="0.01" @input="drawChart"><span>{{ config.innerRadiusRatio.toFixed(2) }}</span></div>
+                        <div class="param-row"><label>扇形方向</label><select v-model="config.direction" @change="drawChart"><option value="clockwise">顺时针</option><option value="counterclockwise">逆时针</option></select></div>
+                        <div class="param-row"><label>全局字体</label><select v-model="config.fontFamily" @change="drawChart"><option value="Times New Roman">Times New Roman</option><option value="Arial">Arial</option><option value="Segoe UI">Segoe UI</option></select></div>
+                    </div>
+                    <!-- 导出 & 配置 -->
+                    <div class="param-group"><h4>📎 导出 & 配置</h4>
+                        <div style="display: flex; gap: 8px; flex-wrap:wrap; margin-bottom:12px;">
+                            <button class="btn btn-sm" @click="exportAsSVG">SVG</button>
+                            <button class="btn btn-sm" @click="exportAsPNG">PNG</button>
+                            <button class="btn btn-sm" @click="exportAsPDF">PDF</button>
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap:wrap;">
+                            <button class="btn btn-sm btn-outline" @click="resetConfig">重置默认</button>
+                            <button class="btn btn-sm btn-outline" @click="exportConfig">导出配置</button>
+                            <label class="btn btn-sm btn-outline" style="cursor:pointer;">导入配置
+                                <input type="file" accept=".json" style="display:none;" @change="importConfig">
+                            </label>
+                        </div>
+                        <div class="control-tip">配置自动保存至本地存储</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="common-footer"></div>
+
+<script src="../COMMON/header.js"></script>
+<script src="../COMMON/footer.js"></script>
+<script src="../COMMON/common.js"></script>
+
+<script>
+    (function(){
+        // ========== 默认配置 ==========
+        const DEFAULT_CONFIG = {
+            width: 600,
+            height: 600,
+            margin: {
+                top: 70,
+                right: 100,
+                bottom: 50,
+                left: 100
+            },
+            innerRadiusRatio: 0.6,
+            direction: "clockwise",
+            fontFamily: "Times New Roman",
+            showTitle: true,
+            title: "BioStatPlot",
+            titleFontSize: 22,
+            titleYOffset: -12,
+            titleBold: true,
+            titleItalic: false,
+            showLegend: true,
+            showLegendTitle: true,
+            legendTitle: "图例",
+            legendTitleFontSize: 16,
+            legendTitleBold: true,
+            legendTitleItalic: false,
+            legendTitleSpacing: 0,
+            legendMarkerSize: 18,
+            legendItemSpacing: 22,
+            legendX: 1,
+            legendY: 0.3,
+            legendFontSize: 12,
+            legendBold: false,
+            legendItalic: false,
+            showPercent: true,
+            percentFontSize: 18,
+            percentBold: true,
+            percentItalic: false,
+            showCategory: false,
+            categoryFontSize: 12,
+            categoryBold: false,
+            categoryItalic: false,
+            labelRadiusRatio: 0.78,
+            enableLeaderLine: true
+        };
+
+        const DEFAULT_PALETTE = ["#E64B35", "#4DBBD5", "#00A087", "#3C5488", "#F39B7F", "#8491B4", "#91D1C2", "#DC0000", "#7E6148"];
+        const DEFAULT_DATA = [
+            { name: "A", value: 30, color: DEFAULT_PALETTE[0] },
+            { name: "B", value: 25, color: DEFAULT_PALETTE[1] },
+            { name: "C", value: 20, color: DEFAULT_PALETTE[2] },
+            { name: "D", value: 15, color: DEFAULT_PALETTE[3] },
+            { name: "E", value: 10, color: DEFAULT_PALETTE[4] }
+        ];
+        const storageKey = 'donut_final_clean';
+        const stateManager = new StateManager(storageKey);
+        const saved = stateManager.loadState();
+
+        const { createApp, ref, watch, nextTick, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                let initialConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+                let initialData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+                if (saved && saved.config && saved.data) {
+                    initialConfig = { ...DEFAULT_CONFIG, ...saved.config, margin: { ...DEFAULT_CONFIG.margin, ...saved.config.margin } };
+                    initialData = saved.data;
+                }
+
+                const config = ref(initialConfig);
+                const chartData = ref(initialData);
+                const chartDiv = ref(null);
+                const csvText = ref('');
+                const totalValue = ref(0);
+                const drawError = ref('');
+
+                const updateTotal = () => {
+                    totalValue.value = chartData.value.reduce((s, i) => s + (i.value || 0), 0);
+                    csvText.value = chartData.value.map(item => `${item.name}\t${item.value}`).join('\n');
+                };
+                const updateRow = () => { updateTotal(); drawChart(); };
+                const addRow = () => { chartData.value.push({ name: "新分类", value: 10, color: DEFAULT_PALETTE[chartData.value.length % DEFAULT_PALETTE.length] }); updateTotal(); };
+                const removeRow = (idx) => { if (chartData.value.length > 1) chartData.value.splice(idx, 1); updateTotal(); };
+
+                const applyCSV = () => {
+                    let text = csvText.value.trim();
+                    if (!text) { alert('请粘贴数据'); return; }
+                    const lines = text.split(/\r?\n/);
+                    const newData = [];
+                    for (let line of lines) {
+                        line = line.trim();
+                        if (!line) continue;
+                        let delimiter = line.includes('\t') ? '\t' : (line.includes(',') ? ',' : (/\s+/.test(line) ? ' ' : null));
+                        if (!delimiter) continue;
+                        let parts = line.split(delimiter);
+                        if (parts.length < 2) continue;
+                        const name = parts[0].trim();
+                        const value = parseFloat(parts[1]);
+                        if (isNaN(value)) continue;
+                        let color = DEFAULT_PALETTE[newData.length % DEFAULT_PALETTE.length];
+                        newData.push({ name, value, color });
+                    }
+                    if (newData.length === 0) { alert('未解析到有效数据'); return; }
+                    chartData.value = newData;
+                    updateTotal();
+                    drawChart();
+                };
+                const exportDataToCSV = () => { let csv = "name\tvalue\tcolor\n" + chartData.value.map(d => `${d.name}\t${d.value}\t${d.color}`).join('\n'); downloadFile(csv, 'chart_data_full.tsv', 'text/tsv'); };
+                const uploadCSV = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => { csvText.value = ev.target.result; applyCSV(); }; reader.readAsText(file); e.target.value = ''; };
+
+                const drawChart = () => {
+                    drawError.value = '';
+                    if (!chartDiv.value) return;
+                    try {
+                        const container = chartDiv.value;
+                        container.innerHTML = '';
+                        const w = config.value.width, h = config.value.height;
+                        const margin = config.value.margin;
+                        const innerW = w - margin.left - margin.right;
+                        const innerH = h - margin.top - margin.bottom;
+                        const centerX = margin.left + innerW / 2;
+                        const centerY = margin.top + innerH / 2;
+                        const maxRadius = Math.min(centerX, w - centerX, centerY, h - centerY);
+                        const radius = Math.min(innerW, innerH, maxRadius * 2) / 2;
+                        const innerRadius = radius * config.value.innerRadiusRatio;
+                        
+                        const svg = d3.select(container).append("svg").attr("width", w).attr("height", h).style("background", "#fff");
+                        const data = chartData.value.filter(d => d.value > 0);
+                        if (data.length === 0) { svg.append("text").attr("x", w/2).attr("y", h/2).attr("text-anchor", "middle").text("无有效数据"); return; }
+                        const total = data.reduce((s, d) => s + d.value, 0);
+                        const colorScale = d3.scaleOrdinal().domain(data.map(d => d.name)).range(data.map(d => d.color || DEFAULT_PALETTE[data.indexOf(d) % DEFAULT_PALETTE.length]));
+                        
+                        let pie = d3.pie().value(d => d.value).sort(null);
+                        if (config.value.direction === "counterclockwise") pie = pie.startAngle(Math.PI * 2).endAngle(0);
+                        const arcs = pie(data);
+                        const arcGen = d3.arc().innerRadius(innerRadius).outerRadius(radius).padAngle(0.01);
+                        const g = svg.append("g").attr("transform", `translate(${centerX}, ${centerY})`);
+                        
+                        // 扇形 + 悬浮提示
+                        g.selectAll("path").data(arcs).join("path")
+                            .attr("d", arcGen).attr("fill", d => colorScale(d.data.name)).attr("stroke", "#fff").attr("stroke-width", 1.5)
+                            .on("mouseenter", function(e, d) {
+                                d3.select(this).attr("opacity", 0.85);
+                                const percent = (d.data.value / total * 100).toFixed(1);
+                                let tip = document.querySelector('.d3-tooltip-donut');
+                                if (!tip) { tip = document.createElement('div'); tip.className = 'd3-tooltip-donut'; document.body.appendChild(tip); }
+                                tip.style.display = 'block'; tip.style.position = 'absolute'; tip.style.backgroundColor = 'rgba(0,0,0,0.8)';
+                                tip.style.color = '#fff'; tip.style.padding = '6px 14px'; tip.style.borderRadius = '24px';
+                                tip.style.fontSize = '13px'; tip.style.pointerEvents = 'none'; tip.style.zIndex = '1000';
+                                tip.style.left = (e.pageX + 12) + 'px'; tip.style.top = (e.pageY - 30) + 'px';
+                                tip.textContent = `${d.data.name}: ${d.data.value} (${percent}%)`;
+                            })
+                            .on("mousemove", function(e) { const tip = document.querySelector('.d3-tooltip-donut'); if(tip) { tip.style.left = (e.pageX+12)+'px'; tip.style.top = (e.pageY-30)+'px'; } })
+                            .on("mouseleave", function() { d3.select(this).attr("opacity", 1); document.querySelector('.d3-tooltip-donut')?.remove(); });
+                        
+                        const outerArc = d3.arc().innerRadius(radius).outerRadius(radius);
+                        const labelRadiusInner = radius * Math.min(config.value.labelRadiusRatio, 0.95);
+                        const labelArcInner = d3.arc().innerRadius(labelRadiusInner).outerRadius(labelRadiusInner);
+                        const useLeaderLine = config.value.enableLeaderLine;
+                        
+                        arcs.forEach((d) => {
+                            const percentVal = d.data.value / total * 100;
+                            const needLeader = useLeaderLine && percentVal < 8;
+                            if (needLeader) {
+                                const startPoint = outerArc.centroid(d);
+                                const [x0, y0] = startPoint;
+                                const angle = Math.atan2(y0, x0);
+                                const cosA = Math.cos(angle), sinA = Math.sin(angle);
+                                const radialPoint = [x0 + cosA * 15, y0 + sinA * 15];
+                                const endPoint = [radialPoint[0] + (cosA > 0 ? 65 : -65), radialPoint[1]];
+                                
+                                // ★★★ 关键修复：为 polyline 显式添加 fill="none" 避免导出为填充 ★★★
+                                g.append("polyline")
+                                    .attr("points", `${startPoint[0]},${startPoint[1]} ${radialPoint[0]},${radialPoint[1]} ${endPoint[0]},${endPoint[1]}`)
+                                    .attr("class", "label-line")
+                                    .attr("fill", "none")          // 强制无填充
+                                    .attr("stroke", "#888")       // 确保颜色
+                                    .attr("stroke-width", 1.2)
+                                    .attr("stroke-dasharray", "3 2");
+                                g.append("circle").attr("cx", startPoint[0]).attr("cy", startPoint[1]).attr("class", "leader-anchor");
+                                
+                                let showCat = config.value.showCategory;
+                                let showPct = config.value.showPercent;
+                                let textAnchor = cosA > 0 ? "start" : "end";
+                                let xOffset = cosA > 0 ? 6 : -6;
+                                let baseX = endPoint[0] + xOffset;
+                                let baseY = endPoint[1] + 4;
+                                
+                                if (showCat && showPct) {
+                                    const catText = d.data.name;
+                                    const pctText = `(${percentVal.toFixed(1)}%)`;
+                                    const combinedText = g.append("text")
+                                        .attr("x", baseX)
+                                        .attr("y", baseY)
+                                        .attr("dy", "0.35em")
+                                        .attr("text-anchor", textAnchor)
+                                        .style("font-family", config.value.fontFamily)
+                                        .style("fill", "#2c3e50");
+                                    combinedText.append("tspan")
+                                        .style("font-size", `${config.value.categoryFontSize}px`)
+                                        .style("font-weight", config.value.categoryBold ? "bold" : "normal")
+                                        .style("font-style", config.value.categoryItalic ? "italic" : "normal")
+                                        .text(catText + " ");
+                                    combinedText.append("tspan")
+                                        .style("font-size", `${config.value.percentFontSize}px`)
+                                        .style("font-weight", config.value.percentBold ? "bold" : "normal")
+                                        .style("font-style", config.value.percentItalic ? "italic" : "normal")
+                                        .text(pctText);
+                                } else if (showCat) {
+                                    g.append("text")
+                                        .attr("x", baseX)
+                                        .attr("y", baseY)
+                                        .attr("dy", "0.35em")
+                                        .attr("text-anchor", textAnchor)
+                                        .style("font-size", `${config.value.categoryFontSize}px`)
+                                        .style("font-family", config.value.fontFamily)
+                                        .style("font-weight", config.value.categoryBold ? "bold" : "normal")
+                                        .style("font-style", config.value.categoryItalic ? "italic" : "normal")
+                                        .style("fill", "#2c3e50")
+                                        .text(d.data.name);
+                                } else if (showPct) {
+                                    g.append("text")
+                                        .attr("x", baseX)
+                                        .attr("y", baseY)
+                                        .attr("dy", "0.35em")
+                                        .attr("text-anchor", textAnchor)
+                                        .style("font-size", `${config.value.percentFontSize}px`)
+                                        .style("font-family", config.value.fontFamily)
+                                        .style("font-weight", config.value.percentBold ? "bold" : "normal")
+                                        .style("font-style", config.value.percentItalic ? "italic" : "normal")
+                                        .style("fill", "#2c3e50")
+                                        .text(`${percentVal.toFixed(1)}%`);
+                                }
+                            } else {
+                                const centroid = labelArcInner.centroid(d);
+                                if (config.value.showPercent) {
+                                    g.append("text")
+                                        .attr("transform", `translate(${centroid[0]}, ${centroid[1] - 5})`)
+                                        .attr("text-anchor", "middle")
+                                        .style("font-size", `${config.value.percentFontSize}px`)
+                                        .style("font-family", config.value.fontFamily)
+                                        .style("font-weight", config.value.percentBold ? "bold" : "normal")
+                                        .style("font-style", config.value.percentItalic ? "italic" : "normal")
+                                        .style("fill", "#1e293b")
+                                        .text(`${percentVal.toFixed(1)}%`);
+                                }
+                                if (config.value.showCategory) {
+                                    g.append("text")
+                                        .attr("transform", `translate(${centroid[0]}, ${centroid[1] + 10})`)
+                                        .attr("text-anchor", "middle")
+                                        .style("font-size", `${config.value.categoryFontSize}px`)
+                                        .style("font-family", config.value.fontFamily)
+                                        .style("font-weight", config.value.categoryBold ? "bold" : "normal")
+                                        .style("font-style", config.value.categoryItalic ? "italic" : "normal")
+                                        .style("fill", "#334155")
+                                        .text(d.data.name);
+                                }
+                            }
+                        });
+                        
+                        // 标题
+                        if (config.value.showTitle && config.value.title) {
+                            const pieTopY = centerY - radius;
+                            let titleY = pieTopY - 8 + (config.value.titleYOffset || 0);
+                            titleY = Math.max(20, Math.min(centerY - 10, titleY));
+                            svg.append("text")
+                                .attr("x", w / 2)
+                                .attr("y", titleY)
+                                .attr("text-anchor", "middle")
+                                .style("font-size", `${config.value.titleFontSize}px`)
+                                .style("font-family", config.value.fontFamily)
+                                .style("font-weight", config.value.titleBold ? "bold" : "normal")
+                                .style("font-style", config.value.titleItalic ? "italic" : "normal")
+                                .style("fill", "#0f172a")
+                                .text(config.value.title);
+                        }
+                        
+                        // 图例（文字垂直居中）
+                        if (config.value.showLegend) {
+                            let lx = Math.min(1.1, Math.max(0, config.value.legendX));
+                            let ly = Math.min(1.1, Math.max(0, config.value.legendY));
+                            const legendAbsX = margin.left + innerW * lx;
+                            const legendAbsY = margin.top + innerH * ly;
+                            const legendGroup = svg.append("g").attr("transform", `translate(${legendAbsX}, ${legendAbsY})`);
+                            let yOffset = 0;
+                            if (config.value.showLegendTitle && config.value.legendTitle) {
+                                legendGroup.append("text")
+                                    .attr("x", 0).attr("y", yOffset)
+                                    .style("font-size", `${config.value.legendTitleFontSize}px`)
+                                    .style("font-family", config.value.fontFamily)
+                                    .style("font-weight", config.value.legendTitleBold ? "bold" : "normal")
+                                    .style("font-style", config.value.legendTitleItalic ? "italic" : "normal")
+                                    .style("fill", "#1f4068")
+                                    .text(config.value.legendTitle);
+                                const titleHeight = config.value.legendTitleFontSize + 2;
+                                yOffset += titleHeight + (config.value.legendTitleSpacing || 0);
+                            }
+                            const markerSize = config.value.legendMarkerSize || 12;
+                            const itemSpacing = config.value.legendItemSpacing || 22;
+                            data.forEach((d, i) => {
+                                const legItem = legendGroup.append("g").attr("transform", `translate(0, ${yOffset + i * itemSpacing})`);
+                                legItem.append("rect")
+                                    .attr("width", markerSize)
+                                    .attr("height", markerSize)
+                                    .attr("fill", colorScale(d.name))
+                                    .attr("rx", 2);
+                                legItem.append("text")
+                                    .attr("x", markerSize + 6)
+                                    .attr("y", markerSize / 2)
+                                    .attr("dy", "0.35em")
+                                    .style("font-size", `${config.value.legendFontSize}px`)
+                                    .style("font-family", config.value.fontFamily)
+                                    .style("font-weight", config.value.legendBold ? "bold" : "normal")
+                                    .style("font-style", config.value.legendItalic ? "italic" : "normal")
+                                    .style("fill", "#334155")
+                                    .text(d.name);
+                            });
+                        }
+                    } catch (err) { console.error(err); drawError.value = '绘图失败: ' + err.message; }
+                };
+                
+                // 导出（不变）
+                const exportAsSVG = async () => {
+                    const svgElem = document.querySelector('#chartDiv svg');
+                    if (!svgElem) { alert('无SVG元素'); return; }
+                    await ExportHelper.exportSVG(svgElem, 'donut_chart.svg');
+                };
+                const exportAsPNG = async () => {
+                    const svgElem = document.querySelector('#chartDiv svg');
+                    if (!svgElem) { alert('无SVG元素'); return; }
+                    try {
+                        const dataURL = await ExportHelper.exportPNGFromSVG(svgElem, 3);
+                        const link = document.createElement('a');
+                        link.download = 'donut_chart.png';
+                        link.href = dataURL;
+                        link.click();
+                    } catch(err) { alert('PNG导出失败: ' + err.message); }
+                };
+                const exportAsPDF = async () => {
+                    const svgElem = document.querySelector('#chartDiv svg');
+                    if (!svgElem) { alert('无SVG元素'); return; }
+                    try {
+                        await ExportHelper.exportPDFFromSVG(svgElem, 'donut_chart.pdf', 3);
+                    } catch(err) { alert('PDF导出失败: ' + err.message); }
+                };
+                
+                const resetConfig = () => { config.value = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); drawChart(); };
+                const exportConfig = () => downloadFile(JSON.stringify(config.value, null, 2), 'chart_config.json', 'application/json');
+                const importConfig = (e) => {
+                    const file = e.target.files[0];
+                    if(!file) return;
+                    const reader = new FileReader();
+                    reader.onload = ev => { try { const imported = JSON.parse(ev.target.result); config.value = { ...DEFAULT_CONFIG, ...imported, margin: { ...DEFAULT_CONFIG.margin, ...imported.margin } }; drawChart(); } catch(e) { alert('配置文件无效'); } };
+                    reader.readAsText(file);
+                    e.target.value = '';
+                };
+                
+                watch([chartData, config], () => { updateTotal(); stateManager.saveState(chartData.value, config.value); nextTick(() => drawChart()); }, { deep: true });
+                onMounted(() => { updateTotal(); nextTick(() => drawChart()); });
+                
+                return { chartData, config, totalValue, chartDiv, csvText, drawError, updateRow, addRow, removeRow, applyCSV, exportDataToCSV, uploadCSV, drawChart, exportAsSVG, exportAsPNG, exportAsPDF, resetConfig, exportConfig, importConfig };
+            }
+        }).mount('#app');
+    })();
+</script>
+</body>
+</html>
