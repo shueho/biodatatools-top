@@ -35,6 +35,22 @@ header {
     justify-content: space-between;
     align-items: center;
 }
+
+/* ----- 新增：左侧 Logo + 标题容器 ----- */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* ----- 新增：大尺寸 Logo ----- */
+.header-logo {
+    height: 80px;          /* 大尺寸，醒目 */
+    width: auto;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
 .site-title h1 {
     font-size: 1.6rem;
     letter-spacing: 1px;
@@ -44,6 +60,8 @@ header {
     font-size: 0.85rem;
     opacity: 0.85;
 }
+
+/* 右侧按钮组（B站、GitHub、返回首页） */
 .bilibili-link, .github-link, .back-home {
     background: #fb7299;
     color: #fff;
@@ -310,15 +328,6 @@ th {
     pointer-events: none;
 }
 
-/* ========== 响应式（仅限页眉等全局部分） ========== */
-@media (max-width: 768px) {
-    .header-wrap {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-    }
-}
-
 /* ========== 复制成功提示（Toast） ========== */
 .copy-toast {
     position: fixed;
@@ -355,14 +364,13 @@ label {
     cursor: pointer;
 }
 
-/* ========== 表格滚动容器（跨页面复用） ========== */
+/* ========== 表格滚动容器 ========== */
 .table-scroll {
     max-height: 300px;
     overflow-x: auto;
     overflow-y: auto;
 }
 
-/* ========== 以下为新增的公共样式（从 004 页面提取） ========== */
 
 /* 颜色选择器 */
 input[type="color"] {
@@ -380,13 +388,11 @@ input[type="color"] {
     gap: 10px 16px;
     margin: 8px 0 15px;
 }
-/* 可选：在大屏幕上限制最多4列（但通常 auto-fit 会自动适应，不需要） */
 @media (min-width: 1200px) {
     .param-wrap {
         grid-template-columns: repeat(4, minmax(200px, 1fr));
     }
 }
-
 
 .param-item {
     display: flex;
@@ -474,7 +480,6 @@ input[type="color"] {
     border-bottom: none;
 }
 
-
 /* ========== 序列拼接等工具通用样式 ========== */
 
 /* 小按钮和危险按钮 */
@@ -561,7 +566,6 @@ input[type="color"] {
 svg text {
     font-family: inherit;
 }
-
 
 /* ===== 通用布局与数字样式 ===== */
 .flex-wrap {
@@ -720,4 +724,54 @@ svg text {
     font-size: 0.8rem;
     color: #888;
     font-weight: 400;
+}
+
+/* ========== 响应式（页眉及全局） ========== */
+@media (max-width: 768px) {
+    .header-wrap {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    /* 左侧容器在移动端纵向排列 */
+    .header-left {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    /* Logo 在平板下适中大小 */
+    .header-logo {
+        height: 55px;
+    }
+    /* 右侧按钮组居中 */
+    .header-wrap > div:last-child {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+    }
+    /* 其他全局调整 */
+    .header-wrap > div:last-child a {
+        margin-right: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* 手机小屏 Logo 再缩小一点 */
+    .header-logo {
+        height: 45px;
+    }
+    /* 页眉内边距减小 */
+    header {
+        padding: 0.8rem 1rem;
+    }
+    /* 标题字体略缩小 */
+    .site-title h1 {
+        font-size: 1.3rem;
+    }
+    /* 按钮文字略小 */
+    .bilibili-link, .github-link, .back-home {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
 }

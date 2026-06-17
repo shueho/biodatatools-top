@@ -10,7 +10,6 @@
         returnHomeUrl: '../index.html'   // 绝对路径，始终指向首页
     };
 
-    // 合并自定义配置（页面可通过 window.headerConfig 覆盖）
     function getConfig() {
         if (window.headerConfig) {
             return { ...defaultConfig, ...window.headerConfig };
@@ -23,9 +22,12 @@
         const headerHTML = `
         <header>
             <div class="header-wrap">
-                <div class="site-title">
-                    <h1>BioDataTools 网页版</h1>
-                    <div class="author">${config.author}</div>
+                <div class="header-left">
+                    <img src="../images/logo.png" alt="BioDataTools Logo" class="header-logo">
+                    <div class="site-title">
+                        <h1>BioDataTools</h1>
+                        <div class="author">${config.author}</div>
+                    </div>
                 </div>
                 <div>
                     <a href="${config.bilibiliUrl}" target="_blank" class="bilibili-link">${config.bilibiliText}</a>
@@ -39,7 +41,6 @@
         if (placeholder) {
             placeholder.outerHTML = headerHTML;
         } else {
-            // 如果没有占位符，直接插入到 body 最前面
             document.body.insertAdjacentHTML('afterbegin', headerHTML);
         }
     }

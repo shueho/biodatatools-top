@@ -1,7 +1,5 @@
 # 格式：文章大类	文章名称	文章路径	封面图片名	文章简介
-教程	CDS序列翻译工具使用指南	cds_translate_guide.html	test.png	详解CDS序列翻译全流程与常见问题排查
-教程	tRNA二级结构美化与组图网页（MITOS与RNAplot绘图适用）	https://zhuanlan.zhihu.com/p/2047711556511782518	https://pic1.zhimg.com/70/v2-56a0c54deca247171b257d1e33a5b249_1440w.avis?source=172ae18b&biz_tag=Post	FASTA格式规范、批量处理与实用小技巧分享
-大类测试1	网页版BioDataTools开发总结	biodatatools_dev.html	dev_cover.png	xxxx开发思路总结
-大类测试1	JavaScript处理核酸序列最佳实践	js_seq_handle.html	js_cover.png	xxx
-大类测试2	2024生物信息学工具发展趋势	2024_trend.html	trend_cover.png	xxx
-其他	博文模板	article-template.html	test.png	xx
+图文教程	快速批量计算蛋白质理化性质的网页（与ExPasy-ProtParam结果相同）	https://zhuanlan.zhihu.com/p/2048862223758628857	https://picx.zhimg.com/70/v2-5a5ebb987f30840b9bbd7a9249fd2117_1440w.avis?source=172ae18b&biz_tag=Post	知乎文章
+图文教程	tRNA二级结构美化与组图网页（MITOS与RNAplot绘图适用）	https://zhuanlan.zhihu.com/p/2047711556511782518	https://pic1.zhimg.com/70/v2-56a0c54deca247171b257d1e33a5b249_1440w.avis?source=172ae18b&biz_tag=Post	知乎文章
+生信工具	生物信息学分析常用网页汇总	biodatatools_dev.html	dev_cover.png	待整理
+其他	博文模板	article-template.html	test.png	备用

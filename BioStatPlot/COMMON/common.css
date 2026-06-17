@@ -5,20 +5,88 @@ html, body { height: 100%; }
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", "Microsoft Yahei", sans-serif; }
 body { background-color: #f0f4f8; color: #333; line-height: 1.6; height: 100%; }
 
-/* 页眉 */
-header { background: #1f4068; padding: 1.2rem 2rem; position: sticky; top: 0; z-index: 99; }
-.header-wrap { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-.site-title h1 { font-size: 1.6rem; color: #fff; }
-.author { font-size: 0.85rem; color: #ddd; margin-top: 0.2rem; }
-.back-home, .bilibili-link, .github-link { display: inline-block; text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; transition: all 0.3s; font-weight: 500; margin-left: 8px; }
-.back-home { background: #24292f; color: #fff; }
-.back-home:hover { background: #373e47; transform: translateY(-2px); }
-.bilibili-link { background: #fb7299; color: #fff; }
-.bilibili-link:hover { background: #f85a87; transform: translateY(-2px); }
-.github-link { background: #24292f; color: #fff; }
-.github-link:hover { background: #373e47; transform: translateY(-2px); }
+/* ========== 页眉（配合 header.js） ========== */
+header {
+    background: #1f4068;
+    padding: 1.2rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 99;
+}
+.header-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-/* 页脚 */
+/* 左侧 Logo + 标题容器 */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* 大尺寸 Logo */
+.header-logo {
+    height: 80px;
+    width: auto;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+/* 右侧按钮组 */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.site-title h1 {
+    font-size: 1.6rem;
+    color: #fff;
+}
+.author {
+    font-size: 0.85rem;
+    color: #ddd;
+    margin-top: 0.2rem;
+}
+.back-home, .bilibili-link, .github-link {
+    display: inline-block;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.3s;
+    font-weight: 500;
+}
+.back-home {
+    background: #24292f;
+    color: #fff;
+}
+.back-home:hover {
+    background: #373e47;
+    transform: translateY(-2px);
+}
+.bilibili-link {
+    background: #fb7299;
+    color: #fff;
+}
+.bilibili-link:hover {
+    background: #f85a87;
+    transform: translateY(-2px);
+}
+.github-link {
+    background: #24292f;
+    color: #fff;
+}
+.github-link:hover {
+    background: #373e47;
+    transform: translateY(-2px);
+}
+
+/* ========== 页脚 ========== */
 footer { text-align: center; padding: 2rem; color: #888; font-size: 0.9rem; background: #fff; margin-top: 3rem; }
 footer .email { margin: 0.5rem 0; }
 .donate-wrap { display: inline-block; position: relative; margin-left: 8px; cursor: pointer; color: #1f4068; font-weight: 500; }
@@ -26,7 +94,7 @@ footer .email { margin: 0.5rem 0; }
 .donate-tip img { display: block; max-width: 400px; height: auto; }
 .donate-wrap:hover .donate-tip { visibility: visible; opacity: 1; }
 
-/* 按钮 */
+/* ========== 按钮 ========== */
 .btn { padding: 8px 20px; background: #1f4068; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
 .btn:disabled { background: #999; cursor: not-allowed; }
 .btn-sm { padding: 4px 10px; font-size: 13px; background: #6c757d; border: none; border-radius: 6px; cursor: pointer; color: #fff; }
@@ -34,19 +102,19 @@ footer .email { margin: 0.5rem 0; }
 .btn-outline { background: transparent; border: 1px solid #1f4068; color: #1f4068; }
 .btn-outline:hover { background: #1f4068; color: #fff; }
 
-/* 表单元素 */
+/* ========== 表单元素 ========== */
 input[type="text"], input[type="number"], select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; background: #fff; }
 input[type="color"] { padding: 4px 6px; border: 1px solid #ccc; border-radius: 4px; width: 50px; height: 32px; cursor: pointer; }
 label { font-size: 1rem; cursor: pointer; }
 textarea { width: 100%; min-height: 180px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; resize: vertical; font-family: Consolas, monospace; }
 
-/* 提示 */
+/* ========== 提示 ========== */
 .tip-text { margin: 10px 0; font-weight: 500; }
 .warn { color: #e67700; }
 .error { color: #dc3545; }
 .success { color: #28a745; }
 
-/* 表格 */
+/* ========== 表格 ========== */
 table { width: 100%; border-collapse: collapse; margin: 12px 0; }
 th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: center; }
 th { background-color: #f5f7fa; }
@@ -55,11 +123,11 @@ th { background-color: #f5f7fa; }
 .simple-table input { width: 100%; box-sizing: border-box; padding: 4px; }
 .simple-table input[type="color"] { width: 50px; height: 32px; padding: 2px; }
 
-/* 卡片 */
+/* ========== 卡片 ========== */
 .step-card { background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(31, 64, 104, 0.1); padding: 2rem; margin-bottom: 2.5rem; border: 1px solid #e8edf2; }
 .step-title { font-size: 1.4rem; color: #1f4068; font-weight: bold; margin-bottom: 1.5rem; padding-bottom: 0.8rem; border-bottom: 2px solid #e8edf2; }
 
-/* 折叠面板 */
+/* ========== 折叠面板 ========== */
 .collapsible-panel { background: #f8fafc; border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
 .collapsible-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #eef2f5; cursor: pointer; user-select: none; font-weight: 600; color: #1f4068; }
 .collapsible-header .toggle-icon { font-size: 1.2rem; transition: transform 0.3s; }
@@ -67,12 +135,43 @@ th { background-color: #f5f7fa; }
 .collapsible-panel.collapsed .collapsible-body { display: none; }
 .collapsible-panel.collapsed .toggle-icon { transform: rotate(-90deg); }
 
-/* 左右布局 */
+/* ========== 左右布局 ========== */
 .plot-layout { display: flex; gap: 20px; min-height: 600px; align-items: stretch; }
 .plot-sidebar { width: 320px; flex-shrink: 0; height: calc(100vh - 140px); overflow-y: auto; background: #f8fafc; border-radius: 12px; }
 .plot-sidebar.collapsed { width: 0; opacity: 0; overflow: hidden; margin: 0; padding: 0; }
 .plot-main { flex: 1; min-width: 0; background: #fff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; display: flex; flex-direction: column; overflow-y: auto; height: calc(100vh - 140px); }
-@media (max-width: 900px) { .plot-layout { flex-direction: column; } .plot-sidebar { width: 100%; height: auto; max-height: 400px; } }
+@media (max-width: 900px) { .plot-layout { flex-direction: column; } .plot-sidebar { width: 100%; height: auto; max-height: 400px; } .plot-main { height: auto; } }
 
-/* 其他辅助 */
+/* ========== 其他辅助 ========== */
 .control-tip { font-size: 12px; color: #4b5563; margin-top: 4px; }
+
+/* ========== 响应式适配（页眉） ========== */
+@media (max-width: 768px) {
+    .header-wrap {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    .header-left {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    .header-logo {
+        height: 55px;
+    }
+    .header-right {
+        justify-content: center;
+    }
+}
+@media (max-width: 480px) {
+    .header-logo {
+        height: 45px;
+    }
+    .site-title h1 {
+        font-size: 1.3rem;
+    }
+    header {
+        padding: 0.8rem 1rem;
+    }
+}

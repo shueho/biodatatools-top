@@ -35,14 +35,40 @@ header {
     justify-content: space-between;
     align-items: center;
 }
+
+/* ----- 新增：左侧 Logo + 标题容器 ----- */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* ----- 新增：大尺寸 Logo ----- */
+.header-logo {
+    height: 80px;
+    width: auto;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+/* 右侧按钮组 */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .site-title h1 {
     font-size: 2rem;
     letter-spacing: 1px;
+    color: #fff;
 }
 .author {
     margin-top: 0.5rem;
     font-size: 1rem;
     opacity: 0.85;
+    color: #ddd;
 }
 .bilibili-link, .github-link, .back-home {
     background: #fb7299;
@@ -52,18 +78,27 @@ header {
     border-radius: 6px;
     transition: 0.3s;
     font-weight: 500;
-    margin-right: 10px;
+}
+.bilibili-link {
+    background: #fb7299;
+}
+.bilibili-link:hover {
+    background: #f85a87;
+    transform: scale(1.05);
 }
 .github-link {
     background: #24292f;
 }
+.github-link:hover {
+    background: #373e47;
+    transform: scale(1.05);
+}
 .back-home {
     background: #24292f;
-    margin-right: 0;
 }
-.bilibili-link:hover, .github-link:hover, .back-home:hover {
+.back-home:hover {
+    background: #373e47;
     transform: scale(1.05);
-    opacity: 0.9;
 }
 
 /* ========== 页脚样式（覆盖公共组件） ========== */
@@ -289,8 +324,24 @@ footer .email {
     border-color: #1f4068;
 }
 
-/* 移动端适配 */
+/* ========== 响应式适配 ========== */
 @media (max-width: 768px) {
+    .header-wrap {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    .header-left {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    .header-logo {
+        height: 55px;
+    }
+    .header-right {
+        justify-content: center;
+    }
     .blog-container {
         grid-template-columns: 1fr;
         position: static;
@@ -311,9 +362,22 @@ footer .email {
         width: 100%;
         height: auto;
     }
-    .header-wrap {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
+}
+
+@media (max-width: 480px) {
+    .header-logo {
+        height: 45px;
+    }
+    .site-title h1 {
+        font-size: 1.3rem;
+    }
+    header {
+        padding: 0.8rem 1rem;
+    }
+    .blog-container {
+        padding: 0 0.5rem;
+    }
+    .article-list {
+        padding: 1rem;
     }
 }

@@ -29,6 +29,30 @@ header {
     justify-content: space-between;
     align-items: center;
 }
+
+/* ----- 新增：左侧 Logo + 标题容器 ----- */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* ----- 新增：大尺寸 Logo ----- */
+.header-logo {
+    height: 80px;
+    width: auto;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+/* 右侧按钮组 */
+.header-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 .site-title h1 {
     font-size: 1.6rem;
     color: #fff;
@@ -47,7 +71,6 @@ header {
     border-radius: 6px;
     transition: all 0.3s;
     font-weight: 500;
-    margin-left: 8px;
 }
 .back-home {
     background: #24292f;
@@ -324,8 +347,27 @@ footer a:hover {
         gap: 1rem;
         text-align: center;
     }
+    .header-left {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    .header-logo {
+        height: 55px;
+    }
+    .header-right {
+        justify-content: center;
+    }
     .sub-tool-grid {
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+}
+@media (max-width: 480px) {
+    .header-logo {
+        height: 45px;
+    }
+    .site-title h1 {
+        font-size: 1.3rem;
     }
 }
 
