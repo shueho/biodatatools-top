@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>密码子各位点碱基组成统计 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .codon-config-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px 0;
+        }
+        .codon-config-row .config-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px 20px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .codon-config-row .config-group:last-child {
+            border-bottom: none;
+        }
+        .codon-config-row .form-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .codon-viz-grid {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 2px;
+            margin-top: 8px;
+            max-height: 320px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            padding: 6px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        .codon-viz-cell {
+            text-align: center;
+            font-family: "Consolas", monospace;
+            font-size: 12px;
+            padding: 2px 0;
+            border-radius: 3px;
+            background-color: #ffffff;
+            border: 1px solid #e8edf2;
+            transition: 0.1s;
+        }
+        .codon-viz-cell .codon { font-weight: bold; }
+        .codon-viz-cell .amino { font-size: 10px; color: #555; display: block; line-height: 1.2; }
+        .codon-viz-cell.excluded { background-color: #ffdddd; border-color: #dc3545; }
+        .codon-viz-cell.terminal-excluded { background-color: #ffcccc; border-color: #c0392b; }
+        .codon-viz-group-label {
+            grid-column: span 16;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1f4068;
+            background: #eef2f7;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        @media (max-width: 768px) {
+            .codon-viz-grid { grid-template-columns: repeat(8, 1fr); }
+            .codon-viz-group-label { grid-column: span 8; }
+        }
+        @media (max-width: 480px) {
+            .codon-viz-grid { grid-template-columns: repeat(4, 1fr); }
+            .codon-viz-group-label { grid-column: span 4; }
+        }
+
+        .result-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .gene-name {
+            text-align: left;
+            font-weight: 500;
+            white-space: nowrap;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .error-row td { background-color: #fff0f0; color: #c0392b; }
+        .num { font-family: "Consolas", monospace; text-align: right; }
+        .error-badge { color: #dc3545; font-weight: bold; margin-left: 4px; }
+        .empty-tip { color: #999; text-align: center; padding: 30px 0; font-style: italic; }
+        .tip-text { margin-top: 6px; }
+        .hide { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>密码子各位点碱基组成统计</h2>
+            <p>计算密码子三个位点A/T/G/C碱基的频数或频率，支持密码子过滤</p>
+        </div>
+
+        <!-- 第一步 -->
+        <div class="step-card">
+            <div class="step-title">第一步：导入 CDS 序列 (FASTA)</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传 FASTA 文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴 FASTA 文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="粘贴标准 FASTA 格式的 CDS 序列（支持多条）" disabled></textarea>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="loadBtn">加载序列</button>
+            </div>
+            <div id="seqPreviewWrap" style="display:none;margin-top:12px;">
+                <span style="font-size:0.9rem;color:#555;">已加载 <span id="seqCount">0</span> 条序列</span>
+            </div>
+        </div>
+
+        <!-- 第二步 -->
+        <div class="step-card">
+            <div class="step-title">第二步：参数设置</div>
+            <div class="codon-config-row">
+                <div class="config-group">
+                    <div class="form-item">
+                        <label>NCBI 密码子表：</label>
+                        <select id="codonTableSel"></select>
+                    </div>
+                    <div class="form-item">
+                        <label>终止密码子（可手动修改）：</label>
+                        <input type="text" id="stopCodonInput" style="width:180px;">
+                    </div>
+                    <div class="form-item">
+                        <label><input type="checkbox" id="keepStop" checked> 保留终止密码子</label>
+                    </div>
+                </div>
+                <div class="config-group">
+                    <div class="form-item">
+                        <label>输出模式：</label>
+                        <select id="outputMode">
+                            <option value="count">频数</option>
+                            <option value="freq">频率 (%)</option>
+                        </select>
+                    </div>
+                    <div class="form-item">
+                        <label>密码子过滤：</label>
+                        <select id="filterMode">
+                            <option value="all">全部保留</option>
+                            <option value="nondegenerate">排除单密码子氨基酸</option>
+                            <option value="fourfold">只保留四倍简并</option>
+                        </select>
+                    </div>
+                    <div class="form-item">
+                        <button class="btn" id="runBtn" disabled>开始统计</button>
+                    </div>
+                </div>
+            </div>
+            <div id="tableViewTip" class="tip-text"></div>
+
+            <!-- 密码子表可视化容器 -->
+            <div style="margin-top:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                    <span style="font-weight:500; color:#1f4068;">📊 密码子表预览（红色 = 排除）</span>
+                    <span style="font-size:0.85rem; color:#6c757d;">终止密码子参与过滤（当保留时）</span>
+                </div>
+                <div id="codonTableViz" class="codon-viz-grid"></div>
+            </div>
+        </div>
+
+        <!-- 第三步 -->
+        <div class="step-card">
+            <div class="step-title">第三步：统计结果</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>复制结果 (TSV)</button>
+                <button class="btn" id="exportCsvBtn" disabled>导出 CSV</button>
+                <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div class="table-container" id="resultTableWrap">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px;font-size:0.85rem;color:#6c757d;">
+                    <span id="rowCount"></span>
+                    <span id="errorSummary" style="margin-left:16px;color:#dc3545;"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">等待统计…</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+            bilibiliUrl: 'https://space.bilibili.com/33053326',
+            bilibiliText: '前往B站主页',
+            githubUrl: 'https://github.com/shueho/BioDataTools',
+            githubText: 'GitHub项目',
+            returnHomeUrl: '../index.html'
+        };
+    </script>
+
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/codon_config.js"></script>
+    <script src="../COMMON/sms_genetic_codes.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // DOM 元素
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const msgTip = document.getElementById('msgTip');
+            const loadBtn = document.getElementById('loadBtn');
+            const seqPreviewWrap = document.getElementById('seqPreviewWrap');
+            const seqCount = document.getElementById('seqCount');
+
+            const codonTableSel = document.getElementById('codonTableSel');
+            const stopCodonInput = document.getElementById('stopCodonInput');
+            const keepStop = document.getElementById('keepStop');
+            const outputMode = document.getElementById('outputMode');
+            const filterMode = document.getElementById('filterMode');
+            const runBtn = document.getElementById('runBtn');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+            const errorSummary = document.getElementById('errorSummary');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            const toolbarTip = document.getElementById('toolbarTip');
+
+            const codonViz = document.getElementById('codonTableViz');
+
+            let sequences = [];
+            let results = [];
+            let currentCodonTable = {};
+            let currentStopCodons = [];
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === toolbarTip) {
+                    setTimeout(() => { if (el === msgTip) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            // ========== 核心：生成排除集 ==========
+            function buildExcludedSet(codonTable, filterMode, keepStopFlag) {
+                const excluded = new Set();
+                const stopSet = new Set(currentStopCodons); // RNA格式
+
+                // 获取所有64个密码子及其氨基酸
+                const bases = ['U', 'C', 'A', 'G'];
+                const allCodons = [];
+                for (let b1 of bases) {
+                    for (let b2 of bases) {
+                        for (let b3 of bases) {
+                            const codon = b1 + b2 + b3;
+                            const aa = codonTable[codon] || 'X';
+                            allCodons.push({ codon, aa });
+                        }
+                    }
+                }
+
+                // 终止密码子：如果不保留，全部排除
+                if (!keepStopFlag) {
+                    for (const c of allCodons) {
+                        if (c.aa === 'TER' || c.aa === '*') {
+                            excluded.add(c.codon);
+                        }
+                    }
+                }
+
+                // 对于 'nondegenerate' 模式：排除单简并（氨基酸只有一个密码子）
+                if (filterMode === 'nondegenerate') {
+                    // 统计每个氨基酸的密码子数（包括终止，如果保留）
+                    const aaCount = {};
+                    for (const c of allCodons) {
+                        let aa = c.aa;
+                        if (aa === 'TER' || aa === '*') {
+                            if (keepStopFlag) aa = 'TER';
+                            else continue;
+                        }
+                        if (!aaCount[aa]) aaCount[aa] = 0;
+                        aaCount[aa]++;
+                    }
+                    // 排除密码子数=1的氨基酸的所有密码子（不包括终止，如果终止被保留，其密码子数可能>1则不会被排除）
+                    for (const c of allCodons) {
+                        let aa = c.aa;
+                        if (aa === 'TER' || aa === '*') {
+                            if (keepStopFlag) aa = 'TER';
+                            else continue;
+                        }
+                        if (aaCount[aa] === 1) {
+                            excluded.add(c.codon);
+                        }
+                    }
+                }
+
+                // 对于 'fourfold' 模式：只保留四倍简并（前两位相同且4个密码子编码同一氨基酸）
+                if (filterMode === 'fourfold') {
+                    // 按前两位分组
+                    const groups = {};
+                    for (const c of allCodons) {
+                        const prefix = c.codon.substring(0, 2);
+                        if (!groups[prefix]) groups[prefix] = [];
+                        groups[prefix].push(c);
+                    }
+                    // 找出四倍简并前缀
+                    const fourfoldPrefixes = new Set();
+                    for (const [prefix, codons] of Object.entries(groups)) {
+                        if (codons.length === 4) {
+                            const aaSet = new Set();
+                            let valid = true;
+                            for (const c of codons) {
+                                let aa = c.aa;
+                                if (aa === 'TER' || aa === '*') {
+                                    if (keepStopFlag) aa = 'TER';
+                                    else { valid = false; break; }
+                                }
+                                aaSet.add(aa);
+                            }
+                            if (valid && aaSet.size === 1) {
+                                fourfoldPrefixes.add(prefix);
+                            }
+                        }
+                    }
+                    // 排除所有不属于四倍简并前缀的密码子
+                    for (const c of allCodons) {
+                        const prefix = c.codon.substring(0, 2);
+                        if (!fourfoldPrefixes.has(prefix)) {
+                            excluded.add(c.codon);
+                        }
+                    }
+                }
+
+                // 'all' 模式：不排除任何非终止（终止已由 keepStop 控制）
+                return excluded;
+            }
+
+            // ========== 可视化（使用排除集） ==========
+            function renderCodonTableVisualization() {
+                const excluded = buildExcludedSet(currentCodonTable, filterMode.value, keepStop.checked);
+                const table = currentCodonTable;
+
+                const bases = ['U', 'C', 'A', 'G'];
+                let html = '';
+                for (let b1 of bases) {
+                    html += `<div class="codon-viz-group-label">第一位: ${b1}</div>`;
+                    for (let b2 of bases) {
+                        for (let b3 of bases) {
+                            const codon = b1 + b2 + b3;
+                            const aa = table[codon] || 'X';
+                            const isTerminal = (aa === 'TER' || aa === '*');
+                            const excludedFlag = excluded.has(codon);
+                            const cellClass = 'codon-viz-cell' + (excludedFlag ? (isTerminal ? ' terminal-excluded' : ' excluded') : '');
+                            const aaDisplay = isTerminal ? '•' : aa;
+                            html += `<div class="${cellClass}" title="${codon} → ${aa}">
+                                <span class="codon">${codon}</span>
+                                <span class="amino">${aaDisplay}</span>
+                            </div>`;
+                        }
+                    }
+                }
+                codonViz.innerHTML = html;
+            }
+
+            // ========== 密码子表管理 ==========
+            function initCodonSelect() {
+                codonTableSel.innerHTML = '';
+                for (const id in TABLE_ID_NAME_MAP) {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = TABLE_ID_NAME_MAP[id];
+                    codonTableSel.appendChild(opt);
+                }
+                const initId = Number(codonTableSel.value);
+                updateStopFromTable(initId);
+                currentCodonTable = getCodonTable(initId);
+                renderCodonTableVisualization();
+            }
+
+            function updateStopFromTable(tableId) {
+                const table = getCodonTable(tableId);
+                const stops = [];
+                for (const [codon, aa] of Object.entries(table)) {
+                    if (aa === 'TER' || aa === '*') stops.push(codon);
+                }
+                currentStopCodons = stops;
+                stopCodonInput.value = stops.join(',');
+                currentCodonTable = table;
+            }
+
+            codonTableSel.addEventListener('change', function() {
+                const id = Number(this.value);
+                updateStopFromTable(id);
+                document.getElementById('tableViewTip').innerHTML = `<span class="success">已切换：${getTableName(id)}</span>`;
+                renderCodonTableVisualization();
+            });
+
+            filterMode.addEventListener('change', renderCodonTableVisualization);
+            keepStop.addEventListener('change', renderCodonTableVisualization);
+
+            // ========== FASTA 解析 ==========
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ name, seq });
+                        name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ name, seq });
+                return seqs;
+            }
+
+            function loadSequences() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                let text = (mode === 'file') ? fastaText.value : fastaText.value;
+                if (!text.trim()) {
+                    showMsg(msgTip, '❌ 请先上传文件或粘贴 FASTA 内容', 'error');
+                    return;
+                }
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, '❌ 未解析到有效 FASTA 序列', 'error');
+                    return;
+                }
+                sequences = parsed;
+                seqCount.textContent = sequences.length;
+                seqPreviewWrap.style.display = 'block';
+                showMsg(msgTip, `✅ 成功加载 ${sequences.length} 条序列`, 'success');
+                toast(`✅ 已加载 ${sequences.length} 条序列`);
+                runBtn.disabled = false;
+                clearResults();
+            }
+
+            // ========== 核心分析（使用排除集） ==========
+            function analyzeSequence(seq, stopCodons, keepStopFlag, filterMode, codonTable) {
+                let rna = seq.toUpperCase().replace(/T/g, 'U');
+                const len = rna.length;
+                const stopSet = new Set(stopCodons);
+
+                // 获取所有完整密码子
+                let allCodons = [];
+                for (let i = 0; i + 3 <= len; i += 3) {
+                    allCodons.push(rna.substring(i, i + 3));
+                }
+
+                // 检测中间终止
+                let stopPositions = [];
+                for (let i = 0; i < allCodons.length; i++) {
+                    if (stopSet.has(allCodons[i])) {
+                        stopPositions.push(i);
+                    }
+                }
+
+                let error = null;
+                let validCodons = [];
+
+                if (stopPositions.length > 0) {
+                    const firstStop = stopPositions[0];
+                    if (firstStop * 3 + 3 < len) {
+                        error = `中间终止密码子 "${allCodons[firstStop]}" 位于第 ${firstStop+1} 个密码子，后面还有 ${len - (firstStop*3 + 3)} 个碱基`;
+                        return { error };
+                    }
+                    if (keepStopFlag) {
+                        validCodons = allCodons.slice();
+                    } else {
+                        validCodons = allCodons.slice(0, firstStop);
+                    }
+                } else {
+                    validCodons = allCodons.slice();
+                }
+
+                if (validCodons.length === 0) {
+                    return { error: '序列中无有效密码子' };
+                }
+
+                // ---- 使用排除集过滤 ----
+                const excluded = buildExcludedSet(codonTable, filterMode, keepStopFlag);
+                validCodons = validCodons.filter(codon => !excluded.has(codon));
+
+                if (validCodons.length === 0) {
+                    return { error: '过滤后无有效密码子' };
+                }
+
+                // ---- 统计 ----
+                const stats = {
+                    A1: 0, U1: 0, G1: 0, C1: 0,
+                    A2: 0, U2: 0, G2: 0, C2: 0,
+                    A3: 0, U3: 0, G3: 0, C3: 0,
+                    other: 0
+                };
+                const validSet = new Set(['A', 'U', 'G', 'C']);
+                for (const codon of validCodons) {
+                    const bases = codon.split('');
+                    for (let pos = 0; pos < 3; pos++) {
+                        const b = bases[pos];
+                        const key = b + (pos + 1);
+                        if (validSet.has(b)) stats[key] = (stats[key] || 0) + 1;
+                        else stats.other = (stats.other || 0) + 1;
+                    }
+                }
+                const posStats = {
+                    pos1: { A: stats.A1, T: stats.U1, G: stats.G1, C: stats.C1 },
+                    pos2: { A: stats.A2, T: stats.U2, G: stats.G2, C: stats.C2 },
+                    pos3: { A: stats.A3, T: stats.U3, G: stats.G3, C: stats.C3 }
+                };
+                const codonCount = validCodons.length;
+                const gc1_count = stats.G1 + stats.C1;
+                const gc2_count = stats.G2 + stats.C2;
+                const gc3_count = stats.G3 + stats.C3;
+                const totalG = stats.G1 + stats.G2 + stats.G3;
+                const totalC = stats.C1 + stats.C2 + stats.C3;
+                const totalGC_count = totalG + totalC;
+                const totalBases = codonCount * 3;
+                const gc1_pct = codonCount > 0 ? (gc1_count / codonCount * 100) : 0;
+                const gc2_pct = codonCount > 0 ? (gc2_count / codonCount * 100) : 0;
+                const gc3_pct = codonCount > 0 ? (gc3_count / codonCount * 100) : 0;
+                const totalGC_pct = totalBases > 0 ? (totalGC_count / totalBases * 100) : 0;
+
+                return {
+                    codonCount,
+                    totalBases,
+                    posStats,
+                    gc1_count, gc2_count, gc3_count, totalGC_count,
+                    gc1_pct, gc2_pct, gc3_pct, totalGC_pct,
+                    error: null
+                };
+            }
+
+            function runAnalysis() {
+                if (sequences.length === 0) {
+                    showMsg(msgTip, '❌ 请先加载序列', 'error');
+                    return;
+                }
+
+                const stopStr = stopCodonInput.value.trim().toUpperCase();
+                const stopCodons = stopStr.split(/[,，\s]+/)
+                    .filter(s => s.length === 3)
+                    .map(c => c.replace(/T/g, 'U'));
+
+                if (stopCodons.length === 0) {
+                    showMsg(msgTip, '❌ 请至少输入一个有效的终止密码子（三个字母）', 'error');
+                    return;
+                }
+
+                const keepStopFlag = keepStop.checked;
+                const filter = filterMode.value;
+                const codonTable = currentCodonTable;
+
+                results = [];
+                let errorCount = 0;
+                for (const seqItem of sequences) {
+                    const result = analyzeSequence(seqItem.seq, stopCodons, keepStopFlag, filter, codonTable);
+                    if (result.error) {
+                        errorCount++;
+                        results.push({
+                            name: seqItem.name,
+                            error: result.error,
+                            codonCount: null,
+                            totalBases: null,
+                            posStats: null,
+                            gc1_count: null, gc2_count: null, gc3_count: null, totalGC_count: null,
+                            gc1_pct: null, gc2_pct: null, gc3_pct: null, totalGC_pct: null
+                        });
+                    } else {
+                        results.push({
+                            name: seqItem.name,
+                            error: null,
+                            codonCount: result.codonCount,
+                            totalBases: result.totalBases,
+                            posStats: result.posStats,
+                            gc1_count: result.gc1_count,
+                            gc2_count: result.gc2_count,
+                            gc3_count: result.gc3_count,
+                            totalGC_count: result.totalGC_count,
+                            gc1_pct: result.gc1_pct,
+                            gc2_pct: result.gc2_pct,
+                            gc3_pct: result.gc3_pct,
+                            totalGC_pct: result.totalGC_pct
+                        });
+                    }
+                }
+
+                renderResults(outputMode.value);
+                runBtn.disabled = false;
+                if (errorCount > 0) {
+                    showMsg(msgTip, `⚠️ 统计完成，${errorCount} 个基因存在终止密码子错误或过滤后无有效密码子`, 'warn');
+                } else {
+                    showMsg(msgTip, `✅ 统计完成，${results.length} 个基因全部正常`, 'success');
+                    toast('✅ 统计完成');
+                }
+                copyResultBtn.disabled = false;
+                exportCsvBtn.disabled = false;
+            }
+
+            // 渲染结果（不变）
+            function renderResults(mode) {
+                if (results.length === 0) {
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+
+                emptyResult.style.display = 'none';
+                resultArea.style.display = 'block';
+
+                const isFreq = (mode === 'freq');
+                let headers = ['基因名称', '密码子数', '总碱基数'];
+                for (let pos = 1; pos <= 3; pos++) {
+                    for (const base of ['A', 'T', 'G', 'C']) {
+                        headers.push(base + pos);
+                    }
+                }
+                const gcSuffix = isFreq ? '(%)' : '';
+                headers.push(`GC1${gcSuffix}`, `GC2${gcSuffix}`, `GC3${gcSuffix}`, `总GC${gcSuffix}`);
+
+                let thead = '<tr>';
+                for (const h of headers) thead += `<th>${h}</th>`;
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                let tbody = '';
+                let errorCount = 0;
+                for (const r of results) {
+                    if (r.error) {
+                        errorCount++;
+                        tbody += `<tr class="error-row">`;
+                        tbody += `<td class="gene-name">${escapeHtml(r.name)} <span class="error-badge">[错误]</span></td>`;
+                        tbody += `<td colspan="${headers.length - 1}" class="error-msg">❌ ${escapeHtml(r.error)}</td>`;
+                        tbody += '</tr>';
+                        continue;
+                    }
+                    const codonCount = r.codonCount;
+                    tbody += `<tr>`;
+                    tbody += `<td class="gene-name">${escapeHtml(r.name)}</td>`;
+                    tbody += `<td class="num">${codonCount}</td>`;
+                    tbody += `<td class="num">${r.totalBases}</td>`;
+
+                    const stats = r.posStats;
+                    for (let pos = 1; pos <= 3; pos++) {
+                        const posData = stats['pos' + pos];
+                        if (posData) {
+                            for (const base of ['A', 'T', 'G', 'C']) {
+                                const val = posData[base] || 0;
+                                if (isFreq) {
+                                    const pct = codonCount > 0 ? (val / codonCount * 100) : 0;
+                                    tbody += `<td class="num">${pct.toFixed(2)}</td>`;
+                                } else {
+                                    tbody += `<td class="num">${val}</td>`;
+                                }
+                            }
+                        } else {
+                            for (const base of ['A', 'T', 'G', 'C']) tbody += `<td class="num">0</td>`;
+                        }
+                    }
+                    if (isFreq) {
+                        tbody += `<td class="num">${r.gc1_pct.toFixed(2)}</td>`;
+                        tbody += `<td class="num">${r.gc2_pct.toFixed(2)}</td>`;
+                        tbody += `<td class="num">${r.gc3_pct.toFixed(2)}</td>`;
+                        tbody += `<td class="num">${r.totalGC_pct.toFixed(2)}</td>`;
+                    } else {
+                        tbody += `<td class="num">${r.gc1_count}</td>`;
+                        tbody += `<td class="num">${r.gc2_count}</td>`;
+                        tbody += `<td class="num">${r.gc3_count}</td>`;
+                        tbody += `<td class="num">${r.totalGC_count}</td>`;
+                    }
+                    tbody += '</tr>';
+                }
+
+                resultBody.innerHTML = tbody;
+                const totalOk = results.filter(r => !r.error).length;
+                rowCount.textContent = `共 ${results.length} 个基因，成功 ${totalOk} 个`;
+                if (errorCount > 0) {
+                    errorSummary.textContent = `❌ 错误 ${errorCount} 个`;
+                } else {
+                    errorSummary.textContent = '';
+                }
+            }
+
+            function clearResults() {
+                results = [];
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                copyResultBtn.disabled = true;
+                exportCsvBtn.disabled = true;
+                toolbarTip.innerHTML = '';
+                errorSummary.textContent = '';
+            }
+
+            // 复制与导出（不变）
+            function getDataRows(mode) {
+                const isFreq = (mode === 'freq');
+                const rows = [];
+                const header = ['基因名称', '密码子数', '总碱基数'];
+                for (let pos = 1; pos <= 3; pos++) {
+                    for (const base of ['A', 'T', 'G', 'C']) {
+                        header.push(base + pos);
+                    }
+                }
+                const gcSuffix = isFreq ? '(%)' : '';
+                header.push(`GC1${gcSuffix}`, `GC2${gcSuffix}`, `GC3${gcSuffix}`, `总GC${gcSuffix}`);
+                rows.push(header);
+
+                for (const r of results) {
+                    const row = [];
+                    row.push(r.name);
+                    if (r.error) {
+                        row.push('错误', '错误');
+                        for (let pos = 1; pos <= 3; pos++) {
+                            for (const base of ['A', 'T', 'G', 'C']) row.push('-');
+                        }
+                        for (let i = 0; i < 4; i++) row.push('-');
+                        row.push(r.error);
+                    } else {
+                        row.push(String(r.codonCount), String(r.totalBases));
+                        const stats = r.posStats;
+                        for (let pos = 1; pos <= 3; pos++) {
+                            const posData = stats['pos' + pos];
+                            if (posData) {
+                                for (const base of ['A', 'T', 'G', 'C']) {
+                                    const val = posData[base] || 0;
+                                    if (isFreq) {
+                                        const pct = r.codonCount > 0 ? (val / r.codonCount * 100) : 0;
+                                        row.push(pct.toFixed(2) + '%');
+                                    } else {
+                                        row.push(String(val));
+                                    }
+                                }
+                            } else {
+                                for (const base of ['A', 'T', 'G', 'C']) row.push('0');
+                            }
+                        }
+                        if (isFreq) {
+                            row.push(r.gc1_pct.toFixed(2) + '%');
+                            row.push(r.gc2_pct.toFixed(2) + '%');
+                            row.push(r.gc3_pct.toFixed(2) + '%');
+                            row.push(r.totalGC_pct.toFixed(2) + '%');
+                        } else {
+                            row.push(String(r.gc1_count));
+                            row.push(String(r.gc2_count));
+                            row.push(String(r.gc3_count));
+                            row.push(String(r.totalGC_count));
+                        }
+                    }
+                    rows.push(row);
+                }
+                return rows;
+            }
+
+            function copyResult() {
+                if (results.length === 0) {
+                    showMsg(toolbarTip, '❌ 无数据', 'error');
+                    return;
+                }
+                const rows = getDataRows(outputMode.value);
+                const content = rows.map(row => row.join('\t')).join('\n');
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + content).then(() => {
+                        showMsg(toolbarTip, '✅ 已复制', 'success');
+                        toast('✅ 已复制');
+                    }).catch(() => fallbackCopy(content));
+                } else {
+                    fallbackCopy(content);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(toolbarTip, '✅ 已复制', 'success');
+                    toast('✅ 已复制');
+                } catch (e) {
+                    showMsg(toolbarTip, '❌ 复制失败', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportCSV() {
+                if (results.length === 0) {
+                    showMsg(toolbarTip, '❌ 无数据', 'error');
+                    return;
+                }
+                const rows = getDataRows(outputMode.value);
+                const content = rows.map(row => row.join(',')).join('\n');
+                const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'codon_position_base_stats.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(toolbarTip, '✅ CSV 已导出', 'success');
+                toast('✅ CSV 已导出');
+            }
+
+            // ========== 事件绑定 ==========
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                seqCount.textContent = '0';
+                seqPreviewWrap.style.display = 'none';
+                runBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    msgTip.innerHTML = `<span class="success">✅ 已读取：${file.name}</span>`;
+                    toast(`✅ 文件 ${file.name} 加载成功`);
+                    const parsed = parseFasta(ev.target.result);
+                    if (parsed.length > 0) {
+                        sequences = parsed;
+                        seqCount.textContent = sequences.length;
+                        seqPreviewWrap.style.display = 'block';
+                        runBtn.disabled = false;
+                        clearResults();
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadSequences();
+                }
+            });
+
+            loadBtn.addEventListener('click', loadSequences);
+            runBtn.addEventListener('click', runAnalysis);
+            copyResultBtn.addEventListener('click', copyResult);
+            exportCsvBtn.addEventListener('click', exportCSV);
+
+            outputMode.addEventListener('change', function() {
+                if (results.length > 0) renderResults(this.value);
+            });
+
+            // ========== 初始化 ==========
+            initCodonSelect();
+            clearResults();
+            runBtn.disabled = true;
+            seqPreviewWrap.style.display = 'none';
+        })();
+    </script>
+</body>
+</html>

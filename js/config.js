@@ -8,7 +8,7 @@ const toolConfig = [
     toolName: "GenBank特征提取",
     toolDesc: "支持上传GB文件/粘贴GB文本，提取基因、CDS、mRNA、内含子等特征序列",
     toolIcon: "images/001.png",
-    link: "function/001.genbank_feat_extract.html"
+    link: "function/001.Genbank_feat_extract.html"
 },
 
 {
@@ -30,7 +30,14 @@ const toolConfig = [
     toolDesc: "将比对好的 FASTA 文件或文本转换为 AXT 成对比对格式",
     toolIcon: "images/010.png",
     link: "function/010.Fasta_to_AXT.html"
-}
+},
+
+{
+    toolName: "FASTA文件追加合并",
+    toolDesc: "将多个FASTA文件合并为一个文件，并在序列ID前添加来源文件名前缀",
+    toolIcon: "images/013.png",
+    link: "function/013.Fasta_append_merge.html"
+},
 
         ]
     },
@@ -59,6 +66,19 @@ const toolConfig = [
     link: "function/009.Base_composition.html"
 },
 
+{
+    toolName: "密码子各位点碱基组成统计",
+    toolDesc: "计算密码子三个位点A/T/G/C碱基的频数或频率，支持密码子过滤",
+    toolIcon: "images/011.png",
+    link: "function/011.Codon_position_base_stats.html"
+},
+
+{
+    toolName: "CodonW指数在线计算",
+    toolDesc: "参考CodonW源码在线计算T3s、C3s、A3s、G3s、Nc、GC3s与GC",
+    toolIcon: "images/012.png",
+    link: "function/012.CodonW_indices.html"
+},
 
         ]
     },

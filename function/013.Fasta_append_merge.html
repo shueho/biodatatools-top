@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FASTA文件追加合并 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        /* 页面独有样式，仅用于微调 */
+        .result-box {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+        }
+        .highlight-box .stat {
+            font-weight: 400;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .result-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>FASTA文件追加合并</h2>
+            <p>将多个FASTA文件合并为一个文件，并在序列ID前添加来源文件名前缀</p>
+        </div>
+
+        <!-- 第一步：导入 -->
+        <div class="step-card">
+            <div class="step-title">第一步：导入 FASTA 文件</div>
+
+            <div class="mode-tabs">
+                <label>
+                    <input type="radio" name="importMode" value="files" checked onchange="switchMode()">
+                    <span>选择文件 <span class="hint">（可多选）</span></span>
+                </label>
+                <label>
+                    <input type="radio" name="importMode" value="folder" onchange="switchMode()">
+                    <span>选择文件夹 <span class="hint">（读取全部 FASTA）</span></span>
+                </label>
+            </div>
+
+            <!-- 文件模式 -->
+            <div class="file-input" id="fileInputWrap">
+                <input type="file" id="fileInput" multiple accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.mpfa,.txt,.fas">
+                <div class="input-hint">点击选择文件（按住 Ctrl 可多选）</div>
+            </div>
+
+            <!-- 文件夹模式 -->
+            <div class="file-input" id="folderInputWrap" style="display:none;">
+                <input type="file" id="folderInput" webkitdirectory multiple accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.mpfa,.txt,.fas">
+                <div class="input-hint">点击选择整个文件夹，自动读取其中所有 FASTA 文件</div>
+            </div>
+
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="fileListWrap" style="display:none; margin-top:12px;">
+                <div class="file-list" id="fileList"></div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="fileCount">共 0 个 FASTA 文件</span>
+                    <button class="btn btn-sm" id="clearFilesBtn" style="margin-left:12px; background:#dc3545;">清空</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二步：合并参数 + 结果 -->
+        <div class="step-card">
+            <div class="step-title">第二步：合并参数与结果</div>
+
+            <div class="filter-box">
+                <label>
+                    <input type="checkbox" id="addPrefix" checked>
+                    在序列ID前添加文件名前缀
+                    <span style="font-weight:400;color:#888;font-size:0.85rem;margin-left:4px;">
+                        （例如 a.fasta 中的序列 >gene 变为 >a-gene）
+                    </span>
+                </label>
+                <label>
+                    <input type="checkbox" id="separator" value="-" checked>
+                    使用分隔符 <input type="text" id="sepChar" value="-" style="width:30px;padding:2px;text-align:center;">
+                </label>
+                <button class="btn" id="mergeBtn" disabled>开始合并</button>
+            </div>
+            <div id="paramTip" class="tip-text"></div>
+
+            <div id="resultArea" style="display:none; margin-top:15px;">
+                <!-- 工具条：复制 + 下载 -->
+                <div class="result-toolbar">
+                    <button class="btn" id="copyMergeBtn" disabled>复制合并内容</button>
+                    <button class="btn" id="downloadMergeBtn" disabled>下载 merged.fasta</button>
+                    <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
+                </div>
+
+                <div class="highlight-box" style="margin-top:0;">
+                    <div>
+                        <span class="label">📄 merged.fasta</span>
+                        <span class="stat">（共 <span id="totalSeqs">0</span> 条序列，来自 <span id="totalFiles">0</span> 个文件）</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:12px;">
+                    <span style="font-weight:500;">合并结果预览（前1000字符）：</span>
+                    <div id="previewBox" class="result-box" style="margin-top:6px;">等待合并…</div>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip" style="margin-top:15px;">合并完成后将显示结果！</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+            bilibiliUrl: 'https://space.bilibili.com/33053326',
+            bilibiliText: '前往B站主页',
+            githubUrl: 'https://github.com/shueho/BioDataTools',
+            githubText: 'GitHub项目',
+            returnHomeUrl: '../index.html'
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('fileInput');
+            const folderInput = document.getElementById('folderInput');
+            const msgTip = document.getElementById('msgTip');
+            const paramTip = document.getElementById('paramTip');
+            const toolbarTip = document.getElementById('toolbarTip');
+            const fileListWrap = document.getElementById('fileListWrap');
+            const fileList = document.getElementById('fileList');
+            const fileCount = document.getElementById('fileCount');
+            const clearFilesBtn = document.getElementById('clearFilesBtn');
+            const mergeBtn = document.getElementById('mergeBtn');
+            const addPrefix = document.getElementById('addPrefix');
+            const sepChar = document.getElementById('sepChar');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const totalSeqs = document.getElementById('totalSeqs');
+            const totalFiles = document.getElementById('totalFiles');
+            const previewBox = document.getElementById('previewBox');
+            const downloadMergeBtn = document.getElementById('downloadMergeBtn');
+            const copyMergeBtn = document.getElementById('copyMergeBtn');
+
+            let fastaFiles = []; // 存储 File 对象
+            let mergedContent = ''; // 合并后的完整内容
+
+            const VALID_EXTS = ['.fasta', '.fa', '.fna', '.ffn', '.faa', '.frn', '.mpfa', '.txt', '.fas'];
+
+            // ---------- 模式切换 ----------
+            window.switchMode = function() {
+                const mode = document.querySelector('input[name="importMode"]:checked').value;
+                document.getElementById('fileInputWrap').style.display = (mode === 'files') ? 'block' : 'none';
+                document.getElementById('folderInputWrap').style.display = (mode === 'folder') ? 'block' : 'none';
+
+                // 清空已有数据
+                fastaFiles = [];
+                fileListWrap.style.display = 'none';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                mergeBtn.disabled = true;
+                copyMergeBtn.disabled = true;
+                downloadMergeBtn.disabled = true;
+                msgTip.innerHTML = '';
+                paramTip.innerHTML = '';
+                toolbarTip.innerHTML = '';
+                fileInput.value = '';
+                folderInput.value = '';
+                mergedContent = '';
+            };
+
+            // ---------- 文件类型判断 ----------
+            function isFastaFile(filename) {
+                const lower = filename.toLowerCase();
+                for (let ext of VALID_EXTS) {
+                    if (lower.endsWith(ext)) return true;
+                }
+                return false;
+            }
+
+            function processFiles(files) {
+                const list = [];
+                for (let i = 0; i < files.length; i++) {
+                    if (isFastaFile(files[i].name)) {
+                        list.push(files[i]);
+                    }
+                }
+                return list;
+            }
+
+            // ---------- 更新文件列表 ----------
+            function updateFileList() {
+                if (fastaFiles.length === 0) {
+                    fileListWrap.style.display = 'none';
+                    mergeBtn.disabled = true;
+                    return;
+                }
+                fileListWrap.style.display = 'block';
+                let html = '';
+                fastaFiles.forEach(file => {
+                    const size = (file.size / 1024).toFixed(1);
+                    html += `
+                        <div class="file-item">
+                            <span class="name">${escapeHtml(file.name)}</span>
+                            <span class="size">${size} KB</span>
+                        </div>
+                    `;
+                });
+                fileList.innerHTML = html;
+                fileCount.textContent = '共 ' + fastaFiles.length + ' 个 FASTA 文件';
+                mergeBtn.disabled = false;
+                // 清空之前的结果
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                mergedContent = '';
+                toolbarTip.innerHTML = '';
+                paramTip.innerHTML = '';
+                copyMergeBtn.disabled = true;
+                downloadMergeBtn.disabled = true;
+            }
+
+            // ---------- 通用函数 ----------
+            function escapeHtml(s) {
+                if (!s) return '';
+                return s.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === paramTip) setTimeout(() => el.innerHTML = '', 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            // ---------- 文件输入事件 ----------
+            fileInput.addEventListener('change', function(e) {
+                const files = e.target.files;
+                if (files.length === 0) return;
+                const valid = processFiles(files);
+                if (valid.length === 0) {
+                    showMsg(msgTip, '❌ 未找到有效的 FASTA 文件（支持：' + VALID_EXTS.join(', ') + '）', 'error');
+                    return;
+                }
+                fastaFiles = valid;
+                showMsg(msgTip, '✅ 已添加 ' + valid.length + ' 个文件', 'success');
+                toast('✅ 已添加 ' + valid.length + ' 个文件');
+                updateFileList();
+                fileInput.value = '';
+            });
+
+            folderInput.addEventListener('change', function(e) {
+                const files = e.target.files;
+                if (files.length === 0) return;
+                const valid = processFiles(files);
+                if (valid.length === 0) {
+                    showMsg(msgTip, '❌ 文件夹中未找到有效的 FASTA 文件（支持：' + VALID_EXTS.join(', ') + '）', 'error');
+                    return;
+                }
+                fastaFiles = valid;
+                showMsg(msgTip, '✅ 读取成功，共 ' + valid.length + ' 个 FASTA 文件', 'success');
+                toast('✅ 读取成功，共 ' + valid.length + ' 个 FASTA 文件');
+                updateFileList();
+                folderInput.value = '';
+            });
+
+            clearFilesBtn.addEventListener('click', function() {
+                fastaFiles = [];
+                fileListWrap.style.display = 'none';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                mergeBtn.disabled = true;
+                copyMergeBtn.disabled = true;
+                downloadMergeBtn.disabled = true;
+                msgTip.innerHTML = '';
+                paramTip.innerHTML = '';
+                toolbarTip.innerHTML = '';
+                fileInput.value = '';
+                folderInput.value = '';
+                mergedContent = '';
+            });
+
+            // ---------- 解析 FASTA ----------
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '';
+                let seq = '';
+                for (let line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) {
+                            seqs.push({ id: name, seq: seq });
+                        }
+                        name = trimmed.slice(1).trim(); // 去掉 > 并 trim
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) {
+                    seqs.push({ id: name, seq: seq });
+                }
+                return seqs;
+            }
+
+            // ---------- 读取文件并合并 ----------
+            function readFileAsync(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = () => reject(new Error('读取失败: ' + file.name));
+                    reader.readAsText(file);
+                });
+            }
+
+            async function doMerge() {
+                if (fastaFiles.length === 0) {
+                    showMsg(paramTip, '❌ 请先导入 FASTA 文件', 'error');
+                    return;
+                }
+
+                mergeBtn.disabled = true;
+                mergeBtn.textContent = '合并中…';
+                showMsg(paramTip, '⏳ 正在处理，请稍候…', 'warn');
+
+                const prefixFlag = addPrefix.checked;
+                const sep = sepChar.value || '-';
+                let allSeqs = [];
+                let fileNames = [];
+
+                try {
+                    for (let file of fastaFiles) {
+                        const content = await readFileAsync(file);
+                        const seqs = parseFasta(content);
+                        if (seqs.length === 0) continue;
+                        // 获取文件名（不含扩展名）
+                        let baseName = file.name.replace(/\.[^.]+$/, '');
+                        // 如果文件名包含非法字符，替换为下划线
+                        baseName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
+                        fileNames.push(baseName);
+
+                        for (let seq of seqs) {
+                            let newId = seq.id;
+                            if (prefixFlag) {
+                                newId = baseName + sep + seq.id;
+                            }
+                            allSeqs.push({ id: newId, seq: seq.seq });
+                        }
+                    }
+
+                    if (allSeqs.length === 0) {
+                        showMsg(paramTip, '❌ 所有文件均无有效序列，无法合并', 'error');
+                        mergeBtn.disabled = false;
+                        mergeBtn.textContent = '开始合并';
+                        return;
+                    }
+
+                    // 构建合并后的 FASTA 内容
+                    let merged = '';
+                    for (let s of allSeqs) {
+                        merged += '>' + s.id + '\n' + s.seq + '\n';
+                    }
+                    mergedContent = merged;
+
+                    // 显示结果
+                    renderResults(allSeqs.length, fileNames.length);
+                    showMsg(paramTip, '✅ 合并完成，共 ' + allSeqs.length + ' 条序列', 'success');
+                    toast('✅ 合并完成');
+
+                } catch (err) {
+                    showMsg(paramTip, '❌ 合并出错：' + err.message, 'error');
+                    console.error(err);
+                }
+
+                mergeBtn.disabled = false;
+                mergeBtn.textContent = '开始合并';
+            }
+
+            // ---------- 渲染结果 ----------
+            function renderResults(seqCount, fileCount) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                totalSeqs.textContent = seqCount;
+                totalFiles.textContent = fileCount;
+                copyMergeBtn.disabled = false;
+                downloadMergeBtn.disabled = false;
+
+                // 预览前1000字符
+                let preview = mergedContent.slice(0, 1000);
+                if (mergedContent.length > 1000) preview += '\n... (略)';
+                previewBox.textContent = preview || '(空)';
+            }
+
+            // ---------- 复制合并内容 ----------
+            function copyMerged() {
+                if (!mergedContent) {
+                    showMsg(toolbarTip, '❌ 无内容可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(mergedContent)
+                        .then(() => {
+                            showMsg(toolbarTip, '✅ 已复制合并内容到剪贴板', 'success');
+                            toast('✅ 已复制');
+                        })
+                        .catch(() => {
+                            fallbackCopy(mergedContent);
+                        });
+                } else {
+                    fallbackCopy(mergedContent);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(toolbarTip, '✅ 已复制合并内容到剪贴板', 'success');
+                    toast('✅ 已复制');
+                } catch (e) {
+                    showMsg(toolbarTip, '❌ 复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            // ---------- 下载 ----------
+            function downloadMerged() {
+                if (!mergedContent) {
+                    showMsg(toolbarTip, '❌ 无内容可下载', 'error');
+                    return;
+                }
+                const blob = new Blob([mergedContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'merged.fasta';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(toolbarTip, '✅ 已下载 merged.fasta', 'success');
+                toast('✅ 已下载 merged.fasta');
+            }
+
+            // ---------- 事件绑定 ----------
+            mergeBtn.addEventListener('click', doMerge);
+            downloadMergeBtn.addEventListener('click', downloadMerged);
+            copyMergeBtn.addEventListener('click', copyMerged);
+
+            // 参数变化时自动重新合并（若已有结果）
+            addPrefix.addEventListener('change', function() {
+                if (fastaFiles.length > 0) {
+                    doMerge();
+                }
+            });
+            sepChar.addEventListener('input', function() {
+                if (fastaFiles.length > 0) {
+                    doMerge();
+                }
+            });
+
+            // 初始化
+            document.getElementById('fileInputWrap').style.display = 'block';
+            document.getElementById('folderInputWrap').style.display = 'none';
+            resultArea.style.display = 'none';
+            emptyResult.style.display = 'block';
+            mergeBtn.disabled = true;
+            copyMergeBtn.disabled = true;
+            downloadMergeBtn.disabled = true;
+        })();
+    </script>
+</body>
+</html>
