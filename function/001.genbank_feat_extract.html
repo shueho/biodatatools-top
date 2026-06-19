@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GenBank特征提取 - BioDataTools 网页版</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
-    <!-- 引入全局公用样式 -->
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
 <body>
@@ -87,6 +86,7 @@
     <script src="../COMMON/footer.js"></script>
 
     <script>
+        // ---------- 以下为原始代码，仅修改 removeNonDna 和 prepareFeatures ----------
         let rawGBContent = "";
         let fastaAll = "";
         const msgTip = document.getElementById("msgTip");
@@ -125,7 +125,7 @@
             reader.onload = function (ev) {
                 rawGBContent = ev.target.result;
                 msgTip.innerHTML = `<span class="success">✅ 文件读取成功：${file.name}</span>`;
-                window.showToast(`✅ 文件 ${file.name} 加载成功`);  // 新增 Toast 提醒
+                window.showToast(`✅ 文件 ${file.name} 加载成功`);
                 resultBox.innerHTML = "";
                 fastaAll = "";
                 copyAllBtn.disabled = true;
@@ -134,7 +134,6 @@
             reader.readAsText(file);
         });
 
-        // 新增：从特征文本中提取名称（优先级：gene > product > locus_tag > note）
         function getFeatureName(featureText) {
             const patterns = [
                 /\/gene\s*=\s*["']?([^"'\n\r]+)["']?/i,
@@ -155,13 +154,16 @@
             if (!str) return "";
             return str.replace(/[\f\n\r\t]+/g, "").trim();
         }
+
         function removeNonDna(str) {
             if (!str) return "";
-            return str.replace(/[^ATGCatgc]/g, "").toUpperCase();
+            return str.replace(/[^A-Za-z]/g, '').toUpperCase();
         }
+
         function reverse(str) {
             return str.split("").reverse().join("");
         }
+
         function complement(str) {
             const map = {
                 A:"T",T:"A",C:"G",G:"C",
@@ -173,6 +175,7 @@
             for(let c of str) res += map[c] || c;
             return res;
         }
+
         function addReturns(str) { return str; }
         function hasAmbiguousBase(seq) {
             return /[RYMKSWHBVDNrymkshbvd]/.test(seq);
@@ -193,6 +196,25 @@
             return seq;
         };
 
+        function printFeature(featurePos, dnaSequence, outputType) {
+            featurePos = featurePos.replace(/<|>/g,"");
+            if (featurePos.search(/complement/) != -1) {
+                var feature = new Feature("complement");
+            } else {
+                var feature = new Feature("direct");
+            }
+            var posArray = featurePos.replace(/\)/g,"").split(/\(/);
+            var pairArray = posArray[posArray.length-1].split(/\,/);
+            for (var j = 0; j < pairArray.length; j++) {
+                var range = pairArray[j].split(/\.\./);
+                var start = parseInt(range[0])-1;
+                var end = parseInt(range[1]);
+                feature.addFragment(dnaSequence.substring(start,end));
+            }
+            return feature.writeFeature();
+        }
+
+        // ---------- 原始 genBankFeatExtract ----------
         function genBankFeatExtract (genBankFile,outputType,targetKeys) {
             let outputHtml = "";
             let fasta = "";
@@ -214,64 +236,67 @@
             return { html:outputHtml, fasta:fasta };
         }
 
-function prepareFeatures (arrayOfFeatures,dnaSequence,outputType,targetKeys) {
-    let outHtml = "";
-    let outFasta = "";
-    for (var i=1; i < arrayOfFeatures.length; i++) {
-        arrayOfFeatures[i] = arrayOfFeatures[i].replace(/[\[\]\*]/g,"");
-        let featureTitle = (arrayOfFeatures[i].match(/[^ \f\n\r\t\v]+ /) || [""])[0].trim();
-        if (!targetKeys.includes(featureTitle.toUpperCase())) continue;
+        function prepareFeatures (arrayOfFeatures,dnaSequence,outputType,targetKeys) {
+            let outHtml = "";
+            let outFasta = "";
+            for (var i=1; i < arrayOfFeatures.length; i++) {
+                arrayOfFeatures[i] = arrayOfFeatures[i].replace(/[\[\]\*]/g,"");
+                let featureTitle = (arrayOfFeatures[i].match(/[^ \f\n\r\t\v]+ /) || [""])[0].trim();
+                if (!targetKeys.includes(featureTitle.toUpperCase())) continue;
 
-        // 获取特征名称（gene/product/locus_tag/note）
-        let geneName = getFeatureName(arrayOfFeatures[i]);
+                let geneName = getFeatureName(arrayOfFeatures[i]);
 
-        // 获取第一个限定符（例如 "/gene" 或 "/product"）
-        let firstQualifier = "";
-        let qMatch = arrayOfFeatures[i].match(/\/[^\f\n\r]+/);
-        if (qMatch) firstQualifier = qMatch[0];
+                // 获取第一个限定符
+                let firstQualifier = "";
+                let qMatch = arrayOfFeatures[i].match(/\/[^\f\n\r]+/);
+                if (qMatch) firstQualifier = qMatch[0];
+                let qualifierName = firstQualifier ? firstQualifier.split('=')[0].replace(/^\//, '') : "";
 
-        // 提取限定符名称（等号前的部分）
-        let qualifierName = firstQualifier ? firstQualifier.split('=')[0].replace(/^\//, '') : "";
+                // 检测 /transl_except
+                let transPos = null;
+                const transMatch = null //arrayOfFeatures[i].match(/\/transl_except\s*=\s*\(pos:(\d+),aa:[^)]+\)/i);
+                if (transMatch) {
+                    transPos = parseInt(transMatch[1], 10);
+                }
 
-        // 位置解析
-        let posPart = arrayOfFeatures[i].replace(new RegExp("^\\s*"+featureTitle),"").split(/\//)[0];
-        let seq = printFeature(posPart,dnaSequence,outputType);
-        let seqLen = seq.length;
+                // 提取位置字符串
+                let posPart = arrayOfFeatures[i].replace(new RegExp("^\\s*"+featureTitle),"").split(/\//)[0];
 
-        // 构建 header 各个部分
-        let namePart = (geneName && geneName !== "NA") ? `${geneName} ` : "";
-        let qualPart = (qualifierName && qualifierName !== "") ? `${qualifierName} ` : "";
-	let cleanName = namePart.trim().replace(/ /g, '_');
-	let header = `>${cleanName} ${featureTitle} Lable=${qualPart} Len=${seqLen}`;
-        let warn = hasAmbiguousBase(seq) ? ' <span class="warn">⚠️ 含简并碱基</span>' : '';
+                // 先用原始 printFeature 提取序列
+                let seq = printFeature(posPart, dnaSequence, outputType);
 
-        outHtml += `<div style="margin:12px 0;">
-            <p><strong>${header}</strong>${warn}</p>
-            <div class="seq-area">${seq}</div>
-        </div>`;
-        outFasta += header + "\n" + seq + "\n";
-    }
-    return { html:outHtml, fasta:outFasta };
-}
+                // 若存在 transl_except，根据方向删除指定位点
+                if (transPos !== null) {
+                    if (posPart.search(/complement/) != -1) {
+                        // complement 方向：删除最后一个碱基（pos 是区间最左端）
+                        if (seq.length > 0) {
+                            seq = seq.substring(0, seq.length - 1);
+                        }
+                    } else {
+                        // direct 方向：删除索引 transPos-1 的碱基
+                        if (seq.length >= transPos) {
+                            seq = seq.substring(0, transPos - 1) + seq.substring(transPos);
+                        }
+                    }
+                }
 
-        function printFeature(featurePos,dnaSequence,outputType) {
-            featurePos = featurePos.replace(/<|>/g,"");
-            if (featurePos.search(/complement/) != -1) {
-                var feature = new Feature("complement");
-            } else {
-                var feature = new Feature("direct");
+                let seqLen = seq.length;
+                let namePart = (geneName && geneName !== "NA") ? `${geneName} ` : "";
+                let qualPart = (qualifierName && qualifierName !== "") ? `${qualifierName} ` : "";
+                let cleanName = namePart.trim().replace(/ /g, '_');
+                let header = `>${cleanName} ${featureTitle} Lable=${qualPart} Len=${seqLen}`;
+                let warn = hasAmbiguousBase(seq) ? ' <span class="warn">⚠️ 含简并碱基</span>' : '';
+
+                outHtml += `<div style="margin:12px 0;">
+                    <p><strong>${header}</strong>${warn}</p>
+                    <div class="seq-area">${seq}</div>
+                </div>`;
+                outFasta += header + "\n" + seq + "\n";
             }
-            var posArray = featurePos.replace(/\)/g,"").split(/\(/);
-            var pairArray = posArray[posArray.length-1].split(/\,/);
-            for (var j = 0; j < pairArray.length; j++) {
-                var range = pairArray[j].split(/\.\./);
-                var start = parseInt(range[0])-1;
-                var end = parseInt(range[1]);
-                feature.addFragment(dnaSequence.substring(start,end));
-            }
-            return feature.writeFeature();
+            return { html:outHtml, fasta:outFasta };
         }
 
+        // ---------- 其余函数（parseGB, copyAllFasta, downloadFasta 等）完全保持原始 ----------
         function parseGB() {
             resultBox.innerHTML = "";
             msgTip.innerHTML = "";

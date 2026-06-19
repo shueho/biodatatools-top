@@ -114,8 +114,12 @@ const toolConfig = [
         categoryName: "其他",
         categoryIcon: "📋",
         tools: [
-            { toolName: "线粒体基因组分析流程", toolDesc: "预留空位", toolIcon: "⚙️", link: "module2_01.html" },
-
+{
+    toolName: "脚本下载",
+    toolDesc: "点击脚本名称或下载按钮即可获取脚本",
+    toolIcon: "images/000.png",
+    link: "function/000.template.html"
+},
         ]
     }
 ];

@@ -3,38 +3,287 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>页眉页脚测试 - BioDataTools 网页版</title>
-    <!-- 仅引入页眉页脚基础样式 -->
+    <title>脚本下载 - BioDataTools</title>
     <link rel="stylesheet" href="../COMMON/global.css">
-    <!-- 后续容器样式可以单独写在这里或单独文件 -->
+    <style>
+        /* 限制整体内容宽度，避免太宽 */
+        .main {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .search-box {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        .search-box input {
+            width: 100%;
+            max-width: 500px;
+            padding: 0.7rem 1.2rem;
+            border: 2px solid #e8edf2;
+            border-radius: 30px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .search-box input:focus {
+            border-color: #1f4068;
+        }
+
+        .script-card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            max-height: 70vh;
+            overflow-y: auto;
+            padding: 0.8rem 1rem;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(31, 64, 104, 0.1);
+            border: 1px solid #e8edf2;
+            scrollbar-width: thin;
+        }
+        .script-card-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .script-card-list::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 3px;
+        }
+
+        .script-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid #f0f4f8;
+            transition: background 0.2s;
+            border-radius: 6px;
+        }
+        .script-row:hover {
+            background: #f7f9fc;
+        }
+        .script-row:last-child {
+            border-bottom: none;
+        }
+
+        .script-info {
+            flex: 1;
+            margin-right: 1rem;
+            overflow: hidden;
+            min-width: 0; /* 防止溢出 */
+        }
+        .script-name {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #1f4068;
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: color 0.2s;
+            word-break: break-all;
+        }
+        .script-name:hover {
+            color: #fb7299;
+        }
+        .script-desc {
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 0.1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .script-download-btn {
+            background: #1f4068;
+            color: #fff;
+            border: none;
+            padding: 0.3rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .script-download-btn:hover {
+            background: #2a5688;
+        }
+
+        .no-result {
+            text-align: center;
+            color: #999;
+            padding: 2rem;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 600px) {
+            .main {
+                padding: 0 1rem;
+            }
+            .script-row {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                padding: 0.8rem 0.6rem;
+            }
+            .script-info {
+                flex: 1 1 100%;
+                margin-right: 0;
+            }
+            .script-download-btn {
+                width: 100%;
+                text-align: center;
+                padding: 0.4rem;
+            }
+            .search-box input {
+                max-width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <!-- 页眉占位符 -->
     <div id="common-header"></div>
 
-    <!-- 主内容区域（目前为空，后续可以添加你的容器） -->
     <div class="main">
-        <div style="text-align: center; padding: 2rem;">
-            <h2>页眉和页脚组件测试</h2>
-            <p>页眉已包含返回首页按钮，B站/GitHub链接可自定义。页脚包含捐赠二维码（悬浮）和动态版权年份。</p>
-            <p>后续你可在此页面中添加自己的功能容器（例如文件上传、表格等），样式可单独定义。</p>
+        <div class="page-intro">
+            <h2>脚本下载</h2>
+            <p>点击脚本名称或下载按钮即可获取脚本</p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 输入脚本名称或描述..." />
+        </div>
+
+        <div id="scriptContainer" class="script-card-list">
+            <div class="no-result">⏳ 加载中...</div>
         </div>
     </div>
 
-    <!-- 页脚占位符 -->
     <div id="common-footer"></div>
 
-    <!-- 可选：自定义页眉配置 -->
     <script>
         window.headerConfig = {
-            bilibiliText: 'B站视频教程',
-            githubText: 'GitHub 仓库'
+            author: '地上飞猪',
+
         };
     </script>
-    <!-- 引入页眉和页脚组件（使用绝对路径） -->
+    <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
     <script src="../COMMON/footer.js"></script>
 
+    <script>
+        (function() {
+            const DATA_URL = '../COMMON/scripts.json';
+            const container = document.getElementById('scriptContainer');
+            const searchInput = document.getElementById('searchInput');
+            let scripts = [];
+
+            function getFileNameFromUrl(url) {
+                try {
+                    const u = new URL(url);
+                    const path = u.pathname;
+                    const parts = path.split('/');
+                    let filename = parts.pop() || 'download';
+                    if (!filename.includes('.')) filename += '.bin';
+                    return filename;
+                } catch (e) {
+                    return 'download.bin';
+                }
+            }
+
+            function downloadFile(url) {
+                const filename = getFileNameFromUrl(url);
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) throw new Error('下载请求失败');
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const a = document.createElement('a');
+                        const objectURL = URL.createObjectURL(blob);
+                        a.href = objectURL;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(objectURL);
+                    })
+                    .catch(err => {
+                        console.warn('fetch 下载失败，回退到打开链接:', err);
+                        window.open(url, '_blank');
+                    });
+            }
+
+            function renderRows(filter = '') {
+                const keyword = filter.trim().toLowerCase();
+                let filtered = scripts;
+                if (keyword) {
+                    filtered = scripts.filter(item => {
+                        const name = getFileNameFromUrl(item.url).toLowerCase();
+                        const desc = (item.desc || '').toLowerCase();
+                        return name.includes(keyword) || desc.includes(keyword);
+                    });
+                }
+
+                if (filtered.length === 0) {
+                    container.innerHTML = `<div class="no-result">😕 没有匹配的脚本</div>`;
+                    return;
+                }
+
+                let html = '';
+                filtered.forEach(item => {
+                    const filename = getFileNameFromUrl(item.url);
+                    const desc = (item.desc || '无描述').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    html += `
+                        <div class="script-row">
+                            <div class="script-info">
+                                <div class="script-name" data-url="${item.url}">📄 ${filename}</div>
+                                <div class="script-desc">${desc}</div>
+                            </div>
+                            <button class="script-download-btn" data-url="${item.url}">⬇ 下载</button>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+
+                container.querySelectorAll('.script-name, .script-download-btn').forEach(el => {
+                    el.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const url = this.dataset.url;
+                        downloadFile(url);
+                    });
+                });
+            }
+
+            function loadData() {
+                fetch(DATA_URL)
+                    .then(res => {
+                        if (!res.ok) throw new Error('网络请求失败');
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (!Array.isArray(data) || data.length === 0) {
+                            container.innerHTML = '<div class="no-result">📭 暂无脚本数据</div>';
+                            return;
+                        }
+                        scripts = data;
+                        renderRows();
+                    })
+                    .catch(err => {
+                        console.error('加载脚本数据失败:', err);
+                        container.innerHTML = `<div class="no-result">❌ 加载失败，请检查数据文件。<br>${err.message}</div>`;
+                    });
+            }
+
+            searchInput.addEventListener('input', function() {
+                renderRows(this.value);
+            });
+
+            loadData();
+        })();
+    </script>
 </body>
 </html>

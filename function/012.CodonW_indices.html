@@ -49,7 +49,7 @@
                 <label>终止密码子（可手动修改）：
                     <input type="text" id="stopCodonInput" style="width:180px;">
                 </label>
-                <label><input type="checkbox" id="keepStop" > 计算包含终止密码子</label>
+                <label><input type="checkbox" id="keepStop"> 计算包含终止密码子</label>
                 <button class="btn" id="runBtn" disabled>开始计算</button>
             </div>
             <div id="tableViewTip" class="tip-text"></div>
@@ -370,17 +370,24 @@
                 const totb = new Array(9).fill(0);
                 const numaa = new Array(9).fill(0);
 
-                // 遍历每个氨基酸（排除终止密码子）
-                for (const [aa, total] of Object.entries(nnaa)) {
-                    if (aa === 'TER' || aa === '*' || aa === 'X') continue;
+                // 获取所有可能的氨基酸（从密码子表中）
+                const aaSet = new Set();
+                for (const [codon, aa] of Object.entries(codonTable)) {
+                    if (aa !== 'TER' && aa !== '*') {
+                        aaSet.add(aa);
+                    }
+                }
+                // 遍历每个氨基酸（即使出现次数为 0）
+                for (const aa of aaSet) {
+                    const total = nnaa[aa] || 0; // 出现次数
                     const deg = aaDegeneracy[aa] || 0;
-                    if (deg === 0) continue;
-                    fold[deg]++; // 无论bb是否有效，fold都加1
+                    if (deg === 0) continue; // 理论上不会，但安全起见
+                    fold[deg]++; // 无论 bb 是否有效，fold 都增加
 
-                    // 如果该氨基酸出现次数 <= 1，跳过 bb 计算
+                    // 如果出现次数 <= 1，bb = 0，不累加 totb 和 numaa
                     if (total <= 1) continue;
 
-                    // 计算 s2 = sum((n_j / total)^2)
+                    // 计算 s2
                     let s2 = 0;
                     for (const codon of Object.keys(codonCounts)) {
                         if (codonTable[codon] === aa) {
@@ -391,7 +398,6 @@
                             }
                         }
                     }
-                    // bb = (N * s2 - 1) / (N - 1)
                     const bb = (total * s2 - 1) / (total - 1);
                     if (bb > 0.0000001) {
                         totb[deg] += bb;
@@ -420,20 +426,20 @@
                         }
                         if (aver > 0) {
                             enc_tot += fold[z] / aver;
+                        } else {
+                            error_t = true;
+                            break;
                         }
                     }
                 }
 
                 if (error_t) {
-                    // 如果出错，返回错误，但我们这里直接给个标识
-                    // 但为了不中断，我们设为 NaN 或 61
-                    enc_tot = 61;
+                    return { error: 'Nc 计算失败：某些氨基酸家族的密码子频率无法计算 homozygosity' };
                 }
 
                 // 最终调整
                 if (enc_tot > 61) enc_tot = 61;
 
-                // 返回结果
                 return {
                     T3s,
                     C3s,
@@ -501,7 +507,7 @@
                 renderResults();
                 runBtn.disabled = false;
                 if (errorCount > 0) {
-                    showMsg(msgTip, `⚠️ 计算完成，${errorCount} 个基因存在终止密码子错误或无法计算`, 'warn');
+                    showMsg(msgTip, `⚠️ 计算完成，${errorCount} 个基因存在终止密码子错误或Nc无法计算`, 'warn');
                 } else {
                     showMsg(msgTip, `✅ 计算完成，${results.length} 个基因全部成功`, 'success');
                     toast('✅ 计算完成');
