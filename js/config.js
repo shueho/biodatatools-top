@@ -117,8 +117,15 @@ const toolConfig = [
 {
     toolName: "脚本下载",
     toolDesc: "点击脚本名称或下载按钮即可获取脚本",
-    toolIcon: "images/000.png",
-    link: "function/000.template.html"
+    toolIcon: "images/999.png",
+    link: "function/999.Script_download.html"
+},
+
+{
+    toolName: "常用链接",
+    toolDesc: "收藏的生物信息学工具、数据库及资源",
+    toolIcon: "images/998.png",
+    link: "function/998.Links.html"
 },
         ]
     }

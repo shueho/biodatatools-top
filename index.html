@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="BioDataTools —— 无需安装的生物信息学在线工具集，提供核酸序列处理、统计分析、绘图美化等免费生物信息学工具。">
-
-    <meta property="og:title" content="BioDataTools — 生物信息学在线工具集">
+    <meta name="description" content="BioDataTools - 无需安装的生物信息学在线工具集，提供核酸序列处理、统计分析、绘图美化等免费生物信息学工具。">
+    <meta property="og:title" content="BioDataTools - 生物信息学在线工具集">
     <meta property="og:description" content="无需安装的生物信息学在线工具集，提供核酸序列处理、统计分析、绘图美化等免费工具。">
     <meta property="og:image" content="https://www.biodatatools.top/images/logo.png">
     <meta property="og:image:width" content="1200">
@@ -33,25 +32,22 @@
             </div>
             <div class="header-right">
                 <a href="https://space.bilibili.com/33053326" target="_blank" class="bilibili-link">前往B站主页</a>
-                <a href="https://github.com/shueho/BioDataTools" target="_blank" class="github-link">GitHub 项目</a>
+                <a href="https://github.com/shueho/BioDataTools" target="_blank" class="github-link">GitHub项目</a>
             </div>
         </div>
     </header>
 
-    <!-- 左侧导航栏 -->
     <nav class="side-nav" id="sideNav">
         <h4>功能导航</h4>
         <ul id="navList"></ul>
     </nav>
 
-    <!-- 主内容区 -->
     <div class="main">
         <div class="intro">
             <h2>生物数据分析工具合集</h2>
-            <p>BioDataTools 是一套无需安装的生物信息学在线工具集</p>
+            <p>BioDataTools是一套无需安装的生物信息学在线工具集</p>
         </div>
 
-        <!-- 搜索框 -->
         <div class="search-bar">
             <input type="text" id="toolSearchInput" placeholder="🔍 输入工具名称或功能描述中的字段，试试搜索：蛋白质...">
         </div>
@@ -59,15 +55,12 @@
         <div id="toolList"></div>
     </div>
 
-    <!-- 页脚占位符 -->
     <div id="common-footer"></div>
 
-    <!-- 引入公共页脚脚本 -->
     <script src="COMMON/footer.js"></script>
     <script src="js/config.js"></script>
     <script src="js/main.js"></script>
 
-    <!-- 侧边栏切换交互 -->
     <script>
         const toggleSideBtn = document.getElementById('toggleSideBtn');
         const sideNav = document.querySelector('.side-nav');
