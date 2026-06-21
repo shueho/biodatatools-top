@@ -7,7 +7,7 @@
         bilibiliText: '前往B站主页',
         githubUrl: 'https://github.com/shueho/BioDataTools',
         githubText: 'GitHub项目',
-        returnHomeUrl: '../index.html'   // 绝对路径，始终指向首页
+        returnHomeUrl: '../index-ch.html'   
     };
 
     function getConfig() {

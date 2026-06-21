@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GenBank特征提取 - BioDataTools 网页版</title>
+    <title>GenBank特征提取 - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
@@ -13,11 +13,10 @@
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>GenBank 特征序列提取</h2>
+            <h2>GenBank特征序列提取</h2>
             <p>支持上传GB文件/粘贴GB文本，提取基因、CDS、mRNA、内含子等特征序列</p>
         </div>
 
-        <!-- 第一步卡片 -->
         <div class="step-card">
             <div class="step-title">第一步：导入 GenBank 注释文件</div>
             <div class="radio-box">
@@ -33,7 +32,6 @@
             <div id="msgTip" class="tip-text"></div>
         </div>
 
-        <!-- 第二步卡片 -->
         <div class="step-card">
             <div class="step-title">第二步：筛选提取特征</div>
             <div class="filter-box">
@@ -57,7 +55,6 @@
             </div>
         </div>
 
-        <!-- 第三步卡片 -->
         <div class="step-card">
             <div class="step-title">第三步：提取结果</div>
             <div class="result-toolbar">
@@ -76,9 +73,6 @@
     <script>
         window.headerConfig = {
             author: '脚本原作者：Paul Stothard, University of Alberta, Canada（修改：地上飞猪）',
-            bilibiliText: '前往B站主页',
-            githubText: 'GitHub项目',
-            returnHomeUrl: '../index.html'
         };
     </script>
     <script src="../COMMON/utils.js"></script>
@@ -86,7 +80,6 @@
     <script src="../COMMON/footer.js"></script>
 
     <script>
-        // ---------- 以下为原始代码，仅修改 removeNonDna 和 prepareFeatures ----------
         let rawGBContent = "";
         let fastaAll = "";
         const msgTip = document.getElementById("msgTip");
@@ -214,7 +207,6 @@
             return feature.writeFeature();
         }
 
-        // ---------- 原始 genBankFeatExtract ----------
         function genBankFeatExtract (genBankFile,outputType,targetKeys) {
             let outputHtml = "";
             let fasta = "";
@@ -246,34 +238,27 @@
 
                 let geneName = getFeatureName(arrayOfFeatures[i]);
 
-                // 获取第一个限定符
                 let firstQualifier = "";
                 let qMatch = arrayOfFeatures[i].match(/\/[^\f\n\r]+/);
                 if (qMatch) firstQualifier = qMatch[0];
                 let qualifierName = firstQualifier ? firstQualifier.split('=')[0].replace(/^\//, '') : "";
 
-                // 检测 /transl_except
                 let transPos = null;
                 const transMatch = null //arrayOfFeatures[i].match(/\/transl_except\s*=\s*\(pos:(\d+),aa:[^)]+\)/i);
                 if (transMatch) {
                     transPos = parseInt(transMatch[1], 10);
                 }
 
-                // 提取位置字符串
                 let posPart = arrayOfFeatures[i].replace(new RegExp("^\\s*"+featureTitle),"").split(/\//)[0];
 
-                // 先用原始 printFeature 提取序列
                 let seq = printFeature(posPart, dnaSequence, outputType);
 
-                // 若存在 transl_except，根据方向删除指定位点
                 if (transPos !== null) {
                     if (posPart.search(/complement/) != -1) {
-                        // complement 方向：删除最后一个碱基（pos 是区间最左端）
                         if (seq.length > 0) {
                             seq = seq.substring(0, seq.length - 1);
                         }
                     } else {
-                        // direct 方向：删除索引 transPos-1 的碱基
                         if (seq.length >= transPos) {
                             seq = seq.substring(0, transPos - 1) + seq.substring(transPos);
                         }
@@ -296,7 +281,6 @@
             return { html:outHtml, fasta:outFasta };
         }
 
-        // ---------- 其余函数（parseGB, copyAllFasta, downloadFasta 等）完全保持原始 ----------
         function parseGB() {
             resultBox.innerHTML = "";
             msgTip.innerHTML = "";

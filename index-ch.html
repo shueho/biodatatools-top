@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BioDataTools - 无需安装的生物信息学在线工具集，提供核酸序列处理、统计分析、绘图美化等免费生物信息学工具。">
+    <meta property="og:title" content="BioDataTools - 生物信息学在线工具集">
+    <meta property="og:description" content="无需安装的生物信息学在线工具集，提供核酸序列处理、统计分析、绘图美化等免费工具。">
+    <meta property="og:image" content="https://www.biodatatools.top/images/logo.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:url" content="https://www.biodatatools.top/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="BioDataTools">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <title>BioDataTools</title>
+    <link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <button class="toggle-side-btn" id="toggleSideBtn">⇆</button>
+
+    <header>
+        <div class="header-wrap">
+            <div class="header-left">
+                <img src="images/logo.png" alt="BioDataTools Logo" class="header-logo">
+                <div class="site-title">
+                    <h1>BioDataTools</h1>
+                    <div class="author">作者：地上飞猪</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <a href="https://space.bilibili.com/33053326" target="_blank" class="bilibili-link">前往B站主页</a>
+                <a href="https://github.com/shueho/BioDataTools" target="_blank" class="github-link">GitHub项目</a>
+                <button id="langSwitchBtn" class="lang-switch-btn">English</button>
+            </div>
+        </div>
+    </header>
+
+    <nav class="side-nav" id="sideNav">
+        <h4>功能导航</h4>
+        <ul id="navList"></ul>
+    </nav>
+
+    <div class="main">
+        <div class="intro">
+            <h2>生物数据分析工具合集</h2>
+            <p>BioDataTools是一套无需安装的生物信息学在线工具集</p>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" id="toolSearchInput" placeholder="🔍 输入工具名称或功能描述中的字段，试试搜索：蛋白质...">
+        </div>
+
+        <div id="toolList"></div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="COMMON/footer.js"></script>
+    <script src="js/config-ch.js"></script>
+    <script src="js/main.js"></script>
+
+    <script>
+        const toggleSideBtn = document.getElementById('toggleSideBtn');
+        const sideNav = document.querySelector('.side-nav');
+        const mainWrap = document.querySelector('.main');
+
+        toggleSideBtn.addEventListener('click', function() {
+            sideNav.classList.toggle('hidden');
+            mainWrap.classList.toggle('full-width');
+            this.textContent = '⇆';
+        });
+    </script>
+</body>
+</html>

@@ -1,10 +1,9 @@
-// 渲染左侧导航栏
 function renderSideNav() {
     const navList = document.getElementById('navList');
     navList.innerHTML = '';
 
     const blogItem = document.createElement('li');
-    blogItem.innerHTML = `<a href="blog/home.html" class="parent-item blog-home-item">📝 博客首页</a>`;
+    blogItem.innerHTML = `<a href="blog/home.html" class="parent-item blog-home-item">📝 Blog</a>`;
     navList.appendChild(blogItem);
 
     const plotItem = document.createElement('li');
@@ -47,7 +46,6 @@ function scrollToTool(toolId) {
     }
 }
 
-// 渲染主内容（卡片结构改为左图右文，并记录所有卡片元素以用于搜索）
 let allCardElements = []; // 存储 { card, categoryWrap, toolName, toolDesc }
 
 function renderToolList() {
@@ -75,7 +73,6 @@ function renderToolList() {
             card.className = 'sub-tool-card';
             card.id = toolId;
 
-            // 图标部分：图片或emoji
             let iconHtml = '';
             if (tool.toolIcon && tool.toolIcon.startsWith('images/')) {
                 iconHtml = `<img src="${tool.toolIcon}" alt="${tool.toolName}">`;
@@ -93,7 +90,6 @@ function renderToolList() {
             card.onclick = () => window.open(tool.link, '_blank');
 
             grid.appendChild(card);
-            // 存储卡片信息用于搜索
             allCardElements.push({
                 card: card,
                 categoryWrap: catWrap,
@@ -104,10 +100,8 @@ function renderToolList() {
     });
 }
 
-// 搜索筛选函数
 function filterToolsByKeyword(keyword) {
     const kw = keyword.trim().toLowerCase();
-    // 记录哪些分类下还有可见卡片
     const categoryHasVisible = new Map(); // key: categoryWrap, value: boolean
 
     allCardElements.forEach(item => {
@@ -120,7 +114,6 @@ function filterToolsByKeyword(keyword) {
         }
     });
 
-    // 处理整个分类的显隐
     const allCategories = document.querySelectorAll('.tool-category');
     allCategories.forEach(cat => {
         if (categoryHasVisible.get(cat)) {
@@ -131,7 +124,6 @@ function filterToolsByKeyword(keyword) {
     });
 }
 
-// 页面加载完成后绑定搜索事件
 window.addEventListener('DOMContentLoaded', function () {
     renderSideNav();
     renderToolList();
@@ -142,4 +134,33 @@ window.addEventListener('DOMContentLoaded', function () {
             filterToolsByKeyword(e.target.value);
         });
     }
+});
+
+function initLanguageSwitch() {
+    const btn = document.getElementById('langSwitchBtn');
+    if (!btn) return;
+
+    const isChinese = window.location.pathname.includes('index-ch.html');
+
+    if (isChinese) {
+        btn.textContent = '🌐 English';   
+        btn.onclick = () => location.href = 'index.html';
+    } else {
+        btn.textContent = '🌐 中文';
+        btn.onclick = () => location.href = 'index-ch.html';
+    }
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+    renderSideNav();
+    renderToolList();
+
+    const searchInput = document.getElementById('toolSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            filterToolsByKeyword(e.target.value);
+        });
+    }
+
+    initLanguageSwitch();
 });
