@@ -31,9 +31,9 @@
             </span>
             <div class="email">联系作者：studid@163.com</div>
             BioDataTools &copy; ${yearText} 地上飞猪<br>
-            声明：大部分内容改编自BioDataTools工具集，部分脚本取自开源项目并标注原作者，网页设计由AI辅助完成。<br>
-            如需引用，可引用本网站：https://www.biodatatools.top或BioDataTools工具集。<br>
-            参考文献：薛浩, 大石鸡（Alectoris magna）基因组结构与比较基因组分析[D]. 烟台: 烟台大学, 2024.
+            建议引用：<a href="https://www.biodatatools.top" target="_blank" style="color:#1f4068;">BioDataTools（https://www.biodatatools.top）</a> 或 <a href="https://github.com/shueho/BioDataTools" target="_blank" style="color:#1f4068;">BioDataTools工具集</a><br>
+
+            参考文献：薛浩, 大石鸡（<em>Alectoris magna</em>）基因组结构与比较基因组分析[D]. 烟台: 烟台大学, 2024.
         </footer>`;
         
         const placeholder = document.getElementById('common-footer');

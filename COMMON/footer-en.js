@@ -31,9 +31,11 @@
             </span>
             <div class="email">Contact: studid@163.com</div>
             BioDataTools &copy; ${yearText} Di Shang Fei Zhu (Hao Xue)<br>
-            Disclaimer: Most content is adapted from the BioDataTools toolkit. Some scripts are sourced from open-source projects with original authors credited. Web design is AI-assisted.<br>
-            For citation, please reference this website: https://www.biodatatools.top or the BioDataTools toolkit.<br>
-            Reference: Xue H. Genome structure and comparative genomic analysis of the Przewalski's partridge (Alectoris magna) [D]. Yantai: Yantai University, 2024.
+            Suggested citation:
+<a href="https://www.biodatatools.top" target="_blank" style="color:#1f4068;">BioDataTools (https://www.biodatatools.top)</a>
+or the
+<a href="https://github.com/shueho/BioDataTools" target="_blank" style="color:#1f4068;">BioDataTools toolkit</a><br>
+Reference: Xue H. <em>Genome structure and comparative genomic analysis of the Przewalski's partridge (Alectoris magna)</em> [D]. Yantai University, 2024.
         </footer>`;
         
         const placeholder = document.getElementById('common-footer');
