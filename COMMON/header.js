@@ -57,7 +57,7 @@
             langText,
         } = config;
 
-        const langButtonText = isEnglish ? langText : 'English';
+        const langButtonText = isEnglish ? langText : '🌐 English';
 
         const headerHTML = `
         <header>
