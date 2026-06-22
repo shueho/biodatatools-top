@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSCU Bar Plot Generator - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .config-group {
+            margin: 15px 0;
+            padding: 12px;
+            border: 1px solid #e8edf2;
+            border-radius: 6px;
+        }
+        .group-title {
+            font-weight: 500;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .chart-wrap {
+            max-width: 100%;
+            overflow: auto;
+            min-height: 100px;
+        }
+        table {
+            min-width: 600px;
+        }
+        select#groupCol:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        .mode-tip {
+            margin-left: 10px;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>RSCU Bar Plot Generator</h2>
+            <p>Generate RSCU bar plots for single sequence, multiple genes, or multiple species.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Table Data</div>
+            <div class="text-input">
+                <textarea id="tableInput" placeholder="Input data must include at least: species/gene, amino acid, codon, RSCU value. Must contain a header row, separated by tabs or commas.&#10;It is recommended to paste results from the RSCU calculation tool on this website.&#10;In single‑sequence mode, fill the species/gene column with any identical value."></textarea>
+            </div>
+            <div style="margin-top:15px;">
+                <button class="btn" id="importBtn">Import & Preview Raw Data</button>
+            </div>
+            <div id="msgTip1" class="tip-text"></div>
+            <div id="originTableWrap" style="display:none;">
+                <p><strong>Raw Data Preview:</strong></p>
+                <div class="result-item">
+                    <div class="table-scroll">
+                        <table id="originTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Plot Data Settings</div>
+            <div class="filter-box">
+                <label>Plot Mode:</label>
+                <select id="chartMode">
+                    <option value="stack">Single-Sequence Mode</option>
+                    <option value="group">Multi-Gene/Species Mode</option>
+                </select>
+                <label>Group Identifier Column (Species/Gene):</label>
+                <select id="groupCol"></select>
+                <span id="modeTip" class="mode-tip"></span>
+                <label>Amino Acid Column:</label>
+                <select id="colAA"></select>
+                <label>Codon Column:</label>
+                <select id="colCodon"></select>
+                <label>	RSCU Value Column:</label>
+                <select id="colRscu"></select>
+            </div>
+            <div class="filter-box" style="margin-top:8px;">
+                <label>Stop Amino Acid(s) (space-separated):</label>
+                <input type="text" id="stopAminoInput" value="TER" style="width:220px;">
+                <label>Group amino acids by first two codon positions:</label>
+                <input type="checkbox" id="enableGroup" checked>
+            </div>
+            <div style="margin-top:15px;">
+                <button class="btn" id="makePlotTableBtn">Generate Plot Table</button>
+            </div>
+            <div id="msgTip2" class="tip-text"></div>
+            <div id="plotTableWrap" style="display:none;">
+                <p><strong>Data Table for Plotting (Stop Codons Filtered):</strong></p>
+                <div class="result-item">
+                    <div class="table-scroll">
+                        <table id="plotTable"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Plot Parameter Settings</div>
+
+            <div class="config-group">
+                <div class="group-title">Font Settings</div>
+                <div class="filter-box">
+                    <label>Global Font:</label>
+                    <select id="fontFamily" style="width:160px;">
+                        <option value="Times New Roman" selected>Times New Roman</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Microsoft YaHei">Microsoft YaHei</option>
+                    </select>
+                    <label>X‑Axis Font Size (px):</label>
+                    <input type="number" id="xAxisFontSize" value="18" min="8" max="24" style="width:70px;">
+                    <label>Y‑Axis Font Size (px):</label>
+                    <input type="number" id="yAxisFontSize" value="18" min="8" max="24" style="width:70px;">
+                    <label>Codon Font Size (px):</label>
+                    <input type="number" id="boxFontSize" value="15" min="8" max="24" style="width:70px;">
+                </div>
+            </div>
+
+            <div class="config-group">
+                <div class="group-title">Canvas Settings</div>
+                <div class="filter-box">
+                    <label>Chart Width (px):</label>
+                    <input type="number" id="chartWidth" value="1500" min="800" style="width:80px;">
+                    <label>Chart Height (px):</label>
+                    <input type="number" id="chartHeight" value="700" min="500" style="width:80px;">
+                    <label>Bottom Padding (px):</label>
+                    <input type="number" id="bottomPadding" value="280" min="180" style="width:80px;">
+                    <label>Bar Group Spacing:</label>
+                    <input type="number" id="barPadding" value="0.35" step="0.05" min="0.1" max="0.8" style="width:70px;">
+                    <label>Inner Bar Spacing:</label>
+                    <input type="number" id="innerPadding" value="0.1" step="0.05" min="0" max="0.4" style="width:70px;">
+                </div>
+                <div class="filter-box" style="margin-top:8px;">
+                    <label>Y‑Axis Label:</label>
+                    <input type="text" id="yAxisLabel" value="RSCU" style="width:120px;">
+                    <label>Y‑Axis Maximum:</label>
+                    <input type="number" id="yMaxValue" value="8" style="width:100px;" placeholder="如：2.0">
+                    <label style="color:red; font-weight:bold;">Gene/Species Order (auto‑filled, editable):</label>
+                    <input type="text" id="speciesOrder" style="width:320px;">
+                </div>
+            </div>
+
+            <div class="config-group">
+                <div class="group-title">Codon Box Style</div>
+                <div class="filter-box">
+                    <label>Box Width (px):</label>
+                    <input type="number" id="boxWidth" value="50" min="40" style="width:70px;">
+                    <label>Box Height (px):</label>
+                    <input type="number" id="boxHeight" value="22" min="16" style="width:70px;">
+                    <label>Vertical Spacing (px):</label>
+                    <input type="number" id="codonGap" value="8" min="4" style="width:70px;">
+                </div>
+            </div>
+
+            <div class="config-group">
+                <div class="group-title">Color Settings</div>
+                <div class="filter-box">
+                    <label>Codon Text Color:</label>
+                    <input type="text" id="codonTextColor" value="#000000" style="width:100px;">
+                    <label>Bar Stroke Color:</label>
+                    <input type="text" id="barStrokeColor" value="null" style="width:100px;">
+                    <label>Box Stroke Color:</label>
+                    <input type="text" id="boxStrokeColor" value="#333333" style="width:100px;">
+                    <label>Axis Line Color:</label>
+                    <input type="text" id="axisLineColor" value="#333333" style="width:100px;">
+                    <label>Series Colors (comma‑separated):</label>
+                    <input type="text" id="colorList" value="#C67BFE,#FE60CB,#7BAD00,#F8766C,#00A9FE,#00BEC4,#00BD67,#CD9500" style="width:380px;">
+                </div>
+            </div>
+
+            <div class="result-toolbar">
+                <button class="btn" id="drawChartBtn">Draw Chart</button>
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+            <div class="result-item chart-wrap">
+                <div id="chartBox"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            bilibiliUrl: 'https://www.bilibili.com/video/BV1kYJL6eEnF',
+            bilibiliText: 'Tutorial Video for This Tool',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <script>
+        const tableInput = document.getElementById("tableInput");
+        const stopAminoInput = document.getElementById("stopAminoInput");
+        const importBtn = document.getElementById("importBtn");
+        const makePlotTableBtn = document.getElementById("makePlotTableBtn");
+        const drawChartBtn = document.getElementById("drawChartBtn");
+        const exportSvgBtn = document.getElementById("exportSvgBtn");
+        const speciesOrder = document.getElementById("speciesOrder");
+        const yMaxValue = document.getElementById("yMaxValue");
+        const toolbarTip = document.getElementById("toolbarTip");
+
+        const chartMode = document.getElementById("chartMode");
+        const groupCol = document.getElementById("groupCol");
+        const colAA = document.getElementById("colAA");
+        const colCodon = document.getElementById("colCodon");
+        const colRscu = document.getElementById("colRscu");
+        const enableGroup = document.getElementById("enableGroup");
+        const modeTip = document.getElementById("modeTip");
+
+        const fontFamily = document.getElementById("fontFamily");
+        const xAxisFontSize = document.getElementById("xAxisFontSize");
+        const yAxisFontSize = document.getElementById("yAxisFontSize");
+        const boxFontSize = document.getElementById("boxFontSize");
+        const chartWidth = document.getElementById("chartWidth");
+        const chartHeight = document.getElementById("chartHeight");
+        const bottomPadding = document.getElementById("bottomPadding");
+        const barPadding = document.getElementById("barPadding");
+        const innerPadding = document.getElementById("innerPadding");
+        const boxWidth = document.getElementById("boxWidth");
+        const boxHeight = document.getElementById("boxHeight");
+        const codonGap = document.getElementById("codonGap");
+        const yAxisLabel = document.getElementById("yAxisLabel");
+        const codonTextColor = document.getElementById("codonTextColor");
+        const barStrokeColor = document.getElementById("barStrokeColor");
+        const boxStrokeColor = document.getElementById("boxStrokeColor");
+        const axisLineColor = document.getElementById("axisLineColor");
+        const colorList = document.getElementById("colorList");
+
+        const msgTip1 = document.getElementById("msgTip1");
+        const msgTip2 = document.getElementById("msgTip2");
+        const msgTip3 = document.getElementById("msgTip3");
+
+        const originTableWrap = document.getElementById("originTableWrap");
+        const originTable = document.getElementById("originTable");
+        const plotTableWrap = document.getElementById("plotTableWrap");
+        const plotTable = document.getElementById("plotTable");
+        const chartBox = document.getElementById("chartBox");
+
+        let rawData = [];
+        let tableHeaders = [];
+        let plotReadyData = [];
+        let currentSvg = null;
+
+        function autoSelectColumns(headers) {
+            const len = headers.length;
+            if (len >= 5) {
+                const codonCol = headers[len-5];
+                if (codonCol && [...colCodon.options].some(opt => opt.value === codonCol)) colCodon.value = codonCol;
+            }
+            if (len >= 3) {
+                const aaCol = headers[len-3];
+                if (aaCol && [...colAA.options].some(opt => opt.value === aaCol)) colAA.value = aaCol;
+            }
+            if (len >= 2) {
+                const rscuCol = headers[len-1];
+                if (rscuCol && [...colRscu.options].some(opt => opt.value === rscuCol)) colRscu.value = rscuCol;
+            }
+            if (len >= 1) {
+                const firstCol = headers[0];
+                if (firstCol && [...groupCol.options].some(opt => opt.value === firstCol)) groupCol.value = firstCol;
+            }
+        }
+
+        function updateGroupColDisabled() {
+            const isStack = chartMode.value === "stack";
+            groupCol.disabled = isStack;
+            modeTip.textContent = isStack ? "" : "";
+        }
+        chartMode.addEventListener("change", updateGroupColDisabled);
+        updateGroupColDisabled();
+
+        function clearSelect() {
+            groupCol.innerHTML = "";
+            colAA.innerHTML = "";
+            colCodon.innerHTML = "";
+            colRscu.innerHTML = "";
+        }
+
+        function fillSelect(headers) {
+            clearSelect();
+            headers.forEach(h => {
+                groupCol.add(new Option(h, h));
+                colAA.add(new Option(h, h));
+                colCodon.add(new Option(h, h));
+                colRscu.add(new Option(h, h));
+            });
+            autoSelectColumns(headers);
+        }
+
+        function renderTable(tableEl, headers, data) {
+            tableEl.innerHTML = "";
+            if (!headers || headers.length === 0 || !data || data.length === 0) {
+                tableEl.innerHTML = "</table><td colspan='100%'>No data available.</td></tr>";
+                return;
+            }
+            const thead = document.createElement("thead");
+            const trHead = document.createElement("tr");
+            headers.forEach(h => {
+                const th = document.createElement("th");
+                th.style.border = "1px solid #ccc";
+                th.style.padding = "6px";
+                th.innerText = h;
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+            tableEl.appendChild(thead);
+            const tbody = document.createElement("tbody");
+            data.forEach(row => {
+                const tr = document.createElement("tr");
+                headers.forEach(h => {
+                    const td = document.createElement("td");
+                    td.style.border = "1px solid #ccc";
+                    td.style.padding = "6px";
+                    td.innerText = row[h] ?? "";
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            tableEl.appendChild(tbody);
+        }
+
+        function parseTable(text) {
+            const content = text.trim();
+            if (!content) return null;
+            const lines = content.split(/\r?\n/).filter(line => line.trim());
+            if (lines.length < 2) return null;
+            let separator = /\t|\s+/;
+            if (lines[0].includes(",")) separator = ",";
+            const rows = lines.map(line => line.trim().split(separator));
+            const headers = rows[0].map(h => h.trim());
+            tableHeaders = headers;
+            const data = [];
+            for (let i = 1; i < rows.length; i++) {
+                const obj = {};
+                rows[i].forEach((val, idx) => {
+                    if (headers[idx]) obj[headers[idx]] = val.trim();
+                });
+                data.push(obj);
+            }
+            return { headers, data };
+        }
+
+        function groupAndRename(list, aaKey) {
+            const aaMap = new Map();
+            list.forEach(item => {
+                const aa = item[aaKey];
+                if (!aaMap.has(aa)) aaMap.set(aa, new Map());
+                const cd = item.codon || "";
+                const prefix = cd.slice(0, 2);
+                const pm = aaMap.get(aa);
+                if (!pm.has(prefix)) pm.set(prefix, []);
+                pm.get(prefix).push(item);
+            });
+            const res = [];
+            aaMap.forEach((pm, aaName) => {
+                const listP = Array.from(pm.keys());
+                const cnt = listP.length;
+                listP.forEach((p, idx) => {
+                    const items = pm.get(p);
+                    const label = cnt > 1 ? `${aaName}${idx + 1}` : aaName;
+                    items.forEach(it => {
+                        it.groupName = label;
+                        res.push(it);
+                    });
+                });
+            });
+            return res;
+        }
+
+        function getStopAminoSet() {
+            return new Set(stopAminoInput.value.trim().split(/\s+/).filter(s => s));
+        }
+
+        function getSpeciesOrder(allSpecies) {
+            const input = speciesOrder.value.trim();
+            if (!input) {
+                const order = [];
+                const seen = new Set();
+                plotReadyData.forEach(d => {
+                    if (!seen.has(d.species)) {
+                        seen.add(d.species);
+                        order.push(d.species);
+                    }
+                });
+                return order;
+            }
+            const arr = input.split(/[,，\s]+/).filter(s => s);
+            return arr.filter(name => allSpecies.includes(name));
+        }
+
+        function autoFillSpeciesOrder() {
+		if (chartMode.value === "stack") {
+        		speciesOrder.value = "Sample";
+        		return;
+   		 }
+            const order = [];
+            const seen = new Set();
+            plotReadyData.forEach(d => {
+                if (!seen.has(d.species)) {
+                    seen.add(d.species);
+                    order.push(d.species);
+                }
+            });
+            speciesOrder.value = order.join(",");
+        }
+
+        function makePlotTable() {
+            if (rawData.length === 0) {
+                msgTip2.innerHTML = '<span class="error">❌ Please import the raw data first.</span>';
+                plotTableWrap.style.display = "none";
+                plotReadyData = [];
+                return;
+            }
+            msgTip2.innerHTML = "";
+            const gKey = groupCol.value;
+            const aaKey = colAA.value;
+            const cdKey = colCodon.value;
+            const valKey = colRscu.value;
+            const useGroup = enableGroup.checked;
+            const stopSet = getStopAminoSet();
+            const isStackMode = chartMode.value === "stack";
+            let tempData = rawData
+                .filter(d => !stopSet.has(d[aaKey]?.trim()))
+                .map(d => ({
+                    species: isStackMode ? "Sample" : (d[gKey] ?? "Sample"),
+                    amino: d[aaKey] ?? "",
+                    codon: d[cdKey] ?? "",
+                    value: Number(d[valKey]) || 0,
+                    groupName: d[aaKey] ?? ""
+                }));
+
+            if (useGroup) {
+                tempData = groupAndRename(tempData, "amino");
+            }
+            plotReadyData = tempData;
+            autoFillSpeciesOrder();
+
+            const showHeaders = ["Species/Gene", "Amino Acid", "Group Name", "Codon", "RSCU"];
+            const showData = tempData.map(d => ({
+                "Species/Gene": d.species,
+                "Amino Acid": d.amino,
+                "Group Name": d.groupName,
+                "Codon": d.codon,
+                "RSCU": d.value
+            }));
+            renderTable(plotTable, showHeaders, showData);
+            plotTableWrap.style.display = "block";
+            msgTip2.innerHTML = '<span class="success">✅ Plot table generated successfully.</span>';
+            chartBox.innerHTML = "";
+            msgTip3.innerHTML = "";
+            toolbarTip.innerHTML = "";
+            exportSvgBtn.disabled = true;
+            currentSvg = null;
+        }
+
+        function drawChart() {
+            if (plotReadyData.length === 0) {
+                msgTip3.innerHTML = '<span class="error">❌ Please generate the plot table first.</span>';
+                chartBox.innerHTML = "";
+                exportSvgBtn.disabled = true;
+                return;
+            }
+            msgTip3.innerHTML = '<span class="success">✅ Chart drawn. The displayed image may not reflect all settings; please export SVG for the final version.</span>';
+            toolbarTip.innerHTML = "";
+            chartBox.innerHTML = "";
+
+            const mode = chartMode.value;
+            const fontFam = fontFamily.value || "Times New Roman";
+            const xFS = parseFloat(xAxisFontSize.value) || 18;
+            const yFS = parseFloat(yAxisFontSize.value) || 18;
+            const boxFS = parseFloat(boxFontSize.value) || 15;
+            const svgW = parseInt(chartWidth.value) || 1500;
+            const svgH = parseInt(chartHeight.value) || 700;
+            const bottomPad = parseInt(bottomPadding.value) || 280;
+            const outerPad = parseFloat(barPadding.value) || 0.35;
+            const innerPad = parseFloat(innerPadding.value) || 0.1;
+            const boxW = parseInt(boxWidth.value) || 50;
+            const boxH = parseInt(boxHeight.value) || 22;
+            const codonGapVal = parseInt(codonGap.value) || 8;
+            const yLabel = yAxisLabel.value || "RSCU";
+            const codonTextCol = codonTextColor.value.trim() || "#000000";
+            const barStrokeCol = barStrokeColor.value.trim() || "#ffffff";
+            const boxStrokeCol = boxStrokeColor.value.trim() || "#333333";
+            const axisLineCol = axisLineColor.value.trim() || "#333333";
+            const userColors = colorList.value.split(",").map(c => c.trim()).filter(c => c);
+
+            const margin = { top: 50, right: 30, bottom: bottomPad, left: 80 };
+            const innerW = svgW - margin.left - margin.right;
+            const innerH = svgH - margin.top - margin.bottom;
+
+            const aminoList = Array.from(new Set(plotReadyData.map(d => d.groupName))).sort();
+            const allSpecies = Array.from(new Set(plotReadyData.map(d => d.species)));
+            const speciesList = getSpeciesOrder(allSpecies);
+
+            const svgRoot = d3.select("#chartBox")
+                .append("svg")
+                .attr("width", svgW)
+                .attr("height", svgH);
+            currentSvg = svgRoot.node();
+            const svg = svgRoot.append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            let x0, x1, y;
+            let dataMaxVal = d3.max(plotReadyData, d => d.value) || 1;
+            let maxVal = yMaxValue.value.trim() !== "" ? Number(yMaxValue.value) : dataMaxVal;
+
+            y = d3.scaleLinear()
+                .domain([0, maxVal])
+                .range([innerH, 0]);
+
+            if (mode === "group") {
+                x0 = d3.scaleBand()
+                    .domain(aminoList)
+                    .range([0, innerW])
+                    .paddingOuter(outerPad)
+                    .paddingInner(innerPad);
+
+                x1 = d3.scaleBand()
+                    .domain(speciesList)
+                    .range([0, x0.bandwidth()])
+                    .padding(0);
+
+                aminoList.forEach(amino => {
+                    speciesList.forEach((sp) => {
+                        const items = plotReadyData.filter(d => d.groupName === amino && d.species === sp);
+                        let y0 = 0;
+                        items.forEach((it, cdIdx) => {
+                            const fill = userColors[cdIdx % userColors.length];
+                            svg.append("rect")
+                                .attr("x", x0(amino) + x1(sp))
+                                .attr("y", y(y0 + it.value))
+                                .attr("width", x1.bandwidth())
+                                .attr("height", y(0) - y(it.value))
+                                .attr("fill", fill)
+                                .attr("stroke", barStrokeCol);
+                            y0 += it.value;
+                        });
+                    });
+                });
+                const xAxis = svg.append("g")
+                    .attr("transform", `translate(0,${innerH})`)
+                    .call(d3.axisBottom(x0));
+                xAxis.selectAll("text")
+                    .attr("font-family", fontFam)
+                    .attr("font-size", xFS)
+                    .attr("text-anchor", "middle");
+                xAxis.selectAll("path,line").attr("stroke", axisLineCol);
+            } else {
+                x0 = d3.scaleBand()
+                    .domain(aminoList)
+                    .range([0, innerW])
+                    .padding(outerPad);
+
+                aminoList.forEach(amino => {
+                    const items = plotReadyData.filter(d => d.groupName === amino);
+                    let y0 = 0;
+                    items.forEach((it, cdIdx) => {
+                        const fill = userColors[cdIdx % userColors.length];
+                        svg.append("rect")
+                            .attr("x", x0(amino))
+                            .attr("y", y(y0 + it.value))
+                            .attr("width", x0.bandwidth())
+                            .attr("height", y(0) - y(it.value))
+                            .attr("fill", fill)
+                            .attr("stroke", barStrokeCol);
+                        y0 += it.value;
+                    });
+                });
+                const xAxis = svg.append("g")
+                    .attr("transform", `translate(0,${innerH})`)
+                    .call(d3.axisBottom(x0));
+                xAxis.selectAll("text")
+                    .attr("font-family", fontFam)
+                    .attr("font-size", xFS)
+                    .attr("text-anchor", "middle");
+                xAxis.selectAll("path,line").attr("stroke", axisLineCol);
+            }
+
+            const yAxis = svg.append("g").call(d3.axisLeft(y));
+            yAxis.selectAll("text")
+                .attr("font-family", fontFam)
+                .attr("font-size", yFS);
+            yAxis.selectAll("path,line").attr("stroke", axisLineCol);
+
+            svg.append("text")
+                .attr("x", -innerH / 2)
+                .attr("y", -50)
+                .attr("transform", "rotate(-90)")
+                .attr("text-anchor", "middle")
+                .attr("font-family", fontFam)
+                .attr("font-size", yFS + 2)
+                .attr("font-weight", "bold")
+                .text(yLabel);
+
+            aminoList.forEach(amino => {
+                const uniqueItems = [];
+                const cdSet = new Set();
+                plotReadyData.filter(d => d.groupName === amino).forEach(d => {
+                    if (!cdSet.has(d.codon)) {
+                        cdSet.add(d.codon);
+                        uniqueItems.push(d);
+                    }
+                });
+                const xCenter = x0(amino) + x0.bandwidth() / 2;
+                const baseY = innerH + 70;
+                uniqueItems.forEach((it, cdIdx) => {
+                    const boxX = xCenter - boxW / 2;
+                    const boxY = baseY + cdIdx * (boxH + codonGapVal);
+                    const boxColor = userColors[cdIdx % userColors.length];
+                    svg.append("rect")
+                        .attr("x", boxX)
+                        .attr("y", boxY)
+                        .attr("width", boxW)
+                        .attr("height", boxH)
+                        .attr("fill", boxColor)
+                        .attr("stroke", boxStrokeCol)
+                        .attr("rx", 3);
+                    svg.append("text")
+                        .attr("x", xCenter)
+                        .attr("y", boxY + boxH / 2 + 4)
+                        .attr("text-anchor", "middle")
+                        .attr("font-family", fontFam)
+                        .attr("font-size", boxFS)
+                        .attr("fill", codonTextCol)
+                        .text(it.codon);
+                });
+            });
+            exportSvgBtn.disabled = false;
+        }
+
+        function exportSvg() {
+            if (!currentSvg) return;
+            const serializer = new XMLSerializer();
+            let source = serializer.serializeToString(currentSvg);
+            source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+            const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "RSCU_Codon_Chart.svg";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            toolbarTip.innerHTML = '<span class="success">✅ SVG file exported successfully.</span>';
+            window.showToast('✅ SVG file exported.');
+        }
+
+        importBtn.addEventListener("click", function () {
+            const res = parseTable(tableInput.value);
+            if (!res) {
+                msgTip1.innerHTML = '<span class="error">❌ Parse failed. Please check the table content.</span>';
+                originTableWrap.style.display = "none";
+                rawData = [];
+                return;
+            }
+            rawData = res.data;
+            tableHeaders = res.headers;
+            renderTable(originTable, res.headers, res.data);
+            originTableWrap.style.display = "block";
+            fillSelect(res.headers);
+            msgTip1.innerHTML = '<span class="success">✅ Raw data imported successfully.</span>';
+            window.showToast('✅ Data imported successfully.');
+            plotTableWrap.style.display = "none";
+            chartBox.innerHTML = "";
+            msgTip2.innerHTML = "";
+            msgTip3.innerHTML = "";
+            toolbarTip.innerHTML = "";
+            exportSvgBtn.disabled = true;
+            currentSvg = null;
+            plotReadyData = [];
+        });
+
+        makePlotTableBtn.addEventListener("click", makePlotTable);
+        drawChartBtn.addEventListener("click", drawChart);
+        exportSvgBtn.addEventListener("click", exportSvg);
+    </script>
+</body>
+</html>

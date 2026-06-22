@@ -104,21 +104,20 @@
     <div class="main" id="app">
         <div class="page-intro">
             <h2>密码子各位点碱基组成统计</h2>
-            <p>计算密码子三个位点A/T/G/C碱基的频数或频率，支持密码子过滤</p>
+            <p>计算密码子三个位点A/T/G/C碱基的频数或频率，支持密码子过滤。</p>
         </div>
 
-        <!-- 第一步 -->
         <div class="step-card">
-            <div class="step-title">第一步：导入 CDS 序列 (FASTA)</div>
+            <div class="step-title">第一步：导入CDS序列(FASTA)</div>
             <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传 FASTA 文件</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴 FASTA 文本</label>
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">上传FASTA文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">粘贴FASTA文本</label>
             </div>
             <div class="file-input">
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
             </div>
             <div class="text-input">
-                <textarea id="fastaText" placeholder="粘贴标准 FASTA 格式的 CDS 序列（支持多条）" disabled></textarea>
+                <textarea id="fastaText" placeholder="粘贴标准FASTA格式的CDS序列（支持多条）" disabled></textarea>
             </div>
             <div id="msgTip" class="tip-text"></div>
             <div style="margin-top:12px;">
@@ -129,13 +128,12 @@
             </div>
         </div>
 
-        <!-- 第二步 -->
         <div class="step-card">
             <div class="step-title">第二步：参数设置</div>
             <div class="codon-config-row">
                 <div class="config-group">
                     <div class="form-item">
-                        <label>NCBI 密码子表：</label>
+                        <label>密码子表：</label>
                         <select id="codonTableSel"></select>
                     </div>
                     <div class="form-item">
@@ -143,7 +141,7 @@
                         <input type="text" id="stopCodonInput" style="width:180px;">
                     </div>
                     <div class="form-item">
-                        <label><input type="checkbox" id="keepStop" checked> 保留终止密码子</label>
+                        <label><input type="checkbox" id="keepStop" checked>保留终止密码子</label>
                     </div>
                 </div>
                 <div class="config-group">
@@ -169,22 +167,20 @@
             </div>
             <div id="tableViewTip" class="tip-text"></div>
 
-            <!-- 密码子表可视化容器 -->
             <div style="margin-top:15px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
                     <span style="font-weight:500; color:#1f4068;">📊 密码子表预览（红色 = 排除）</span>
-                    <span style="font-size:0.85rem; color:#6c757d;">终止密码子参与过滤（当保留时）</span>
+                    <span style="font-size:0.85rem; color:#6c757d;">终止密码子参与过滤</span>
                 </div>
                 <div id="codonTableViz" class="codon-viz-grid"></div>
             </div>
         </div>
 
-        <!-- 第三步 -->
         <div class="step-card">
             <div class="step-title">第三步：统计结果</div>
             <div class="result-toolbar">
-                <button class="btn" id="copyResultBtn" disabled>复制结果 (TSV)</button>
-                <button class="btn" id="exportCsvBtn" disabled>导出 CSV</button>
+                <button class="btn" id="copyResultBtn" disabled>复制结果(TSV)</button>
+                <button class="btn" id="exportCsvBtn" disabled>导出CSV</button>
                 <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
             </div>
             <div id="resultArea" style="display:none;">
@@ -207,12 +203,7 @@
 
     <script>
         window.headerConfig = {
-            author: '作者：地上飞猪',
-            bilibiliUrl: 'https://space.bilibili.com/33053326',
-            bilibiliText: '前往B站主页',
-            githubUrl: 'https://github.com/shueho/BioDataTools',
-            githubText: 'GitHub项目',
-            returnHomeUrl: '../index.html'
+            //author: '作者：地上飞猪',
         };
     </script>
 
@@ -226,7 +217,6 @@
         (function() {
             'use strict';
 
-            // DOM 元素
             const fastaFile = document.getElementById('fastaFile');
             const fastaText = document.getElementById('fastaText');
             const msgTip = document.getElementById('msgTip');
@@ -280,12 +270,10 @@
                 });
             }
 
-            // ========== 核心：生成排除集 ==========
             function buildExcludedSet(codonTable, filterMode, keepStopFlag) {
                 const excluded = new Set();
                 const stopSet = new Set(currentStopCodons); // RNA格式
 
-                // 获取所有64个密码子及其氨基酸
                 const bases = ['U', 'C', 'A', 'G'];
                 const allCodons = [];
                 for (let b1 of bases) {
@@ -298,7 +286,6 @@
                     }
                 }
 
-                // 终止密码子：如果不保留，全部排除
                 if (!keepStopFlag) {
                     for (const c of allCodons) {
                         if (c.aa === 'TER' || c.aa === '*') {
@@ -307,9 +294,7 @@
                     }
                 }
 
-                // 对于 'nondegenerate' 模式：排除单简并（氨基酸只有一个密码子）
                 if (filterMode === 'nondegenerate') {
-                    // 统计每个氨基酸的密码子数（包括终止，如果保留）
                     const aaCount = {};
                     for (const c of allCodons) {
                         let aa = c.aa;
@@ -320,7 +305,6 @@
                         if (!aaCount[aa]) aaCount[aa] = 0;
                         aaCount[aa]++;
                     }
-                    // 排除密码子数=1的氨基酸的所有密码子（不包括终止，如果终止被保留，其密码子数可能>1则不会被排除）
                     for (const c of allCodons) {
                         let aa = c.aa;
                         if (aa === 'TER' || aa === '*') {
@@ -333,16 +317,13 @@
                     }
                 }
 
-                // 对于 'fourfold' 模式：只保留四倍简并（前两位相同且4个密码子编码同一氨基酸）
                 if (filterMode === 'fourfold') {
-                    // 按前两位分组
                     const groups = {};
                     for (const c of allCodons) {
                         const prefix = c.codon.substring(0, 2);
                         if (!groups[prefix]) groups[prefix] = [];
                         groups[prefix].push(c);
                     }
-                    // 找出四倍简并前缀
                     const fourfoldPrefixes = new Set();
                     for (const [prefix, codons] of Object.entries(groups)) {
                         if (codons.length === 4) {
@@ -361,7 +342,6 @@
                             }
                         }
                     }
-                    // 排除所有不属于四倍简并前缀的密码子
                     for (const c of allCodons) {
                         const prefix = c.codon.substring(0, 2);
                         if (!fourfoldPrefixes.has(prefix)) {
@@ -370,11 +350,9 @@
                     }
                 }
 
-                // 'all' 模式：不排除任何非终止（终止已由 keepStop 控制）
                 return excluded;
             }
 
-            // ========== 可视化（使用排除集） ==========
             function renderCodonTableVisualization() {
                 const excluded = buildExcludedSet(currentCodonTable, filterMode.value, keepStop.checked);
                 const table = currentCodonTable;
@@ -401,7 +379,6 @@
                 codonViz.innerHTML = html;
             }
 
-            // ========== 密码子表管理 ==========
             function initCodonSelect() {
                 codonTableSel.innerHTML = '';
                 for (const id in TABLE_ID_NAME_MAP) {
@@ -437,7 +414,6 @@
             filterMode.addEventListener('change', renderCodonTableVisualization);
             keepStop.addEventListener('change', renderCodonTableVisualization);
 
-            // ========== FASTA 解析 ==========
             function parseFasta(text) {
                 const lines = text.split(/\r?\n/);
                 const seqs = [];
@@ -461,12 +437,12 @@
                 const mode = document.querySelector('input[name="inputMode"]:checked').value;
                 let text = (mode === 'file') ? fastaText.value : fastaText.value;
                 if (!text.trim()) {
-                    showMsg(msgTip, '❌ 请先上传文件或粘贴 FASTA 内容', 'error');
+                    showMsg(msgTip, '❌ 请先上传文件或粘贴FASTA内容', 'error');
                     return;
                 }
                 const parsed = parseFasta(text);
                 if (parsed.length === 0) {
-                    showMsg(msgTip, '❌ 未解析到有效 FASTA 序列', 'error');
+                    showMsg(msgTip, '❌ 未解析到有效FASTA序列', 'error');
                     return;
                 }
                 sequences = parsed;
@@ -478,19 +454,16 @@
                 clearResults();
             }
 
-            // ========== 核心分析（使用排除集） ==========
             function analyzeSequence(seq, stopCodons, keepStopFlag, filterMode, codonTable) {
                 let rna = seq.toUpperCase().replace(/T/g, 'U');
                 const len = rna.length;
                 const stopSet = new Set(stopCodons);
 
-                // 获取所有完整密码子
                 let allCodons = [];
                 for (let i = 0; i + 3 <= len; i += 3) {
                     allCodons.push(rna.substring(i, i + 3));
                 }
 
-                // 检测中间终止
                 let stopPositions = [];
                 for (let i = 0; i < allCodons.length; i++) {
                     if (stopSet.has(allCodons[i])) {
@@ -520,7 +493,6 @@
                     return { error: '序列中无有效密码子' };
                 }
 
-                // ---- 使用排除集过滤 ----
                 const excluded = buildExcludedSet(codonTable, filterMode, keepStopFlag);
                 validCodons = validCodons.filter(codon => !excluded.has(codon));
 
@@ -528,7 +500,6 @@
                     return { error: '过滤后无有效密码子' };
                 }
 
-                // ---- 统计 ----
                 const stats = {
                     A1: 0, U1: 0, G1: 0, C1: 0,
                     A2: 0, U2: 0, G2: 0, C2: 0,
@@ -639,7 +610,6 @@
                 exportCsvBtn.disabled = false;
             }
 
-            // 渲染结果（不变）
             function renderResults(mode) {
                 if (results.length === 0) {
                     resultArea.style.display = 'none';
@@ -733,7 +703,6 @@
                 errorSummary.textContent = '';
             }
 
-            // 复制与导出（不变）
             function getDataRows(mode) {
                 const isFreq = (mode === 'freq');
                 const rows = [];
@@ -841,11 +810,10 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showMsg(toolbarTip, '✅ CSV 已导出', 'success');
-                toast('✅ CSV 已导出');
+                showMsg(toolbarTip, '✅ CSV已导出', 'success');
+                toast('✅ CSV已导出');
             }
 
-            // ========== 事件绑定 ==========
             window.switchInput = function() {
                 const mode = document.querySelector('input[name="inputMode"]:checked').value;
                 if (mode === 'file') {
@@ -901,7 +869,6 @@
                 if (results.length > 0) renderResults(this.value);
             });
 
-            // ========== 初始化 ==========
             initCodonSelect();
             clearResults();
             runBtn.disabled = true;

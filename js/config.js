@@ -6,37 +6,37 @@ const toolConfig = [
         tools: [
 {
     toolName: "GenBank Feature Extraction",
-    toolDesc: "Upload GB file or paste GB text to extract gene, CDS, mRNA, intron and other feature sequences",
+    toolDesc: "Upload GenBank file or paste GenBank text to extract gene, CDS, mRNA, intron and other feature sequences.",
     toolIcon: "images/001.png",
-    link: "function/001.Genbank_feat_extract.html"
+    link: "en/001.Genbank_feat_extract.html"
 },
 
 {
     toolName: "Nucleotide to Amino Acid Translation",
-    toolDesc: "Translate protein-coding gene sequences into amino acid sequences (supports degenerate/mixed codon translation)",
+    toolDesc: "Translate protein-coding gene sequences into amino acid sequences (supports degenerate/mixed codon translation).",
     toolIcon: "images/005.png",
-    link: "function/005.CDS_translate.html"
+    link: "en/005.CDS_translate.html"
 },
 
 {
     toolName: "DNA/RNA/Amino Acid Sequence Concatenation",
-    toolDesc: "Clean and concatenate nucleic acid (DNA/RNA) and protein sequences",
+    toolDesc: "Clean and concatenate nucleic acid (DNA/RNA) and protein sequences.",
     toolIcon: "images/006.png",
-    link: "function/006.Seq_concat.html"
+    link: "en/006.Seq_concat.html"
 },
 
 {
     toolName: "Batch FASTA to AXT Conversion",
-    toolDesc: "Convert aligned FASTA files or text into AXT pairwise alignment format",
+    toolDesc: "Convert aligned FASTA files or text into AXT pairwise alignment format.",
     toolIcon: "images/010.png",
-    link: "function/010.Fasta_to_AXT.html"
+    link: "en/010.Fasta_to_AXT.html"
 },
 
 {
     toolName: "FASTA File Append & Merge",
-    toolDesc: "Merge multiple FASTA files into one, adding source filename prefix to each sequence ID",
+    toolDesc: "Merge multiple FASTA files into one, adding source filename prefix to each sequence ID.",
     toolIcon: "images/013.png",
-    link: "function/013.Fasta_append_merge.html"
+    link: "en/013.Fasta_append_merge.html"
 },
 
         ]
@@ -47,37 +47,37 @@ const toolConfig = [
         tools: [
 {
     toolName: "RSCU Calculation Tool",
-    toolDesc: "Calculate Relative Synonymous Codon Usage (RSCU)",
+    toolDesc: "Calculate Relative Synonymous Codon Usage (RSCU).",
     toolIcon: "images/002.png",
-    link: "function/002.RSCU.html"
+    link: "en/002.RSCU.html"
 },
 
 {
     toolName: "Expasy Protparam Batch Calculator (Protein Physicochemical Properties)",
-    toolDesc: "Import protein/amino acid sequences and batch-calculate all parameters available from Expasy Protparam",
+    toolDesc: "Import protein/amino acid sequences and batch-calculate all parameters available from Expasy Protparam.",
     toolIcon: "images/007.png",
-    link: "function/007.Protparam.html"
+    link: "en/007.Protparam.html"
 },
 
 {
     toolName: "Base Composition Statistics",
-    toolDesc: "Batch calculate base frequencies, GC/AT content and skew values for FASTA sequences",
+    toolDesc: "Batch calculate base frequencies, GC/AT content and skew values for FASTA sequences.",
     toolIcon: "images/009.png",
-    link: "function/009.Base_composition.html"
+    link: "en/009.Base_composition.html"
 },
 
 {
     toolName: "Codon Position Base Composition Statistics",
-    toolDesc: "Calculate A/T/G/C base frequencies or counts at each of the three codon positions, with codon filtering support",
+    toolDesc: "Calculate A/T/G/C base frequencies or counts at each of the three codon positions, with codon filtering support.",
     toolIcon: "images/011.png",
-    link: "function/011.Codon_position_base_stats.html"
+    link: "en/011.Codon_position_base_stats.html"
 },
 
 {
     toolName: "CodonW Indices Online Calculator",
-    toolDesc: "Calculate T3s, C3s, A3s, G3s, Nc, GC3s and GC based on CodonW source code",
+    toolDesc: "Calculate T3s, C3s, A3s, G3s, Nc, GC3s and GC based on CodonW source code.",
     toolIcon: "images/012.png",
-    link: "function/012.CodonW_indices.html"
+    link: "en/012.CodonW_indices.html"
 },
 
         ]
@@ -88,23 +88,23 @@ const toolConfig = [
         tools: [
 {
     toolName: "RSCU Bar Plot Generator",
-    toolDesc: "Generate RSCU bar plots for single sequence, multiple genes, or multiple species",
+    toolDesc: "Generate RSCU bar plots for single sequence, multiple genes, or multiple species.",
     toolIcon: "images/003.png",
-    link: "function/003.RSCU_plot.html"
+    link: "en/003.RSCU_plot.html"
 },
 
 {
     toolName: "tRNA Secondary Structure Beautifier",
-    toolDesc: "Enhance tRNA secondary structure diagrams exported from MITOS or ViennaRNA RNAplot",
+    toolDesc: "Enhance tRNA secondary structure diagrams exported from MITOS or ViennaRNA RNAplot.",
     toolIcon: "images/004.png",
-    link: "function/004.Trna_structure_beautifier.html"
+    link: "en/004.Trna_structure_beautifier.html"
 },
 
 {
     toolName: "Gene Arrangement Visualization (Gene Rearrangement Map)",
-    toolDesc: "Visualize gene order and rearrangements with support for distinguishing positive/negative strands and non-coding regions",
+    toolDesc: "Visualize gene order and rearrangements with support for distinguishing positive/negative strands and non-coding regions.",
     toolIcon: "images/008.png",
-    link: "function/008.Visualize_gene_arrangement.html"
+    link: "en/008.Visualize_gene_arrangement.html"
 },
 
 

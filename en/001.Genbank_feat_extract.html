@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GenBank特征提取 - BioDataTools</title>
+    <title>GenBank Feature Extraction - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
@@ -13,27 +13,27 @@
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>GenBank特征序列提取</h2>
-            <p>支持上传GB文件/粘贴GB文本，提取基因、CDS、mRNA、内含子等特征序列</p>
+            <h2>GenBank Feature Extraction</h2>
+            <p>Upload GenBank file or paste GenBank text to extract gene, CDS, mRNA, intron and other feature sequences.</p>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第一步：导入 GenBank 注释文件</div>
+            <div class="step-title">Step 1: Import GenBank annotation file</div>
             <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传 GB 文件</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴 GB 文本</label>
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload GenBank File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste GenBank Text</label>
             </div>
             <div class="file-input">
                 <input type="file" id="gbFile" accept=".gb,.gbk,.genbank">
             </div>
             <div class="text-input">
-                <textarea id="gbText" placeholder="请粘贴完整 GenBank 格式内容..." disabled></textarea>
+                <textarea id="gbText" placeholder="Please paste the full GenBank annotation here..." disabled></textarea>
             </div>
             <div id="msgTip" class="tip-text"></div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第二步：筛选提取特征</div>
+            <div class="step-title">Step 2: Select and extract features</div>
             <div class="filter-box">
                 <label><input type="checkbox" value="gene" checked> gene</label>
                 <label><input type="checkbox" value="CDS" checked> CDS</label>
@@ -51,15 +51,15 @@
                 <label><input type="checkbox" value="misc_feature"> misc_feature</label>
             </div>
             <div style="margin-top:15px;">
-                <button class="btn" onclick="parseGB()">开始解析提取</button>
+                <button class="btn" onclick="parseGB()">Parse & Extract</button>
             </div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第三步：提取结果</div>
+            <div class="step-title">View Extracted Results</div>
             <div class="result-toolbar">
-                <button class="btn" id="copyAllBtn" onclick="copyAllFasta()" disabled>复制全部序列</button>
-                <button class="btn" id="downloadBtn" onclick="downloadFasta()" disabled>下载FASTA</button>
+                <button class="btn" id="copyAllBtn" onclick="copyAllFasta()" disabled>Copy All Sequences</button>
+                <button class="btn" id="downloadBtn" onclick="downloadFasta()" disabled>Download Fasta</button>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div id="resultBox"></div>
@@ -72,12 +72,12 @@
 
     <script>
         window.headerConfig = {
-            author: '脚本原作者：Paul Stothard, University of Alberta, Canada（修改：地上飞猪）',
+            author: 'Original author: Paul Stothard, University of Alberta, Canada. Modified by Di Shang Fei Zhu.',
         };
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
 
     <script>
         let rawGBContent = "";
@@ -117,8 +117,8 @@
             const reader = new FileReader();
             reader.onload = function (ev) {
                 rawGBContent = ev.target.result;
-                msgTip.innerHTML = `<span class="success">✅ 文件读取成功：${file.name}</span>`;
-                window.showToast(`✅ 文件 ${file.name} 加载成功`);
+                msgTip.innerHTML = `<span class="success">✅ File loaded successfully: ${file.name}</span>`;
+                window.showToast(`✅ File ${file.name} loaded successfully`);
                 resultBox.innerHTML = "";
                 fastaAll = "";
                 copyAllBtn.disabled = true;
@@ -217,7 +217,7 @@
                 var dnaSequenceArray = mainArray[4].split (/\/{2}/);
                 var dnaSequence = removeNonDna(dnaSequenceArray[0]);
                 if(!dnaSequence){
-                    outputHtml += '<p class="error">❌ 未检测到有效核酸序列</p>';
+                    outputHtml += '<p class="error">❌ No valid nucleic acid sequence detected.</p>';
                     continue;
                 }
                 var featureArray = mainArray[3].split(/[\f\n\r] {5,12}\b/);
@@ -270,7 +270,7 @@
                 let qualPart = (qualifierName && qualifierName !== "") ? `${qualifierName} ` : "";
                 let cleanName = namePart.trim().replace(/ /g, '_');
                 let header = `>${cleanName} ${featureTitle} Lable=${qualPart} Len=${seqLen}`;
-                let warn = hasAmbiguousBase(seq) ? ' <span class="warn">⚠️ 含简并碱基</span>' : '';
+                let warn = hasAmbiguousBase(seq) ? ' <span class="warn">⚠️ Contains degenerate bases.</span>' : '';
 
                 outHtml += `<div style="margin:12px 0;">
                     <p><strong>${header}</strong>${warn}</p>
@@ -295,12 +295,12 @@
             }
             const content = rawGBContent;
             if (!content.trim()) {
-                msgTip.innerHTML = `<span class="error">❌ 请先上传文件或粘贴GB文本</span>`;
+                msgTip.innerHTML = `<span class="error">❌ Please upload a file or paste GenBank text first.</span>`;
                 return;
             }
             const checks = document.querySelectorAll('.filter-box input:checked');
             if (checks.length === 0) {
-                msgTip.innerHTML = `<span class="error">❌ 请至少选择一种特征</span>`;
+                msgTip.innerHTML = `<span class="error">❌ Please select at least one feature.</span>`;
                 return;
             }
             const targetKeys = Array.from(checks).map(cb => cb.value.toUpperCase());
@@ -316,14 +316,14 @@
 
         function copyAllFasta() {
             if (!fastaAll || fastaAll.trim() === "") {
-                window.showToast('❌ 暂无可复制序列');
+                window.showToast('❌ No sequences to copy.');
                 return;
             }
             copyAllBtn.disabled = true;
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(fastaAll)
                     .then(() => {
-                        window.showToast('✅ 已复制全部序列');
+                        window.showToast('✅ All sequences copied successfully!');
                     })
                     .catch(() => {
                         copyByTempArea();
@@ -344,12 +344,12 @@
             try {
                 const success = document.execCommand("copy");
                 if (success) {
-                    window.showToast('✅ 已复制全部序列');
+                    window.showToast('✅ All sequences copied successfully!');
                 } else {
-                    window.showToast('❌ 复制失败，请手动复制');
+                    window.showToast('❌ Copy failed. Please copy manually.');
                 }
             } catch (e) {
-                window.showToast('❌ 复制异常');
+                window.showToast('❌ Copy error.');
             }
             tempCopyArea.value = "";
         }

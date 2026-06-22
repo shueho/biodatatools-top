@@ -3,46 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSCU计算工具 - BioDataTools 网页版</title>
+    <title>RSCU计算工具 - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
 <body>
 
-    <!-- 公共页眉占位符 -->
     <div id="common-header"></div>
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>RSCU计算工具（相对同义密码子使用度）</h2>
+            <h2>RSCU计算工具（相对同义密码子使用度）。</h2>
             <p>相对同义密码子使用度计算（RSCU）</p>
         </div>
 
-        <!-- 第一步卡片 -->
         <div class="step-card">
-            <div class="step-title">第一步：导入 FASTA 序列</div>
+            <div class="step-title">第一步：导入Fasta序列</div>
             <div class="radio-box">
                 <label>
-                    <input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件
+                    <input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传Fasta文件
                 </label>
                 <label>
-                    <input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本
+                    <input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴Fasta文本
                 </label>
             </div>
             <div class="file-input">
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
             </div>
             <div class="text-input">
-                <textarea id="fastaText" placeholder="粘贴标准 FASTA 内容（注意：序列标识第一个空格前的内容将作为基因名称，如有重名请提前修改！）" disabled></textarea>
+                <textarea id="fastaText" placeholder="粘贴标准Fasta内容（注意：序列标识第一个空格前的内容将作为基因名称，如有重名请提前修改！）" disabled></textarea>
             </div>
             <div id="msgTip" class="tip-text"></div>
         </div>
 
-        <!-- 第二步卡片 -->
         <div class="step-card">
             <div class="step-title">第二步：参数设置</div>
             <div class="filter-box">
-                <label>NCBI 密码子表：</label>
+                <label>密码子表：</label>
                 <select id="codonTableSel"></select>
 
                 <label>计算模式：</label>
@@ -58,7 +55,7 @@
             <div class="custom-codon-box">
                 <button class="btn" style="margin-bottom:8px;" id="toggleCustomBtn">展开自定义密码子</button>
                 <div id="customInner" class="hide">
-                    <p>格式：密码子 氨基酸，终止密码子填 TER，每一行是一组对应</p>
+                    <p>格式：密码子 氨基酸，终止密码子填TER，每一行是一组对应</p>
                     <textarea id="customCodonText" placeholder="示例：UUU F"></textarea>
                     <div style="margin-top:8px;display:flex;gap:10px;">
                         <button class="btn" id="loadCustomBtn">加载</button>
@@ -69,49 +66,38 @@
             </div>
             <div id="tableViewTip" class="tip-text"></div>
 
-            <!-- 多列密码子预览区域 -->
             <div class="preview-table-wrap">
                 <h4>当前密码子表预览</h4>
                 <div id="codonPreview"></div>
             </div>
         </div>
 
-        <!-- 第三步卡片 -->
         <div class="step-card">
             <div class="step-title">第三步：计算结果</div>
             <div class="result-top">
-                <button class="btn" id="copyResultBtn" disabled>复制结果(CSV)</button>
-                <button class="btn" id="exportCsvBtn" disabled>导出 RSCU 结果(CSV)</button>
+                <button class="btn" id="copyResultBtn" disabled>复制结果</button>
+                <button class="btn" id="exportCsvBtn" disabled>导出RSCU结果(CSV)</button>
             </div>
             <div id="resultBox"></div>
         </div>
     </div>
 
-    <!-- 公共页脚占位符 -->
     <div id="common-footer"></div>
 
-    <!-- 自定义页眉配置（可选） -->
     <script>
         window.headerConfig = {
             author: '作者：地上飞猪',
-            bilibiliText: '前往B站主页',
-            githubText: 'GitHub项目',
-            returnHomeUrl: '../index.html'
         };
     </script>
 
-    <!-- 引入公共组件（路径使用 ../COMMON/） -->
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
     <script src="../COMMON/footer.js"></script>
 
-    <!-- 外部依赖（密码子表规则） -->
     <script src="../COMMON/sms_genetic_codes.js"></script>
     <script src="../COMMON/codon_config.js"></script>
 
-    <!-- 业务逻辑脚本（完全保留原功能） -->
     <script>
-        // ========= 核心工具函数 =========
         function renderCodonPreview(codonMap){
             const previewBox = document.getElementById("codonPreview");
             const codonList = Object.entries(codonMap);
@@ -120,7 +106,6 @@
                 return;
             }
 
-            // 按第一位碱基分组
             const groupU = [], groupC = [], groupA = [], groupG = [];
             codonList.forEach(([codon, aa]) => {
                 const first = codon[0];
@@ -154,14 +139,12 @@
             previewBox.innerHTML = totalHtml;
         }
 
-        // ========= 全局变量 =========
         let rawFasta = "";
         let geneList = [];
         let geneSeqMap = new Map();
         let currentCodonTable = {};
         let exportData = [];
 
-        // ========= DOM 节点 =========
         const codonTableSel = document.getElementById("codonTableSel");
         const gotoNcbiCodon = document.getElementById("gotoNcbiCodon");
         const toggleCustomBtn = document.getElementById("toggleCustomBtn");
@@ -180,7 +163,6 @@
         const resultBox = document.getElementById("resultBox");
         const exportCsvBtn = document.getElementById("exportCsvBtn");
 
-        // ========= 页面交互逻辑 =========
         gotoNcbiCodon.onclick = function(){
             window.open("https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi", "_blank");
         };
@@ -434,7 +416,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = "RSCU结果.csv";
+            a.download = "RSCU_results.csv";
             document.body.appendChild(a);
             a.click();
             URL.revokeObjectURL(url);

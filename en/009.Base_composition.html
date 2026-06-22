@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base Composition Statistics - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .skew-positive { color: #c0392b; }
+        .skew-negative { color: #2980b9; }
+        .skew-neutral { color: #7f8c8d; }
+        .seq-name-col { max-width: 200px; }
+        .result-toolbar .btn { margin-right: 0; }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Base Composition Statistics</h2>
+            <p>Batch calculate base frequencies, GC/AT content and skew values for FASTA sequences.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import FASTA Sequences</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="Paste FASTA sequences (multiple sequences supported)" disabled></textarea>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="loadBtn">Load & Calculate</button>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Results</div>
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-right:8px;">
+                        Display/Export Format:
+                        <select id="exportMode" style="padding:4px 8px;">
+                            <option value="count">Counts</option>
+                            <option value="freq">Frequency (%)</option>
+                        </select>
+                    </label>
+                    <button class="btn" id="copyBtn" disabled>Copy (TSV)</button>
+                    <button class="btn" id="exportBtn" disabled>Export CSV</button>
+                    <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
+                </div>
+                <div class="table-container" style="margin-top:10px;">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="rowCount"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Waiting for calculation…</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const msgTip = document.getElementById('msgTip');
+            const loadBtn = document.getElementById('loadBtn');
+            const exportMode = document.getElementById('exportMode');
+            const toolbarTip = document.getElementById('toolbarTip');
+            const copyBtn = document.getElementById('copyBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+
+            let sequences = [];
+            let results = [];
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip) setTimeout(() => el.innerHTML = '', 4000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                clearResults();
+                msgTip.innerHTML = '';
+                toolbarTip.innerHTML = '';
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    msgTip.innerHTML = `<span class="success">✅ Loaded: ${file.name}</span>`;
+                    toast(`✅ File ${file.name} loaded successfully`);
+                    clearResults();
+                };
+                reader.readAsText(file);
+            });
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '';
+                let seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) {
+                            seqs.push({ name: name, seq: seq });
+                        }
+                        name = trimmed.slice(1).trim();
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) {
+                    seqs.push({ name: name, seq: seq });
+                }
+                return seqs;
+            }
+
+            function calcStats(seq) {
+                const upper = seq.toUpperCase();
+                let A = 0,
+                    T = 0,
+                    G = 0,
+                    C = 0,
+                    other = 0;
+                for (const ch of upper) {
+                    if (ch === 'A') A++;
+                    else if (ch === 'T') T++;
+                    else if (ch === 'G') G++;
+                    else if (ch === 'C') C++;
+                    else other++;
+                }
+                const length = A + T + G + C + other;
+                const totalACGT = A + T + G + C;
+                const gcPct = totalACGT > 0 ? ((G + C) / totalACGT) * 100 : 0;
+                const atPct = totalACGT > 0 ? ((A + T) / totalACGT) * 100 : 0;
+                const atSkew = (A + T) > 0 ? (A - T) / (A + T) : 0;
+                const gcSkew = (G + C) > 0 ? (G - C) / (G + C) : 0;
+                return { A, T, G, C, other, length, totalACGT, gcPct, atPct, atSkew, gcSkew };
+            }
+
+            function doStat() {
+                const text = fastaText.value.trim();
+                if (!text) {
+                    showMsg(msgTip, '❌ Please upload or paste sequences first.', 'error');
+                    return;
+                }
+                sequences = parseFasta(text);
+                if (sequences.length === 0) {
+                    showMsg(msgTip, '❌ No valid sequences parsed.', 'error');
+                    return;
+                }
+                results = sequences.map(function(item) {
+                    const stat = calcStats(item.seq);
+                    return { name: item.name || 'Unnamed', A: stat.A, T: stat.T, G: stat.G, C: stat.C, other: stat.other, length: stat.length, gcPct: stat.gcPct, atPct: stat.atPct, atSkew: stat.atSkew, gcSkew: stat.gcSkew };
+                });
+                renderResults(exportMode.value);
+                copyBtn.disabled = false;
+                exportBtn.disabled = false;
+                showMsg(msgTip, '✅ Loaded ' + sequences.length + ' sequences, calculation complete.', 'success');
+                toast('✅ Calculation complete: ' + sequences.length + ' sequences');
+            }
+
+            function renderResults(mode) {
+                if (results.length === 0) {
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+                emptyResult.style.display = 'none';
+                resultArea.style.display = 'block';
+
+                var isFreq = (mode === 'freq');
+                var headers = ['Sequence Name', 'Length (bp)', 'A', 'T', 'G', 'C', 'Other', 'GC%', 'AT%', 'AT skew', 'GC skew'];
+                var thead = '<tr>';
+                headers.forEach(function(h) {
+                    thead += '<th>' + h + '</th>';
+                });
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                var tbody = '';
+                results.forEach(function(r) {
+                    var len = r.length;
+                    var aVal = isFreq ? (r.A / len * 100) : r.A;
+                    var tVal = isFreq ? (r.T / len * 100) : r.T;
+                    var gVal = isFreq ? (r.G / len * 100) : r.G;
+                    var cVal = isFreq ? (r.C / len * 100) : r.C;
+                    var oVal = isFreq ? (r.other / len * 100) : r.other;
+                    var fmt = function(v) { return isFreq ? v.toFixed(2) : v; };
+                    tbody += '<tr>';
+                    tbody += '<td class="text-ellipsis seq-name-col" title="' + escapeHtml(r.name) + '">' + escapeHtml(r.name) + '</td>';
+                    tbody += '<td class="mono-num">' + r.length + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(aVal) + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(tVal) + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(gVal) + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(cVal) + '</td>';
+                    tbody += '<td class="mono-num">' + fmt(oVal) + '</td>';
+                    tbody += '<td class="mono-num">' + r.gcPct.toFixed(2) + '</td>';
+                    tbody += '<td class="mono-num">' + r.atPct.toFixed(2) + '</td>';
+                    var atCls = r.atSkew > 0.05 ? 'skew-positive' : (r.atSkew < -0.05 ? 'skew-negative' : 'skew-neutral');
+                    var gcCls = r.gcSkew > 0.05 ? 'skew-positive' : (r.gcSkew < -0.05 ? 'skew-negative' : 'skew-neutral');
+                    tbody += '<td class="mono-num ' + atCls + '">' + r.atSkew.toFixed(4) + '</td>';
+                    tbody += '<td class="mono-num ' + gcCls + '">' + r.gcSkew.toFixed(4) + '</td>';
+                    tbody += '</tr>';
+                });
+                resultBody.innerHTML = tbody;
+                rowCount.textContent = 'Total: ' + results.length + ' sequences';
+            }
+
+            function escapeHtml(s) {
+                if (!s) return '';
+                return s.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function clearResults() {
+                results = [];
+                sequences = [];
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                copyBtn.disabled = true;
+                exportBtn.disabled = true;
+                resultHead.innerHTML = '';
+                resultBody.innerHTML = '';
+                rowCount.textContent = '';
+                toolbarTip.innerHTML = '';
+            }
+
+            function getDataRows(mode) {
+                var rows = [];
+                var isFreq = (mode === 'freq');
+                var headers = ['Sequence Name', 'Length (bp)', 'A', 'T', 'G', 'C', 'Other', 'GC%', 'AT%', 'AT skew', 'GC skew'];
+                rows.push(headers);
+
+                results.forEach(function(r) {
+                    var len = r.length;
+                    var aVal = isFreq ? (r.A / len * 100) : r.A;
+                    var tVal = isFreq ? (r.T / len * 100) : r.T;
+                    var gVal = isFreq ? (r.G / len * 100) : r.G;
+                    var cVal = isFreq ? (r.C / len * 100) : r.C;
+                    var oVal = isFreq ? (r.other / len * 100) : r.other;
+                    var fmt = function(v) { return isFreq ? v.toFixed(2) : String(v); };
+                    rows.push([
+                        r.name,
+                        String(r.length),
+                        fmt(aVal),
+                        fmt(tVal),
+                        fmt(gVal),
+                        fmt(cVal),
+                        fmt(oVal),
+                        r.gcPct.toFixed(2),
+                        r.atPct.toFixed(2),
+                        r.atSkew.toFixed(4),
+                        r.gcSkew.toFixed(4)
+                    ]);
+                });
+                return rows;
+            }
+
+            function copyResult() {
+                if (results.length === 0) {
+                    showMsg(toolbarTip, '❌ No data', 'error');
+                    return;
+                }
+                var rows = getDataRows(exportMode.value);
+                var content = rows.map(function(row) { return row.join('\t'); }).join('\n');
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + content).then(function() {
+                        showMsg(toolbarTip, '✅ Copied', 'success');
+                        toast('✅ Copied');
+                    }).catch(function() {
+                        fallbackCopy(content);
+                    });
+                } else {
+                    fallbackCopy(content);
+                }
+            }
+
+            function fallbackCopy(text) {
+                var ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(toolbarTip, '✅ Copied', 'success');
+                    toast('✅ Copied');
+                } catch (e) {
+                    showMsg(toolbarTip, '❌ Copy failed', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportCsv() {
+                if (results.length === 0) {
+                    showMsg(toolbarTip, '❌ No data', 'error');
+                    return;
+                }
+                var rows = getDataRows(exportMode.value);
+                var content = rows.map(function(row) { return row.join(','); }).join('\n');
+                var blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'base_stat.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(toolbarTip, '✅ CSV exported', 'success');
+                toast('✅ CSV exported');
+            }
+
+            loadBtn.addEventListener('click', doStat);
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    doStat();
+                }
+            });
+
+            copyBtn.addEventListener('click', copyResult);
+            exportBtn.addEventListener('click', exportCsv);
+
+            exportMode.addEventListener('change', function() {
+                if (results.length > 0) {
+                    renderResults(exportMode.value);
+                }
+            });
+
+            window.switchInput();
+            clearResults();
+        })();
+    </script>
+</body>
+</html>

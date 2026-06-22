@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>核酸到氨基酸序列翻译 - BioDataTools 网页版</title>
+    <title>Nucleotide to Amino Acid Translation - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
-    <!-- 全局公用样式 -->
     <link rel="stylesheet" href="../COMMON/global.css">
-    <!-- 页面特有样式 -->
     <style>
         .align-seq {
             font-family: "Consolas", "Monaco", monospace;
@@ -24,101 +22,87 @@
 </head>
 <body>
 
-    <!-- 公共页眉占位符 -->
     <div id="common-header"></div>
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>核酸到氨基酸序列翻译</h2>
-            <p>将蛋白编码基因序列翻译为氨基酸序列（支持简并/混合碱基智能翻译）</p>
+            <h2>Nucleotide to Amino Acid Translation</h2>
+            <p>Translate protein-coding gene sequences into amino acid sequences (supports degenerate/mixed codon translation).</p>
         </div>
 
-        <!-- 第一步卡片 -->
         <div class="step-card">
-            <div class="step-title">第一步：导入 CDS 序列(FASTA)</div>
+            <div class="step-title">Step 1: Import CDS Sequences (FASTA)</div>
             <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本</label>
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">Upload FASTA File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">Paste FASTA Text</label>
             </div>
             <div class="file-input"><input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt"></div>
-            <div class="text-input"><textarea id="fastaText" placeholder="粘贴标准 FASTA CDS 序列（支持 IUPAC 简并碱基）" disabled></textarea></div>
+            <div class="text-input"><textarea id="fastaText" placeholder="Paste standard FASTA CDS sequences (IUPAC degenerate bases supported)" disabled></textarea></div>
             <div id="msgTip" class="tip-text"></div>
         </div>
 
-        <!-- 第二步卡片 -->
         <div class="step-card">
-            <div class="step-title">第二步：翻译参数设置</div>
+            <div class="step-title">Step 2: Translation Parameter Settings</div>
             <div class="filter-box">
-                <label>NCBI 密码子表：</label>
+                <label>Genetic Code Table:</label>
                 <select id="codonTableSel"></select>
-                <label>遇到终止密码子：</label>
+                <label>On Stop Codon:</label>
                 <select id="stopCodonMode">
-                    <option value="stop">停止翻译</option>
-                    <option value="continue">继续翻译</option>
+                    <option value="stop">Stop translation</option>
+                    <option value="continue">Continue translation</option>
                 </select>
-                <button class="btn" id="gotoNcbiCodon">查看NCBI密码子表</button>
-                <button class="btn" onclick="runTranslate()">开始翻译</button>
+                <button class="btn" id="gotoNcbiCodon">View NCBI Codon Table</button>
+                <button class="btn" onclick="runTranslate()">Start Translation</button>
             </div>
 
             <div class="custom-codon-box">
-                <button class="btn" style="margin-bottom:8px;" id="toggleCustomBtn">展开自定义密码子</button>
+                <button class="btn" style="margin-bottom:8px;" id="toggleCustomBtn">Expand Custom Codon</button>
                 <div id="customInner" class="hide">
-                    <p>格式：密码子 氨基酸，终止密码子填 TER，每一行一组对应（仅精确密码子）</p>
-                    <textarea id="customCodonText" placeholder="示例：UUU F"></textarea>
+                    <p>Format: codon amino_acid (use TER for stop codons), one mapping per line.</p>
+                    <textarea id="customCodonText" placeholder="e.g., UUU F"></textarea>
                     <div style="margin-top:8px;display:flex;gap:10px;">
-                        <button class="btn" id="loadCustomBtn">加载</button>
-                        <button class="btn" id="clearCustomBtn">清空</button>
+                        <button class="btn" id="loadCustomBtn">Load</button>
+                        <button class="btn" id="clearCustomBtn">Clear</button>
                     </div>
                     <div id="customTip" class="tip-text"></div>
                 </div>
             </div>
             <div id="tableViewTip" class="tip-text"></div>
 
-            <!-- 多列密码子预览区域 -->
             <div class="preview-table-wrap">
-                <h4>当前密码子表预览</h4>
+                <h4>Current Codon Table Preview</h4>
                 <div id="codonPreview"></div>
             </div>
         </div>
 
-        <!-- 第三步卡片：添加复制按钮 -->
         <div class="step-card">
-            <div class="step-title">第三步：翻译结果</div>
+            <div class="step-title">Step 3: Translation Results</div>
             <div class="result-toolbar">
-                <button class="btn" id="copyProteinBtn" disabled>复制蛋白序列</button>
-                <button class="btn" id="exportFastaBtn" disabled>导出蛋白序列(FASTA)</button>
-                <button class="btn" id="exportCsvBtn" disabled>导出翻译详情(CSV)</button>
+                <button class="btn" id="copyProteinBtn" disabled>Copy Protein Sequences</button>
+                <button class="btn" id="exportFastaBtn" disabled>Export Protein (FASTA)</button>
+                <button class="btn" id="exportCsvBtn" disabled>Export Translation Details (CSV)</button>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div id="resultBox"></div>
         </div>
     </div>
 
-    <!-- 公共页脚占位符 -->
     <div id="common-footer"></div>
 
-    <!-- 自定义页眉配置 -->
     <script>
         window.headerConfig = {
-            author: '作者：地上飞猪',
-            bilibiliText: '前往B站主页',
-            githubText: 'GitHub项目',
-            returnHomeUrl: '../index.html'
+            //author: '作者：地上飞猪',
         };
     </script>
 
-    <!-- 引入公共组件 -->
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
 
-    <!-- 外部依赖 -->
     <script src="../COMMON/sms_genetic_codes.js"></script>
-    <script src="../COMMON/codon_config.js"></script>
+    <script src="../COMMON/codon_config-en.js"></script>
 
-    <!-- 业务逻辑脚本 -->
     <script>
-        // ==================== IUPAC 简并碱基映射 ====================
         const degenerateMap = {
             'A': ['A'], 'U': ['U'], 'C': ['C'], 'G': ['G'],
             'R': ['A', 'G'], 'Y': ['C', 'U'], 'K': ['G', 'U'], 'M': ['A', 'C'],
@@ -185,7 +169,7 @@
             const previewBox = document.getElementById("codonPreview");
             const codonList = Object.entries(codonMap);
             if (codonList.length === 0) {
-                previewBox.innerHTML = '<span class="error">暂无密码子数据</span>';
+                previewBox.innerHTML = '<span class="error">No codon data available.</span>';
                 return;
             }
             const groupU = [], groupC = [], groupA = [], groupG = [];
@@ -200,7 +184,7 @@
             function buildColHtml(list, title) {
                 let html = `<div class="codon-col"><table class="preview-table">
                     <tr><th colspan="2">${title}</th></tr>
-                    <tr><th>密码子</th><th>氨基酸</th></tr>`;
+                    <tr><th>Codon</th><th>Amino Acid</th></tr>`;
                 list.forEach(item => {
                     html += `<td>${item.codon}</td><td>${item.aa}</td></tr>`;
                 });
@@ -208,10 +192,10 @@
                 return html;
             }
             let totalHtml = `<div class="codon-preview-row">`;
-            totalHtml += buildColHtml(groupU, "首位: U");
-            totalHtml += buildColHtml(groupC, "首位: C");
-            totalHtml += buildColHtml(groupA, "首位: A");
-            totalHtml += buildColHtml(groupG, "首位: G");
+            totalHtml += buildColHtml(groupU, "First position: U");
+            totalHtml += buildColHtml(groupC, "First position: C");
+            totalHtml += buildColHtml(groupA, "First position: A");
+            totalHtml += buildColHtml(groupG, "First position: G");
             totalHtml += `</div>`;
             previewBox.innerHTML = totalHtml;
         }
@@ -273,7 +257,7 @@
         codonTableSel.addEventListener("change", function() {
             const id = Number(this.value);
             currentCodonTable = getCodonTable(id);
-            tableViewTip.innerHTML = `<span class="success">已切换：${getTableName(id)}</span>`;
+            tableViewTip.innerHTML = `<span class="success">Switched to: ${getTableName(id)}</span>`;
             renderCodonPreview(currentCodonTable);
         });
 
@@ -282,7 +266,7 @@
         loadCustomBtn.onclick = function() {
             const txt = customCodonText.value.trim();
             if (!txt) {
-                customTip.innerHTML = '<span class="error">请输入内容</span>';
+                customTip.innerHTML = '<span class="error">Please enter something.</span>';
                 return;
             }
             const lines = txt.split(/\r?\n/).filter(line => line.trim());
@@ -294,12 +278,12 @@
                 temp[p[0].toUpperCase()] = p[1];
             }
             if (!ok) {
-                customTip.innerHTML = '<span class="error">格式错误</span>';
+                customTip.innerHTML = '<span class="error">Format error.</span>';
                 return;
             }
             currentCodonTable = temp;
-            customTip.innerHTML = '<span class="success">加载成功</span>';
-            tableViewTip.innerHTML = '<span class="success">当前：自定义密码子表</span>';
+            customTip.innerHTML = '<span class="success">Loaded successfully</span>';
+            tableViewTip.innerHTML = '<span class="success">Current: Custom Codon Table</span>';
             renderCodonPreview(currentCodonTable);
         };
 
@@ -314,8 +298,8 @@
             const reader = new FileReader();
             reader.onload = function(ev) {
                 rawFasta = ev.target.result;
-                msgTip.innerHTML = `<span class="success">已读取：${file.name}</span>`;
-                window.showToast(`✅ 文件 ${file.name} 加载成功`);
+                msgTip.innerHTML = `<span class="success">Loaded: ${file.name}</span>`;
+                window.showToast(`✅ File ${file.name} loaded successfully`);
                 parseFasta(rawFasta);
             };
             reader.readAsText(file);
@@ -375,12 +359,12 @@
                 rawFasta = fastaText.value;
             }
             if (!rawFasta) {
-                resultBox.innerHTML = '<span class="error">❌ 无有效CDS序列</span>';
+                resultBox.innerHTML = '<span class="error">❌ No valid CDS sequence found.</span>';
                 return;
             }
             parseFasta(rawFasta);
             if (geneList.length === 0) {
-                resultBox.innerHTML = '<span class="error">❌ 未解析到有效基因序列</span>';
+                resultBox.innerHTML = '<span class="error">❌ No valid gene sequences parsed.</span>';
                 return;
             }
 
@@ -402,9 +386,9 @@
 
                 outHtml += `
                 <div class="result-item">
-                    <div class="gene-title">基因名称：${gene}</div>
-                    <p>RNA总长度：${rnaSeq.length} bp</p>
-                    <p><strong>蛋白序列：</strong></p>
+                    <div class="gene-title">Gene Name: ${gene}</div>
+                    <p>RNA Length: ${rnaSeq.length} bp</p>
+                    <p><strong>Protein Sequence: </strong></p>
                     <div class="align-seq">${rawProt}</div>
                 </div>`;
             }
@@ -413,13 +397,12 @@
             copyProteinBtn.disabled = false;
             exportFastaBtn.disabled = false;
             exportCsvBtn.disabled = false;
-            window.showToast('✅ 翻译完成');
+            window.showToast('✅ Translation complete.');
         }
 
-        // 复制所有蛋白序列（FASTA格式）
         function copyAllProtein() {
             if (translateResult.length === 0) {
-                window.showToast('❌ 暂无可复制的蛋白序列');
+                window.showToast('❌ No protein sequences to copy.');
                 return;
             }
             let fastaStr = "";
@@ -428,7 +411,7 @@
             });
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(fastaStr).then(() => {
-                    window.showToast('✅ 已复制全部蛋白序列');
+                    window.showToast('✅ All protein sequences copied successfully!');
                 }).catch(() => {
                     fallbackCopy(fastaStr);
                 });
@@ -444,9 +427,9 @@
             textarea.select();
             try {
                 document.execCommand('copy');
-                window.showToast('✅ 已复制全部蛋白序列（兼容模式）');
+                window.showToast('✅ All protein sequences copied successfully!');
             } catch (e) {
-                window.showToast('❌ 复制失败，请手动复制');
+                window.showToast('❌ Copy failed. Please copy manually.');
             }
             document.body.removeChild(textarea);
         }
@@ -465,12 +448,12 @@
             document.body.appendChild(a);
             a.click();
             URL.revokeObjectURL(url);
-            window.showToast('✅ FASTA 已导出');
+            window.showToast('✅ FASTA exported successfully.');
         }
 
         function exportToCSV() {
             if (translateResult.length === 0) return;
-            let csv = "\ufeff基因名称,RNA长度(bp),终止密码子处理方式,蛋白序列\n";
+            let csv = "\ufeffGene Name,RNA Length (bp),Stop Codon Mode,Protein Sequence\n";
             translateResult.forEach(item => {
                 csv += `${item.geneName},${item.rnaLength},${item.stopMode},${item.protein}\n`;
             });
@@ -483,7 +466,7 @@
             a.click();
             URL.revokeObjectURL(url);
             document.body.removeChild(a);
-            window.showToast('✅ CSV 已导出');
+            window.showToast('✅ CSV exported successfully.');
         }
 
         copyProteinBtn.addEventListener("click", copyAllProtein);

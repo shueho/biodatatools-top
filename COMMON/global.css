@@ -589,7 +589,6 @@ svg text {
     border-top: 2px solid #1f4068;
 }
 
-/* ===== 模式切换标签页 ===== */
 .mode-tabs {
     display: flex;
     gap: 12px;
@@ -623,7 +622,6 @@ svg text {
     font-weight: 400;
 }
 
-/* ===== 文件列表（通用） ===== */
 .file-list {
     border: 1px solid #e8edf2;
     border-radius: 6px;
@@ -649,7 +647,6 @@ svg text {
     margin-left: 16px;
 }
 
-/* ===== 下载条目 ===== */
 .download-item {
     display: flex;
     justify-content: space-between;
@@ -666,7 +663,6 @@ svg text {
     align-items: center;
 }
 
-/* ===== 突出显示框（如合并文件） ===== */
 .highlight-box {
     background: #f0f7ff;
     border: 1px solid #b8d4f0;
@@ -685,14 +681,12 @@ svg text {
     font-size: 0.9rem;
 }
 
-/* ===== 输入提示文字 ===== */
 .input-hint {
     font-size: 0.85rem;
     color: #888;
     margin-top: 4px;
 }
 
-/* ===== 模式切换标签页（已存在，但补全完整） ===== */
 .mode-tabs {
     display: flex;
     gap: 12px;
@@ -726,52 +720,74 @@ svg text {
     font-weight: 400;
 }
 
-/* ========== 响应式（页眉及全局） ========== */
 @media (max-width: 768px) {
     .header-wrap {
         flex-direction: column;
         gap: 1rem;
         text-align: center;
     }
-    /* 左侧容器在移动端纵向排列 */
     .header-left {
         flex-direction: column;
         align-items: center;
         gap: 8px;
     }
-    /* Logo 在平板下适中大小 */
     .header-logo {
         height: 55px;
     }
-    /* 右侧按钮组居中 */
     .header-wrap > div:last-child {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         gap: 6px;
     }
-    /* 其他全局调整 */
     .header-wrap > div:last-child a {
         margin-right: 6px;
     }
 }
 
 @media (max-width: 480px) {
-    /* 手机小屏 Logo 再缩小一点 */
     .header-logo {
         height: 45px;
     }
-    /* 页眉内边距减小 */
     header {
         padding: 0.8rem 1rem;
     }
-    /* 标题字体略缩小 */
     .site-title h1 {
         font-size: 1.3rem;
     }
-    /* 按钮文字略小 */
     .bilibili-link, .github-link, .back-home {
         padding: 0.4rem 0.8rem;
         font-size: 0.85rem;
     }
+}
+
+.lang-switch-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1.4rem;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;  
+    margin-left: 5px;
+}
+
+.lang-switch-btn:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+    background: linear-gradient(135deg, #5a6fd6 0%, #6a3f8f 100%);
+}
+
+.lang-switch-btn:active {
+    transform: scale(0.97);
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
 }

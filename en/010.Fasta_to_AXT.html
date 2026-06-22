@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>批量FASTA转AXT - BioDataTools 网页版</title>
+    <title>Batch FASTA to AXT Conversion - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../COMMON/global.css">
     <style>
-        /* 页面独有样式 */
         .text-input textarea {
             min-height: 120px;
         }
@@ -19,45 +18,41 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>批量FASTA转AXT</h2>
-            <p>将比对好的 FASTA 文件或文本转换为 AXT 成对比对格式</p>
+            <h2>Batch FASTA to AXT Conversion</h2>
+            <p>Convert aligned FASTA files or text into AXT pairwise alignment format.</p>
         </div>
 
-        <!-- 第一步：导入 -->
         <div class="step-card">
-            <div class="step-title">第一步：导入 FASTA 序列</div>
+            <div class="step-title">Step 1: Import FASTA Sequences</div>
 
             <div class="mode-tabs">
                 <label>
                     <input type="radio" name="importMode" value="files" checked onchange="switchMode()">
-                    <span>选择文件 <span class="hint">（可多选）</span></span>
+                    <span>Select Files<span class="hint">(multiple select)</span></span>
                 </label>
                 <label>
                     <input type="radio" name="importMode" value="folder" onchange="switchMode()">
-                    <span>选择文件夹 <span class="hint">（读取全部 FASTA）</span></span>
+                    <span>Select Folder<span class="hint">(read all FASTA)</span></span>
                 </label>
                 <label>
                     <input type="radio" name="importMode" value="text" onchange="switchMode()">
-                    <span>粘贴文本 <span class="hint">（标准 FASTA 格式）</span></span>
+                    <span>Paste Text<span class="hint">(standard FASTA format)</span></span>
                 </label>
             </div>
 
-            <!-- 文件模式 -->
             <div class="file-input" id="fileInputWrap">
                 <input type="file" id="fileInput" multiple accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.mpfa,.txt,.fas">
-                <div class="input-hint">点击选择文件（按住 Ctrl 可多选）</div>
+                <div class="input-hint">Click to select files (hold Ctrl for multiple)</div>
             </div>
 
-            <!-- 文件夹模式 -->
             <div class="file-input" id="folderInputWrap" style="display:none;">
                 <input type="file" id="folderInput" webkitdirectory multiple accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.mpfa,.txt,.fas">
-                <div class="input-hint">点击选择整个文件夹，自动读取其中所有 FASTA 文件</div>
+                <div class="input-hint">Click to select a folder, automatically read all FASTA files within</div>
             </div>
 
-            <!-- 文本模式 -->
             <div class="text-input" id="textInputWrap" style="display:none;">
-                <textarea id="textInput" placeholder="粘贴标准 FASTA 格式内容（支持多条序列）"></textarea>
-                <div class="input-hint">每条序列以 > 开头，序列内容可跨行</div>
+                <textarea id="textInput" placeholder="Paste standard FASTA content (multiple sequences supported)"></textarea>
+                <div class="input-hint">Each sequence starts with >, sequence content can span multiple lines</div>
             </div>
 
             <div id="msgTip" class="tip-text"></div>
@@ -65,25 +60,24 @@
             <div id="fileListWrap" style="display:none; margin-top:12px;">
                 <div class="file-list" id="fileList"></div>
                 <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
-                    <span id="fileCount">共 0 个 FASTA 文件</span>
-                    <button class="btn btn-sm" id="clearFilesBtn" style="margin-left:12px; background:#dc3545;">清空</button>
+                    <span id="fileCount">Total 0 FASTA files</span>
+                    <button class="btn btn-sm" id="clearFilesBtn" style="margin-left:12px; background:#dc3545;">Clear</button>
                 </div>
             </div>
         </div>
 
-        <!-- 第二步：转换 + 结果 -->
         <div class="step-card">
-            <div class="step-title">第二步：转换参数与结果</div>
+            <div class="step-title">Step 2: Conversion Parameters & Results</div>
 
             <div class="filter-box">
                 <label>
                     <input type="checkbox" id="includeName" checked>
-                    记录头包含文件名
+                    Include filename in header
                     <span style="font-weight:400;color:#888;font-size:0.85rem;margin-left:4px;">
-                        （包含：seq1&seq2|filename；不包含：seq1&seq2）
+                        (include: seq1&seq2|filename; exclude: seq1&seq2)
                     </span>
                 </label>
-                <button class="btn" id="convertBtn" disabled>开始转换</button>
+                <button class="btn" id="convertBtn" disabled>Start Conversion</button>
             </div>
             <div id="paramTip" class="tip-text"></div>
 
@@ -91,18 +85,18 @@
                 <div class="highlight-box">
                     <div>
                         <span class="label">📄 merge.axt</span>
-                        <span class="desc">（合并所有文件，共 <span id="totalRecords">0</span> 条记录）</span>
+                        <span class="desc">(merged from all files, total <span id="totalRecords">0</span> records)</span>
                     </div>
-                    <button class="btn" id="downloadMergeBtn">下载</button>
+                    <button class="btn" id="downloadMergeBtn">Download</button>
                 </div>
 
                 <div style="margin-top:12px;">
-                    <span style="font-weight:500;">各文件单独下载：</span>
+                    <span style="font-weight:500;">Individual file downloads:</span>
                     <div id="singleDownloadList" style="margin-top:6px;"></div>
                 </div>
                 <div id="toolbarTip" class="tip-text"></div>
             </div>
-            <div id="emptyResult" class="empty-tip" style="margin-top:15px;">转换完成后显示结果！</div>
+            <div id="emptyResult" class="empty-tip" style="margin-top:15px;">Results will appear after conversion!</div>
         </div>
     </div>
 
@@ -110,17 +104,12 @@
 
     <script>
         window.headerConfig = {
-            author: '作者：地上飞猪',
-            bilibiliUrl: 'https://space.bilibili.com/33053326',
-            bilibiliText: '前往B站主页',
-            githubUrl: 'https://github.com/shueho/BioDataTools',
-            githubText: 'GitHub项目',
-            returnHomeUrl: '../index.html'
+            //author: '作者：地上飞猪',
         };
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
 
     <script>
         (function() {
@@ -151,7 +140,6 @@
 
             var VALID_EXTS = ['.fasta', '.fa', '.fna', '.ffn', '.faa', '.frn', '.mpfa', '.txt', '.fas'];
 
-            // ---------- 模式切换 ----------
             window.switchMode = function() {
                 var mode = document.querySelector('input[name="importMode"]:checked').value;
                 var fileWrap = document.getElementById('fileInputWrap');
@@ -187,7 +175,6 @@
                 folderInput.value = '';
             };
 
-            // ---------- 文件类型判断 ----------
             function isFastaFile(filename) {
                 var lower = filename.toLowerCase();
                 for (var i = 0; i < VALID_EXTS.length; i++) {
@@ -206,7 +193,6 @@
                 return list;
             }
 
-            // ---------- 更新文件列表 ----------
             function updateFileList() {
                 if (fastaFiles.length === 0) {
                     fileListWrap.style.display = 'none';
@@ -225,7 +211,7 @@
                     `;
                 });
                 fileList.innerHTML = html;
-                fileCount.textContent = '共 ' + fastaFiles.length + ' 个 FASTA 文件';
+                fileCount.textContent = 'Total ' + fastaFiles.length + ' FASTA files';
                 convertBtn.disabled = false;
                 resultArea.style.display = 'none';
                 emptyResult.style.display = 'block';
@@ -235,7 +221,6 @@
                 paramTip.innerHTML = '';
             }
 
-            // ---------- 文本模式检测 ----------
             function checkTextInput() {
                 var mode = document.querySelector('input[name="importMode"]:checked').value;
                 if (mode !== 'text') return;
@@ -245,9 +230,8 @@
                     convertBtn.disabled = true;
                     return;
                 }
-                // 简单检测是否包含 FASTA 格式
                 if (!text.includes('>')) {
-                    showMsg(msgTip, '⚠️ 未检测到 FASTA 格式（缺少 > 开头）', 'warn');
+                    showMsg(msgTip, '⚠️ No FASTA format detected (missing lines starting with >)', 'warn');
                     convertBtn.disabled = true;
                     return;
                 }
@@ -257,7 +241,6 @@
 
             textInput.addEventListener('input', function() {
                 checkTextInput();
-                // 清空之前的结果
                 parsedData = [];
                 mergeContent = '';
                 resultArea.style.display = 'none';
@@ -266,7 +249,6 @@
                 paramTip.innerHTML = '';
             });
 
-            // ---------- 通用函数 ----------
             function escapeHtml(s) {
                 if (!s) return '';
                 return s.replace(/[&<>"]/g, function(m) {
@@ -287,18 +269,17 @@
                 if (window.showToast) window.showToast(msg);
             }
 
-            // ---------- 文件输入事件 ----------
             fileInput.addEventListener('change', function(e) {
                 var files = e.target.files;
                 if (files.length === 0) return;
                 var valid = processFiles(files);
                 if (valid.length === 0) {
-                    showMsg(msgTip, '❌ 未找到有效的 FASTA 文件（支持：' + VALID_EXTS.join(', ') + '）', 'error');
+                    showMsg(msgTip, '❌ No valid FASTA files found (supported: ' + VALID_EXTS.join(', ') + ')', 'error');
                     return;
                 }
                 fastaFiles = valid;
-                showMsg(msgTip, '✅ 已添加 ' + valid.length + ' 个文件', 'success');
-                toast('✅ 已添加 ' + valid.length + ' 个文件');
+                showMsg(msgTip, '✅ Added ' + valid.length + ' file(s)', 'success');
+                toast('✅ Added ' + valid.length + ' file(s)');
                 updateFileList();
                 fileInput.value = '';
             });
@@ -308,12 +289,12 @@
                 if (files.length === 0) return;
                 var valid = processFiles(files);
                 if (valid.length === 0) {
-                    showMsg(msgTip, '❌ 文件夹中未找到有效的 FASTA 文件（支持：' + VALID_EXTS.join(', ') + '）', 'error');
+                    showMsg(msgTip, '❌ No valid FASTA files found in folder (supported: ' + VALID_EXTS.join(', ') + ')', 'error');
                     return;
                 }
                 fastaFiles = valid;
-                showMsg(msgTip, '✅ 读取成功，共 ' + valid.length + ' 个 FASTA 文件', 'success');
-                toast('✅ 读取成功，共 ' + valid.length + ' 个 FASTA 文件');
+                showMsg(msgTip, '✅ Loaded ' + valid.length + ' FASTA files from folder', 'success');
+                toast('✅ Loaded ' + valid.length + ' FASTA files from folder');
                 updateFileList();
                 folderInput.value = '';
             });
@@ -333,7 +314,6 @@
                 folderInput.value = '';
             });
 
-            // ---------- FASTA 解析 ----------
             function parseFasta(text) {
                 var lines = text.split(/\r?\n/);
                 var seqs = [];
@@ -354,7 +334,6 @@
                 return seqs;
             }
 
-            // ---------- 转换 ----------
             function convertToAxt(sequences, baseName, includeNameFlag) {
                 var content = '';
                 var recordCount = 0;
@@ -378,12 +357,11 @@
                 return new Promise(function(resolve, reject) {
                     var reader = new FileReader();
                     reader.onload = function(e) { resolve(e.target.result); };
-                    reader.onerror = function() { reject(new Error('读取失败: ' + file.name)); };
+                    reader.onerror = function() { reject(new Error('Failed to read: ' + file.name)); };
                     reader.readAsText(file);
                 });
             }
 
-            // ---------- 从文本模式获取数据 ----------
             function getTextModeData() {
                 var text = textInput.value.trim();
                 if (!text) return null;
@@ -392,29 +370,25 @@
                 return seqs;
             }
 
-            // ---------- 执行转换 ----------
             async function doConvert() {
                 var mode = document.querySelector('input[name="importMode"]:checked').value;
                 var sourceFiles = [];
                 var isTextMode = (mode === 'text');
 
-                // 文本模式
                 if (isTextMode) {
                     var seqs = getTextModeData();
                     if (!seqs) {
-                        showMsg(paramTip, '❌ 请粘贴至少包含 2 条序列的 FASTA 内容', 'error');
+                        showMsg(paramTip, '❌ Please paste FASTA content containing at least 2 sequences', 'error');
                         return;
                     }
-                    // 构造一个虚拟文件对象
                     sourceFiles = [{
                         name: 'paste_input.fasta',
                         seqs: seqs,
                         isText: true
                     }];
                 } else {
-                    // 文件/文件夹模式
                     if (fastaFiles.length === 0) {
-                        showMsg(paramTip, '❌ 请先导入 FASTA 文件', 'error');
+                        showMsg(paramTip, '❌ Please import FASTA files first', 'error');
                         return;
                     }
                     sourceFiles = fastaFiles.map(function(f) {
@@ -423,8 +397,8 @@
                 }
 
                 convertBtn.disabled = true;
-                convertBtn.textContent = '转换中…';
-                showMsg(paramTip, '⏳ 正在处理，请稍候…', 'warn');
+                convertBtn.textContent = 'Converting…';
+                showMsg(paramTip, '⏳ Processing, please wait…', 'warn');
 
                 parsedData = [];
                 var totalRecordsCount = 0;
@@ -456,7 +430,7 @@
                     }
 
                     if (parsedData.length === 0) {
-                        showMsg(paramTip, '❌ 所有文件/内容序列数均不足2条，无法生成 AXT', 'error');
+                        showMsg(paramTip, '❌ All files/content have fewer than 2 sequences, cannot generate AXT', 'error');
                         convertBtn.disabled = false;
                         convertBtn.textContent = '开始转换';
                         return;
@@ -469,19 +443,18 @@
 
                     renderResults(totalRecordsCount);
                     var sourceCount = sourceFiles.length;
-                    showMsg(paramTip, '✅ 转换完成，共 ' + parsedData.length + ' 个文件/内容，' + totalRecordsCount + ' 条记录', 'success');
-                    toast('✅ 转换完成');
+                    showMsg(paramTip, '✅ Conversion complete: ' + parsedData.length + ' file(s)/content processed, ' + totalRecordsCount + ' records', 'success');
+                    toast('✅ Conversion complete');
 
                 } catch (err) {
-                    showMsg(paramTip, '❌ 转换出错：' + err.message, 'error');
+                    showMsg(paramTip, '❌ Conversion error: ' + err.message, 'error');
                     console.error(err);
                 }
 
                 convertBtn.disabled = false;
-                convertBtn.textContent = '开始转换';
+                convertBtn.textContent = 'Start Conversion';
             }
 
-            // ---------- 渲染结果 ----------
             function renderResults(totalRecordsCount) {
                 resultArea.style.display = 'block';
                 emptyResult.style.display = 'none';
@@ -492,8 +465,8 @@
                     var filename = item.baseName + '.axt';
                     html += `
                         <div class="download-item">
-                            <span>${escapeHtml(filename)} (${item.recordCount} 条)</span>
-                            <button class="btn btn-sm" data-index="${idx}">下载</button>
+                            <span>${escapeHtml(filename)} (${item.recordCount} records)</span>
+                            <button class="btn btn-sm" data-index="${idx}">Download</button>
                         </div>
                     `;
                 });
@@ -504,7 +477,7 @@
                         var idx = parseInt(this.dataset.index);
                         var item = parsedData[idx];
                         downloadFile(item.axtContent, item.baseName + '.axt');
-                        showMsg(toolbarTip, '✅ 已下载 ' + item.baseName + '.axt', 'success');
+                        showMsg(toolbarTip, '✅ Downloaded ' + item.baseName + '.axt', 'success');
                     });
                 });
             }
@@ -521,25 +494,21 @@
                 URL.revokeObjectURL(url);
             }
 
-            // ---------- 合并下载 ----------
             downloadMergeBtn.addEventListener('click', function() {
                 if (!mergeContent) return;
                 downloadFile(mergeContent, 'merge.axt');
-                showMsg(toolbarTip, '✅ 已下载 merge.axt', 'success');
-                toast('✅ 已下载 merge.axt');
+                showMsg(toolbarTip, '✅ Downloaded merge.axt', 'success');
+                toast('✅ Downloaded merge.axt');
             });
 
-            // ---------- 参数变更自动重转 ----------
             includeName.addEventListener('change', function() {
                 if (parsedData.length > 0) {
                     doConvert();
                 }
             });
 
-            // ---------- 事件绑定 ----------
             convertBtn.addEventListener('click', doConvert);
 
-            // Ctrl+Enter 快捷键（文本模式）
             textInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();
@@ -549,7 +518,6 @@
                 }
             });
 
-            // 初始化
             document.getElementById('fileInputWrap').style.display = 'block';
             document.getElementById('folderInputWrap').style.display = 'none';
             document.getElementById('textInputWrap').style.display = 'none';

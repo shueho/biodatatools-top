@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>核酸到氨基酸序列翻译 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .align-seq {
+            font-family: "Consolas", "Monaco", monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: normal;
+            word-break: break-all;
+            margin: 8px 0;
+        }
+        .result-top {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>核酸到氨基酸序列翻译</h2>
+            <p>将蛋白编码基因序列翻译为氨基酸序列（支持简并/混合碱基智能翻译）。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入 CDS 序列(FASTA)</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本</label>
+            </div>
+            <div class="file-input"><input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt"></div>
+            <div class="text-input"><textarea id="fastaText" placeholder="粘贴标准FASTA CDS序列（支持IUPAC简并碱基）" disabled></textarea></div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：翻译参数设置</div>
+            <div class="filter-box">
+                <label>密码子表：</label>
+                <select id="codonTableSel"></select>
+                <label>遇到终止密码子：</label>
+                <select id="stopCodonMode">
+                    <option value="stop">停止翻译</option>
+                    <option value="continue">继续翻译</option>
+                </select>
+                <button class="btn" id="gotoNcbiCodon">查看NCBI密码子表</button>
+                <button class="btn" onclick="runTranslate()">开始翻译</button>
+            </div>
+
+            <div class="custom-codon-box">
+                <button class="btn" style="margin-bottom:8px;" id="toggleCustomBtn">展开自定义密码子</button>
+                <div id="customInner" class="hide">
+                    <p>格式：密码子 氨基酸，终止密码子填TER，每一行一组对应（仅精确密码子）</p>
+                    <textarea id="customCodonText" placeholder="示例：UUU F"></textarea>
+                    <div style="margin-top:8px;display:flex;gap:10px;">
+                        <button class="btn" id="loadCustomBtn">加载</button>
+                        <button class="btn" id="clearCustomBtn">清空</button>
+                    </div>
+                    <div id="customTip" class="tip-text"></div>
+                </div>
+            </div>
+            <div id="tableViewTip" class="tip-text"></div>
+
+            <div class="preview-table-wrap">
+                <h4>当前密码子表预览</h4>
+                <div id="codonPreview"></div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：翻译结果</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyProteinBtn" disabled>复制蛋白序列</button>
+                <button class="btn" id="exportFastaBtn" disabled>导出蛋白序列(FASTA)</button>
+                <button class="btn" id="exportCsvBtn" disabled>导出翻译详情(CSV)</button>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div id="resultBox"></div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+        };
+    </script>
+
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script src="../COMMON/sms_genetic_codes.js"></script>
+    <script src="../COMMON/codon_config.js"></script>
+
+    <script>
+        const degenerateMap = {
+            'A': ['A'], 'U': ['U'], 'C': ['C'], 'G': ['G'],
+            'R': ['A', 'G'], 'Y': ['C', 'U'], 'K': ['G', 'U'], 'M': ['A', 'C'],
+            'S': ['G', 'C'], 'W': ['A', 'U'], 'H': ['A', 'C', 'U'],
+            'B': ['C', 'G', 'U'], 'V': ['A', 'C', 'G'], 'D': ['A', 'G', 'U'],
+            'N': ['A', 'C', 'G', 'U']
+        };
+
+        function expandCodon(codon) {
+            if (!codon || codon.length !== 3) return [];
+            const basesList = [
+                degenerateMap[codon[0]],
+                degenerateMap[codon[1]],
+                degenerateMap[codon[2]]
+            ];
+            if (basesList.some(b => !b)) return [];
+            const results = [];
+            for (const b1 of basesList[0]) {
+                for (const b2 of basesList[1]) {
+                    for (const b3 of basesList[2]) {
+                        results.push(b1 + b2 + b3);
+                    }
+                }
+            }
+            return [...new Set(results)];
+        }
+
+        function translateCodon(codon, codonTable) {
+            const expanded = expandCodon(codon);
+            if (expanded.length === 0) return 'X';
+            const translations = new Set();
+            for (const exact of expanded) {
+                let aa = codonTable[exact];
+                if (aa === undefined) aa = 'X';
+                translations.add(aa);
+            }
+            if (translations.size === 1) {
+                const val = [...translations][0];
+                return val === 'TER' ? '*' : val;
+            } else {
+                return 'X';
+            }
+        }
+
+        function translateCDS(rnaSeq, stopMode, codonTable) {
+            let protein = "";
+            const len = rnaSeq.length;
+            const totalCodonNum = Math.floor(len / 3);
+            for (let i = 0; i < totalCodonNum; i++) {
+                const start = i * 3;
+                const codon = rnaSeq.substring(start, start + 3);
+                const aa = translateCodon(codon, codonTable);
+                if (aa === '*') {
+                    protein += '*';
+                    if (stopMode === "stop") break;
+                } else {
+                    protein += aa;
+                }
+            }
+            return { protSeq: protein, isStopped: false };
+        }
+
+        function renderCodonPreview(codonMap) {
+            const previewBox = document.getElementById("codonPreview");
+            const codonList = Object.entries(codonMap);
+            if (codonList.length === 0) {
+                previewBox.innerHTML = '<span class="error">暂无密码子数据</span>';
+                return;
+            }
+            const groupU = [], groupC = [], groupA = [], groupG = [];
+            codonList.forEach(([codon, aa]) => {
+                const first = codon[0];
+                const item = {codon, aa};
+                if (first === 'U') groupU.push(item);
+                else if (first === 'C') groupC.push(item);
+                else if (first === 'A') groupA.push(item);
+                else if (first === 'G') groupG.push(item);
+            });
+            function buildColHtml(list, title) {
+                let html = `<div class="codon-col"><table class="preview-table">
+                    <tr><th colspan="2">${title}</th></tr>
+                    <tr><th>密码子</th><th>氨基酸</th></tr>`;
+                list.forEach(item => {
+                    html += `<td>${item.codon}</td><td>${item.aa}</td></tr>`;
+                });
+                html += `</table></div>`;
+                return html;
+            }
+            let totalHtml = `<div class="codon-preview-row">`;
+            totalHtml += buildColHtml(groupU, "首位: U");
+            totalHtml += buildColHtml(groupC, "首位: C");
+            totalHtml += buildColHtml(groupA, "首位: A");
+            totalHtml += buildColHtml(groupG, "首位: G");
+            totalHtml += `</div>`;
+            previewBox.innerHTML = totalHtml;
+        }
+
+        let rawFasta = "";
+        let geneList = [];
+        let geneSeqMap = new Map();
+        let currentCodonTable = {};
+        let translateResult = [];
+
+        const codonTableSel = document.getElementById("codonTableSel");
+        const gotoNcbiCodon = document.getElementById("gotoNcbiCodon");
+        const toggleCustomBtn = document.getElementById("toggleCustomBtn");
+        const customInner = document.getElementById("customInner");
+        const customCodonText = document.getElementById("customCodonText");
+        const loadCustomBtn = document.getElementById("loadCustomBtn");
+        const clearCustomBtn = document.getElementById("clearCustomBtn");
+        const customTip = document.getElementById("customTip");
+        const tableViewTip = document.getElementById("tableViewTip");
+
+        const fastaFile = document.getElementById("fastaFile");
+        const fastaText = document.getElementById("fastaText");
+        const msgTip = document.getElementById("msgTip");
+        const stopCodonMode = document.getElementById("stopCodonMode");
+
+        const resultBox = document.getElementById("resultBox");
+        const copyProteinBtn = document.getElementById("copyProteinBtn");
+        const exportFastaBtn = document.getElementById("exportFastaBtn");
+        const exportCsvBtn = document.getElementById("exportCsvBtn");
+        const toolbarTip = document.getElementById("toolbarTip");
+
+        gotoNcbiCodon.onclick = () => window.open("https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi", "_blank");
+
+        function switchInput() {
+            const mode = document.querySelector('input[name="inputMode"]:checked').value;
+            resetAll();
+            if (mode === "file") {
+                fastaFile.disabled = false;
+                fastaText.disabled = true;
+            } else {
+                fastaFile.disabled = true;
+                fastaText.disabled = false;
+            }
+        }
+
+        function initCodonSelect() {
+            codonTableSel.innerHTML = "";
+            for (const id in TABLE_ID_NAME_MAP) {
+                const opt = document.createElement("option");
+                opt.value = id;
+                opt.textContent = TABLE_ID_NAME_MAP[id];
+                codonTableSel.appendChild(opt);
+            }
+            const initId = Number(codonTableSel.value);
+            currentCodonTable = getCodonTable(initId);
+            renderCodonPreview(currentCodonTable);
+        }
+
+        codonTableSel.addEventListener("change", function() {
+            const id = Number(this.value);
+            currentCodonTable = getCodonTable(id);
+            tableViewTip.innerHTML = `<span class="success">已切换：${getTableName(id)}</span>`;
+            renderCodonPreview(currentCodonTable);
+        });
+
+        toggleCustomBtn.onclick = () => customInner.classList.toggle("hide");
+
+        loadCustomBtn.onclick = function() {
+            const txt = customCodonText.value.trim();
+            if (!txt) {
+                customTip.innerHTML = '<span class="error">请输入内容</span>';
+                return;
+            }
+            const lines = txt.split(/\r?\n/).filter(line => line.trim());
+            const temp = {};
+            let ok = true;
+            for (const line of lines) {
+                const p = line.trim().split(/\s+/);
+                if (p.length < 2) { ok = false; break; }
+                temp[p[0].toUpperCase()] = p[1];
+            }
+            if (!ok) {
+                customTip.innerHTML = '<span class="error">格式错误</span>';
+                return;
+            }
+            currentCodonTable = temp;
+            customTip.innerHTML = '<span class="success">加载成功</span>';
+            tableViewTip.innerHTML = '<span class="success">当前：自定义密码子表</span>';
+            renderCodonPreview(currentCodonTable);
+        };
+
+        clearCustomBtn.onclick = function() {
+            customCodonText.value = "";
+            customTip.innerHTML = "";
+        };
+
+        fastaFile.addEventListener("change", function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                rawFasta = ev.target.result;
+                msgTip.innerHTML = `<span class="success">已读取：${file.name}</span>`;
+                window.showToast(`✅ 文件 ${file.name} 加载成功`);
+                parseFasta(rawFasta);
+            };
+            reader.readAsText(file);
+        });
+
+        function parseFasta(str) {
+            geneList = [];
+            geneSeqMap.clear();
+            const lines = str.split(/\r?\n/).filter(line => line.trim());
+            let name = "", seq = "";
+            for (const line of lines) {
+                if (line.startsWith(">")) {
+                    if (name && seq) {
+                        let cleanSeq = seq.toUpperCase().replace(/T/g, 'U');
+                        cleanSeq = cleanSeq.replace(/[^AUCGRYKMSWHBVDN]/g, '');
+                        geneList.push(name);
+                        geneSeqMap.set(name, cleanSeq);
+                    }
+                    name = line.replace(/^>\s*/, "").trim();
+                    //name = line.replace(/^>\s*/, "").trim().split(/\s+/)[0];
+
+                    seq = "";
+                } else {
+                    seq += line;
+                }
+            }
+            if (name && seq) {
+                let cleanSeq = seq.toUpperCase().replace(/T/g, 'U');
+                cleanSeq = cleanSeq.replace(/[^AUCGRYKMSWHBVDN]/g, '');
+                geneList.push(name);
+                geneSeqMap.set(name, cleanSeq);
+            }
+            resetResult();
+        }
+
+        function resetResult() {
+            resultBox.innerHTML = "";
+            translateResult = [];
+            copyProteinBtn.disabled = true;
+            exportFastaBtn.disabled = true;
+            exportCsvBtn.disabled = true;
+            toolbarTip.innerHTML = "";
+        }
+
+        function resetAll() {
+            rawFasta = "";
+            fastaFile.value = "";
+            fastaText.value = "";
+            msgTip.innerHTML = "";
+            tableViewTip.innerHTML = "";
+            customTip.innerHTML = "";
+            resetResult();
+        }
+
+        function runTranslate() {
+            if (document.querySelector('input[name="inputMode"][value="text"]:checked')) {
+                rawFasta = fastaText.value;
+            }
+            if (!rawFasta) {
+                resultBox.innerHTML = '<span class="error">❌ 无有效CDS序列</span>';
+                return;
+            }
+            parseFasta(rawFasta);
+            if (geneList.length === 0) {
+                resultBox.innerHTML = '<span class="error">❌ 未解析到有效基因序列</span>';
+                return;
+            }
+
+            const stopMode = stopCodonMode.value;
+            let outHtml = "";
+            translateResult = [];
+
+            for (const gene of geneList) {
+                const rnaSeq = geneSeqMap.get(gene);
+                const transRes = translateCDS(rnaSeq, stopMode, currentCodonTable);
+                const rawProt = transRes.protSeq;
+
+                translateResult.push({
+                    geneName: gene,
+                    rnaLength: rnaSeq.length,
+                    stopMode: stopMode,
+                    protein: rawProt
+                });
+
+                outHtml += `
+                <div class="result-item">
+                    <div class="gene-title">基因名称：${gene}</div>
+                    <p>RNA总长度：${rnaSeq.length} bp</p>
+                    <p><strong>蛋白序列：</strong></p>
+                    <div class="align-seq">${rawProt}</div>
+                </div>`;
+            }
+
+            resultBox.innerHTML = outHtml;
+            copyProteinBtn.disabled = false;
+            exportFastaBtn.disabled = false;
+            exportCsvBtn.disabled = false;
+            window.showToast('✅ 翻译完成');
+        }
+
+        function copyAllProtein() {
+            if (translateResult.length === 0) {
+                window.showToast('❌ 暂无可复制的蛋白序列');
+                return;
+            }
+            let fastaStr = "";
+            translateResult.forEach(item => {
+                fastaStr += `>${item.geneName}\n${item.protein}\n`;
+            });
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(fastaStr).then(() => {
+                    window.showToast('✅ 已复制全部蛋白序列');
+                }).catch(() => {
+                    fallbackCopy(fastaStr);
+                });
+            } else {
+                fallbackCopy(fastaStr);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                window.showToast('✅ 已复制全部蛋白序列');
+            } catch (e) {
+                window.showToast('❌ 复制失败，请手动复制');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function exportToFasta() {
+            if (translateResult.length === 0) return;
+            let fasta = "";
+            translateResult.forEach(item => {
+                fasta += `>${item.geneName}\n${item.protein}\n`;
+            });
+            const blob = new Blob([fasta], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "protein.fasta";
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            window.showToast('✅ FASTA已导出');
+        }
+
+        function exportToCSV() {
+            if (translateResult.length === 0) return;
+            let csv = "\ufeff基因名称,RNA长度(bp),终止密码子处理方式,蛋白序列\n";
+            translateResult.forEach(item => {
+                csv += `${item.geneName},${item.rnaLength},${item.stopMode},${item.protein}\n`;
+            });
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "translate_log.csv";
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            window.showToast('✅ CSV已导出');
+        }
+
+        copyProteinBtn.addEventListener("click", copyAllProtein);
+        exportFastaBtn.addEventListener("click", exportToFasta);
+        exportCsvBtn.addEventListener("click", exportToCSV);
+
+        window.onload = initCodonSelect;
+    </script>
+</body>
+</html>

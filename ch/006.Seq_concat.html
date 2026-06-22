@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNA/RNA/氨基酸序列拼接 - BioDataTools 网页版</title>
+    <title>DNA/RNA/氨基酸序列拼接 - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
-    <!-- 页面特有样式 -->
     <style>
         .sequence-list {
             margin: 15px 0;
@@ -27,32 +26,29 @@
         .sequence-item:last-child {
             border-bottom: none;
         }
-        /* 移除按钮特殊颜色，完全使用全局 .btn 样式 */
     </style>
 </head>
 <body>
 
-    <!-- 公共页眉占位符 -->
     <div id="common-header"></div>
 
     <main class="main">
         <div class="page-intro">
             <h2>DNA/RNA/氨基酸序列拼接</h2>
-            <p>核酸（DNA/RNA）和蛋白质序列清洗拼接</p>
+            <p>核酸（DNA/RNA）和蛋白质序列清洗拼接。</p>
         </div>
 
-        <!-- 第一步：导入 FASTA 序列（统一风格） -->
         <div class="step-card">
-            <div class="step-title">第一步：导入 FASTA 序列</div>
+            <div class="step-title">第一步：导入FASTA序列</div>
             <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本</label>
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">上传FASTA文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">粘贴FASTA文本</label>
             </div>
             <div class="file-input">
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
             </div>
             <div class="text-input">
-                <textarea id="fastaText" placeholder="粘贴标准 FASTA 内容（序列标识第一个空格前的内容将作为基因名称）" disabled></textarea>
+                <textarea id="fastaText" placeholder="粘贴标准FASTA内容（序列标识第一个空格前的内容将作为基因名称）" disabled></textarea>
             </div>
             <div id="msgTip" class="tip-text"></div>
             <div style="margin-top:15px;">
@@ -64,11 +60,9 @@
             </div>
         </div>
 
-        <!-- 第二步：参数设置 -->
         <div class="step-card">
             <div class="step-title">第二步：参数设置</div>
 
-            <!-- 序列类型切换 -->
             <div class="mode-switch">
                 <label>
                     <input type="radio" name="seqType" value="dna" checked> 蛋白编码核酸模式
@@ -78,7 +72,6 @@
                 </label>
             </div>
 
-            <!-- 核酸专属参数区域 -->
             <div id="dnaParams">
                 <div class="three-inline">
                     <div class="form-group">
@@ -107,7 +100,6 @@
                     </select>
                 </div>
 
-                <!-- 密码子配置区 -->
                 <div id="codonConfigWrap" class="sub-group hide">
                     <div class="form-group">
                         <label>终止密码子来源</label>
@@ -125,7 +117,6 @@
                 </div>
             </div>
 
-            <!-- 蛋白质模式提示 -->
             <div id="proteinHint" class="tip-text success hide" style="margin-top:10px;">
                 ★ 蛋白质模式：直接拼接原始序列，不进行任何清洗、互补或密码子处理。
             </div>
@@ -133,7 +124,6 @@
             <button id="concatBtn" class="btn">执行序列拼接</button>
         </div>
 
-        <!-- 结果区 -->
         <div id="resultWrap" class="step-card">
             <div class="step-title">拼接结果</div>
 
@@ -160,43 +150,32 @@
         </div>
     </main>
 
-    <!-- 公共页脚占位符 -->
     <div id="common-footer"></div>
 
-    <!-- 自定义页眉配置 -->
     <script>
         window.headerConfig = {
             author: '作者：地上飞猪',
-            bilibiliText: '前往B站主页',
-            githubText: 'GitHub项目',
-            returnHomeUrl: '../index.html'
         };
     </script>
 
-    <!-- 引入公共组件 -->
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
     <script src="../COMMON/footer.js"></script>
 
-    <!-- 外部依赖（密码子表规则） -->
     <script src="../COMMON/codon_config.js"></script>
     <script src="../COMMON/sms_genetic_codes.js"></script>
 
-    <!-- 业务逻辑脚本 -->
     <script>
-        // ---------- 全局变量 ----------
         let sequences = [];          // { name, seq, revComp }
         let positionData = [];
         let currentSeqType = "dna";  // "dna" or "protein"
 
-        // 互补映射（仅核酸模式使用）
         const complementMap = {
             'A':'T','T':'A','C':'G','G':'C',
             'a':'t','t':'a','c':'g','g':'c',
             'N':'N','n':'N','-':'-'
         };
 
-        // DOM 元素
         const fastaFile = document.getElementById('fastaFile');
         const fastaText = document.getElementById('fastaText');
         const msgTip = document.getElementById('msgTip');
@@ -204,10 +183,8 @@
         const seqListWrap = document.getElementById('seqListWrap');
         const seqList = document.getElementById('seqList');
 
-        // 导入模式切换（与001一致）
         function switchInput() {
             const mode = document.querySelector('input[name="inputMode"]:checked').value;
-            // 清空已有数据
             sequences = [];
             positionData = [];
             seqListWrap.classList.add('hide');
@@ -226,7 +203,6 @@
             }
         }
 
-        // 读取文件
         fastaFile.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -235,13 +211,10 @@
                 fastaText.value = ev.target.result;
                 msgTip.innerHTML = `<span class="success">✅ 已读取：${file.name}</span>`;
                 window.showToast(`✅ 文件 ${file.name} 加载成功`);
-                // 自动加载序列（可选，或保留手动按钮）
-                // 这里保留手动按钮，所以不自动调用 loadSeq
             };
             reader.readAsText(file);
         });
 
-        // 手动加载序列
         function loadSeq() {
             const mode = document.querySelector('input[name="inputMode"]:checked').value;
             let text = '';
@@ -266,7 +239,6 @@
             window.showToast(`✅ 已加载 ${sequences.length} 条序列`);
         }
 
-        // 解析FASTA（与原逻辑一致）
         function parseFasta(fastaText) {
             const lines = fastaText.split(/\r?\n/);
             const res = [];
@@ -292,7 +264,6 @@
             sequences = res;
         }
 
-        // 渲染序列列表
         function renderSeqList() {
             seqList.innerHTML = '';
             const isProteinMode = (currentSeqType === 'protein');
@@ -353,7 +324,6 @@
             }
         };
 
-        // ---------- 以下为拼接相关函数（完全保留原逻辑） ----------
         const compTime = document.getElementById('compTime');
         const baseFilter = document.getElementById('baseFilter');
         const stopAction = document.getElementById('stopAction');
@@ -444,8 +414,7 @@
         }
 
         function showTip(msg, type) {
-            const tip = document.getElementById('tipBox'); // 使用原 tipBox，但我们在新结构中将其改为了 msgTip？需要调整
-            // 为了兼容，我们用 msgTip 来显示提示
+            const tip = document.getElementById('tipBox'); 
             msgTip.innerHTML = `<span class="${type}">${msg}</span>`;
             setTimeout(() => { msgTip.innerHTML = ''; }, 4000);
         }
@@ -646,7 +615,6 @@
             downloadFile(txt, 'gene_position.txt', 'text/plain');
         }
 
-        // 序列类型切换处理
         function onSeqTypeChange() {
             const typeRadio = document.querySelector('input[name="seqType"]:checked');
             if (typeRadio) {
@@ -665,13 +633,12 @@
                 inputs.forEach(el => el.disabled = false);
                 proteinHint.classList.add('hide');
             }
-            renderSeqList(); // 重新渲染以禁用/启用反向互补复选框
+            renderSeqList(); 
             disableAllResultBtn();
             finalSeqDiv.textContent = '';
             posTableBody.innerHTML = '';
         }
 
-        // 绑定事件
         function bindEvents() {
             loadBtn.addEventListener('click', loadSeq);
             concatBtn.addEventListener('click', doConcat);
@@ -685,11 +652,10 @@
             document.querySelectorAll('input[name="seqType"]').forEach(radio => radio.addEventListener('change', onSeqTypeChange));
         }
 
-        // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
             initCodonTableSelect();
             bindEvents();
-            switchInput(); // 初始化导入模式状态
+            switchInput(); 
             toggleCodonArea();
             updateStopCodonByTable();
             disableAllResultBtn();

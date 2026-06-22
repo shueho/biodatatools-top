@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>碱基组成统计 - BioDataTools 网页版</title>
+    <title>碱基组成统计 - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../COMMON/global.css">
     <style>
@@ -21,21 +21,20 @@
     <div class="main">
         <div class="page-intro">
             <h2>碱基组成统计</h2>
-            <p>批量统计 FASTA 序列的碱基频数、GC/AT 含量及 skew 值</p>
+            <p>批量统计FASTA序列的碱基频数、GC/AT含量及Skew值。</p>
         </div>
 
-        <!-- 第一步：导入 -->
         <div class="step-card">
-            <div class="step-title">第一步：导入 FASTA 序列</div>
+            <div class="step-title">第一步：导入FASTA序列</div>
             <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">粘贴文本</label>
             </div>
             <div class="file-input">
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
             </div>
             <div class="text-input">
-                <textarea id="fastaText" placeholder="粘贴 FASTA 格式序列（支持多条）" disabled></textarea>
+                <textarea id="fastaText" placeholder="粘贴FASTA格式序列（支持多条）" disabled></textarea>
             </div>
             <div id="msgTip" class="tip-text"></div>
             <div style="margin-top:12px;">
@@ -43,7 +42,6 @@
             </div>
         </div>
 
-        <!-- 第二步：结果 -->
         <div class="step-card">
             <div class="step-title">第二步：统计结果</div>
             <div id="resultArea" style="display:none;">
@@ -55,8 +53,8 @@
                             <option value="freq">频率 (%)</option>
                         </select>
                     </label>
-                    <button class="btn" id="copyBtn" disabled>复制 (TSV)</button>
-                    <button class="btn" id="exportBtn" disabled>导出 CSV</button>
+                    <button class="btn" id="copyBtn" disabled>复制(TSV)</button>
+                    <button class="btn" id="exportBtn" disabled>导出CSV</button>
                     <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
                 </div>
                 <div class="table-container" style="margin-top:10px;">
@@ -77,12 +75,7 @@
 
     <script>
         window.headerConfig = {
-            author: '作者：地上飞猪',
-            bilibiliUrl: 'https://space.bilibili.com/33053326',
-            bilibiliText: '前往B站主页',
-            githubUrl: 'https://github.com/shueho/BioDataTools',
-            githubText: 'GitHub项目',
-            returnHomeUrl: '../index.html'
+            //author: '作者：地上飞猪',
         };
     </script>
     <script src="../COMMON/utils.js"></script>
@@ -369,11 +362,10 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showMsg(toolbarTip, '✅ CSV 已导出', 'success');
-                toast('✅ CSV 已导出');
+                showMsg(toolbarTip, '✅ CSV已导出', 'success');
+                toast('✅ CSV已导出');
             }
 
-            // 事件绑定
             loadBtn.addEventListener('click', doStat);
 
             fastaText.addEventListener('keydown', function(e) {
@@ -392,7 +384,6 @@
                 }
             });
 
-            // 初始化
             window.switchInput();
             clearResults();
         })();

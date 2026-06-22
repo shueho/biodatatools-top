@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CodonW指数在线计算 - BioDataTools</title>
+    <title>CodonW Indices Online Calculator - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
@@ -13,54 +13,51 @@
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>CodonW指数在线计算</h2>
-            <p>参考CodonW源码在线计算T3s、C3s、A3s、G3s、Nc、GC3s与GC</p>
+            <h2>CodonW Indices Online Calculator</h2>
+            <p>Calculate T3s, C3s, A3s, G3s, Nc, GC3s and GC based on CodonW source code.</p>
         </div>
 
-        <!-- 第一步 -->
         <div class="step-card">
-            <div class="step-title">第一步：导入 CDS 序列 (FASTA)</div>
+            <div class="step-title">Step 1: Import CDS Sequences (FASTA)</div>
             <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传 FASTA 文件</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴 FASTA 文本</label>
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">Upload FASTA File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">Paste FASTA Text</label>
             </div>
             <div class="file-input">
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
             </div>
             <div class="text-input">
-                <textarea id="fastaText" placeholder="粘贴标准 FASTA 格式的 CDS 序列（支持多条）" disabled></textarea>
+                <textarea id="fastaText" placeholder="Paste standard FASTA CDS sequences (multiple sequences supported)" disabled></textarea>
             </div>
             <div id="msgTip" class="tip-text"></div>
             <div style="margin-top:12px;">
-                <button class="btn" id="loadBtn">加载序列</button>
+                <button class="btn" id="loadBtn">Load Sequences</button>
             </div>
             <div id="seqPreviewWrap" style="display:none;margin-top:12px;">
-                <span style="font-size:0.9rem;color:#555;">已加载 <span id="seqCount">0</span> 条序列</span>
+                <span style="font-size:0.9rem;color:#555;">Loaded <span id="seqCount">0</span> sequence(s)</span>
             </div>
         </div>
 
-        <!-- 第二步 -->
         <div class="step-card">
-            <div class="step-title">第二步：参数设置</div>
+            <div class="step-title">Step 2: Parameter Settings</div>
             <div class="filter-box">
-                <label>NCBI 密码子表：
+                <label>Genetic Code Table:
                     <select id="codonTableSel"></select>
                 </label>
-                <label>终止密码子（可手动修改）：
+                <label>Stop Codons (editable):
                     <input type="text" id="stopCodonInput" style="width:180px;">
                 </label>
-                <label><input type="checkbox" id="keepStop"> 计算包含终止密码子</label>
-                <button class="btn" id="runBtn" disabled>开始计算</button>
+                <label><input type="checkbox" id="keepStop">Include stop codons in calculation</label>
+                <button class="btn" id="runBtn" disabled>Run Calculation</button>
             </div>
             <div id="tableViewTip" class="tip-text"></div>
         </div>
 
-        <!-- 第三步 -->
         <div class="step-card">
-            <div class="step-title">第三步：计算结果</div>
+            <div class="step-title">Step 3: Results</div>
             <div class="result-toolbar">
-                <button class="btn" id="copyResultBtn" disabled>复制结果 (TSV)</button>
-                <button class="btn" id="exportCsvBtn" disabled>导出 CSV</button>
+                <button class="btn" id="copyResultBtn" disabled>Copy Results (TSV)</button>
+                <button class="btn" id="exportCsvBtn" disabled>Export CSV</button>
                 <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
             </div>
             <div id="resultArea" style="display:none;">
@@ -75,7 +72,7 @@
                     <span id="errorSummary" style="margin-left:16px;color:#dc3545;"></span>
                 </div>
             </div>
-            <div id="emptyResult" class="empty-tip">等待计算…</div>
+            <div id="emptyResult" class="empty-tip">Waiting for calculation…</div>
         </div>
     </div>
 
@@ -83,19 +80,14 @@
 
     <script>
         window.headerConfig = {
-            author: '参考CodonW 1.4.2源码修改（修改：地上飞猪）',
-            bilibiliUrl: 'https://space.bilibili.com/33053326',
-            bilibiliText: '前往B站主页',
-            githubUrl: 'https://github.com/shueho/BioDataTools',
-            githubText: 'GitHub项目',
-            returnHomeUrl: '../index.html'
+            author: 'Modified based on CodonW 1.4.2 source code (modified by Di Shang Fei Zhu)',
         };
     </script>
 
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer.js"></script>
-    <script src="../COMMON/codon_config.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/codon_config-en.js"></script>
     <script src="../COMMON/sms_genetic_codes.js"></script>
 
     <script>
@@ -129,7 +121,6 @@
             let currentCodonTable = {};
             let currentStopCodons = [];
 
-            // ========== 从密码子表计算每个氨基酸的简并度（同义密码子总数） ==========
             function getAADegeneracy(codonTable) {
                 const deg = {};
                 const bases = ['U', 'C', 'A', 'G'];
@@ -169,7 +160,6 @@
                 });
             }
 
-            // ========== 密码子表管理 ==========
             function initCodonSelect() {
                 codonTableSel.innerHTML = '';
                 for (const id in TABLE_ID_NAME_MAP) {
@@ -197,10 +187,9 @@
             codonTableSel.addEventListener('change', function() {
                 const id = Number(this.value);
                 updateStopFromTable(id);
-                document.getElementById('tableViewTip').innerHTML = `<span class="success">已切换：${getTableName(id)}</span>`;
+                document.getElementById('tableViewTip').innerHTML = `<span class="success">Switched to: ${getTableName(id)}</span>`;
             });
 
-            // ========== FASTA 解析 ==========
             function parseFasta(text) {
                 const lines = text.split(/\r?\n/);
                 const seqs = [];
@@ -225,26 +214,24 @@
                 const mode = document.querySelector('input[name="inputMode"]:checked').value;
                 let text = (mode === 'file') ? fastaText.value : fastaText.value;
                 if (!text.trim()) {
-                    showMsg(msgTip, '❌ 请先上传文件或粘贴 FASTA 内容', 'error');
+                    showMsg(msgTip, '❌ Please upload a file or paste FASTA content first.', 'error');
                     return;
                 }
                 const parsed = parseFasta(text);
                 if (parsed.length === 0) {
-                    showMsg(msgTip, '❌ 未解析到有效 FASTA 序列', 'error');
+                    showMsg(msgTip, '❌ No valid FASTA sequences parsed.', 'error');
                     return;
                 }
                 sequences = parsed;
                 seqCount.textContent = sequences.length;
                 seqPreviewWrap.style.display = 'block';
-                showMsg(msgTip, `✅ 成功加载 ${sequences.length} 条序列`, 'success');
-                toast(`✅ 已加载 ${sequences.length} 条序列`);
+                showMsg(msgTip, `✅ Successfully loaded ${sequences.length} sequence(s).`, 'success');
+                toast(`✅ Loaded ${sequences.length} sequence(s)`);
                 runBtn.disabled = false;
                 clearResults();
             }
 
-            // ========== 核心计算 ==========
             function computeIndices(seq, stopCodons, keepStopFlag, codonTable) {
-                // 1. 转换RNA并提取完整密码子
                 let rna = seq.toUpperCase().replace(/T/g, 'U');
                 const len = rna.length;
                 const codons = [];
@@ -253,10 +240,9 @@
                 }
                 const totalCodons = codons.length;
                 if (totalCodons === 0) {
-                    return { error: '序列长度不足3，无完整密码子' };
+                    return { error: 'Sequence length < 3, no complete codons' };
                 }
 
-                // 2. 检测中间终止
                 const stopSet = new Set(stopCodons);
                 let stopPositions = [];
                 for (let i = 0; i < codons.length; i++) {
@@ -269,7 +255,7 @@
                 if (stopPositions.length > 0) {
                     const firstStop = stopPositions[0];
                     if (firstStop * 3 + 3 < len) {
-                        error = `中间终止密码子 "${codons[firstStop]}" 位于第 ${firstStop+1} 个密码子，后面还有 ${len - (firstStop*3 + 3)} 个碱基`;
+                        error = `Internal stop codon "${codons[firstStop]}" at codon position ${firstStop+1}, with ${len - (firstStop*3 + 3)} remaining bases`;
                         return { error };
                     }
                     if (keepStopFlag) {
@@ -281,10 +267,9 @@
                     validCodons = codons.slice();
                 }
                 if (validCodons.length === 0) {
-                    return { error: '无有效密码子（可能全部为终止）' };
+                    return { error: 'No valid codons (all may be stop codons)' };
                 }
 
-                // 3. 统计每个氨基酸的总出现次数 (nnaa) 和实际出现的密码子
                 const nnaa = {};
                 const codonCounts = {};
                 for (const codon of validCodons) {
@@ -296,10 +281,8 @@
                     codonCounts[codon]++;
                 }
 
-                // 4. 获取密码子表中每个氨基酸的简并度 (da)
                 const aaDegeneracy = getAADegeneracy(codonTable);
 
-                // 5. 计算 T3s, C3s, A3s, G3s (base_sil_us_out)
                 const bases_s = { U: 0, C: 0, A: 0, G: 0 };
                 for (const codon of validCodons) {
                     let aa = codonTable[codon];
@@ -336,7 +319,6 @@
                 const A3s = cb.A > 0 ? bases_s.A / cb.A : 0;
                 const G3s = cb.G > 0 ? bases_s.G / cb.G : 0;
 
-                // 6. GC3s
                 let synonTotal = 0;
                 let synonGC = 0;
                 for (const codon of validCodons) {
@@ -349,7 +331,6 @@
                 }
                 const GC3s = synonTotal > 0 ? synonGC / synonTotal : 0;
 
-                // 7. GC
                 let totalBasesGC = 0,
                     totalBasesAll = 0;
                 let codonsForGC = validCodons;
@@ -364,30 +345,24 @@
                 }
                 const GC = totalBasesAll > 0 ? totalBasesGC / totalBasesAll : 0;
 
-                // 8. Nc (Wright 公式，严格按 enc_out)
-                // 初始化 fold[9], totb[9], numaa[9]
                 const fold = new Array(9).fill(0);
                 const totb = new Array(9).fill(0);
                 const numaa = new Array(9).fill(0);
 
-                // 获取所有可能的氨基酸（从密码子表中）
                 const aaSet = new Set();
                 for (const [codon, aa] of Object.entries(codonTable)) {
                     if (aa !== 'TER' && aa !== '*') {
                         aaSet.add(aa);
                     }
                 }
-                // 遍历每个氨基酸（即使出现次数为 0）
                 for (const aa of aaSet) {
-                    const total = nnaa[aa] || 0; // 出现次数
+                    const total = nnaa[aa] || 0; 
                     const deg = aaDegeneracy[aa] || 0;
-                    if (deg === 0) continue; // 理论上不会，但安全起见
-                    fold[deg]++; // 无论 bb 是否有效，fold 都增加
+                    if (deg === 0) continue; 
+                    fold[deg]++; 
 
-                    // 如果出现次数 <= 1，bb = 0，不累加 totb 和 numaa
                     if (total <= 1) continue;
 
-                    // 计算 s2
                     let s2 = 0;
                     for (const codon of Object.keys(codonCounts)) {
                         if (codonTable[codon] === aa) {
@@ -405,8 +380,7 @@
                     }
                 }
 
-                // 计算 enc_tot
-                let enc_tot = fold[1]; // 单简并氨基酸个数
+                let enc_tot = fold[1]; 
                 let error_t = false;
 
                 for (let z = 2; z <= 8; z++) {
@@ -415,12 +389,10 @@
                         if (numaa[z] > 0 && totb[z] > 0) {
                             aver = totb[z] / numaa[z];
                         } else if (z === 3 && numaa[2] > 0 && numaa[4] > 0 && fold[z] === 1) {
-                            // 特殊处理 3-fold
                             const avg2 = totb[2] / numaa[2];
                             const avg4 = totb[4] / numaa[4];
                             aver = (avg2 + avg4) * 0.5;
                         } else {
-                            // 无法计算，报错
                             error_t = true;
                             break;
                         }
@@ -434,10 +406,9 @@
                 }
 
                 if (error_t) {
-                    return { error: 'Nc 计算失败：某些氨基酸家族的密码子频率无法计算 homozygosity' };
+                    return { error: 'Nc calculation failed: unable to compute homozygosity for some amino acid families' };
                 }
 
-                // 最终调整
                 if (enc_tot > 61) enc_tot = 61;
 
                 return {
@@ -452,10 +423,9 @@
                 };
             }
 
-            // ========== 运行分析 ==========
             function runAnalysis() {
                 if (sequences.length === 0) {
-                    showMsg(msgTip, '❌ 请先加载序列', 'error');
+                    showMsg(msgTip, '❌ Please load sequences first.', 'error');
                     return;
                 }
 
@@ -465,7 +435,7 @@
                     .map(c => c.replace(/T/g, 'U'));
 
                 if (stopCodons.length === 0) {
-                    showMsg(msgTip, '❌ 请至少输入一个有效的终止密码子（三个字母）', 'error');
+                    showMsg(msgTip, '❌ Please enter at least one valid stop codon (3 letters).', 'error');
                     return;
                 }
 
@@ -507,16 +477,15 @@
                 renderResults();
                 runBtn.disabled = false;
                 if (errorCount > 0) {
-                    showMsg(msgTip, `⚠️ 计算完成，${errorCount} 个基因存在终止密码子错误或Nc无法计算`, 'warn');
+                    showMsg(msgTip, `⚠️ Calculation complete, ${errorCount} gene(s) with stop codon errors or Nc calculation failure.`, 'warn');
                 } else {
-                    showMsg(msgTip, `✅ 计算完成，${results.length} 个基因全部成功`, 'success');
-                    toast('✅ 计算完成');
+                    showMsg(msgTip, `✅ Calculation complete, ${results.length} gene(s) all successful.`, 'success');
+                    toast('✅ Calculation complete');
                 }
                 copyResultBtn.disabled = false;
                 exportCsvBtn.disabled = false;
             }
 
-            // ========== 渲染结果 ==========
             function renderResults() {
                 if (results.length === 0) {
                     resultArea.style.display = 'none';
@@ -527,7 +496,7 @@
                 emptyResult.style.display = 'none';
                 resultArea.style.display = 'block';
 
-                const headers = ['基因名称', 'T3s', 'C3s', 'A3s', 'G3s', 'Nc', 'GC3s', 'GC'];
+                const headers = ['Gene Name', 'T3s', 'C3s', 'A3s', 'G3s', 'Nc', 'GC3s', 'GC'];
                 let thead = '<tr>';
                 for (const h of headers) thead += `<th>${h}</th>`;
                 thead += '</tr>';
@@ -539,7 +508,7 @@
                     if (r.error) {
                         errorCount++;
                         tbody += `<tr class="error-row">`;
-                        tbody += `<td class="gene-name">${escapeHtml(r.name)} <span class="error-badge">[错误]</span></td>`;
+                        tbody += `<td class="gene-name">${escapeHtml(r.name)} <span class="error-badge">[Error]</span></td>`;
                         tbody += `<td colspan="${headers.length - 1}" class="error-msg">❌ ${escapeHtml(r.error)}</td>`;
                         tbody += '</tr>';
                         continue;
@@ -558,9 +527,9 @@
 
                 resultBody.innerHTML = tbody;
                 const totalOk = results.filter(r => !r.error).length;
-                rowCount.textContent = `共 ${results.length} 个基因，成功 ${totalOk} 个`;
+                rowCount.textContent = `Total ${results.length} gene(s), ${totalOk} successful`;
                 if (errorCount > 0) {
-                    errorSummary.textContent = `❌ 错误 ${errorCount} 个`;
+                    errorSummary.textContent = `❌ ${errorCount} error(s)`;
                 } else {
                     errorSummary.textContent = '';
                 }
@@ -576,17 +545,16 @@
                 errorSummary.textContent = '';
             }
 
-            // ========== 复制与导出 ==========
             function getDataRows() {
                 const rows = [];
-                const header = ['基因名称', 'T3s', 'C3s', 'A3s', 'G3s', 'Nc', 'GC3s', 'GC(%)'];
+                const header = ['Gene Name', 'T3s', 'C3s', 'A3s', 'G3s', 'Nc', 'GC3s', 'GC(%)'];
                 rows.push(header);
 
                 for (const r of results) {
                     const row = [];
                     row.push(r.name);
                     if (r.error) {
-                        row.push('错误', '错误', '错误', '错误', '错误', '错误', '错误');
+                        row.push('Error', 'Error', 'Error', 'Error', 'Error', 'Error', 'Error');
                     } else {
                         row.push(r.T3s.toFixed(4), r.C3s.toFixed(4), r.A3s.toFixed(4), r.G3s.toFixed(4),
                             r.Nc.toFixed(2), r.GC3s.toFixed(4), (r.GC * 100).toFixed(2) + '%');
@@ -598,15 +566,15 @@
 
             function copyResult() {
                 if (results.length === 0) {
-                    showMsg(toolbarTip, '❌ 无数据', 'error');
+                    showMsg(toolbarTip, '❌ No data', 'error');
                     return;
                 }
                 const rows = getDataRows();
                 const content = rows.map(row => row.join('\t')).join('\n');
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText('\uFEFF' + content).then(() => {
-                        showMsg(toolbarTip, '✅ 已复制', 'success');
-                        toast('✅ 已复制');
+                        showMsg(toolbarTip, '✅ Copied', 'success');
+                        toast('✅ Copied');
                     }).catch(() => fallbackCopy(content));
                 } else {
                     fallbackCopy(content);
@@ -620,17 +588,17 @@
                 ta.select();
                 try {
                     document.execCommand('copy');
-                    showMsg(toolbarTip, '✅ 已复制', 'success');
-                    toast('✅ 已复制');
+                    showMsg(toolbarTip, '✅ Copied', 'success');
+                    toast('✅ Copied');
                 } catch (e) {
-                    showMsg(toolbarTip, '❌ 复制失败', 'error');
+                    showMsg(toolbarTip, '❌ Copy failed', 'error');
                 }
                 document.body.removeChild(ta);
             }
 
             function exportCSV() {
                 if (results.length === 0) {
-                    showMsg(toolbarTip, '❌ 无数据', 'error');
+                    showMsg(toolbarTip, '❌ No data', 'error');
                     return;
                 }
                 const rows = getDataRows();
@@ -644,11 +612,10 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showMsg(toolbarTip, '✅ CSV 已导出', 'success');
-                toast('✅ CSV 已导出');
+                showMsg(toolbarTip, '✅ CSV exported', 'success');
+                toast('✅ CSV exported');
             }
 
-            // ========== 事件绑定 ==========
             window.switchInput = function() {
                 const mode = document.querySelector('input[name="inputMode"]:checked').value;
                 if (mode === 'file') {
@@ -674,8 +641,8 @@
                 const reader = new FileReader();
                 reader.onload = function(ev) {
                     fastaText.value = ev.target.result;
-                    msgTip.innerHTML = `<span class="success">✅ 已读取：${file.name}</span>`;
-                    toast(`✅ 文件 ${file.name} 加载成功`);
+                    msgTip.innerHTML = `<span class="success">✅ Loaded: ${file.name}</span>`;
+                    toast(`✅ File ${file.name} loaded successfully`);
                     const parsed = parseFasta(ev.target.result);
                     if (parsed.length > 0) {
                         sequences = parsed;
@@ -700,7 +667,6 @@
             copyResultBtn.addEventListener('click', copyResult);
             exportCsvBtn.addEventListener('click', exportCSV);
 
-            // 初始化
             initCodonSelect();
             clearResults();
             runBtn.disabled = true;

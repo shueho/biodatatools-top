@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codon Position Base Composition Statistics - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .codon-config-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px 0;
+        }
+        .codon-config-row .config-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px 20px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .codon-config-row .config-group:last-child {
+            border-bottom: none;
+        }
+        .codon-config-row .form-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .codon-viz-grid {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 2px;
+            margin-top: 8px;
+            max-height: 320px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            padding: 6px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        .codon-viz-cell {
+            text-align: center;
+            font-family: "Consolas", monospace;
+            font-size: 12px;
+            padding: 2px 0;
+            border-radius: 3px;
+            background-color: #ffffff;
+            border: 1px solid #e8edf2;
+            transition: 0.1s;
+        }
+        .codon-viz-cell .codon { font-weight: bold; }
+        .codon-viz-cell .amino { font-size: 10px; color: #555; display: block; line-height: 1.2; }
+        .codon-viz-cell.excluded { background-color: #ffdddd; border-color: #dc3545; }
+        .codon-viz-cell.terminal-excluded { background-color: #ffcccc; border-color: #c0392b; }
+        .codon-viz-group-label {
+            grid-column: span 16;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1f4068;
+            background: #eef2f7;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        @media (max-width: 768px) {
+            .codon-viz-grid { grid-template-columns: repeat(8, 1fr); }
+            .codon-viz-group-label { grid-column: span 8; }
+        }
+        @media (max-width: 480px) {
+            .codon-viz-grid { grid-template-columns: repeat(4, 1fr); }
+            .codon-viz-group-label { grid-column: span 4; }
+        }
+
+        .result-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .gene-name {
+            text-align: left;
+            font-weight: 500;
+            white-space: nowrap;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .error-row td { background-color: #fff0f0; color: #c0392b; }
+        .num { font-family: "Consolas", monospace; text-align: right; }
+        .error-badge { color: #dc3545; font-weight: bold; margin-left: 4px; }
+        .empty-tip { color: #999; text-align: center; padding: 30px 0; font-style: italic; }
+        .tip-text { margin-top: 6px; }
+        .hide { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>Codon Position Base Composition Statistics</h2>
+            <p>Calculate A/T/G/C base frequencies or counts at each of the three codon positions, with codon filtering support.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import CDS Sequences (FASTA)</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">Upload FASTA File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">Paste FASTA Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="Paste standard FASTA CDS sequences (multiple sequences supported)" disabled></textarea>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="loadBtn">Load Sequences</button>
+            </div>
+            <div id="seqPreviewWrap" style="display:none;margin-top:12px;">
+                <span style="font-size:0.9rem;color:#555;">Loaded <span id="seqCount">0</span> sequence(s)</span>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Parameter Settings</div>
+            <div class="codon-config-row">
+                <div class="config-group">
+                    <div class="form-item">
+                        <label>Genetic Code Table:</label>
+                        <select id="codonTableSel"></select>
+                    </div>
+                    <div class="form-item">
+                        <label>Stop Codons (editable):</label>
+                        <input type="text" id="stopCodonInput" style="width:180px;">
+                    </div>
+                    <div class="form-item">
+                        <label><input type="checkbox" id="keepStop" checked>Keep stop codons</label>
+                    </div>
+                </div>
+                <div class="config-group">
+                    <div class="form-item">
+                        <label>Output Mode:</label>
+                        <select id="outputMode">
+                            <option value="count">Counts</option>
+                            <option value="freq">Frequency (%)</option>
+                        </select>
+                    </div>
+                    <div class="form-item">
+                        <label>Codon Filter:</label>
+                        <select id="filterMode">
+                            <option value="all">Keep all</option>
+                            <option value="nondegenerate">Exclude single-codon amino acids</option>
+                            <option value="fourfold">Keep only fourfold degenerate</option>
+                        </select>
+                    </div>
+                    <div class="form-item">
+                        <button class="btn" id="runBtn" disabled>Run Statistics</button>
+                    </div>
+                </div>
+            </div>
+            <div id="tableViewTip" class="tip-text"></div>
+
+            <div style="margin-top:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                    <span style="font-weight:500; color:#1f4068;">📊 Codon Table Preview (red = excluded)</span>
+                    <span style="font-size:0.85rem; color:#6c757d;">Stop codons participate in filtering</span>
+                </div>
+                <div id="codonTableViz" class="codon-viz-grid"></div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Results</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>Copy Results (TSV)</button>
+                <button class="btn" id="exportCsvBtn" disabled>Export CSV</button>
+                <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div class="table-container" id="resultTableWrap">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px;font-size:0.85rem;color:#6c757d;">
+                    <span id="rowCount"></span>
+                    <span id="errorSummary" style="margin-left:16px;color:#dc3545;"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Waiting for statistics…</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/codon_config-en.js"></script>
+    <script src="../COMMON/sms_genetic_codes.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const msgTip = document.getElementById('msgTip');
+            const loadBtn = document.getElementById('loadBtn');
+            const seqPreviewWrap = document.getElementById('seqPreviewWrap');
+            const seqCount = document.getElementById('seqCount');
+
+            const codonTableSel = document.getElementById('codonTableSel');
+            const stopCodonInput = document.getElementById('stopCodonInput');
+            const keepStop = document.getElementById('keepStop');
+            const outputMode = document.getElementById('outputMode');
+            const filterMode = document.getElementById('filterMode');
+            const runBtn = document.getElementById('runBtn');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+            const errorSummary = document.getElementById('errorSummary');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            const toolbarTip = document.getElementById('toolbarTip');
+
+            const codonViz = document.getElementById('codonTableViz');
+
+            let sequences = [];
+            let results = [];
+            let currentCodonTable = {};
+            let currentStopCodons = [];
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === toolbarTip) {
+                    setTimeout(() => { if (el === msgTip) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function buildExcludedSet(codonTable, filterMode, keepStopFlag) {
+                const excluded = new Set();
+                const stopSet = new Set(currentStopCodons); 
+
+                const bases = ['U', 'C', 'A', 'G'];
+                const allCodons = [];
+                for (let b1 of bases) {
+                    for (let b2 of bases) {
+                        for (let b3 of bases) {
+                            const codon = b1 + b2 + b3;
+                            const aa = codonTable[codon] || 'X';
+                            allCodons.push({ codon, aa });
+                        }
+                    }
+                }
+
+                if (!keepStopFlag) {
+                    for (const c of allCodons) {
+                        if (c.aa === 'TER' || c.aa === '*') {
+                            excluded.add(c.codon);
+                        }
+                    }
+                }
+
+                if (filterMode === 'nondegenerate') {
+                    const aaCount = {};
+                    for (const c of allCodons) {
+                        let aa = c.aa;
+                        if (aa === 'TER' || aa === '*') {
+                            if (keepStopFlag) aa = 'TER';
+                            else continue;
+                        }
+                        if (!aaCount[aa]) aaCount[aa] = 0;
+                        aaCount[aa]++;
+                    }
+                    for (const c of allCodons) {
+                        let aa = c.aa;
+                        if (aa === 'TER' || aa === '*') {
+                            if (keepStopFlag) aa = 'TER';
+                            else continue;
+                        }
+                        if (aaCount[aa] === 1) {
+                            excluded.add(c.codon);
+                        }
+                    }
+                }
+
+                if (filterMode === 'fourfold') {
+                    const groups = {};
+                    for (const c of allCodons) {
+                        const prefix = c.codon.substring(0, 2);
+                        if (!groups[prefix]) groups[prefix] = [];
+                        groups[prefix].push(c);
+                    }
+                    const fourfoldPrefixes = new Set();
+                    for (const [prefix, codons] of Object.entries(groups)) {
+                        if (codons.length === 4) {
+                            const aaSet = new Set();
+                            let valid = true;
+                            for (const c of codons) {
+                                let aa = c.aa;
+                                if (aa === 'TER' || aa === '*') {
+                                    if (keepStopFlag) aa = 'TER';
+                                    else { valid = false; break; }
+                                }
+                                aaSet.add(aa);
+                            }
+                            if (valid && aaSet.size === 1) {
+                                fourfoldPrefixes.add(prefix);
+                            }
+                        }
+                    }
+                    for (const c of allCodons) {
+                        const prefix = c.codon.substring(0, 2);
+                        if (!fourfoldPrefixes.has(prefix)) {
+                            excluded.add(c.codon);
+                        }
+                    }
+                }
+
+                return excluded;
+            }
+
+            function renderCodonTableVisualization() {
+                const excluded = buildExcludedSet(currentCodonTable, filterMode.value, keepStop.checked);
+                const table = currentCodonTable;
+
+                const bases = ['U', 'C', 'A', 'G'];
+                let html = '';
+                for (let b1 of bases) {
+                    html += `<div class="codon-viz-group-label">1st base: ${b1}</div>`;
+                    for (let b2 of bases) {
+                        for (let b3 of bases) {
+                            const codon = b1 + b2 + b3;
+                            const aa = table[codon] || 'X';
+                            const isTerminal = (aa === 'TER' || aa === '*');
+                            const excludedFlag = excluded.has(codon);
+                            const cellClass = 'codon-viz-cell' + (excludedFlag ? (isTerminal ? ' terminal-excluded' : ' excluded') : '');
+                            const aaDisplay = isTerminal ? '•' : aa;
+                            html += `<div class="${cellClass}" title="${codon} → ${aa}">
+                                <span class="codon">${codon}</span>
+                                <span class="amino">${aaDisplay}</span>
+                            </div>`;
+                        }
+                    }
+                }
+                codonViz.innerHTML = html;
+            }
+
+            function initCodonSelect() {
+                codonTableSel.innerHTML = '';
+                for (const id in TABLE_ID_NAME_MAP) {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = TABLE_ID_NAME_MAP[id];
+                    codonTableSel.appendChild(opt);
+                }
+                const initId = Number(codonTableSel.value);
+                updateStopFromTable(initId);
+                currentCodonTable = getCodonTable(initId);
+                renderCodonTableVisualization();
+            }
+
+            function updateStopFromTable(tableId) {
+                const table = getCodonTable(tableId);
+                const stops = [];
+                for (const [codon, aa] of Object.entries(table)) {
+                    if (aa === 'TER' || aa === '*') stops.push(codon);
+                }
+                currentStopCodons = stops;
+                stopCodonInput.value = stops.join(',');
+                currentCodonTable = table;
+            }
+
+            codonTableSel.addEventListener('change', function() {
+                const id = Number(this.value);
+                updateStopFromTable(id);
+                document.getElementById('tableViewTip').innerHTML = `<span class="success">Switched to: ${getTableName(id)}</span>`;
+                renderCodonTableVisualization();
+            });
+
+            filterMode.addEventListener('change', renderCodonTableVisualization);
+            keepStop.addEventListener('change', renderCodonTableVisualization);
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ name, seq });
+                        name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ name, seq });
+                return seqs;
+            }
+
+            function loadSequences() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                let text = (mode === 'file') ? fastaText.value : fastaText.value;
+                if (!text.trim()) {
+                    showMsg(msgTip, '❌ Please upload a file or paste FASTA content first.', 'error');
+                    return;
+                }
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, '❌ No valid FASTA sequences parsed.', 'error');
+                    return;
+                }
+                sequences = parsed;
+                seqCount.textContent = sequences.length;
+                seqPreviewWrap.style.display = 'block';
+                showMsg(msgTip, `✅ Successfully loaded ${sequences.length} sequence(s).`, 'success');
+                toast(`✅ Loaded ${sequences.length} sequence(s)`);
+                runBtn.disabled = false;
+                clearResults();
+            }
+
+            function analyzeSequence(seq, stopCodons, keepStopFlag, filterMode, codonTable) {
+                let rna = seq.toUpperCase().replace(/T/g, 'U');
+                const len = rna.length;
+                const stopSet = new Set(stopCodons);
+
+                let allCodons = [];
+                for (let i = 0; i + 3 <= len; i += 3) {
+                    allCodons.push(rna.substring(i, i + 3));
+                }
+
+                let stopPositions = [];
+                for (let i = 0; i < allCodons.length; i++) {
+                    if (stopSet.has(allCodons[i])) {
+                        stopPositions.push(i);
+                    }
+                }
+
+                let error = null;
+                let validCodons = [];
+
+                if (stopPositions.length > 0) {
+                    const firstStop = stopPositions[0];
+                    if (firstStop * 3 + 3 < len) {
+                        error = `Internal stop codon "${allCodons[firstStop]}" at codon position ${firstStop+1}, with ${len - (firstStop*3 + 3)} remaining bases`;
+                        return { error };
+                    }
+                    if (keepStopFlag) {
+                        validCodons = allCodons.slice();
+                    } else {
+                        validCodons = allCodons.slice(0, firstStop);
+                    }
+                } else {
+                    validCodons = allCodons.slice();
+                }
+
+                if (validCodons.length === 0) {
+                    return { error: 'No valid codons in sequence' };
+                }
+
+                const excluded = buildExcludedSet(codonTable, filterMode, keepStopFlag);
+                validCodons = validCodons.filter(codon => !excluded.has(codon));
+
+                if (validCodons.length === 0) {
+                    return { error: 'No valid codons after filtering' };
+                }
+
+                const stats = {
+                    A1: 0, U1: 0, G1: 0, C1: 0,
+                    A2: 0, U2: 0, G2: 0, C2: 0,
+                    A3: 0, U3: 0, G3: 0, C3: 0,
+                    other: 0
+                };
+                const validSet = new Set(['A', 'U', 'G', 'C']);
+                for (const codon of validCodons) {
+                    const bases = codon.split('');
+                    for (let pos = 0; pos < 3; pos++) {
+                        const b = bases[pos];
+                        const key = b + (pos + 1);
+                        if (validSet.has(b)) stats[key] = (stats[key] || 0) + 1;
+                        else stats.other = (stats.other || 0) + 1;
+                    }
+                }
+                const posStats = {
+                    pos1: { A: stats.A1, T: stats.U1, G: stats.G1, C: stats.C1 },
+                    pos2: { A: stats.A2, T: stats.U2, G: stats.G2, C: stats.C2 },
+                    pos3: { A: stats.A3, T: stats.U3, G: stats.G3, C: stats.C3 }
+                };
+                const codonCount = validCodons.length;
+                const gc1_count = stats.G1 + stats.C1;
+                const gc2_count = stats.G2 + stats.C2;
+                const gc3_count = stats.G3 + stats.C3;
+                const totalG = stats.G1 + stats.G2 + stats.G3;
+                const totalC = stats.C1 + stats.C2 + stats.C3;
+                const totalGC_count = totalG + totalC;
+                const totalBases = codonCount * 3;
+                const gc1_pct = codonCount > 0 ? (gc1_count / codonCount * 100) : 0;
+                const gc2_pct = codonCount > 0 ? (gc2_count / codonCount * 100) : 0;
+                const gc3_pct = codonCount > 0 ? (gc3_count / codonCount * 100) : 0;
+                const totalGC_pct = totalBases > 0 ? (totalGC_count / totalBases * 100) : 0;
+
+                return {
+                    codonCount,
+                    totalBases,
+                    posStats,
+                    gc1_count, gc2_count, gc3_count, totalGC_count,
+                    gc1_pct, gc2_pct, gc3_pct, totalGC_pct,
+                    error: null
+                };
+            }
+
+            function runAnalysis() {
+                if (sequences.length === 0) {
+                    showMsg(msgTip, '❌ Please load sequences first.', 'error');
+                    return;
+                }
+
+                const stopStr = stopCodonInput.value.trim().toUpperCase();
+                const stopCodons = stopStr.split(/[,，\s]+/)
+                    .filter(s => s.length === 3)
+                    .map(c => c.replace(/T/g, 'U'));
+
+                if (stopCodons.length === 0) {
+                    showMsg(msgTip, '❌ Please enter at least one valid stop codon (3 letters).', 'error');
+                    return;
+                }
+
+                const keepStopFlag = keepStop.checked;
+                const filter = filterMode.value;
+                const codonTable = currentCodonTable;
+
+                results = [];
+                let errorCount = 0;
+                for (const seqItem of sequences) {
+                    const result = analyzeSequence(seqItem.seq, stopCodons, keepStopFlag, filter, codonTable);
+                    if (result.error) {
+                        errorCount++;
+                        results.push({
+                            name: seqItem.name,
+                            error: result.error,
+                            codonCount: null,
+                            totalBases: null,
+                            posStats: null,
+                            gc1_count: null, gc2_count: null, gc3_count: null, totalGC_count: null,
+                            gc1_pct: null, gc2_pct: null, gc3_pct: null, totalGC_pct: null
+                        });
+                    } else {
+                        results.push({
+                            name: seqItem.name,
+                            error: null,
+                            codonCount: result.codonCount,
+                            totalBases: result.totalBases,
+                            posStats: result.posStats,
+                            gc1_count: result.gc1_count,
+                            gc2_count: result.gc2_count,
+                            gc3_count: result.gc3_count,
+                            totalGC_count: result.totalGC_count,
+                            gc1_pct: result.gc1_pct,
+                            gc2_pct: result.gc2_pct,
+                            gc3_pct: result.gc3_pct,
+                            totalGC_pct: result.totalGC_pct
+                        });
+                    }
+                }
+
+                renderResults(outputMode.value);
+                runBtn.disabled = false;
+                if (errorCount > 0) {
+                    showMsg(msgTip, `⚠️ Statistics complete, ${errorCount} gene(s) with stop codon errors or no valid codons after filtering.`, 'warn');
+                } else {
+                    showMsg(msgTip, `✅ Statistics complete, ${results.length} gene(s) all normal.`, 'success');
+                    toast('✅ Statistics complete');
+                }
+                copyResultBtn.disabled = false;
+                exportCsvBtn.disabled = false;
+            }
+
+            function renderResults(mode) {
+                if (results.length === 0) {
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+
+                emptyResult.style.display = 'none';
+                resultArea.style.display = 'block';
+
+                const isFreq = (mode === 'freq');
+                let headers = ['Gene Name', 'Codon Count', 'Total Bases'];
+                for (let pos = 1; pos <= 3; pos++) {
+                    for (const base of ['A', 'T', 'G', 'C']) {
+                        headers.push(base + pos);
+                    }
+                }
+                const gcSuffix = isFreq ? '(%)' : '';
+                headers.push(`GC1${gcSuffix}`, `GC2${gcSuffix}`, `GC3${gcSuffix}`, `Total GC${gcSuffix}`);
+
+                let thead = '<tr>';
+                for (const h of headers) thead += `<th>${h}</th>`;
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                let tbody = '';
+                let errorCount = 0;
+                for (const r of results) {
+                    if (r.error) {
+                        errorCount++;
+                        tbody += `<tr class="error-row">`;
+                        tbody += `<td class="gene-name">${escapeHtml(r.name)} <span class="error-badge">[Error]</span></td>`;
+                        tbody += `<td colspan="${headers.length - 1}" class="error-msg">❌ ${escapeHtml(r.error)}</td>`;
+                        tbody += '</tr>';
+                        continue;
+                    }
+                    const codonCount = r.codonCount;
+                    tbody += `<tr>`;
+                    tbody += `<td class="gene-name">${escapeHtml(r.name)}</td>`;
+                    tbody += `<td class="num">${codonCount}</td>`;
+                    tbody += `<td class="num">${r.totalBases}</td>`;
+
+                    const stats = r.posStats;
+                    for (let pos = 1; pos <= 3; pos++) {
+                        const posData = stats['pos' + pos];
+                        if (posData) {
+                            for (const base of ['A', 'T', 'G', 'C']) {
+                                const val = posData[base] || 0;
+                                if (isFreq) {
+                                    const pct = codonCount > 0 ? (val / codonCount * 100) : 0;
+                                    tbody += `<td class="num">${pct.toFixed(2)}</td>`;
+                                } else {
+                                    tbody += `<td class="num">${val}</td>`;
+                                }
+                            }
+                        } else {
+                            for (const base of ['A', 'T', 'G', 'C']) tbody += `<td class="num">0</td>`;
+                        }
+                    }
+                    if (isFreq) {
+                        tbody += `<td class="num">${r.gc1_pct.toFixed(2)}</td>`;
+                        tbody += `<td class="num">${r.gc2_pct.toFixed(2)}</td>`;
+                        tbody += `<td class="num">${r.gc3_pct.toFixed(2)}</td>`;
+                        tbody += `<td class="num">${r.totalGC_pct.toFixed(2)}</td>`;
+                    } else {
+                        tbody += `<td class="num">${r.gc1_count}</td>`;
+                        tbody += `<td class="num">${r.gc2_count}</td>`;
+                        tbody += `<td class="num">${r.gc3_count}</td>`;
+                        tbody += `<td class="num">${r.totalGC_count}</td>`;
+                    }
+                    tbody += '</tr>';
+                }
+
+                resultBody.innerHTML = tbody;
+                const totalOk = results.filter(r => !r.error).length;
+                rowCount.textContent = `Total ${results.length} gene(s), ${totalOk} successful`;
+                if (errorCount > 0) {
+                    errorSummary.textContent = `❌ ${errorCount} error(s)`;
+                } else {
+                    errorSummary.textContent = '';
+                }
+            }
+
+            function clearResults() {
+                results = [];
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                copyResultBtn.disabled = true;
+                exportCsvBtn.disabled = true;
+                toolbarTip.innerHTML = '';
+                errorSummary.textContent = '';
+            }
+
+            function getDataRows(mode) {
+                const isFreq = (mode === 'freq');
+                const rows = [];
+                const header = ['Gene Name', 'Codon Count', 'Total Bases'];
+                for (let pos = 1; pos <= 3; pos++) {
+                    for (const base of ['A', 'T', 'G', 'C']) {
+                        header.push(base + pos);
+                    }
+                }
+                const gcSuffix = isFreq ? '(%)' : '';
+                header.push(`GC1${gcSuffix}`, `GC2${gcSuffix}`, `GC3${gcSuffix}`, `Total GC${gcSuffix}`);
+                rows.push(header);
+
+                for (const r of results) {
+                    const row = [];
+                    row.push(r.name);
+                    if (r.error) {
+                        row.push('Error', 'Error');
+                        for (let pos = 1; pos <= 3; pos++) {
+                            for (const base of ['A', 'T', 'G', 'C']) row.push('-');
+                        }
+                        for (let i = 0; i < 4; i++) row.push('-');
+                        row.push(r.error);
+                    } else {
+                        row.push(String(r.codonCount), String(r.totalBases));
+                        const stats = r.posStats;
+                        for (let pos = 1; pos <= 3; pos++) {
+                            const posData = stats['pos' + pos];
+                            if (posData) {
+                                for (const base of ['A', 'T', 'G', 'C']) {
+                                    const val = posData[base] || 0;
+                                    if (isFreq) {
+                                        const pct = r.codonCount > 0 ? (val / r.codonCount * 100) : 0;
+                                        row.push(pct.toFixed(2) + '%');
+                                    } else {
+                                        row.push(String(val));
+                                    }
+                                }
+                            } else {
+                                for (const base of ['A', 'T', 'G', 'C']) row.push('0');
+                            }
+                        }
+                        if (isFreq) {
+                            row.push(r.gc1_pct.toFixed(2) + '%');
+                            row.push(r.gc2_pct.toFixed(2) + '%');
+                            row.push(r.gc3_pct.toFixed(2) + '%');
+                            row.push(r.totalGC_pct.toFixed(2) + '%');
+                        } else {
+                            row.push(String(r.gc1_count));
+                            row.push(String(r.gc2_count));
+                            row.push(String(r.gc3_count));
+                            row.push(String(r.totalGC_count));
+                        }
+                    }
+                    rows.push(row);
+                }
+                return rows;
+            }
+
+            function copyResult() {
+                if (results.length === 0) {
+                    showMsg(toolbarTip, '❌ No data', 'error');
+                    return;
+                }
+                const rows = getDataRows(outputMode.value);
+                const content = rows.map(row => row.join('\t')).join('\n');
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + content).then(() => {
+                        showMsg(toolbarTip, '✅ Copied', 'success');
+                        toast('✅ Copied');
+                    }).catch(() => fallbackCopy(content));
+                } else {
+                    fallbackCopy(content);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(toolbarTip, '✅ Copied', 'success');
+                    toast('✅ Copied');
+                } catch (e) {
+                    showMsg(toolbarTip, '❌ Copy failed', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportCSV() {
+                if (results.length === 0) {
+                    showMsg(toolbarTip, '❌ No data', 'error');
+                    return;
+                }
+                const rows = getDataRows(outputMode.value);
+                const content = rows.map(row => row.join(',')).join('\n');
+                const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'codon_position_base_stats.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(toolbarTip, '✅ CSV exported', 'success');
+                toast('✅ CSV exported');
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                seqCount.textContent = '0';
+                seqPreviewWrap.style.display = 'none';
+                runBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    msgTip.innerHTML = `<span class="success">✅ Loaded: ${file.name}</span>`;
+                    toast(`✅ File ${file.name} loaded successfully`);
+                    const parsed = parseFasta(ev.target.result);
+                    if (parsed.length > 0) {
+                        sequences = parsed;
+                        seqCount.textContent = sequences.length;
+                        seqPreviewWrap.style.display = 'block';
+                        runBtn.disabled = false;
+                        clearResults();
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadSequences();
+                }
+            });
+
+            loadBtn.addEventListener('click', loadSequences);
+            runBtn.addEventListener('click', runAnalysis);
+            copyResultBtn.addEventListener('click', copyResult);
+            exportCsvBtn.addEventListener('click', exportCSV);
+
+            outputMode.addEventListener('change', function() {
+                if (results.length > 0) renderResults(this.value);
+            });
+
+            initCodonSelect();
+            clearResults();
+            runBtn.disabled = true;
+            seqPreviewWrap.style.display = 'none';
+        })();
+    </script>
+</body>
+</html>

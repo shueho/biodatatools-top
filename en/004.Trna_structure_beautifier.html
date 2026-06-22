@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tRNA Secondary Structure Beautifier - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .file-item {
+            border: 1px solid #e8edf2;
+            border-radius: 6px;
+            padding: 10px 12px;
+            transition: 0.2s;
+        }
+        .file-item:hover {
+            border-color: #1f4068;
+            background-color: #f7f9fc;
+        }
+        .file-name {
+            font-weight: 500;
+        }
+        .file-path {
+            font-size: 0.85rem;
+            color: #666;
+            word-break: break-all;
+            margin-top: 4px;
+        }
+
+        .res-card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .res-card {
+            border: 1px solid #e8edf2;
+            border-radius: 6px;
+            padding: 12px;
+            background: #fff;
+        }
+        .res-title {
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        .res-btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .batch-container {
+            border: 1px solid #d8e2ec;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+        .batch-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .batch-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 6px;
+            border-bottom: 1px solid #f0f4f8;
+        }
+        .batch-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>tRNA Secondary Structure Beautifier</h2>
+            <p>Enhance tRNA secondary structure diagrams exported from MITOS or ViennaRNA RNAplot.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Select Folder (contains SVG files to beautify and merge)</div>
+            <div class="file-input">
+                <input type="file" id="folderInput" webkitdirectory multiple accept=".svg">
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="fileListBox" class="result-item">
+                <p>File list will appear here after selecting a folder.</p>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Beautification & Layout Settings</div>
+            <div class="param-wrap">
+                <div class="param-item">
+                    <label>Scale Factor:</label>
+                    <input type="number" id="sizeWeight" value="1.4" step="0.1" min="0.1">
+                </div>
+                <div class="param-item">
+                    <label>Images per Row:</label>
+                    <input type="number" id="perRow" value="4" min="1">
+                </div>
+                <div class="param-item">
+                    <label>Horizontal Gap (px):</label>
+                    <input type="number" id="horGap" value="8" min="0">
+                </div>
+                <div class="param-item">
+                    <label>Vertical Gap (px):</label>
+                    <input type="number" id="verGap" value="5" min="0">
+                </div>
+                <div class="param-item">
+                    <label>Base-Pair Line Color:</label>
+                    <input type="color" id="pairColor" value="#ff0000">
+                </div>
+                <div class="param-item">
+                    <label>Adjacent Line Color:</label>
+                    <input type="color" id="adjColor" value="#0000ff">
+                </div>
+                <div class="param-item">
+                    <label>Circle Fill Color:</label>
+                    <input type="color" id="baseFill" value="#ffffff">
+                </div>
+                <div class="param-item">
+                    <label>Circle Stroke Color:</label>
+                    <input type="color" id="baseStroke" value="#000000">
+                </div>
+                <div class="param-item">
+                    <label>A Base Color:</label>
+                    <input type="color" id="colorA" value="#ff0000">
+                </div>
+                <div class="param-item">
+                    <label>U/T Base Color:</label>
+                    <input type="color" id="colorU" value="#0000ff">
+                </div>
+                <div class="param-item">
+                    <label>G Base Color:</label>
+                    <input type="color" id="colorG" value="#008000">
+                </div>
+                <div class="param-item">
+                    <label>C Base Color:</label>
+                    <input type="color" id="colorC" value="#ffff00">
+                </div>
+            </div>
+            <button class="btn" id="runBtn" onclick="runAll()" disabled>Start Beautification</button>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Download Results</div>
+            <div id="resTip" class="tip-text"></div>
+            <div id="resultContainer" class="res-card-list">
+                <p>All results will appear here after beautification.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            bilibiliUrl: 'https://www.bilibili.com/video/BV1MfEE6nE1e',
+            bilibiliText: 'Tutorial Video for This Tool',
+        };
+    </script>
+
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        const folderInput = document.getElementById('folderInput');
+        const msgTip = document.getElementById('msgTip');
+        const fileListBox = document.getElementById('fileListBox');
+        const resTip = document.getElementById('resTip');
+        const resultContainer = document.getElementById('resultContainer');
+        const runBtn = document.getElementById('runBtn');
+
+        let allSvgFiles = [];
+        let singleModifiedList = [];
+        let groupSvgList = [];
+        let finalNoColorSvg = "";
+        let finalColorSvg = "";
+        let batchData = [];
+
+        folderInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            allSvgFiles = [];
+            singleModifiedList = [];
+            groupSvgList = [];
+            finalNoColorSvg = "";
+            finalColorSvg = "";
+            batchData = [];
+
+            files.forEach(file => {
+                const name = file.name.toLowerCase();
+                if (name.endsWith('.svg') && !name.startsWith('modified_')) {
+                    allSvgFiles.push(file);
+                }
+            });
+
+            resultContainer.innerHTML = `<p>All outputs will appear here after processing.</p>`;
+            resTip.innerHTML = "";
+            runBtn.disabled = true;
+
+            if (allSvgFiles.length === 0) {
+                msgTip.innerHTML = `<span class="error">❌ No valid SVG files found.</span>`;
+                fileListBox.innerHTML = `<p>No files available.</p>`;
+                return;
+            }
+
+            msgTip.innerHTML = `<span class="success">✅ Loaded successfully: ${allSvgFiles.length} SVG file(s).</span>`;
+            runBtn.disabled = false;
+            renderFileList();
+        });
+
+        function renderFileList() {
+            let html = `<div class="file-list">`;
+            allSvgFiles.forEach(file => {
+                html += `
+                <div class="file-item">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-path">Path: ${file.webkitRelativePath || file.name}</div>
+                </div>
+                `;
+            });
+            html += `</div>`;
+            fileListBox.innerHTML = html;
+        }
+
+        function readFileAsync(file) {
+            return new Promise(resolve => {
+                const r = new FileReader();
+                r.onload = e => resolve(e.target.result);
+                r.readAsText(file);
+            });
+        }
+
+        function extractTextInfo(svgStr) {
+            const regText = /<text\b[^>]*x="([^"]+)"[^>]*y="([^"]+)"[^>]*>(.*?)<\/text>/g;
+            const textList = [];
+            let m;
+            while ((m = regText.exec(svgStr)) !== null) {
+                const x = parseFloat(m[1]);
+                const y = parseFloat(m[2]);
+                const char = m[3].toUpperCase().replace(/T/g, 'U');
+                textList.push([x, y, char]);
+            }
+            return textList;
+        }
+
+        function getPairLines(svgStr, pairColor) {
+            const regLine = /<line\b[^>]*x1="([^"]+)"[^>]*y1="([^"]+)"[^>]*x2="([^"]+)"[^>]*y2="([^"]+)"[^>]*>/g;
+            let res = "";
+            let m;
+            while ((m = regLine.exec(svgStr)) !== null) {
+                res += `<line x1="${m[1]}" y1="${m[2]}" x2="${m[3]}" y2="${m[4]}" stroke="${pairColor}" stroke-width="1"/>`;
+            }
+            return res;
+        }
+
+        function buildSingleSvgContent(svgStr, baseFill, baseStroke, adjColor, pairColor) {
+            const textList = extractTextInfo(svgStr);
+            const pairLines = getPairLines(svgStr, pairColor);
+            let inner = `<g style="font-family: Times New Roman" transform="translate(-4.6, 4)" id="seq">`;
+
+            for (let i = 0; i < textList.length - 1; i++) {
+                const [x1, y1] = textList[i];
+                const [x2, y2] = textList[i+1];
+                inner += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${adjColor}" stroke-width="1"/>`;
+            }
+            inner += pairLines;
+
+            for (let i = 0; i < textList.length; i++) {
+                const [cx, cy, c] = textList[i];
+                inner += `<circle cx="${cx}" cy="${cy}" r="5" fill="${baseFill}" stroke="${baseStroke}" />
+<text x="${cx}" y="${cy}" text-anchor="middle" dy="3.33333" font-size="10" fill="black">${c}</text>`;
+            }
+            inner += `</g>`;
+            return inner;
+        }
+
+        function modiOneSvg(rawSvg, fileName, scale, baseFill, baseStroke, adjColor, pairColor) {
+            let pureName = fileName.includes('-') ? fileName.split('-')[0] : fileName.split('.')[0];
+            const innerContent = buildSingleSvgContent(rawSvg, baseFill, baseStroke, adjColor, pairColor);
+            const head = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<svg xmlns="http://www.w3.org/2000/svg" height="452" width="452">
+  <rect style="stroke: none; fill: none" height="452" x="0" y="0" width="452" onclick="click(evt)" />
+  <g transform="scale(${scale},${scale}) translate(45,45)">
+  <g style="font-family: Times New Roman" id="name">
+      <text font-size="20" x="1" y="10">${pureName}</text>
+  </g>
+  ${innerContent}
+  </g>
+</svg>`;
+            return { name: `modified_${pureName}.svg`, content: head };
+        }
+
+        function removeXmlDecl(svg) {
+            return svg.replace(/<\?xml[^>]*\?>\s*/gi, '');
+        }
+
+        function getSvgSize(svg) {
+            const w = svg.match(/width="([^"]+)"/)?.[1] || "452";
+            const h = svg.match(/height="([^"]+)"/)?.[1] || "452";
+            return { w: parseFloat(w), h: parseFloat(h) };
+        }
+
+        function mergeHorizontal(svgArr, gap) {
+            let totalW = 0, maxH = 0;
+            const list = [];
+            svgArr.forEach(s => {
+                const noXml = removeXmlDecl(s);
+                const size = getSvgSize(noXml);
+                list.push({ content: noXml, w: size.w, h: size.h });
+                totalW += size.w;
+                if (maxH < size.h) maxH = size.h;
+            });
+            totalW += gap * (list.length - 1);
+            let out = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${maxH}">`;
+            let x = 0;
+            list.forEach(item => {
+                const inner = item.content.replace(/<svg[^>]*>/i, '').replace(/<\/svg>/i, '');
+                out += `<g transform="translate(${x},0)">${inner}</g>`;
+                x += item.w + gap;
+            });
+            out += `</svg>`;
+            return out;
+        }
+
+        function mergeVertical(groupArr, gap) {
+            let maxW = 0, totalH = 0;
+            const list = [];
+            groupArr.forEach(s => {
+                const noXml = removeXmlDecl(s);
+                const size = getSvgSize(noXml);
+                list.push({ content: noXml, w: size.w, h: size.h });
+                if (maxW < size.w) maxW = size.w;
+                totalH += size.h;
+            });
+            totalH += gap * (list.length - 1);
+            let out = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${maxW}" height="${totalH}">`;
+            let y = 0;
+            list.forEach(item => {
+                const inner = item.content.replace(/<svg[^>]*>/i, '').replace(/<\/svg>/i, '');
+                out += `<g transform="translate(0,${y})">${inner}</g>`;
+                y += item.h + gap;
+            });
+            out += `</svg>`;
+            return out;
+        }
+
+        function colorCircle(svg, colorMap) {
+            const lines = svg.split('\n');
+            let res = "";
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('<circle cx')) {
+                    let char = "";
+                    for(let j = i+1; j < lines.length; j++){
+                        const m = lines[j].match(/([A-Z])<\/text>/);
+                        if(m){
+                            char = m[1];
+                            break;
+                        }
+                    }
+                    if (char && colorMap[char]) {
+                        lines[i] = lines[i].replace(/#ffffff|white/gi, colorMap[char]);
+                    }
+                }
+                res += lines[i] + "\n";
+            }
+            return res;
+        }
+
+        function downloadFile(content, fileName) {
+            const blob = new Blob([content], { type: "image/svg+xml" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        }
+
+        function downloadBatch() {
+            const checkList = document.querySelectorAll('.batch-check:checked');
+            if(checkList.length === 0) {
+                alert("Please select at least one file to download.");
+                return;
+            }
+            checkList.forEach(cb => {
+                const idx = Number(cb.dataset.idx);
+                const item = batchData[idx];
+                downloadFile(item.content, item.name);
+            });
+        }
+
+        function toggleAll(checkAll) {
+            const checks = document.querySelectorAll('.batch-check');
+            checks.forEach(cb => cb.checked = checkAll.checked);
+        }
+
+        function renderResultCards() {
+            batchData = [];
+            let html = `<div class="res-card-list">`;
+
+            if(finalColorSvg){
+                html += `
+                <div class="res-card">
+                    <div class="res-title">1. Colored Composite: final_color.svg</div>
+                    <div class="res-btn-group">
+                        <button class="btn" onclick="downloadFile(finalColorSvg, 'final_color.svg')">Download Colored Composite</button>
+                    </div>
+                </div>
+                `;
+            }
+
+            if(finalNoColorSvg){
+                html += `
+                <div class="res-card">
+                    <div class="res-title">2. Uncolored Composite: final.svg</div>
+                    <div class="res-btn-group">
+                        <button class="btn" onclick="downloadFile(finalNoColorSvg, 'final.svg')">Download Uncolored Composite</button>
+                    </div>
+                </div>
+                `;
+            }
+
+            html += `
+            <div class="res-card">
+                <div class="res-title">3. Individual tRNA Results (check to batch download)</div>
+                <div class="batch-container">
+                    <div class="batch-head">
+                        <label><input type="checkbox" id="checkAll" onchange="toggleAll(this)">Select All</label>
+                        <button class="btn" onclick="downloadBatch()">Download Selected</button>
+                    </div>
+            `;
+
+            singleModifiedList.forEach((item, idx) => {
+                batchData.push(item);
+                const dataIdx = batchData.length - 1;
+                html += `
+                <div class="batch-item">
+                    <label>
+                        <input type="checkbox" class="batch-check" data-idx="${dataIdx}">
+                        ${item.name}
+                    </label>
+                    <button class="btn" onclick="downloadFile(singleModifiedList[${idx}].content, '${item.name}')">Download Single</button>
+                </div>
+                `;
+            });
+
+            groupSvgList.forEach((content, idx) => {
+                const name = `group_${idx}.svg`;
+                batchData.push({name, content});
+                const dataIdx = batchData.length - 1;
+                html += `
+                <div class="batch-item">
+                    <label>
+                        <input type="checkbox" class="batch-check" data-idx="${dataIdx}">
+                        ${name}
+                    </label>
+                    <button class="btn" onclick="downloadFile(groupSvgList[${idx}], '${name}')">Download Single</button>
+                </div>
+                `;
+            });
+
+            html += `</div></div></div>`;
+            resultContainer.innerHTML = html;
+        }
+
+        async function runAll() {
+            resTip.innerHTML = `<span class="warn">⏳ Processing, please wait...</span>`;
+            singleModifiedList = [];
+            groupSvgList = [];
+            finalNoColorSvg = "";
+            finalColorSvg = "";
+
+            const sizeWeight = parseFloat(document.getElementById('sizeWeight').value);
+            const perRow = parseInt(document.getElementById('perRow').value);
+            const horGap = parseInt(document.getElementById('horGap').value);
+            const verGap = parseInt(document.getElementById('verGap').value);
+            const pairColor = document.getElementById('pairColor').value;
+            const adjColor = document.getElementById('adjColor').value;
+            const baseFill = document.getElementById('baseFill').value;
+            const baseStroke = document.getElementById('baseStroke').value;
+            const cA = document.getElementById('colorA').value;
+            const cU = document.getElementById('colorU').value;
+            const cG = document.getElementById('colorG').value;
+            const cC = document.getElementById('colorC').value;
+            const baseColorMap = { A: cA, U: cU, G: cG, C: cC };
+
+            for (const file of allSvgFiles) {
+                const raw = await readFileAsync(file);
+                const mod = modiOneSvg(raw, file.name, sizeWeight, baseFill, baseStroke, adjColor, pairColor);
+                singleModifiedList.push(mod);
+            }
+
+            const pureSvgArr = singleModifiedList.map(item => item.content);
+            for (let i = 0; i < pureSvgArr.length; i += perRow) {
+                groupSvgList.push(mergeHorizontal(pureSvgArr.slice(i, i + perRow), horGap));
+            }
+
+            finalNoColorSvg = mergeVertical(groupSvgList, verGap);
+            finalColorSvg = colorCircle(finalNoColorSvg, baseColorMap);
+
+            renderResultCards();
+            resTip.innerHTML = `<span class="success">✅ Processing complete.</span>`;
+        }
+    </script>
+</body>
+</html>

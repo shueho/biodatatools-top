@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FASTA文件追加合并 - BioDataTools</title>
+    <title>FASTA File Append & Merge - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../COMMON/global.css">
     <style>
-        /* 页面独有样式，仅用于微调 */
         .result-box {
             background: #f8f9fa;
             padding: 12px;
@@ -39,35 +38,32 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>FASTA文件追加合并</h2>
-            <p>将多个FASTA文件合并为一个文件，并在序列ID前添加来源文件名前缀</p>
+            <h2>FASTA File Append & Merge</h2>
+            <p>Merge multiple FASTA files into one, adding source filename prefix to each sequence ID.</p>
         </div>
 
-        <!-- 第一步：导入 -->
         <div class="step-card">
-            <div class="step-title">第一步：导入 FASTA 文件</div>
+            <div class="step-title">Step 1: Import FASTA Files</div>
 
             <div class="mode-tabs">
                 <label>
                     <input type="radio" name="importMode" value="files" checked onchange="switchMode()">
-                    <span>选择文件 <span class="hint">（可多选）</span></span>
+                    <span>Select Files <span class="hint">(multiple select)</span></span>
                 </label>
                 <label>
                     <input type="radio" name="importMode" value="folder" onchange="switchMode()">
-                    <span>选择文件夹 <span class="hint">（读取全部 FASTA）</span></span>
+                    <span>Select Folder <span class="hint">(read all FASTA)</span></span>
                 </label>
             </div>
 
-            <!-- 文件模式 -->
             <div class="file-input" id="fileInputWrap">
                 <input type="file" id="fileInput" multiple accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.mpfa,.txt,.fas">
-                <div class="input-hint">点击选择文件（按住 Ctrl 可多选）</div>
+                <div class="input-hint">Click to select files (hold Ctrl for multiple)</div>
             </div>
 
-            <!-- 文件夹模式 -->
             <div class="file-input" id="folderInputWrap" style="display:none;">
                 <input type="file" id="folderInput" webkitdirectory multiple accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.mpfa,.txt,.fas">
-                <div class="input-hint">点击选择整个文件夹，自动读取其中所有 FASTA 文件</div>
+                <div class="input-hint">Click to select a folder, automatically read all FASTA files within</div>
             </div>
 
             <div id="msgTip" class="tip-text"></div>
@@ -75,53 +71,51 @@
             <div id="fileListWrap" style="display:none; margin-top:12px;">
                 <div class="file-list" id="fileList"></div>
                 <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
-                    <span id="fileCount">共 0 个 FASTA 文件</span>
-                    <button class="btn btn-sm" id="clearFilesBtn" style="margin-left:12px; background:#dc3545;">清空</button>
+                    <span id="fileCount">共0个FASTA文件</span>
+                    <button class="btn btn-sm" id="clearFilesBtn" style="margin-left:12px; background:#dc3545;">Clear</button>
                 </div>
             </div>
         </div>
 
-        <!-- 第二步：合并参数 + 结果 -->
         <div class="step-card">
-            <div class="step-title">第二步：合并参数与结果</div>
+            <div class="step-title">Step 2: Merge Parameters & Results</div>
 
             <div class="filter-box">
                 <label>
                     <input type="checkbox" id="addPrefix" checked>
-                    在序列ID前添加文件名前缀
+                    Add filename prefix to sequence IDs
                     <span style="font-weight:400;color:#888;font-size:0.85rem;margin-left:4px;">
-                        （例如 a.fasta 中的序列 >gene 变为 >a-gene）
+                        (e.g., sequence >gene in a.fasta becomes >a-gene)
                     </span>
                 </label>
                 <label>
                     <input type="checkbox" id="separator" value="-" checked>
-                    使用分隔符 <input type="text" id="sepChar" value="-" style="width:30px;padding:2px;text-align:center;">
+                    Separator <input type="text" id="sepChar" value="-" style="width:30px;padding:2px;text-align:center;">
                 </label>
-                <button class="btn" id="mergeBtn" disabled>开始合并</button>
+                <button class="btn" id="mergeBtn" disabled>Start Merge</button>
             </div>
             <div id="paramTip" class="tip-text"></div>
 
             <div id="resultArea" style="display:none; margin-top:15px;">
-                <!-- 工具条：复制 + 下载 -->
                 <div class="result-toolbar">
-                    <button class="btn" id="copyMergeBtn" disabled>复制合并内容</button>
-                    <button class="btn" id="downloadMergeBtn" disabled>下载 merged.fasta</button>
+                    <button class="btn" id="copyMergeBtn" disabled>Copy Merged Content</button>
+                    <button class="btn" id="downloadMergeBtn" disabled>Download merged.fasta</button>
                     <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
                 </div>
 
                 <div class="highlight-box" style="margin-top:0;">
                     <div>
                         <span class="label">📄 merged.fasta</span>
-                        <span class="stat">（共 <span id="totalSeqs">0</span> 条序列，来自 <span id="totalFiles">0</span> 个文件）</span>
+                        <span class="stat">(<span id="totalSeqs">0</span> sequences from <span id="totalFiles">0</span> files)</span>
                     </div>
                 </div>
 
                 <div style="margin-top:12px;">
-                    <span style="font-weight:500;">合并结果预览（前1000字符）：</span>
-                    <div id="previewBox" class="result-box" style="margin-top:6px;">等待合并…</div>
+                    <span style="font-weight:500;">Merged Result Preview (first 10,000 characters):</span>
+                    <div id="previewBox" class="result-box" style="margin-top:6px;">Waiting for merge…</div>
                 </div>
             </div>
-            <div id="emptyResult" class="empty-tip" style="margin-top:15px;">合并完成后将显示结果！</div>
+            <div id="emptyResult" class="empty-tip" style="margin-top:15px;">Results will appear after merging!</div>
         </div>
     </div>
 
@@ -129,17 +123,12 @@
 
     <script>
         window.headerConfig = {
-            author: '作者：地上飞猪',
-            bilibiliUrl: 'https://space.bilibili.com/33053326',
-            bilibiliText: '前往B站主页',
-            githubUrl: 'https://github.com/shueho/BioDataTools',
-            githubText: 'GitHub项目',
-            returnHomeUrl: '../index.html'
+            //author: '作者：地上飞猪',
         };
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
 
     <script>
         (function() {
@@ -165,18 +154,16 @@
             const downloadMergeBtn = document.getElementById('downloadMergeBtn');
             const copyMergeBtn = document.getElementById('copyMergeBtn');
 
-            let fastaFiles = []; // 存储 File 对象
-            let mergedContent = ''; // 合并后的完整内容
+            let fastaFiles = []; 
+            let mergedContent = ''; 
 
             const VALID_EXTS = ['.fasta', '.fa', '.fna', '.ffn', '.faa', '.frn', '.mpfa', '.txt', '.fas'];
 
-            // ---------- 模式切换 ----------
             window.switchMode = function() {
                 const mode = document.querySelector('input[name="importMode"]:checked').value;
                 document.getElementById('fileInputWrap').style.display = (mode === 'files') ? 'block' : 'none';
                 document.getElementById('folderInputWrap').style.display = (mode === 'folder') ? 'block' : 'none';
 
-                // 清空已有数据
                 fastaFiles = [];
                 fileListWrap.style.display = 'none';
                 resultArea.style.display = 'none';
@@ -192,7 +179,6 @@
                 mergedContent = '';
             };
 
-            // ---------- 文件类型判断 ----------
             function isFastaFile(filename) {
                 const lower = filename.toLowerCase();
                 for (let ext of VALID_EXTS) {
@@ -211,7 +197,6 @@
                 return list;
             }
 
-            // ---------- 更新文件列表 ----------
             function updateFileList() {
                 if (fastaFiles.length === 0) {
                     fileListWrap.style.display = 'none';
@@ -230,9 +215,8 @@
                     `;
                 });
                 fileList.innerHTML = html;
-                fileCount.textContent = '共 ' + fastaFiles.length + ' 个 FASTA 文件';
+                fileCount.textContent = 'Total ' + fastaFiles.length + ' FASTA files';
                 mergeBtn.disabled = false;
-                // 清空之前的结果
                 resultArea.style.display = 'none';
                 emptyResult.style.display = 'block';
                 mergedContent = '';
@@ -242,7 +226,6 @@
                 downloadMergeBtn.disabled = true;
             }
 
-            // ---------- 通用函数 ----------
             function escapeHtml(s) {
                 if (!s) return '';
                 return s.replace(/[&<>"]/g, function(m) {
@@ -263,18 +246,17 @@
                 if (window.showToast) window.showToast(msg);
             }
 
-            // ---------- 文件输入事件 ----------
             fileInput.addEventListener('change', function(e) {
                 const files = e.target.files;
                 if (files.length === 0) return;
                 const valid = processFiles(files);
                 if (valid.length === 0) {
-                    showMsg(msgTip, '❌ 未找到有效的 FASTA 文件（支持：' + VALID_EXTS.join(', ') + '）', 'error');
+                    showMsg(msgTip, '❌ No valid FASTA files found (supported: ' + VALID_EXTS.join(', ') + ')', 'error');
                     return;
                 }
                 fastaFiles = valid;
-                showMsg(msgTip, '✅ 已添加 ' + valid.length + ' 个文件', 'success');
-                toast('✅ 已添加 ' + valid.length + ' 个文件');
+                showMsg(msgTip, '✅ Added ' + valid.length + ' file(s)', 'success');
+                toast('✅ Added ' + valid.length + ' file(s)');
                 updateFileList();
                 fileInput.value = '';
             });
@@ -284,12 +266,12 @@
                 if (files.length === 0) return;
                 const valid = processFiles(files);
                 if (valid.length === 0) {
-                    showMsg(msgTip, '❌ 文件夹中未找到有效的 FASTA 文件（支持：' + VALID_EXTS.join(', ') + '）', 'error');
+                    showMsg(msgTip, '❌ No valid FASTA files found in folder (supported: ' + VALID_EXTS.join(', ') + ')', 'error');
                     return;
                 }
                 fastaFiles = valid;
-                showMsg(msgTip, '✅ 读取成功，共 ' + valid.length + ' 个 FASTA 文件', 'success');
-                toast('✅ 读取成功，共 ' + valid.length + ' 个 FASTA 文件');
+                showMsg(msgTip, '✅ Loaded ' + valid.length + ' FASTA files from folder', 'success');
+                toast('✅ Loaded ' + valid.length + ' FASTA files from folder');
                 updateFileList();
                 folderInput.value = '';
             });
@@ -310,7 +292,6 @@
                 mergedContent = '';
             });
 
-            // ---------- 解析 FASTA ----------
             function parseFasta(text) {
                 const lines = text.split(/\r?\n/);
                 const seqs = [];
@@ -323,7 +304,7 @@
                         if (name && seq) {
                             seqs.push({ id: name, seq: seq });
                         }
-                        name = trimmed.slice(1).trim(); // 去掉 > 并 trim
+                        name = trimmed.slice(1).trim(); 
                         seq = '';
                     } else {
                         seq += trimmed;
@@ -335,25 +316,24 @@
                 return seqs;
             }
 
-            // ---------- 读取文件并合并 ----------
             function readFileAsync(file) {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = (e) => resolve(e.target.result);
-                    reader.onerror = () => reject(new Error('读取失败: ' + file.name));
+                    reader.onerror = () => reject(new Error('Failed to read: ' + file.name));
                     reader.readAsText(file);
                 });
             }
 
             async function doMerge() {
                 if (fastaFiles.length === 0) {
-                    showMsg(paramTip, '❌ 请先导入 FASTA 文件', 'error');
+                    showMsg(paramTip, '❌ Please import FASTA files first', 'error');
                     return;
                 }
 
                 mergeBtn.disabled = true;
-                mergeBtn.textContent = '合并中…';
-                showMsg(paramTip, '⏳ 正在处理，请稍候…', 'warn');
+                mergeBtn.textContent = 'Merging…';
+                showMsg(paramTip, '⏳ Processing, please wait…', 'warn');
 
                 const prefixFlag = addPrefix.checked;
                 const sep = sepChar.value || '-';
@@ -365,9 +345,7 @@
                         const content = await readFileAsync(file);
                         const seqs = parseFasta(content);
                         if (seqs.length === 0) continue;
-                        // 获取文件名（不含扩展名）
                         let baseName = file.name.replace(/\.[^.]+$/, '');
-                        // 如果文件名包含非法字符，替换为下划线
                         baseName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
                         fileNames.push(baseName);
 
@@ -381,34 +359,31 @@
                     }
 
                     if (allSeqs.length === 0) {
-                        showMsg(paramTip, '❌ 所有文件均无有效序列，无法合并', 'error');
+                        showMsg(paramTip, '❌ All files have no valid sequences, cannot merge', 'error');
                         mergeBtn.disabled = false;
-                        mergeBtn.textContent = '开始合并';
+                        mergeBtn.textContent = 'Start Merge';
                         return;
                     }
 
-                    // 构建合并后的 FASTA 内容
                     let merged = '';
                     for (let s of allSeqs) {
                         merged += '>' + s.id + '\n' + s.seq + '\n';
                     }
                     mergedContent = merged;
 
-                    // 显示结果
                     renderResults(allSeqs.length, fileNames.length);
-                    showMsg(paramTip, '✅ 合并完成，共 ' + allSeqs.length + ' 条序列', 'success');
-                    toast('✅ 合并完成');
+                    showMsg(paramTip, '✅ Merge complete: ' + allSeqs.length + ' sequences', 'success');
+                    toast('✅ Merge complete');
 
                 } catch (err) {
-                    showMsg(paramTip, '❌ 合并出错：' + err.message, 'error');
+                    showMsg(paramTip, '❌ Merge error: ' + err.message, 'error');
                     console.error(err);
                 }
 
                 mergeBtn.disabled = false;
-                mergeBtn.textContent = '开始合并';
+                mergeBtn.textContent = 'Start Merge';
             }
 
-            // ---------- 渲染结果 ----------
             function renderResults(seqCount, fileCount) {
                 resultArea.style.display = 'block';
                 emptyResult.style.display = 'none';
@@ -417,23 +392,21 @@
                 copyMergeBtn.disabled = false;
                 downloadMergeBtn.disabled = false;
 
-                // 预览前1000字符
-                let preview = mergedContent.slice(0, 1000);
-                if (mergedContent.length > 1000) preview += '\n... (略)';
-                previewBox.textContent = preview || '(空)';
+                let preview = mergedContent.slice(0, 10000);
+                if (mergedContent.length > 10000) preview += '\n... (truncated)';
+                previewBox.textContent = preview || '(empty)';
             }
 
-            // ---------- 复制合并内容 ----------
             function copyMerged() {
                 if (!mergedContent) {
-                    showMsg(toolbarTip, '❌ 无内容可复制', 'error');
+                    showMsg(toolbarTip, '❌ No content to copy', 'error');
                     return;
                 }
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(mergedContent)
                         .then(() => {
-                            showMsg(toolbarTip, '✅ 已复制合并内容到剪贴板', 'success');
-                            toast('✅ 已复制');
+                            showMsg(toolbarTip, '✅ Merged content copied to clipboard', 'success');
+                            toast('✅ Copied');
                         })
                         .catch(() => {
                             fallbackCopy(mergedContent);
@@ -452,18 +425,17 @@
                 ta.select();
                 try {
                     document.execCommand('copy');
-                    showMsg(toolbarTip, '✅ 已复制合并内容到剪贴板', 'success');
-                    toast('✅ 已复制');
+                    showMsg(toolbarTip, '✅ Merged content copied to clipboard', 'success');
+                    toast('✅ Copied');
                 } catch (e) {
-                    showMsg(toolbarTip, '❌ 复制失败，请手动复制', 'error');
+                    showMsg(toolbarTip, '❌ Copy failed, please copy manually', 'error');
                 }
                 document.body.removeChild(ta);
             }
 
-            // ---------- 下载 ----------
             function downloadMerged() {
                 if (!mergedContent) {
-                    showMsg(toolbarTip, '❌ 无内容可下载', 'error');
+                    showMsg(toolbarTip, '❌ No content to download', 'error');
                     return;
                 }
                 const blob = new Blob([mergedContent], { type: 'text/plain;charset=utf-8' });
@@ -475,16 +447,14 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showMsg(toolbarTip, '✅ 已下载 merged.fasta', 'success');
-                toast('✅ 已下载 merged.fasta');
+                showMsg(toolbarTip, '✅ Downloaded merged.fasta', 'success');
+                toast('✅ Downloaded merged.fasta');
             }
 
-            // ---------- 事件绑定 ----------
             mergeBtn.addEventListener('click', doMerge);
             downloadMergeBtn.addEventListener('click', downloadMerged);
             copyMergeBtn.addEventListener('click', copyMerged);
 
-            // 参数变化时自动重新合并（若已有结果）
             addPrefix.addEventListener('change', function() {
                 if (fastaFiles.length > 0) {
                     doMerge();
@@ -496,7 +466,6 @@
                 }
             });
 
-            // 初始化
             document.getElementById('fileInputWrap').style.display = 'block';
             document.getElementById('folderInputWrap').style.display = 'none';
             resultArea.style.display = 'none';

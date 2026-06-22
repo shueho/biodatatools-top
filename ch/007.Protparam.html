@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expasy Protparam 参数批量计算（蛋白质理化性质） - BioDataTools 网页版</title>
+    <title>Expasy Protparam参数批量计算（蛋白质理化性质） - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
-    <!-- 页面特有样式 -->
     <style>
         .table-container {
             overflow-x: auto;
@@ -77,18 +76,16 @@
 </head>
 <body>
 
-    <!-- 公共页眉占位符 -->
     <div id="common-header"></div>
 
     <main class="main">
         <div class="page-intro">
-            <h2>Expasy Protparam 参数批量计算（蛋白质理化性质）</h2>
-            <p>导入蛋白/氨基酸序列，在网页中批量计算Expasy Protparam可以得到的所有参数</p>
+            <h2>Expasy Protparam参数批量计算（蛋白质理化性质）</h2>
+            <p>导入蛋白/氨基酸序列，在网页中批量计算Expasy Protparam可以得到的所有参数。</p>
         </div>
 
-        <!-- 第一步卡片（统一风格） -->
         <div class="step-card">
-            <div class="step-title">第一步：导入 FASTA 序列</div>
+            <div class="step-title">第一步：导入FASTA序列</div>
             <div class="radio-box">
                 <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件</label>
                 <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本</label>
@@ -97,7 +94,7 @@
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
             </div>
             <div class="text-input">
-                <textarea id="fastaText" placeholder="粘贴标准 FASTA 内容（序列标识第一个空格前的内容将作为序列名称）" disabled></textarea>
+                <textarea id="fastaText" placeholder="粘贴标准FASTA内容（序列标识第一个空格前的内容将作为序列名称）" disabled></textarea>
             </div>
             <div id="msgTip" class="tip-text"></div>
             <div style="margin-top:15px;">
@@ -105,7 +102,6 @@
             </div>
         </div>
 
-        <!-- 第二步卡片 -->
         <div class="step-card" id="resultArea">
             <div class="step-title">第二步：导出结果</div>
             <div class="flex-btns">
@@ -131,46 +127,38 @@
                 </table>
             </div>
 
-            <!-- 参数说明 -->
             <div class="ref-card">
                 <h4><strong>参数说明</strong></h4>
                 <p>
-                <strong>分子质量</strong>：提供两个值，其中分子量列数据与 Expasy Protparam 结果完全一致；分子量(原子组成) 列是通过化学式计算得来的。<br><br>
+                <strong>分子质量</strong>：提供两个值，其中分子量列数据与Expasy Protparam结果完全一致；分子量(原子组成) 列是通过化学式计算得来的。<br><br>
                 <strong>不稳定指数 (II)</strong>：采用从 
                 <a href="https://www.ux1.eiu.edu/~grperiyannan/AminoCalc-2.html" target="_blank">AminoCalc‑2</a> 
-                获取的 DIWV 矩阵（二肽不稳定权重值）。该矩阵未包含稀有/模糊氨基酸的权重，因此当序列中含有此类氨基酸时，II 值可能与 Expasy Protparam 存在差异（官方未公开相关权重）。<br><br>
-                <strong>其他参数</strong>：理论等电点 (pI)、消光系数、半衰期、脂肪族指数及 GRAVY 的计算脚本均依据 Expasy Protparam 官方文档所述公式编写，经测试与网站结果一致。<br><br>
+                获取的DIWV矩阵（二肽不稳定权重值）。该矩阵未包含稀有/模糊氨基酸的权重，因此当序列中含有此类氨基酸时，II值可能与Expasy Protparam存在差异（官方未公开相关权重）。<br><br>
+                <strong>其他参数</strong>：理论等电点(pI)、消光系数、半衰期、脂肪族指数及GRAVY的计算脚本均依据Expasy Protparam官方文档所述公式编写，经测试与网站结果一致。<br><br>
                 <strong>特别说明</strong>：化学式显示“无法确定”表示序列中存在模糊氨基酸（B/Z/X），无法精确计算原子组成。消光系数相关四列显示“无信号”表示序列中不含色氨酸（Trp, W）、酪氨酸（Tyr, Y）和半胱氨酸（Cys, C），此时蛋白质在280nm处无紫外吸收，无法通过紫外分光光度法检测。<br><br>
-                如需与 Expasy Protparam 完全一致的结果，可使用 BioDataTools 工具集中的爬虫脚本批量获取：
+                如需与 Expasy Protparam 完全一致的结果，可使用BioDataTools工具集中的爬虫脚本批量获取：
                 <a href="https://github.com/shueho/BioDataTools/blob/master/Genetics/ProteinPropertyFromExpasy/ProteinPropertyFromExpasy.py" target="_blank">ProteinPropertyFromExpasy.py</a>
                 </p>
             </div>
         </div>
     </main>
 
-    <!-- 公共页脚占位符 -->
     <div id="common-footer"></div>
 
-    <!-- 自定义页眉配置 -->
     <script>
         window.headerConfig = {
-            author: '作者：地上飞猪',
             bilibiliUrl: 'https://www.bilibili.com/video/BV1q9Ei6mEGi',
             bilibiliText: '当前工具使用教程视频',
             githubUrl: 'https://web.expasy.org/protparam/',
             githubText: '前往Expasy Protparam',
-            returnHomeUrl: '../index.html'
         };
     </script>
 
-    <!-- 引入公共组件 -->
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
     <script src="../COMMON/footer.js"></script>
 
-    <!-- 业务逻辑脚本（核心算法不变，仅调整导入逻辑） -->
     <script>
-        // ==================== 核心算法（完全保留原版） ====================
         const ATOM_AVG_MASS = { C:12.011, H:1.0079, N:14.0067, O:15.9994, S:32.065, Se:78.96 };
         const ATOM_COUNTS = {
             A:{C:3,H:5,N:1,O:1,S:0}, R:{C:6,H:12,N:4,O:1,S:0}, N:{C:4,H:6,N:2,O:2,S:0},
@@ -388,7 +376,6 @@
                      halfLife, instability, instabilityNote, aliphatic, gravy, counts };
         }
 
-        // FASTA解析（与原版一致，序列名称取整行）
         function parseFasta(text) {
             let lines = text.split(/\r?\n/);
             let seqs = [];
@@ -408,7 +395,6 @@
             return seqs;
         }
 
-        // UI 逻辑
         let allResults = [];
         const fastaFileInput = document.getElementById('fastaFile');
         const fastaTextarea = document.getElementById('fastaText');
@@ -435,12 +421,10 @@
                 fastaFileInput.value = '';
                 fastaTextarea.disabled = false;
             }
-            // 清空结果
             allResults = [];
             renderTables(true);
         }
 
-        // 文件读取
         fastaFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -547,16 +531,15 @@
         }
         function escapeHtml(s) { return s.replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
 
-        // 导入并计算
         loadBtn.addEventListener('click', () => {
             let text = fastaTextarea.value.trim();
             if (!text) {
-                showMessage(msgTip, '请先上传文件或粘贴 FASTA 序列', 'error');
+                showMessage(msgTip, '请先上传文件或粘贴FASTA序列', 'error');
                 return;
             }
             let parsed = parseFasta(text);
             if (parsed.length === 0) {
-                showMessage(msgTip, '未检测到有效 FASTA 序列', 'error');
+                showMessage(msgTip, '未检测到有效FASTA序列', 'error');
                 return;
             }
             allResults = [];
@@ -569,7 +552,6 @@
             window.showToast(`✅ 已加载 ${parsed.length} 条序列`);
         });
 
-        // 复制/下载 CSV
         function getSummaryCSV() {
             let rows = [['Sequence Name','Length','Molecular Weight (Residue)','Molecular Formula','Theoretical pI',
                          'Positively Charged (Arg+Lys)','Negatively Charged (Asp+Glu)',
@@ -631,7 +613,6 @@
             URL.revokeObjectURL(a.href);
         });
 
-        // 页面初始化
         switchInput();
     </script>
 </body>
