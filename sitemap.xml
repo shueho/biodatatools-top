@@ -1,100 +1,224 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-    <!-- ========== 首页 ========== -->
-    <url>
-        <loc>https://www.biodatatools.top/</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>1.0</priority>
-    </url>
+  
+  <!-- ========== 首页（根路径） ========== -->
+  <url>
+    <loc>https://www.biodatatools.top/</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
 
-    <!-- ========== 博客 ========== -->
-    <url>
-        <loc>https://www.biodatatools.top/blog/home.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
+  <!-- ========== 独立页面（博客 & BioStatPlot） ========== -->
+  <url>
+    <loc>https://www.biodatatools.top/blog/home.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/BioStatPlot/home.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
 
-    <!-- ========== BioStatPlot 分站 ========== -->
-    <url>
-        <loc>https://www.biodatatools.top/BioStatPlot/home.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
+  <!-- ========== 英文工具页面（/en/） ========== -->
+  <!-- 分类：Nucleic Acid Sequence Processing -->
+  <url>
+    <loc>https://www.biodatatools.top/en/001.Genbank_feat_extract.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/005.CDS_translate.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/006.Seq_concat.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/010.Fasta_to_AXT.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/013.Fasta_append_merge.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-    <!-- ========== 核酸序列处理 ========== -->
-    <url>
-        <loc>https://www.biodatatools.top/function/001.genbank_feat_extract.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>https://www.biodatatools.top/function/005.CDS_translate.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>https://www.biodatatools.top/function/006.Seq_concat.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>https://www.biodatatools.top/function/010.Fasta_to_AXT.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
+  <!-- 分类：Statistical Analysis -->
+  <url>
+    <loc>https://www.biodatatools.top/en/002.RSCU.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/007.Protparam.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/009.Base_composition.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/011.Codon_position_base_stats.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/012.CodonW_indices.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-    <!-- ========== 统计分析 ========== -->
-    <url>
-        <loc>https://www.biodatatools.top/function/002.RSCU.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>https://www.biodatatools.top/function/007.Protparam.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>https://www.biodatatools.top/function/009.Base_composition.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
+  <!-- 分类：Plotting & Visualization -->
+  <url>
+    <loc>https://www.biodatatools.top/en/003.RSCU_plot.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/004.Trna_structure_beautifier.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/008.Visualize_gene_arrangement.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-    <!-- ========== 绘图与美化 ========== -->
-    <url>
-        <loc>https://www.biodatatools.top/function/003.RSCU_plot.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>https://www.biodatatools.top/function/004.Trna_structure_beautifier.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>https://www.biodatatools.top/function/008.Visualize_gene_arrangement.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
+  <!-- 分类：Others -->
+  <url>
+    <loc>https://www.biodatatools.top/en/function/999.Script_download.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/function/998.Links.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
 
-    <!-- ========== 其他 ========== -->
-    <url>
-        <loc>https://www.biodatatools.top/function/module2_01.html</loc>
-        <lastmod>2026-06-17</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.5</priority>
-    </url>
+  <!-- ========== 中文工具页面（/ch/） ========== -->
+  <!-- 分类：核酸序列处理 -->
+  <url>
+    <loc>https://www.biodatatools.top/ch/001.Genbank_feat_extract.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/005.CDS_translate.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/006.Seq_concat.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/010.Fasta_to_AXT.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/013.Fasta_append_merge.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- 分类：统计分析 -->
+  <url>
+    <loc>https://www.biodatatools.top/ch/002.RSCU.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/007.Protparam.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/009.Base_composition.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/011.Codon_position_base_stats.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/012.CodonW_indices.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- 分类：绘图与美化 -->
+  <url>
+    <loc>https://www.biodatatools.top/ch/003.RSCU_plot.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/004.Trna_structure_beautifier.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/008.Visualize_gene_arrangement.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- 分类：其他 -->
+  <url>
+    <loc>https://www.biodatatools.top/ch/function/999.Script_download.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/function/998.Links.html</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
 </urlset>
