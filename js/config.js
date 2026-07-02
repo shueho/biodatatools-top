@@ -94,6 +94,12 @@ const toolConfig = [
     link: "en/012.CodonW_indices.html"
 },
 
+{
+    toolName: "Group Statistics for Base/Amino Acid Usage",
+    toolDesc: "Import FASTA sequences, set groups, then calculate the frequency or count of bases or amino acids by group.",
+    link: "en/016.Group_freq_stat.html"
+}
+
         ]
     },
     {

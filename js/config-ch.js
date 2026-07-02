@@ -94,6 +94,12 @@ const toolConfig = [
     link: "ch/012.CodonW_indices.html"
 },
 
+{
+    toolName: "分组统计碱基/氨基酸使用情况",
+    toolDesc: "导入FASTA序列并设置分组后按分组统计碱基或氨基酸的频数或频率。",
+    link: "ch/016.Group_freq_stat.html"
+},
+
         ]
     },
     {

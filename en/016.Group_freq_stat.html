@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Statistics for Base/Amino Acid Usage - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Group Statistics for Base/Amino Acid Usage</h2>
+            <p>Import FASTA sequences, set groups, then calculate the frequency or count of bases or amino acids by group.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import FASTA Sequences</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.txt,.fas">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="Paste standard FASTA format content" disabled></textarea>
+            </div>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="loadBtn">Import Sequences</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Set Groups</div>
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:6px;">
+                <span><strong>Sequence Name → Group Name Mapping Table</strong> <span class="tip-text" style="display:inline; margin-left:10px;" id="seqCount">0 entries</span></span>
+                <span style="font-size:0.85rem; color:#888;">(Copy to Excel, modify the second column, then paste back and click "Apply Groups")</span>
+            </div>
+            <textarea id="groupTableText" placeholder="After importing, a two-column table (Sequence Name\tGroup Name) will appear here. The default group name is the sequence name itself."></textarea>
+
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="copyTableBtn">Copy Table</button>
+                <button class="btn" id="applyGroupBtn" disabled>Apply Groups</button>
+                <button class="btn" id="resetBtn">Clear All</button>
+            </div>
+            <div id="applyTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Statistics Parameters and Results</div>
+            <div class="filter-box" style="margin-bottom:12px;">
+                <label>Statistics Mode:
+                    <select id="statMode">
+                        <option value="base">Base Mode</option>
+                        <option value="amino">Amino Acid Mode</option>
+                    </select>
+                </label>
+                <label id="seqTypeLabel">Sequence Type:
+                    <select id="seqType">
+                        <option value="DNA">DNA</option>
+                        <option value="RNA">RNA</option>
+                    </select>
+                </label>
+                <label>Output Format:
+                    <select id="outputFormat">
+                        <option value="count">Count</option>
+                        <option value="freq">Frequency (%)</option>
+                    </select>
+                </label>
+                <button class="btn" id="runStatBtn" disabled>Run Statistics</button>
+            </div>
+
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyResultBtn" disabled>Copy Results</button>
+                    <button class="btn" id="exportResultBtn" disabled>Export Table</button>
+                    <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
+                </div>
+                <div class="table-container" id="resultTableWrap">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="rowCount"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Complete grouping and click "Run Statistics" to view results.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const groupTableText = document.getElementById('groupTableText');
+            const copyTableBtn = document.getElementById('copyTableBtn');
+            const applyGroupBtn = document.getElementById('applyGroupBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const applyTip = document.getElementById('applyTip');
+            const seqCount = document.getElementById('seqCount');
+
+            const statMode = document.getElementById('statMode');
+            const seqType = document.getElementById('seqType');
+            const seqTypeLabel = document.getElementById('seqTypeLabel');
+            const outputFormat = document.getElementById('outputFormat');
+            const runStatBtn = document.getElementById('runStatBtn');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportResultBtn = document.getElementById('exportResultBtn');
+            const toolbarTip = document.getElementById('toolbarTip');
+
+            let sequences = [];          
+            let groupMapping = {};       
+            let statResult = [];         
+            let resultCsvContent = '';
+
+            function showMsg(el, msg, type) {
+                const prefix = type === 'success' ? '✅ ' : (type === 'error' ? '❌ ' : '');
+                el.innerHTML = `<span class="${type}">${prefix}${msg}</span>`;
+                if (el === msgTip || el === applyTip || el === toolbarTip) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${prefix}${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ name, seq });
+                        name = trimmed.slice(1).trim(); 
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ name, seq });
+                return seqs;
+            }
+
+            function loadSequences(text) {
+                try {
+                    const parsed = parseFasta(text);
+                    if (parsed.length === 0) {
+                        showMsg(msgTip, 'No valid sequences parsed. Please check FASTA format.', 'error');
+                        return false;
+                    }
+                    sequences = parsed.map(s => ({
+                        name: s.name,
+                        seq: s.seq,
+                        group: s.name   
+                    }));
+                    updateGroupTable();
+                    applyGroupBtn.disabled = false;
+                    runStatBtn.disabled = false;
+                    seqCount.textContent = sequences.length + ' entries';
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    copyResultBtn.disabled = true;
+                    exportResultBtn.disabled = true;
+                    showMsg(msgTip, 'Successfully loaded ' + sequences.length + ' sequence(s).', 'success');
+                    toast('Loaded ' + sequences.length + ' sequence(s).');
+                    return true;
+                } catch (e) {
+                    showMsg(msgTip, 'Parse error: ' + e.message, 'error');
+                    return false;
+                }
+            }
+
+            function updateGroupTable() {
+                const lines = sequences.map(s => s.name + '\t' + s.group);
+                groupTableText.value = lines.join('\n');
+                groupMapping = {};
+                sequences.forEach(s => { groupMapping[s.name] = s.group; });
+            }
+
+            function applyGroup() {
+                const text = groupTableText.value.trim();
+                if (!text) {
+                    showMsg(applyTip, 'Group table is empty. Please import sequences first.', 'error');
+                    return;
+                }
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                const newMap = {};
+                let ok = true;
+                for (const line of lines) {
+                    const parts = line.split(/\t/);
+                    if (parts.length < 2) {
+                        showMsg(applyTip, 'Invalid format in a row. Ensure each line contains "Sequence Name\tGroup Name".', 'error');
+                        ok = false;
+                        break;
+                    }
+                    const name = parts[0].trim();
+                    const group = parts.slice(1).join('\t').trim(); 
+                    if (!name) {
+                        showMsg(applyTip, 'Sequence name cannot be empty.', 'error');
+                        ok = false;
+                        break;
+                    }
+                    newMap[name] = group || 'Unnamed';
+                }
+                if (!ok) return;
+
+                const seqNames = sequences.map(s => s.name);
+                const missing = seqNames.filter(n => !(n in newMap));
+                if (missing.length > 0) {
+                    showMsg(applyTip, 'The following sequences were not found in the table: ' + missing.join(', '), 'error');
+                    return;
+                }
+                sequences.forEach(s => { s.group = newMap[s.name] || 'Unnamed'; });
+                groupMapping = newMap;
+                updateGroupTable();
+                showMsg(applyTip, 'Groups updated.', 'success');
+                toast('Groups applied.');
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                copyResultBtn.disabled = true;
+                exportResultBtn.disabled = true;
+            }
+
+            function getBaseSet(type) {
+                if (type === 'DNA') return ['A', 'T', 'G', 'C'];
+                else return ['A', 'U', 'G', 'C'];
+            }
+
+            function getAminoSet() {
+                return ['A','R','N','D','C','Q','E','G','H','I','L','K','M','F','P','S','T','W','Y','V'];
+            }
+
+            function runStatistics() {
+                if (sequences.length === 0) {
+                    showMsg(toolbarTip, 'Please import sequences first.', 'error');
+                    return;
+                }
+                const mode = statMode.value;
+                const type = seqType.value;
+                const format = outputFormat.value;
+
+                const groups = {};
+                let allMerged = '';
+                sequences.forEach(s => {
+                    if (!groups[s.group]) groups[s.group] = [];
+                    groups[s.group].push(s.seq);
+                    allMerged += s.seq;
+                });
+
+                let headers = ['Group'];
+                let resultRows = [];
+                let charSet = [];
+
+                if (mode === 'base') {
+                    charSet = getBaseSet(type);
+                } else {
+                    charSet = getAminoSet();
+                }
+
+                const suffix = format === 'count' ? '' : ' (%)';
+                headers = headers.concat(charSet.map(c => c + suffix));
+                headers.push('Total Length');
+
+                let totalLenAll = allMerged.length;
+                const totalCounts = {};
+                charSet.forEach(c => totalCounts[c] = 0);
+                for (const ch of allMerged) {
+                    const upper = ch.toUpperCase();
+                    if (totalCounts.hasOwnProperty(upper)) totalCounts[upper]++;
+                }
+
+                for (const [group, seqs] of Object.entries(groups)) {
+                    const merged = seqs.join('');
+                    const totalLen = merged.length;
+                    const counts = {};
+                    charSet.forEach(c => counts[c] = 0);
+                    for (const ch of merged) {
+                        const upper = ch.toUpperCase();
+                        if (counts.hasOwnProperty(upper)) counts[upper]++;
+                    }
+                    const row = [group];
+                    if (format === 'count') {
+                        charSet.forEach(c => row.push(counts[c] || 0));
+                    } else {
+                        charSet.forEach(c => {
+                            const pct = totalLen > 0 ? ((counts[c] || 0) / totalLen * 100) : 0;
+                            row.push(pct.toFixed(2));
+                        });
+                    }
+                    row.push(totalLen);
+                    resultRows.push(row);
+                }
+
+                const totalRow = ['Summary'];
+                if (format === 'count') {
+                    charSet.forEach(c => totalRow.push(totalCounts[c] || 0));
+                } else {
+                    charSet.forEach(c => {
+                        const pct = totalLenAll > 0 ? ((totalCounts[c] || 0) / totalLenAll * 100) : 0;
+                        totalRow.push(pct.toFixed(2));
+                    });
+                }
+                totalRow.push(totalLenAll);
+                resultRows.push(totalRow);
+
+                resultHead.innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+                let tbody = '';
+                for (const row of resultRows) {
+                    tbody += '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+                }
+                resultBody.innerHTML = tbody;
+                rowCount.textContent = (resultRows.length - 1) + ' groups + Summary';
+
+                resultCsvContent = headers.join('\t') + '\n' + resultRows.map(row => row.join('\t')).join('\n');
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                copyResultBtn.disabled = false;
+                exportResultBtn.disabled = false;
+                showMsg(toolbarTip, 'Statistics complete.', 'success');
+                toast('Statistics complete.');
+            }
+
+            function copyResult() {
+                if (!resultCsvContent) {
+                    showMsg(toolbarTip, 'No results to copy.', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(resultCsvContent).then(() => {
+                        showMsg(toolbarTip, 'Results copied (TSV format).', 'success');
+                        toast('Copied.');
+                    }).catch(() => fallbackCopy(resultCsvContent));
+                } else {
+                    fallbackCopy(resultCsvContent);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(toolbarTip, 'Results copied (TSV format).', 'success');
+                    toast('Copied.');
+                } catch (e) {
+                    showMsg(toolbarTip, 'Copy failed. Please copy manually.', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportResult() {
+                if (!resultCsvContent) {
+                    showMsg(toolbarTip, 'No results to export.', 'error');
+                    return;
+                }
+                const csvContent = resultCsvContent.split('\n').map(line => line.split('\t').join(',')).join('\n');
+                const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'group_stats.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(toolbarTip, 'CSV exported.', 'success');
+                toast('CSV exported.');
+            }
+
+            function resetAll(silent = false) {
+                if (sequences.length > 0) {
+                    sequences.forEach(s => { s.group = s.name; });
+                    groupTableText.value = '';          
+                    groupMapping = {};
+                    sequences.forEach(s => { groupMapping[s.name] = s.group; });
+                    applyGroupBtn.disabled = false;
+                    runStatBtn.disabled = false;
+                } else {
+                    groupTableText.value = '';
+                    applyGroupBtn.disabled = true;
+                    runStatBtn.disabled = true;
+                }
+                seqCount.textContent = sequences.length + ' entries';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                copyResultBtn.disabled = true;
+                exportResultBtn.disabled = true;
+                msgTip.innerHTML = '';
+                applyTip.innerHTML = '';
+                toolbarTip.innerHTML = '';
+                if (!silent) toast('Group mapping cleared.');
+            }
+
+            window.switchInputMode = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+            };
+
+            function copyTable() {
+                const text = groupTableText.value;
+                if (!text) {
+                    showMsg(applyTip, 'Nothing to copy.', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showMsg(applyTip, 'Mapping table copied.', 'success');
+                        toast('Copied.');
+                    }).catch(() => fallbackCopy(text, applyTip));
+                } else {
+                    fallbackCopy(text, applyTip);
+                }
+            }
+
+            function loadExample() {
+                const example = `>seq1  sequence one
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq2  sequence two
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq3  sequence three
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq4  sequence four
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInputMode();
+                fastaText.value = example;
+                loadSequences(example);
+            }
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    const file = fastaFile.files[0];
+                    if (!file) {
+                        showMsg(msgTip, 'Please select a file.', 'error');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        fastaText.value = e.target.result;
+                        loadSequences(e.target.result);
+                    };
+                    reader.readAsText(file);
+                } else {
+                    const text = fastaText.value.trim();
+                    if (!text) {
+                        showMsg(msgTip, 'Please paste FASTA content.', 'error');
+                        return;
+                    }
+                    loadSequences(text);
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            copyTableBtn.addEventListener('click', copyTable);
+            applyGroupBtn.addEventListener('click', applyGroup);
+            resetBtn.addEventListener('click', resetAll);
+
+            runStatBtn.addEventListener('click', runStatistics);
+
+            copyResultBtn.addEventListener('click', copyResult);
+            exportResultBtn.addEventListener('click', exportResult);
+
+            groupTableText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    if (!applyGroupBtn.disabled) applyGroupBtn.click();
+                }
+            });
+
+            statMode.addEventListener('change', function() {
+                seqTypeLabel.style.display = (this.value === 'base') ? 'inline' : 'none';
+            });
+            seqTypeLabel.style.display = 'inline';
+
+            resetAll(true);
+            switchInputMode();
+        })();
+    </script>
+
+</body>
+</html>

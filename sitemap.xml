@@ -99,6 +99,12 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/016.Group_freq_stat.html</loc>
+    <lastmod>2026-07-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
   <!-- 分类：Plotting & Visualization -->
   <url>
@@ -122,13 +128,13 @@
 
   <!-- 分类：Others -->
   <url>
-    <loc>https://www.biodatatools.top/en/function/999.Script_download.html</loc>
+    <loc>https://www.biodatatools.top/en/999.Script_download.html</loc>
     <lastmod>2026-06-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/en/function/998.Links.html</loc>
+    <loc>https://www.biodatatools.top/en/998.Links.html</loc>
     <lastmod>2026-06-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -209,6 +215,12 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/016.Group_freq_stat.html</loc>
+    <lastmod>2026-07-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
   <!-- 分类：绘图与美化 -->
   <url>
@@ -232,13 +244,13 @@
 
   <!-- 分类：其他 -->
   <url>
-    <loc>https://www.biodatatools.top/ch/function/999.Script_download.html</loc>
+    <loc>https://www.biodatatools.top/ch/999.Script_download.html</loc>
     <lastmod>2026-06-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/ch/function/998.Links.html</loc>
+    <loc>https://www.biodatatools.top/ch/998.Links.html</loc>
     <lastmod>2026-06-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
