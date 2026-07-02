@@ -1,5 +1,10 @@
-[
+{
+  "zh": [
     { "url": "https://shueho.github.io/script/codon_usage_plot.R", "desc": "ENC-Plot、中性分析及PR2分析简单绘图脚本" },
     { "url": "https://shueho.github.io/script/xxx.R", "desc": "待定脚本" }
-    
-]
+  ],
+  "en": [
+    { "url": "https://shueho.github.io/script/codon_usage_plot.R", "desc": "Simple plotting scripts for ENC-Plot, neutrality analysis, and PR2 analysis" },
+    { "url": "https://shueho.github.io/script/xxx.R", "desc": "TBD script" }
+  ]
+}

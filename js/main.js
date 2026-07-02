@@ -25,7 +25,8 @@ function renderSideNav() {
         category.tools.forEach((tool, toolIndex) => {
             const toolId = `tool-${catIndex}-${toolIndex}`;
             const toolItem = document.createElement('li');
-            let iconText = tool.toolIcon.includes('images/') ? '' : tool.toolIcon;
+            //let iconText = tool.toolIcon.includes('images/') ? '' : tool.toolIcon;
+            let iconText = (tool.toolIcon && typeof tool.toolIcon === 'string' && !tool.toolIcon.includes('images/')) ? tool.toolIcon : '';
             toolItem.innerHTML = `<a onclick="scrollToTool('${toolId}')">${iconText} ${tool.toolName}</a>`;
             subMenu.appendChild(toolItem);
         });
@@ -46,7 +47,7 @@ function scrollToTool(toolId) {
     }
 }
 
-let allCardElements = []; // 存储 { card, categoryWrap, toolName, toolDesc }
+let allCardElements = [];
 
 function renderToolList() {
     const toolList = document.getElementById('toolList');
@@ -72,7 +73,8 @@ function renderToolList() {
             const card = document.createElement('div');
             card.className = 'sub-tool-card';
             card.id = toolId;
-
+            card.title = `${tool.toolName}\n${tool.toolDesc}`;
+/*
             let iconHtml = '';
             if (tool.toolIcon && tool.toolIcon.startsWith('images/')) {
                 iconHtml = `<img src="${tool.toolIcon}" alt="${tool.toolName}">`;
@@ -82,6 +84,13 @@ function renderToolList() {
 
             card.innerHTML = `
                 <div class="icon">${iconHtml}</div>
+                <div class="card-info">
+                    <h4>${tool.toolName}</h4>
+                    <p>${tool.toolDesc}</p>
+                </div>
+            `;
+*/
+            card.innerHTML = `
                 <div class="card-info">
                     <h4>${tool.toolName}</h4>
                     <p>${tool.toolDesc}</p>
@@ -102,7 +111,7 @@ function renderToolList() {
 
 function filterToolsByKeyword(keyword) {
     const kw = keyword.trim().toLowerCase();
-    const categoryHasVisible = new Map(); // key: categoryWrap, value: boolean
+    const categoryHasVisible = new Map();
 
     allCardElements.forEach(item => {
         const match = kw === '' || item.toolName.includes(kw) || item.toolDesc.includes(kw);
@@ -124,18 +133,6 @@ function filterToolsByKeyword(keyword) {
     });
 }
 
-window.addEventListener('DOMContentLoaded', function () {
-    renderSideNav();
-    renderToolList();
-
-    const searchInput = document.getElementById('toolSearchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            filterToolsByKeyword(e.target.value);
-        });
-    }
-});
-
 function initLanguageSwitch() {
     const btn = document.getElementById('langSwitchBtn');
     if (!btn) return;
@@ -151,6 +148,7 @@ function initLanguageSwitch() {
     }
 }
 
+// ========== DOM 加载完成 ==========
 window.addEventListener('DOMContentLoaded', function () {
     renderSideNav();
     renderToolList();
@@ -163,4 +161,45 @@ window.addEventListener('DOMContentLoaded', function () {
     }
 
     initLanguageSwitch();
+
+    // ========== 导航跟随页脚（新版，更可靠） ==========
+    (function() {
+        const sideNav = document.getElementById('sideNav');
+        const footer = document.querySelector('footer');
+        
+        function updateNavPosition() {
+            if (!sideNav || !footer) return;
+            
+            const footerRect = footer.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const navHeight = sideNav.offsetHeight;
+            
+            // 默认底部距离
+            let bottomOffset = 20;
+            
+            // 页脚顶部进入视口
+            if (footerRect.top < windowHeight) {
+                // 如果页脚完全在视口内或部分在视口内
+                if (footerRect.bottom <= windowHeight) {
+                    // 页脚完全可见，导航底部停在页脚顶部上方
+                    bottomOffset = windowHeight - footerRect.top + 20;
+                } else {
+                    // 页脚部分可见，导航逐渐上移
+                    const visibleFooterHeight = windowHeight - footerRect.top;
+                    bottomOffset = windowHeight - footerRect.top + 20;
+                }
+            }
+            
+            // 限制最大偏移，不让导航超出顶部
+            const maxBottom = windowHeight - 150; // 顶部留出 header 空间
+            bottomOffset = Math.min(bottomOffset, maxBottom);
+            bottomOffset = Math.max(bottomOffset, 20);
+            
+            sideNav.style.bottom = bottomOffset + 'px';
+        }
+        
+        window.addEventListener('scroll', updateNavPosition);
+        window.addEventListener('resize', updateNavPosition);
+        setTimeout(updateNavPosition, 200);
+    })();
 });

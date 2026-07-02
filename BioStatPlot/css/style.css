@@ -30,14 +30,14 @@ header {
     align-items: center;
 }
 
-/* ----- 新增：左侧 Logo + 标题容器 ----- */
+/* ----- 左侧 Logo + 标题容器 ----- */
 .header-left {
     display: flex;
     align-items: center;
     gap: 16px;
 }
 
-/* ----- 新增：大尺寸 Logo ----- */
+/* ----- 大尺寸 Logo ----- */
 .header-logo {
     height: 80px;
     width: auto;
@@ -64,7 +64,11 @@ header {
     color: #ddd;
     margin-top: 0.2rem;
 }
-.back-home, .bilibili-link, .github-link {
+
+/* ========== 按钮通用样式 ========== */
+.back-home,
+.bilibili-link,
+.github-link {
     display: inline-block;
     text-decoration: none;
     padding: 0.5rem 1rem;
@@ -78,7 +82,7 @@ header {
 }
 .back-home:hover {
     background: #373e47;
-   transform: translateY(-2px);
+    transform: translateY(-2px);
 }
 .bilibili-link {
     background: #fb7299;
@@ -97,43 +101,105 @@ header {
     transform: translateY(-2px);
 }
 
-/* ========== 侧边栏（浅色半透明） ========== */
+/* ========== 语言切换按钮 ========== */
+.lang-switch-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1.4rem;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.lang-switch-btn:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+    background: linear-gradient(135deg, #5a6fd6 0%, #6a3f8f 100%);
+}
+.lang-switch-btn:active {
+    transform: scale(0.97);
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
+/* ============================================================
+   侧边栏（核心修复：标题常驻 + 页脚之上）
+   ============================================================ */
 .side-nav {
     position: fixed;
     left: 15px;
+    /* top 和 bottom 由 JS 动态控制，此处设初始值 */
     top: 140px;
     bottom: 20px;
-    background: rgba(255,255,255,0.95);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(0,0,0,0.1);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 16px;
-    padding: 1rem;
+    padding: 0;
     width: 260px;
     z-index: 98;
-    overflow-y: auto;
+    overflow: hidden; /* 防止内容溢出圆角 */
     transition: transform 0.3s ease, opacity 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 .side-nav.hidden {
     transform: translateX(-280px);
     opacity: 0;
     pointer-events: none;
 }
+
+/* ----- 侧边栏标题（常驻顶部） ----- */
 .side-nav h4 {
     color: #1f4068;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
+    font-size: 1rem;
+    padding: 1rem 1.2rem 0.6rem 1.2rem;
+    margin: 0;
     border-bottom: 1px solid #e2e8f0;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px 16px 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
+
+/* ----- 导航列表（可滚动区域） ----- */
 .side-nav ul {
     list-style: none;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.5rem 1rem 1rem 1rem;
+    margin: 0;
 }
+.side-nav ul::-webkit-scrollbar {
+    width: 4px;
+}
+.side-nav ul::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+.side-nav ul::-webkit-scrollbar-track {
+    background: transparent;
+}
+
 .side-nav li {
-    margin: 0.5rem 0;
+    margin: 0.3rem 0;
 }
 .side-nav a {
     display: block;
-    padding: 0.5rem 0.8rem;
-    background: rgba(0,0,0,0.03);
+    padding: 0.4rem 0.8rem;
+    background: rgba(0, 0, 0, 0.03);
     border-radius: 8px;
     color: #555;
     text-decoration: none;
@@ -142,16 +208,70 @@ header {
     font-size: 0.9rem;
 }
 .side-nav a:hover {
-    background: rgba(0,212,255,0.1);
+    background: rgba(0, 212, 255, 0.1);
     color: #1f4068;
 }
 .side-nav .parent-item {
-    background: rgba(0,212,255,0.1);
+    background: rgba(0, 212, 255, 0.1);
     color: #1f4068;
     font-weight: 500;
 }
 
-/* ========== 主内容区 ========== */
+.sub-menu {
+    display: none;
+    margin-left: 12px;
+    border-left: 1px solid #e2e8f0;
+    padding-left: 8px;
+}
+.sub-menu.open {
+    display: block;
+}
+
+.sub-sub-menu {
+    display: none;
+    margin-left: 16px;
+    border-left: 1px solid #e2e8f0;
+    padding-left: 8px;
+}
+.sub-sub-menu.open {
+    display: block;
+}
+
+.sub-parent {
+    display: block;
+    padding: 0.3rem 0.8rem;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 6px;
+    color: #555;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.sub-parent:hover {
+    background: rgba(0, 212, 255, 0.1);
+    color: #1f4068;
+}
+
+.toggle-side-btn {
+    position: fixed;
+    left: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #cbd5e1;
+    color: #1f4068;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.toggle-side-btn:hover {
+    background: #fff;
+    transform: translateY(-50%) scale(1.05);
+}
+
 .main {
     max-width: 1400px;
     margin: 2rem auto;
@@ -161,6 +281,7 @@ header {
 .main.full-width {
     padding-left: 2rem;
 }
+
 .intro {
     text-align: center;
     margin-bottom: 2rem;
@@ -174,7 +295,6 @@ header {
     font-size: 1rem;
 }
 
-/* ========== 搜索框 ========== */
 .search-bar {
     max-width: 500px;
     margin: 0 auto 2rem auto;
@@ -198,7 +318,6 @@ header {
     color: #94a3b8;
 }
 
-/* ========== 卡片网格：图片铺满卡片（浅色版） ========== */
 .sub-tool-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -223,13 +342,13 @@ header {
     padding: 0;
     aspect-ratio: 1 / 1;
     width: 100%;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 .plot-card:hover {
     background: #f8fafc;
     border-color: #1f4068;
     transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 .plot-card .icon {
     width: 100%;
@@ -258,29 +377,41 @@ header {
     color: #1f4068;
 }
 
-/* ========== 侧边栏切换按钮 ========== */
-.toggle-side-btn {
-    position: fixed;
-    left: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 100;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.8);
-    border: 1px solid #cbd5e1;
-    color: #1f4068;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.2s;
+/* ========== 三级分类主页样式 ========== */
+.tool-category {
+    margin-bottom: 2.5rem;
 }
-.toggle-side-btn:hover {
-    background: #fff;
-    transform: translateY(-50%) scale(1.05);
+.category-title {
+    font-size: 1.4rem;
+    color: #1f4068;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid rgba(31, 64, 104, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.category-icon {
+    font-size: 1.6rem;
+}
+.sub-category {
+    margin: 1.5rem 0 1rem 1rem;
+}
+.sub-title {
+    font-size: 1.1rem;
+    color: #4a5568;
+    margin-bottom: 0.8rem;
+    padding-left: 8px;
+    border-left: 3px solid #1f4068;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.sub-icon {
+    font-size: 1.2rem;
 }
 
-/* ========== 页脚（浅色背景） ========== */
+/* ========== 页脚 ========== */
 footer {
     text-align: center;
     padding: 2rem;
@@ -289,6 +420,8 @@ footer {
     background: #eef2f5;
     margin-top: 3rem;
     border-top: 1px solid #e2e8f0;
+    position: relative;
+    clear: both;
 }
 footer a {
     color: #1f4068;
@@ -314,7 +447,7 @@ footer a:hover {
     background: #fff;
     padding: 10px;
     border-radius: 8px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
     transition: opacity 0.3s, visibility 0.3s;
     z-index: 100;
     white-space: nowrap;
@@ -329,7 +462,7 @@ footer a:hover {
     opacity: 1;
 }
 
-/* ========== 响应式 ========== */
+
 @media (max-width: 900px) {
     .side-nav {
         display: none;
@@ -341,6 +474,7 @@ footer a:hover {
         display: none;
     }
 }
+
 @media (max-width: 768px) {
     .header-wrap {
         flex-direction: column;
@@ -357,83 +491,235 @@ footer a:hover {
     }
     .header-right {
         justify-content: center;
+        flex-wrap: wrap;
     }
     .sub-tool-grid {
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 1rem;
+        margin-left: 0;
+    }
+    .main {
+        padding: 0 1rem 0 1rem;
+        margin: 1.5rem auto;
+    }
+    .intro h2 {
+        font-size: 1.4rem;
     }
 }
+
 @media (max-width: 480px) {
+    header {
+        padding: 0.8rem 1rem;
+    }
     .header-logo {
-        height: 45px;
+        height: 40px;
     }
     .site-title h1 {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+    }
+    .author {
+        font-size: 0.7rem;
+    }
+    .header-right {
+        gap: 4px;
+    }
+    .back-home,
+    .bilibili-link,
+    .github-link {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.7rem;
+    }
+    .lang-switch-btn {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.7rem;
+    }
+    .sub-tool-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.8rem;
+    }
+    .plot-card {
+        border-radius: 12px;
+    }
+    .plot-card .icon:not(:has(img)) {
+        font-size: 2.5rem;
+    }
+    .tool-name {
+        font-size: 0.7rem;
+        margin-top: 0.4rem;
+    }
+    .tool-category {
+        margin-bottom: 1.5rem;
+    }
+    .category-title {
+        font-size: 1.1rem;
+    }
+    .sub-category {
+        margin: 1rem 0 0.8rem 0.5rem;
+    }
+    .sub-title {
+        font-size: 0.95rem;
+    }
+    .intro h2 {
+        font-size: 1.2rem;
+    }
+    .intro p {
+        font-size: 0.85rem;
+    }
+    .search-bar {
+        max-width: 100%;
+        margin: 0 0 1.5rem 0;
+    }
+    #toolSearchInput {
+        padding: 10px 16px;
+        font-size: 0.85rem;
+    }
+    footer {
+        padding: 1.2rem;
+        font-size: 0.75rem;
+    }
+    .donate-tip img {
+        max-width: 200px;
+    }
+    .toggle-side-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8rem;
+        left: 3px;
     }
 }
 
-/* ========== 三级分类主页样式 ========== */
-.tool-category {
-    margin-bottom: 2.5rem;
-}
-.category-title {
-    font-size: 1.4rem;
-    color: #1f4068;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid rgba(31,64,104,0.3);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.category-icon {
-    font-size: 1.6rem;
-}
-.sub-category {
-    margin: 1.5rem 0 1rem 1rem;
-}
-.sub-title {
-    font-size: 1.1rem;
-    color: #4a5568;
-    margin-bottom: 0.8rem;
-    padding-left: 8px;
-    border-left: 3px solid #1f4068;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.sub-icon {
-    font-size: 1.2rem;
+
+@media (max-width: 360px) {
+    .sub-tool-grid {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+        gap: 0.6rem;
+    }
+    .plot-card {
+        border-radius: 10px;
+    }
+    .plot-card .icon:not(:has(img)) {
+        font-size: 2rem;
+    }
+    .tool-name {
+        font-size: 0.65rem;
+    }
+    .header-logo {
+        height: 32px;
+    }
+    .site-title h1 {
+        font-size: 1rem;
+    }
 }
 
-/* 侧边栏三级折叠样式 */
-.sub-menu {
-    display: none;
-    margin-left: 15px;
-    border-left: 1px solid #e2e8f0;
-    padding-left: 10px;
-}
-.sub-menu.open {
-    display: block;
-}
-.sub-sub-menu {
-    display: none;
-    margin-left: 20px;
-    border-left: 1px solid #e2e8f0;
-    padding-left: 10px;
-}
-.sub-sub-menu.open {
-    display: block;
-}
-.sub-parent {
-    display: block;
-    padding: 0.4rem 0.8rem;
-    background: rgba(0,0,0,0.02);
-    border-radius: 6px;
-    color: #555;
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-.sub-parent:hover {
-    background: rgba(0,212,255,0.1);
-    color: #1f4068;
+
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #1a202c;
+        color: #e2e8f0;
+    }
+    header {
+        background: #0f1a2e;
+    }
+    .side-nav {
+        background: rgba(26, 32, 44, 0.95);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    .side-nav h4 {
+        color: #90cdf4;
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+        background: rgba(26, 32, 44, 0.95);
+    }
+    .side-nav a {
+        color: #cbd5e1;
+        background: rgba(255, 255, 255, 0.05);
+    }
+    .side-nav a:hover {
+        background: rgba(0, 212, 255, 0.15);
+        color: #90cdf4;
+    }
+    .side-nav .parent-item {
+        background: rgba(0, 212, 255, 0.15);
+        color: #90cdf4;
+    }
+    .sub-parent:hover {
+        background: rgba(0, 212, 255, 0.15);
+        color: #90cdf4;
+    }
+    .sub-menu,
+    .sub-sub-menu {
+        border-left-color: rgba(255, 255, 255, 0.1);
+    }
+    .main {
+        color: #e2e8f0;
+    }
+    .intro h2 {
+        color: #90cdf4;
+    }
+    .intro p {
+        color: #a0aec0;
+    }
+    .plot-card {
+        background: #2d3748;
+        border-color: #4a5568;
+    }
+    .plot-card:hover {
+        background: #374151;
+        border-color: #90cdf4;
+    }
+    .tool-name {
+        color: #cbd5e1;
+    }
+    .tool-name:hover {
+        color: #90cdf4;
+    }
+    .category-title {
+        color: #90cdf4;
+        border-bottom-color: rgba(144, 205, 244, 0.3);
+    }
+    .sub-title {
+        color: #cbd5e1;
+        border-left-color: #90cdf4;
+    }
+    #toolSearchInput {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+    #toolSearchInput:focus {
+        border-color: #90cdf4;
+        background: #2d3748;
+    }
+    #toolSearchInput::placeholder {
+        color: #718096;
+    }
+    footer {
+        background: #1a202c;
+        border-top-color: #2d3748;
+        color: #a0aec0;
+    }
+    footer a {
+        color: #90cdf4;
+    }
+    .toggle-side-btn {
+        background: rgba(26, 32, 44, 0.8);
+        border-color: #4a5568;
+        color: #cbd5e1;
+    }
+    .toggle-side-btn:hover {
+        background: #2d3748;
+    }
+    .donate-tip {
+        background: #2d3748;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+    }
+    .donate-wrap {
+        color: #90cdf4;
+    }
+    .back-home {
+        background: #4a5568;
+        color: #e2e8f0;
+    }
+    .back-home:hover {
+        background: #5a6578;
+    }
 }

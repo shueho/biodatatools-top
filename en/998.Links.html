@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>脚本下载 - BioDataTools</title>
+    <title>Useful Links - BioDataTools</title>
     <link rel="stylesheet" href="../COMMON/global.css">
     <style>
-        /* 限制整体内容宽度，避免太宽 */
         .main {
             max-width: 1000px;
             margin: 2rem auto;
@@ -32,7 +31,7 @@
             border-color: #1f4068;
         }
 
-        .script-card-list {
+        .link-card-list {
             display: flex;
             flex-direction: column;
             gap: 0.3rem;
@@ -45,15 +44,15 @@
             border: 1px solid #e8edf2;
             scrollbar-width: thin;
         }
-        .script-card-list::-webkit-scrollbar {
+        .link-card-list::-webkit-scrollbar {
             width: 6px;
         }
-        .script-card-list::-webkit-scrollbar-thumb {
+        .link-card-list::-webkit-scrollbar-thumb {
             background: #ccc;
             border-radius: 3px;
         }
 
-        .script-row {
+        .link-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -62,33 +61,32 @@
             transition: background 0.2s;
             border-radius: 6px;
         }
-        .script-row:hover {
+        .link-row:hover {
             background: #f7f9fc;
         }
-        .script-row:last-child {
+        .link-row:last-child {
             border-bottom: none;
         }
 
-        .script-info {
+        .link-info {
             flex: 1;
             margin-right: 1rem;
             overflow: hidden;
-            min-width: 0; /* 防止溢出 */
+            min-width: 0;
         }
-        .script-name {
+        .link-title {
             font-size: 0.95rem;
             font-weight: 500;
             color: #1f4068;
-            cursor: pointer;
-            text-decoration: underline;
-            text-underline-offset: 2px;
+            text-decoration: none;
             transition: color 0.2s;
             word-break: break-all;
         }
-        .script-name:hover {
+        .link-title:hover {
             color: #fb7299;
+            text-decoration: underline;
         }
-        .script-desc {
+        .link-desc {
             color: #888;
             font-size: 0.8rem;
             margin-top: 0.1rem;
@@ -96,7 +94,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .script-download-btn {
+        .link-open-btn {
             background: #1f4068;
             color: #fff;
             border: none;
@@ -107,8 +105,11 @@
             transition: background 0.2s;
             white-space: nowrap;
             flex-shrink: 0;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
         }
-        .script-download-btn:hover {
+        .link-open-btn:hover {
             background: #2a5688;
         }
 
@@ -123,16 +124,16 @@
             .main {
                 padding: 0 1rem;
             }
-            .script-row {
+            .link-row {
                 flex-wrap: wrap;
                 gap: 0.5rem;
                 padding: 0.8rem 0.6rem;
             }
-            .script-info {
+            .link-info {
                 flex: 1 1 100%;
                 margin-right: 0;
             }
-            .script-download-btn {
+            .link-open-btn {
                 width: 100%;
                 text-align: center;
                 padding: 0.4rem;
@@ -149,16 +150,16 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>脚本下载</h2>
-            <p>点击脚本名称或下载按钮即可获取脚本</p>
+            <h2>Useful Links</h2>
+            <p>Curated collection of bioinformatics tools, databases and resources.</p>
         </div>
 
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="🔍 输入脚本名称或描述..." />
+            <input type="text" id="searchInput" placeholder="🔍 Search link title or description..." />
         </div>
 
-        <div id="scriptContainer" class="script-card-list">
-            <div class="no-result">⏳ 加载中...</div>
+        <div id="linkContainer" class="link-card-list">
+            <div class="no-result">⏳ Loading...</div>
         </div>
     </div>
 
@@ -166,115 +167,80 @@
 
     <script>
         window.headerConfig = {
-            author: '地上飞猪',
-
+            //author: '地上飞猪',
         };
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
 
     <script>
         (function() {
-            const DATA_URL = '../COMMON/scripts.json';
-            const container = document.getElementById('scriptContainer');
+            const DATA_URL = '../COMMON/links.json';
+            const container = document.getElementById('linkContainer');
             const searchInput = document.getElementById('searchInput');
-            let scripts = [];
+            let links = [];
 
-            function getFileNameFromUrl(url) {
-                try {
-                    const u = new URL(url);
-                    const path = u.pathname;
-                    const parts = path.split('/');
-                    let filename = parts.pop() || 'download';
-                    if (!filename.includes('.')) filename += '.bin';
-                    return filename;
-                } catch (e) {
-                    return 'download.bin';
-                }
-            }
-
-            function downloadFile(url) {
-                const filename = getFileNameFromUrl(url);
-                fetch(url)
-                    .then(response => {
-                        if (!response.ok) throw new Error('下载请求失败');
-                        return response.blob();
-                    })
-                    .then(blob => {
-                        const a = document.createElement('a');
-                        const objectURL = URL.createObjectURL(blob);
-                        a.href = objectURL;
-                        a.download = filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(objectURL);
-                    })
-                    .catch(err => {
-                        console.warn('fetch 下载失败，回退到打开链接:', err);
-                        window.open(url, '_blank');
-                    });
+            function detectLanguage() {
+                const path = window.location.pathname;
+                if (path.includes('/ch/')) return 'zh';
+                if (path.includes('/en/')) return 'en';
+                //return 'en';
             }
 
             function renderRows(filter = '') {
                 const keyword = filter.trim().toLowerCase();
-                let filtered = scripts;
+                let filtered = links;
                 if (keyword) {
-                    filtered = scripts.filter(item => {
-                        const name = getFileNameFromUrl(item.url).toLowerCase();
+                    filtered = links.filter(item => {
+                        const title = (item.title || '').toLowerCase();
                         const desc = (item.desc || '').toLowerCase();
-                        return name.includes(keyword) || desc.includes(keyword);
+                        return title.includes(keyword) || desc.includes(keyword);
                     });
                 }
 
                 if (filtered.length === 0) {
-                    container.innerHTML = `<div class="no-result">😕 没有匹配的脚本</div>`;
+                    container.innerHTML = `<div class="no-result">😕 No matching links found</div>`;
                     return;
                 }
 
                 let html = '';
                 filtered.forEach(item => {
-                    const filename = getFileNameFromUrl(item.url);
-                    const desc = (item.desc || '无描述').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const title = (item.title || 'Unnamed').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const desc = (item.desc || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const url = item.url || '#';
                     html += `
-                        <div class="script-row">
-                            <div class="script-info">
-                                <div class="script-name" data-url="${item.url}">📄 ${filename}</div>
-                                <div class="script-desc">${desc}</div>
+                        <div class="link-row">
+                            <div class="link-info">
+                                <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-title">${title}</a>
+                                <div class="link-desc">${desc}</div>
                             </div>
-                            <button class="script-download-btn" data-url="${item.url}">⬇ 下载</button>
+                            <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-open-btn">🔗 Open</a>
                         </div>
                     `;
                 });
                 container.innerHTML = html;
-
-                container.querySelectorAll('.script-name, .script-download-btn').forEach(el => {
-                    el.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        const url = this.dataset.url;
-                        downloadFile(url);
-                    });
-                });
             }
 
             function loadData() {
                 fetch(DATA_URL)
                     .then(res => {
-                        if (!res.ok) throw new Error('网络请求失败');
+                        if (!res.ok) throw new Error('Network request failed');
                         return res.json();
                     })
                     .then(data => {
-                        if (!Array.isArray(data) || data.length === 0) {
-                            container.innerHTML = '<div class="no-result">📭 暂无脚本数据</div>';
+                        const lang = detectLanguage();
+                        const list = data[lang] || data.en || [];
+                        if (!Array.isArray(list) || list.length === 0) {
+                            container.innerHTML = '<div class="no-result">No link data available</div>';
                             return;
                         }
-                        scripts = data;
+                        links = list;
                         renderRows();
                     })
                     .catch(err => {
-                        console.error('加载脚本数据失败:', err);
-                        container.innerHTML = `<div class="no-result">❌ 加载失败，请检查数据文件。<br>${err.message}</div>`;
+                        console.error('Failed to load link data:', err);
+                        container.innerHTML = `<div class="no-result">❌ Failed to load data. Please check the data file.<br>${err.message}</div>`;
                     });
             }
 

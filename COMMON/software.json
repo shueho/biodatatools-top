@@ -1,0 +1,10 @@
+{
+  "zh": [
+    { "title": "DnaSP v6.12", "desc": "DnaSP v6.12软件下载链接", "url": "https://shueho.github.io/software/DnaSP_v6.zip", "type": "download" },
+    { "title": "NCBI SRA Toolkit", "desc": "SRA数据库工具包", "url": "https://github.com/ncbi/sra-tools", "type": "link" }
+  ],
+  "en": [
+    { "title": "DnaSP v6.12", "desc": "Download link for DnaSP v6.12", "url": "https://shueho.github.io/software/DnaSP_v6.zip", "type": "download" },
+    { "title": "NCBI SRA Toolkit", "desc": "SRA database toolkit official page", "url": "https://github.com/ncbi/sra-tools", "type": "link" }
+  ]
+}

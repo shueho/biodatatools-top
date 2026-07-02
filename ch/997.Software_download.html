@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常用链接 - BioDataTools</title>
+    <title>软件下载 - BioDataTools</title>
     <link rel="stylesheet" href="../COMMON/global.css">
     <style>
         .main {
@@ -150,12 +150,12 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>常用链接</h2>
-            <p>收藏的生物信息学工具、数据库及资源</p>
+            <h2>软件下载</h2>
+            <p>生物信息学常用软件下载或官方链接。</p>
         </div>
 
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="🔍 搜索链接标题或描述..." />
+            <input type="text" id="searchInput" placeholder="🔍 搜索软件名称或描述..." />
         </div>
 
         <div id="linkContainer" class="link-card-list">
@@ -176,17 +176,52 @@
 
     <script>
         (function() {
-            const DATA_URL = '../COMMON/links.json';
+            const DATA_URL = '../COMMON/software.json';
             const container = document.getElementById('linkContainer');
             const searchInput = document.getElementById('searchInput');
-            let links = [];
+            let software = [];
 
-            // 渲染行
+            function getFileNameFromUrl(url) {
+                try {
+                    const u = new URL(url);
+                    const path = u.pathname;
+                    const parts = path.split('/');
+                    let filename = parts.pop() || 'download';
+                    if (!filename.includes('.')) filename += '.bin';
+                    return filename;
+                } catch (e) {
+                    return 'download.bin';
+                }
+            }
+
+            function downloadFile(url) {
+                const filename = getFileNameFromUrl(url);
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) throw new Error('下载请求失败');
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const a = document.createElement('a');
+                        const objectURL = URL.createObjectURL(blob);
+                        a.href = objectURL;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(objectURL);
+                    })
+                    .catch(err => {
+                        console.warn('fetch 下载失败，回退到打开链接:', err);
+                        window.open(url, '_blank');
+                    });
+            }
+
             function renderRows(filter = '') {
                 const keyword = filter.trim().toLowerCase();
-                let filtered = links;
+                let filtered = software;
                 if (keyword) {
-                    filtered = links.filter(item => {
+                    filtered = software.filter(item => {
                         const title = (item.title || '').toLowerCase();
                         const desc = (item.desc || '').toLowerCase();
                         return title.includes(keyword) || desc.includes(keyword);
@@ -194,7 +229,7 @@
                 }
 
                 if (filtered.length === 0) {
-                    container.innerHTML = `<div class="no-result">😕 没有匹配的链接</div>`;
+                    container.innerHTML = `<div class="no-result">😕 没有匹配的软件</div>`;
                     return;
                 }
 
@@ -203,20 +238,36 @@
                     const title = (item.title || '未命名').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     const desc = (item.desc || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     const url = item.url || '#';
+                    const type = item.type || 'link';  // 默认为 link
+
+                    let buttonHtml;
+                    if (type === 'download') {
+                        buttonHtml = `<button class="link-open-btn download-btn" data-url="${url}">⬇ 下载</button>`;
+                    } else {
+                        buttonHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="link-open-btn">🔗 打开</a>`;
+                    }
+
                     html += `
                         <div class="link-row">
                             <div class="link-info">
                                 <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-title">${title}</a>
                                 <div class="link-desc">${desc}</div>
                             </div>
-                            <a href="${url}" target="_blank" rel="noopener noreferrer" class="link-open-btn">🔗 打开</a>
+                            ${buttonHtml}
                         </div>
                     `;
                 });
                 container.innerHTML = html;
+
+                container.querySelectorAll('.download-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const url = this.dataset.url;
+                        if (url) downloadFile(url);
+                    });
+                });
             }
 
-            // 加载数据
             function loadData() {
                 fetch(DATA_URL)
                     .then(res => {
@@ -224,15 +275,16 @@
                         return res.json();
                     })
                     .then(data => {
-                        if (!Array.isArray(data) || data.length === 0) {
-                            container.innerHTML = '<div class="no-result">📭 暂无链接数据</div>';
+                        const list = data.zh || [];
+                        if (!Array.isArray(list) || list.length === 0) {
+                            container.innerHTML = '<div class="no-result">暂无软件数据</div>';
                             return;
                         }
-                        links = data;
+                        software = list;
                         renderRows();
                     })
                     .catch(err => {
-                        console.error('加载链接数据失败:', err);
+                        console.error('加载软件数据失败:', err);
                         container.innerHTML = `<div class="no-result">❌ 加载失败，请检查数据文件。<br>${err.message}</div>`;
                     });
             }

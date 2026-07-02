@@ -39,6 +39,20 @@ const toolConfig = [
     link: "ch/013.Fasta_append_merge.html"
 },
 
+{
+    toolName: "批量提取/修改FASTA序列ID",
+    toolDesc: "批量提取或修改FASTA序列的ID。",
+    toolIcon: "images/014.png",
+    link: "ch/014.Fasta_id_modify.html"
+},
+
+{
+    toolName: "FASTA序列清洗工具",
+    toolDesc: "批量清洗DNA/RNA/蛋白质FASTA序列，可删除或替换非允许字符。",
+    toolIcon: "images/015.png",
+    link: "ch/015.Sequence_cleaner.html"
+},
+
         ]
     },
     {
@@ -116,16 +130,22 @@ const toolConfig = [
         tools: [
 {
     toolName: "脚本下载",
-    toolDesc: "点击脚本名称或下载按钮即可获取脚本",
+    toolDesc: "点击脚本名称或下载按钮即可获取脚本。",
     toolIcon: "images/999.png",
-    link: "function/999.Script_download.html"
+    link: "ch/999.Script_download.html"
 },
 
 {
     toolName: "常用链接",
-    toolDesc: "收藏的生物信息学工具、数据库及资源",
+    toolDesc: "收藏的生物信息学工具、数据库及资源。",
     toolIcon: "images/998.png",
-    link: "function/998.Links.html"
+    link: "ch/998.Links.html"
+},
+
+{
+    toolName: "软件下载",
+    toolDesc: "生物信息学常用软件下载或官方链接。",
+    link: "ch/997.Software_download.html"
 },
         ]
     }

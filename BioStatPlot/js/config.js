@@ -3,14 +3,14 @@
  */
 const toolCategories = [
     {
-        name: "基础绘图",
+        name: "Basic Plotting",
         icon: "",
         subcategories: [
             {
-                name: "饼图",
+                name: "Pie Chart",
                 icon: "",
                 tools: [
-                    { name: "饼图/环图", icon: "1.svg", link: "plots/pie.html" },
+                    { name: "Pie / Donut Chart", icon: "1.svg", link: "plots/pie.html" },
                     { name: "待开发", icon: "", link: "#" }
                 ]
             },

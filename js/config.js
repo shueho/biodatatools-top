@@ -39,6 +39,20 @@ const toolConfig = [
     link: "en/013.Fasta_append_merge.html"
 },
 
+{
+    toolName: "Batch Extract/Modify FASTA Sequence IDs",
+    toolDesc: "Batch extract or modify FASTA sequence IDs.",
+    toolIcon: "images/014.png",
+    link: "en/014.Fasta_id_modify.html"
+},
+
+{
+    toolName: "FASTA Sequence Cleaner",
+    toolDesc: "Batch clean DNA/RNA/protein FASTA sequences, remove or replace non‑allowed characters.",
+    toolIcon: "images/015.png",
+    link: "en/015.Sequence_cleaner.html"
+},
+
         ]
     },
     {
@@ -116,16 +130,22 @@ const toolConfig = [
         tools: [
 {
     toolName: "Script Download",
-    toolDesc: "Click the script name or download button to get the script",
+    toolDesc: "Click the script name or download button to get the script.",
     toolIcon: "images/999.png",
-    link: "function/999.Script_download.html"
+    link: "en/999.Script_download.html"
 },
 
 {
     toolName: "Useful Links",
-    toolDesc: "Curated collection of bioinformatics tools, databases and resources",
+    toolDesc: "Curated collection of bioinformatics tools, databases and resources.",
     toolIcon: "images/998.png",
-    link: "function/998.Links.html"
+    link: "en/998.Links.html"
+},
+
+{
+    toolName: "Software Download",
+    toolDesc: "Downloads and official links for commonly used bioinformatics software.",
+    link: "en/997.Software_download.html"
 },
         ]
     }

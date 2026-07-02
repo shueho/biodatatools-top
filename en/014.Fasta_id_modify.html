@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch Extract/Modify FASTA Sequence IDs - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Batch Extract/Modify FASTA Sequence IDs</h2>
+            <p>Batch extract or modify FASTA sequence IDs.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import FASTA Sequences</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.txt,.fas">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="Paste standard FASTA format content" disabled></textarea>
+            </div>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="loadBtn">Import Sequences</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Modify Sequence IDs</div>
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:6px;">
+                <span><strong>ID Mapping Table</strong> <span class="tip-text" style="display:inline; margin-left:10px;" id="idCount">0 entries</span></span>
+                <span style="font-size:0.85rem; color:#888;">After importing, copy the old IDs to Excel, modify the second column, then paste back the two‑column tab‑separated table (old-ID\tnew-ID).</span>
+            </div>
+            <textarea id="idListText" placeholder="After importing, a two‑column mapping (oldID\tnewID) will appear here. Modify the second column and paste it back."></textarea>
+
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="copyIdBtn">Copy Table</button>
+                <button class="btn" id="applyBtn" disabled>Apply Changes</button>
+                <button class="btn" id="resetBtn">Clear All</button>
+            </div>
+            <div id="applyTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Export Modified FASTA</div>
+            <div id="resultArea" style="display:none;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:6px;">
+                    <span><strong>New FASTA File Preview</strong></span>
+                    <span style="font-size:0.85rem; color:#6c757d;">(Download to view the full content)</span>
+                </div>
+                <textarea id="resultFastaPreview" readonly style="min-height:150px; background:#f0f2f5; color:#1f4068;"></textarea>
+
+                <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                    <button class="btn" id="downloadBtn">Download FASTA</button>
+                    <button class="btn" id="copyResultBtn">Copy FASTA</button>
+                </div>
+                <div id="resultTip" class="tip-text"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Results will appear here after applying changes.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const idListText = document.getElementById('idListText');
+            const copyIdBtn = document.getElementById('copyIdBtn');
+            const applyBtn = document.getElementById('applyBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const applyTip = document.getElementById('applyTip');
+            const idCount = document.getElementById('idCount');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultFastaPreview = document.getElementById('resultFastaPreview');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let rawSequences = [];
+            let newFastaContent = '';
+            let isLocked = false;
+
+            function showMsg(el, msg, type) {
+                const prefix = type === 'success' ? '✅ ' : (type === 'error' ? '❌ ' : '');
+                el.innerHTML = `<span class="${type}">${prefix}${msg}</span>`;
+                if (el === msgTip || el === applyTip || el === resultTip) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${prefix}${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', desc = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ id: name, desc: desc, seq: seq });
+                        const rest = trimmed.slice(1).trim();
+                        const spaceIdx = rest.indexOf(' ');
+                        if (spaceIdx > 0) {
+                            name = rest.substring(0, spaceIdx);
+                            desc = rest.substring(spaceIdx + 1);
+                        } else {
+                            name = rest;
+                            desc = '';
+                        }
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ id: name, desc: desc, seq: seq });
+                return seqs;
+            }
+
+            function extractNewIdFromLine(line) {
+                const trimmed = line.trim();
+                if (!trimmed) return null;
+                const tokens = trimmed.split(/\s+/);
+                return tokens[tokens.length - 1];
+            }
+
+            function rebuildFasta(newIds) {
+                if (rawSequences.length === 0) return null;
+                if (newIds.length !== rawSequences.length) {
+                    showMsg(applyTip, 'The number of new IDs (' + newIds.length + ') does not match the number of old IDs (' + rawSequences.length + ').', 'error');
+                    return null;
+                }
+                const lines = [];
+                for (let i = 0; i < rawSequences.length; i++) {
+                    const seq = rawSequences[i];
+                    const newId = newIds[i] || seq.id;
+                    let header = '>' + newId;
+                    if (seq.desc) header += ' ' + seq.desc;
+                    lines.push(header);
+                    lines.push(seq.seq);
+                }
+                return lines.join('\n');
+            }
+
+            function loadSequences(text) {
+                try {
+                    const seqs = parseFasta(text);
+                    if (seqs.length === 0) {
+                        showMsg(msgTip, 'Failed to parse valid sequences. Please check your FASTA format.', 'error');
+                        return false;
+                    }
+                    rawSequences = seqs;
+
+                    isLocked = false;
+                    idListText.disabled = false;
+                    applyBtn.disabled = false;
+
+                    const lines = seqs.map(s => s.id + '\t' + s.id);
+                    idListText.value = lines.join('\n');
+                    idCount.textContent = seqs.length + ' entries';
+
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    newFastaContent = '';
+                    applyTip.innerHTML = '';
+                    resultTip.innerHTML = '';
+
+                    showMsg(msgTip, 'Successfully loaded ' + seqs.length + ' sequence(s).', 'success');
+                    toast('Loaded ' + seqs.length + ' sequence(s).');
+                    return true;
+                } catch (e) {
+                    showMsg(msgTip, 'Parse error: ' + e.message, 'error');
+                    return false;
+                }
+            }
+
+            function applyNewIds() {
+                if (isLocked) {
+                    showMsg(applyTip, 'Locked. Click "Clear All" to re‑import if you need to modify.', 'warn');
+                    return;
+                }
+                const text = idListText.value.trim();
+                if (!text) {
+                    showMsg(applyTip, 'The mapping table is empty. Please import sequences or paste new data.', 'error');
+                    return;
+                }
+                const lines = text.split(/\r?\n/).filter(s => s.trim() !== '');
+                if (lines.length === 0) {
+                    showMsg(applyTip, 'No valid data detected.', 'error');
+                    return;
+                }
+
+                const newIds = lines.map(line => extractNewIdFromLine(line));
+                if (newIds.some(id => id === null)) {
+                    showMsg(applyTip, 'Invalid line detected. Please ensure each line contains at least one ID.', 'error');
+                    return;
+                }
+
+                const rebuilt = rebuildFasta(newIds);
+                if (rebuilt === null) return;
+                newFastaContent = rebuilt;
+
+                isLocked = true;
+                idListText.disabled = true;
+                applyBtn.disabled = true;
+                idCount.textContent = newIds.length + ' Entries';
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                resultFastaPreview.value = newFastaContent;
+
+                showMsg(applyTip, 'Applied successfully! ' + rawSequences.length + ' sequence(s) processed.', 'success');
+                toast('New IDs applied.');
+            }
+
+            function copyIds() {
+                const text = idListText.value;
+                if (!text) {
+                    showMsg(applyTip, 'No content to copy.', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showMsg(applyTip, 'Mapping table copied.', 'success');
+                        toast('Copied.');
+                    }).catch(() => fallbackCopy(text, applyTip));
+                } else {
+                    fallbackCopy(text, applyTip);
+                }
+            }
+
+            function fallbackCopy(text, tipEl) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(tipEl, 'Mapping table copied.', 'success');
+                    toast('Copied.');
+                } catch (e) {
+                    showMsg(tipEl, 'Copy failed. Please copy manually.', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+function clearMapping() {
+    idListText.value = '';
+    idCount.textContent = (rawSequences.length ? rawSequences.length + ' entries' : '0 entries');
+    resultArea.style.display = 'none';
+    emptyResult.style.display = 'block';
+    newFastaContent = '';
+    isLocked = false;
+    idListText.disabled = false;
+    applyBtn.disabled = false;
+    applyTip.innerHTML = '';
+    resultTip.innerHTML = '';
+    toast('Table cleared.');
+}
+
+            function resetAll(silent = false) {
+                rawSequences = [];
+                newFastaContent = '';
+                fastaFile.value = '';
+                fastaText.value = '';
+                idListText.value = '';
+                idCount.textContent = '0 entries';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                isLocked = false;
+                idListText.disabled = false;
+                applyBtn.disabled = true;
+                msgTip.innerHTML = '';
+                applyTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                const radio = document.querySelector('input[name="inputMode"][value="file"]');
+                if (radio) radio.checked = true;
+                switchInputMode();
+                if (!silent) toast('All data cleared.');
+            }
+
+            function copyResultFasta() {
+                if (!newFastaContent) {
+                    showMsg(resultTip, 'Please apply changes first.', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(newFastaContent).then(() => {
+                        showMsg(resultTip, 'FASTA content copied.', 'success');
+                        toast('Copied.');
+                    }).catch(() => fallbackCopy(newFastaContent, resultTip));
+                } else {
+                    fallbackCopy(newFastaContent, resultTip);
+                }
+            }
+
+            function downloadFasta() {
+                if (!newFastaContent) {
+                    showMsg(resultTip, 'Please apply changes first.', 'error');
+                    return;
+                }
+                const blob = new Blob([newFastaContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'renamed_sequences.fasta';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultTip, 'Downloaded renamed_sequences.fasta.', 'success');
+                toast('Downloaded.');
+            }
+
+            window.switchInputMode = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+            };
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    const file = fastaFile.files[0];
+                    if (!file) {
+                        showMsg(msgTip, 'Please select a file.', 'error');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        fastaText.value = e.target.result;
+                        loadSequences(e.target.result);
+                    };
+                    reader.readAsText(file);
+                } else {
+                    const text = fastaText.value.trim();
+                    if (!text) {
+                        showMsg(msgTip, 'Please paste FASTA content.', 'error');
+                        return;
+                    }
+                    loadSequences(text);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function() {
+                const example = `>gene1_alpha  alpha subunit
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>gene2_beta  beta subunit
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>gene3_gamma  gamma subunit
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>gene4_delta  delta subunit
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInputMode();
+                fastaText.value = example;
+                loadSequences(example);
+            });
+
+            copyIdBtn.addEventListener('click', copyIds);
+            applyBtn.addEventListener('click', applyNewIds);
+            resetBtn.addEventListener('click', clearMapping);
+            downloadBtn.addEventListener('click', downloadFasta);
+            copyResultBtn.addEventListener('click', copyResultFasta);
+
+            idListText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    if (!applyBtn.disabled) applyBtn.click();
+                }
+                if (e.key === 'C' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+                    e.preventDefault();
+                    copyIds();
+                }
+            });
+
+            resetAll(true);
+            switchInputMode();
+        })();
+    </script>
+</body>
+</html>

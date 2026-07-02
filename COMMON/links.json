@@ -1,4 +1,10 @@
-[
+{
+  "zh": [
     { "title": "NCBI", "desc": "美国国家生物技术信息中心", "url": "https://www.ncbi.nlm.nih.gov/" },
     { "title": "EBI", "desc": "欧洲生物信息学研究所", "url": "https://www.ebi.ac.uk/" }
-]
+  ],
+  "en": [
+    { "title": "NCBI", "desc": "National Center for Biotechnology Information", "url": "https://www.ncbi.nlm.nih.gov/" },
+    { "title": "EBI", "desc": "European Bioinformatics Institute", "url": "https://www.ebi.ac.uk/" }
+  ]
+}

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FASTA序列清洗工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .badge-process {
+            display: inline-block;
+            padding: 1px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-delete { background: #f8d7da; color: #721c24; }
+        .badge-replace { background: #d4edda; color: #155724; }
+        .filter-box input[disabled] {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        .param-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px 20px;
+            margin-bottom: 8px;
+        }
+        .param-group:last-of-type {
+            margin-bottom: 0;
+        }
+        .param-group label {
+            font-weight: 400;
+        }
+        /* 确保统计表格滚动 */
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>FASTA序列清洗工具</h2>
+            <p>批量清洗DNA/RNA/蛋白质FASTA序列，可删除或替换非允许字符。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入FASTA序列</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">上传FASTA文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">粘贴FASTA文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.txt,.fas">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="粘贴标准FASTA格式内容（支持多条序列）" disabled></textarea>
+            </div>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="loadBtn">加载序列</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：清洗参数设置</div>
+
+            <div class="param-group">
+                <label>预设字符集：
+                    <select id="presetSelect">
+                        <option value="dna">DNA (ATCGN)</option>
+                        <option value="dna_degen">DNA简并 (ATCGNRYSWKMBDHVN)</option>
+                        <option value="rna">RNA (AUCGN)</option>
+                        <option value="rna_degen">RNA简并 (AUCGNRYSWKMBDHVN)</option>
+                        <option value="protein">蛋白质标准 (ACDEFGHIKLMNPQRSTVWY)</option>
+                        <option value="protein_rare">蛋白质+稀有 (ACDEFGHIKLMNPQRSTVWYUO)</option>
+                        <option value="protein_mix">蛋白质+稀有+混合 (ACDEFGHIKLMNPQRSTVWYBZUO)</option>
+                        <option value="protein_all">蛋白质全包含 (ACDEFGHIKLMNPQRSTVWYBZXUO)</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </label>
+                <label>保留的字符：
+                    <input type="text" id="allowedChars" value="ATCGN" style="width:200px; font-family:Consolas,monospace;">
+                </label>
+            </div>
+
+            <div class="param-group">
+                <label>处理方式：
+                    <select id="actionMode">
+                        <option value="delete">删除其他字符</option>
+                        <option value="replace" selected>替换为指定字符</option>
+                    </select>
+                </label>
+                <label id="replaceCharGroup">将其他字符替换为：
+                    <input type="text" id="replaceChar" value="N" maxlength="1" style="width:50px; text-align:center;">
+                </label>
+            </div>
+
+            <div class="param-group" style="margin-bottom:0;">
+                <label><input type="checkbox" id="stripSpaces"> 删除空格 (包括制表符、换行)</label>
+                <label><input type="checkbox" id="stripDigits"> 删除数字 (0-9)</label>
+                <label><input type="checkbox" id="keepStar" checked> 保留星号 (*，终止密码子标记)</label>
+                <label><input type="checkbox" id="keepDash" checked> 保留连字符 (-，gap标记)</label>
+                <label><input type="checkbox" id="keepQuestion" checked> 保留问号 (?，未知字符标记)</label>
+
+            </div>
+
+            <div style="margin-top:14px;">
+                <button class="btn" id="cleanBtn" disabled>开始清洗</button>
+            </div>
+            <div id="paramTip" class="tip-text"></div>
+            <div style="font-size:0.85rem; color:#6c757d; margin-top:4px;">
+                清洗规则：先删除空格/数字（可选），再按字符集过滤（不区分大小写）。<br>
+                星号、连字符、问号是否保留独立控制，勾选即保留，否则按其他字符处理。
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：清洗结果</div>
+
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyResultBtn" disabled>复制FASTA</button>
+                    <button class="btn" id="downloadResultBtn" disabled>下载FASTA</button>
+                    <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
+                </div>
+
+                <div style="margin-top:12px;">
+                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                        <span style="font-weight:500;">清洗统计</span>
+                        <span style="font-size:0.85rem; color:#6c757d;" id="statSummary"></span>
+                    </div>
+                    <div class="table-container">
+                        <table id="statTable">
+                            <thead><tr><th>序列名称</th><th>原始长度</th><th>清洗后长度</th><th>处理字符数</th><th>处理方式</th></tr></thead>
+                            <tbody id="statBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="margin-top:16px;">
+                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                        <span style="font-weight:500;">清洗后 FASTA</span>
+                        <span style="font-size:0.85rem; color:#6c757d;" id="fastaSizeInfo"></span>
+                    </div>
+                    <div class="result-item">
+                        <div class="seq-area" id="resultFastaBox" style="max-height:300px; overflow-y:auto; white-space:pre-wrap; font-family:Consolas,monospace;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="emptyResult" class="empty-tip">清洗完成后，结果将在此处显示</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+        };
+    </script>
+
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const presetSelect = document.getElementById('presetSelect');
+            const allowedChars = document.getElementById('allowedChars');
+            const actionMode = document.getElementById('actionMode');
+            const replaceChar = document.getElementById('replaceChar');
+            const replaceCharGroup = document.getElementById('replaceCharGroup');
+            const stripSpaces = document.getElementById('stripSpaces');
+            const stripDigits = document.getElementById('stripDigits');
+            const keepStar = document.getElementById('keepStar');
+            const keepDash = document.getElementById('keepDash');
+            const keepQuestion = document.getElementById('keepQuestion');
+            const cleanBtn = document.getElementById('cleanBtn');
+            const paramTip = document.getElementById('paramTip');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const statBody = document.getElementById('statBody');
+            const statSummary = document.getElementById('statSummary');
+            const resultFastaBox = document.getElementById('resultFastaBox');
+            const fastaSizeInfo = document.getElementById('fastaSizeInfo');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const downloadResultBtn = document.getElementById('downloadResultBtn');
+            const toolbarTip = document.getElementById('toolbarTip');
+
+            let sequences = [];
+            let cleanedResult = [];
+            let cleanedFasta = '';
+
+            const PRESETS = {
+                dna: 'ATCGN',
+                dna_degen: 'ATCGNRYSWKMBDHVN',
+                rna: 'AUCGN',
+                rna_degen: 'AUCGNRYSWKMBDHVN',
+                protein: 'ACDEFGHIKLMNPQRSTVWY',
+                protein_rare: 'ACDEFGHIKLMNPQRSTVWYUO',
+                protein_mix: 'ACDEFGHIKLMNPQRSTVWYBZUO',
+                protein_all: 'ACDEFGHIKLMNPQRSTVWYBZXUO',
+            };
+
+            function updateAllowedChars() {
+                const val = presetSelect.value;
+                if (val === 'custom') {
+                    allowedChars.disabled = false;
+                } else {
+                    allowedChars.value = PRESETS[val] || 'ATCGN';
+                    allowedChars.disabled = true;
+                }
+            }
+
+            presetSelect.addEventListener('change', updateAllowedChars);
+
+            actionMode.addEventListener('change', function() {
+                replaceCharGroup.style.display = this.value === 'replace' ? 'inline' : 'none';
+            });
+
+            replaceCharGroup.style.display = 'inline';
+            updateAllowedChars();
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === paramTip || el === toolbarTip) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m));
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ name, seq });
+                        //name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        name = trimmed.slice(1).trim() || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ name, seq });
+                return seqs;
+            }
+
+            function wrapSequence(seq, width) {
+                width = width || 60;
+                const chunks = [];
+                for (let i = 0; i < seq.length; i += width) {
+                    chunks.push(seq.substring(i, i + width));
+                }
+                return chunks.join('\n');
+            }
+
+            function cleanSequence(seq, allowedStr, action, replChar, stripSpacesFlag, stripDigitsFlag, keepStarFlag, keepDashFlag, keepQuestionFlag) {
+                let working = seq;
+                if (stripSpacesFlag) {
+                    working = working.replace(/\s/g, '');
+                }
+                if (stripDigitsFlag) {
+                    working = working.replace(/[0-9]/g, '');
+                }
+
+                const allowedSet = new Set(allowedStr.toUpperCase().split(''));
+                if (keepStarFlag) {
+                    allowedSet.add('*');
+                }
+                if (keepDashFlag) {
+                    allowedSet.add('-');
+                }
+                if (keepQuestionFlag) {
+                    allowedSet.add('?');
+                }
+
+                let clean = '';
+                let processed = 0;
+                for (let i = 0; i < working.length; i++) {
+                    const ch = working[i];
+                    const upper = ch.toUpperCase();
+                    if (allowedSet.has(upper) || (keepStarFlag && ch === '*') || (keepDashFlag && ch === '-') || (keepQuestionFlag && ch === '?')){
+                        clean += ch;
+                    } else {
+                        processed++;
+                        if (action === 'replace') clean += replChar;
+                    }
+                }
+                return { cleanSeq: clean, processed };
+            }
+
+            function runClean() {
+                if (sequences.length === 0) {
+                    showMsg(paramTip, '❌ 请先加载序列', 'error');
+                    return;
+                }
+
+                const allowed = allowedChars.value.trim().toUpperCase().replace(/\s/g, '');
+                if (!allowed) {
+                    showMsg(paramTip, '❌ 请指定允许的字符集', 'error');
+                    return;
+                }
+
+                const action = actionMode.value;
+                let replChar = replaceChar.value.trim();
+                if (action === 'replace') {
+                    if (!replChar) { showMsg(paramTip, '❌ 请指定替换字符', 'error'); return; }
+                    replChar = replChar[0];
+                } else {
+                    replChar = '';
+                }
+
+                const stripSpacesFlag = stripSpaces.checked;
+                const stripDigitsFlag = stripDigits.checked;
+                const keepStarFlag = keepStar.checked;
+                const keepDashFlag = keepDash.checked;
+                const keepQuestionFlag = keepQuestion.checked;
+
+                cleanedResult = [];
+                let totalOrig = 0, totalClean = 0, totalProcessed = 0;
+                for (const seqItem of sequences) {
+                    const origLen = seqItem.seq.length;
+                    const { cleanSeq, processed } = cleanSequence(seqItem.seq, allowed, action, replChar,
+                        stripSpacesFlag, stripDigitsFlag, keepStarFlag, keepDashFlag, keepQuestionFlag);
+                    const cleanLen = cleanSeq.length;
+                    totalOrig += origLen;
+                    totalClean += cleanLen;
+                    totalProcessed += processed;
+                    cleanedResult.push({
+                        name: seqItem.name,
+                        origLen,
+                        cleanLen,
+                        processed,
+                        action: action === 'delete' ? '删除' : '替换',
+                        cleanSeq
+                    });
+                }
+
+                let fastaLines = [];
+                for (const r of cleanedResult) {
+                    fastaLines.push('>' + r.name);
+                    //fastaLines.push(wrapSequence(r.cleanSeq));
+                    fastaLines.push(r.cleanSeq);
+
+                }
+                cleanedFasta = fastaLines.join('\n');
+
+                renderResults();
+                showMsg(paramTip, `✅ 清洗完成！共处理 ${sequences.length} 条序列，${totalProcessed} 个字符被${action === 'delete' ? '删除' : '替换'}`, 'success');
+                toast('✅ 清洗完成');
+            }
+
+            function renderResults() {
+                if (cleanedResult.length === 0) {
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                copyResultBtn.disabled = false;
+                downloadResultBtn.disabled = false;
+
+                let tbody = '';
+                let totalOrig = 0, totalClean = 0, totalProcessed = 0;
+                for (const r of cleanedResult) {
+                    totalOrig += r.origLen;
+                    totalClean += r.cleanLen;
+                    totalProcessed += r.processed;
+                    const badgeClass = r.action === '删除' ? 'badge-delete' : 'badge-replace';
+                    tbody += `<tr>
+                        <td style="text-align:left; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</td>
+                        <td>${r.origLen}</td>
+                        <td>${r.cleanLen}</td>
+                        <td>${r.processed}</td>
+                        <td><span class="badge-process ${badgeClass}">${r.action}</span></td>
+                    </tr>`;
+                }
+                statBody.innerHTML = tbody;
+                statSummary.textContent =
+                    `总计：${cleanedResult.length} 条序列，原始总长 ${totalOrig} bp，清洗后 ${totalClean} bp，${totalProcessed} 个字符被处理`;
+
+                // 显示换行后的 FASTA，并保持等宽字体
+                resultFastaBox.textContent = cleanedFasta;
+                fastaSizeInfo.textContent = `共 ${cleanedFasta.length} 字符`;
+            }
+
+            function loadSequences(text) {
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, '❌ 未解析到有效FASTA序列', 'error');
+                    return;
+                }
+                sequences = parsed;
+                cleanBtn.disabled = false;
+                showMsg(msgTip, `✅ 成功加载 ${sequences.length} 条序列`, 'success');
+                toast(`✅ 已加载 ${sequences.length} 条序列`);
+                cleanedResult = [];
+                cleanedFasta = '';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                copyResultBtn.disabled = true;
+                downloadResultBtn.disabled = true;
+                toolbarTip.innerHTML = '';
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                cleanedResult = [];
+                cleanedFasta = '';
+                cleanBtn.disabled = true;
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                copyResultBtn.disabled = true;
+                downloadResultBtn.disabled = true;
+                msgTip.innerHTML = '';
+                paramTip.innerHTML = '';
+                toolbarTip.innerHTML = '';
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    msgTip.innerHTML = `<span class="success">✅ 已读取：${file.name}</span>`;
+                    toast(`✅ 文件 ${file.name} 加载成功`);
+                    loadSequences(ev.target.result);
+                };
+                reader.readAsText(file);
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    const text = fastaText.value.trim();
+                    if (text) loadSequences(text);
+                }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fastaFile.files || fastaFile.files.length === 0) {
+                        showMsg(msgTip, '❌ 请选择FASTA文件', 'error');
+                        return;
+                    }
+                } else {
+                    const text = fastaText.value.trim();
+                    if (!text) { showMsg(msgTip, '❌ 请粘贴FASTA内容', 'error'); return; }
+                    loadSequences(text);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function() {
+                const example =
+                    `>seq1_alpha  alpha subunit
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq2_beta  with Ns and spaces
+ATGGCT AGC N TAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq3_gamma  with digits 123
+atggctagctagctagctag123ctagctagctagctagctagctagctagctagctag
+>seq4_delta  with invalid * and rare U
+ATGGCTAGCTAGCTAGCTAG*CTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGUAG
+>seq5_epsilon  with gaps and tabs
+ATGGCTAGCTAGCTAGCTAGCTAGCTAG	CTAGCTAGCTAGCTAGCTAGCTAGCTAG---`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInput();
+                fastaText.value = example;
+                loadSequences(example);
+            });
+
+            cleanBtn.addEventListener('click', runClean);
+
+            copyResultBtn.addEventListener('click', function() {
+                if (!cleanedFasta) { showMsg(toolbarTip, '❌ 无内容可复制', 'error'); return; }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(cleanedFasta)
+                        .then(() => { showMsg(toolbarTip, '✅ 已复制FASTA内容', 'success');
+                            toast('✅ 已复制'); })
+                        .catch(() => fallbackCopy(cleanedFasta));
+                } else {
+                    fallbackCopy(cleanedFasta);
+                }
+            });
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(toolbarTip, '✅ 已复制FASTA内容', 'success');
+                    toast('✅ 已复制');
+                } catch (e) {
+                    showMsg(toolbarTip, '❌ 复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            downloadResultBtn.addEventListener('click', function() {
+                if (!cleanedFasta) { showMsg(toolbarTip, '❌ 无内容可下载', 'error'); return; }
+                const blob = new Blob([cleanedFasta], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'cleaned_sequences.fasta';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(toolbarTip, '✅ 已下载 cleaned_sequences.fasta', 'success');
+                toast('✅ 已下载');
+            });
+
+            window.switchInput();
+            cleanBtn.disabled = true;
+            resultArea.style.display = 'none';
+            emptyResult.style.display = 'block';
+            copyResultBtn.disabled = true;
+            downloadResultBtn.disabled = true;
+            updateAllowedChars();
+            actionMode.dispatchEvent(new Event('change'));
+        })();
+    </script>
+
+</body>
+</html>
