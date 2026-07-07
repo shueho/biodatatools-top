@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FASTA序列提取/重命名 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>FASTA序列提取/重命名</h2>
+            <p>从FASTA文件中提取指定序列，可选择是否修改序列ID。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入FASTA序列</div>
+
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">上传FASTA文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">粘贴FASTA文本</label>
+            </div>
+
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.txt,.fas">
+            </div>
+
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="粘贴标准FASTA格式内容（支持多条序列）" disabled></textarea>
+            </div>
+
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="loadBtn">导入序列</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：选择模式并输入序列名列表</div>
+
+            <div class="radio-box" style="margin-bottom:8px;">
+                <label><input type="radio" name="mode" value="extract" checked onchange="onModeChange()">仅提取</label>
+                <label><input type="radio" name="mode" value="rename" onchange="onModeChange()">提取并改名</label>
+            </div>
+
+            <div id="modeHint" class="tip-text" style="color:#1f4068; margin-bottom:8px;">
+                当前模式：<strong>仅提取</strong> — 每行一个序列名，从FASTA中提取匹配的序列（保留原ID）。
+            </div>
+
+            <div class="text-input">
+                <textarea id="idListText" placeholder="每行一个序列名（仅提取模式）"></textarea>
+            </div>
+
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                <button class="btn" id="extractBtn" disabled>执行提取</button>
+                <span id="listStats" style="font-size:0.85rem; color:#6c757d; margin-left:4px;"></span>
+            </div>
+
+            <div id="extractTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：提取结果</div>
+
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyResultBtn">复制FASTA</button>
+                    <button class="btn" id="downloadResultBtn">下载FASTA</button>
+                </div>
+                <div class="result-item">
+                    <div class="seq-area" id="resultFastaBox" style="max-height:500px; overflow-y:auto; white-space:pre-wrap;"></div>
+                </div>
+            </div>
+
+            <div id="emptyResult" class="empty-tip">执行提取后，结果将在此处显示。</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const idListText = document.getElementById('idListText');
+            const extractBtn = document.getElementById('extractBtn');
+            const extractTip = document.getElementById('extractTip');
+            const listStats = document.getElementById('listStats');
+            const modeHint = document.getElementById('modeHint');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultFastaBox = document.getElementById('resultFastaBox');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const downloadResultBtn = document.getElementById('downloadResultBtn');
+
+            let sequences = [];
+            let currentResult = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === extractTip) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ id: name, seq: seq });
+                        name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ id: name, seq: seq });
+                return seqs;
+            }
+
+            function getMode() {
+                return document.querySelector('input[name="mode"]:checked').value;
+            }
+
+            function isSingleColumn(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length === 0) return true;
+                for (const line of lines) {
+                    if (line.includes('\t')) return false;
+                }
+                return true;
+            }
+
+            function convertToTwoColumn(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                return lines.map(line => line.trim() + '\t' + line.trim()).join('\n');
+            }
+
+            function convertToSingleColumn(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                return lines.map(line => line.split(/\t/)[0].trim()).join('\n');
+            }
+
+            function onModeChange() {
+                const mode = getMode();
+                const currentText = idListText.value;
+
+                if (mode === 'extract') {
+                    if (!isSingleColumn(currentText) && currentText.trim() !== '') {
+                        const newText = convertToSingleColumn(currentText);
+                        idListText.value = newText;
+                    }
+                    modeHint.innerHTML = '当前模式：<strong>仅提取</strong> — 每行一个序列名，从FASTA中提取匹配的序列（保留原ID）。';
+                    idListText.placeholder = '每行一个序列名（仅提取模式）';
+                } else {
+                    if (isSingleColumn(currentText) && currentText.trim() !== '') {
+                        const newText = convertToTwoColumn(currentText);
+                        idListText.value = newText;
+                    }
+                    modeHint.innerHTML = '当前模式：<strong>提取并改名</strong> — 每行两列（制表符分隔）：<strong>原序列ID</strong> （第一列）和 <strong>新序列ID</strong> （第二列）。可直接从Excel复制两列数据粘贴。';
+                    idListText.placeholder = '原ID\t新ID\nseq1\tnew_name1\nseq2\tnew_name2';
+                }
+                updateListStats();
+                clearResults();
+            }
+
+            function updateListStats() {
+                const text = idListText.value.trim();
+                if (!text) {
+                    listStats.textContent = '';
+                    return;
+                }
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                listStats.textContent = `共 ${lines.length} 行`;
+            }
+
+            function clearResults() {
+                currentResult = '';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultFastaBox.textContent = '';
+            }
+
+            function doExtract() {
+                if (sequences.length === 0) {
+                    showMsg(extractTip, '请先导入FASTA序列', 'error');
+                    return;
+                }
+
+                const text = idListText.value;
+                if (!text.trim()) {
+                    showMsg(extractTip, '请输入序列名列表', 'error');
+                    return;
+                }
+
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length === 0) {
+                    showMsg(extractTip, '列表为空', 'error');
+                    return;
+                }
+
+                const mode = getMode();
+                const seqMap = {};
+                sequences.forEach(s => { seqMap[s.id] = s.seq; });
+
+                let matched = [];
+
+                if (mode === 'extract') {
+                    for (const line of lines) {
+                        const id = line.trim();
+                        if (!id) continue;
+                        if (seqMap[id] !== undefined) {
+                            matched.push({ id: id, seq: seqMap[id] });
+                        }
+                    }
+                } else {
+                    for (const line of lines) {
+                        const parts = line.split(/\t/);
+                        if (parts.length < 2) continue;
+                        const oldId = parts[0].trim();
+                        const newId = parts.slice(1).join('\t').trim();
+                        if (!oldId || !newId) continue;
+                        if (seqMap[oldId] !== undefined) {
+                            matched.push({ id: newId, seq: seqMap[oldId] });
+                        }
+                    }
+                }
+
+                if (matched.length === 0) {
+                    showMsg(extractTip, '⚠️ 没有匹配到任何序列，请检查列表', 'warn');
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+
+                let fasta = '';
+                matched.forEach(item => {
+                    fasta += '>' + item.id + '\n';
+                    fasta += item.seq + '\n';
+                });
+                currentResult = fasta;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                resultFastaBox.textContent = fasta;
+
+                showMsg(extractTip, `✅ 提取完成，共 ${matched.length} 条序列`, 'success');
+                toast(`提取完成，${matched.length} 条序列`);
+            }
+
+            function copyResult() {
+                if (!currentResult) {
+                    showMsg(extractTip, '无内容可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResult)
+                        .then(() => { showMsg(extractTip, '已复制FASTA内容', 'success'); toast('已复制'); })
+                        .catch(() => fallbackCopy(currentResult));
+                } else {
+                    fallbackCopy(currentResult);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(extractTip, '已复制FASTA内容', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(extractTip, '复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!currentResult) {
+                    showMsg(extractTip, '无内容可下载', 'error');
+                    return;
+                }
+                const blob = new Blob([currentResult], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'extracted_sequences.fasta';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(extractTip, '已下载 extracted_sequences.fasta', 'success');
+                toast('已下载');
+            }
+
+            function loadExample() {
+                const exampleFasta = `>seq1
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq2
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq3
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq4
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq5
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
+                const exampleList = `seq1\tnew_gene1
+seq2\tnew_gene2
+seq3\tnew_gene3
+seq4\tnew_gene4
+seq5\tnew_gene5`;
+
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                fastaFile.disabled = true;
+                fastaFile.value = '';
+                fastaText.disabled = false;
+                fastaText.value = exampleFasta;
+                idListText.value = exampleList;
+
+                const parsed = parseFasta(exampleFasta);
+                if (parsed.length > 0) {
+                    sequences = parsed;
+                    showMsg(msgTip, `✅ 示例加载成功，共 ${sequences.length} 条序列`, 'success');
+                    toast('示例已加载');
+                    extractBtn.disabled = false;
+                    clearResults();
+                    updateListStats();
+                    const renameRadio = document.querySelector('input[name="mode"][value="rename"]');
+                    if (renameRadio) {
+                        renameRadio.checked = true;
+                        onModeChange();
+                    }
+                }
+            }
+
+            function loadFromFile() {
+                const file = fastaFile.files[0];
+                if (!file) { showMsg(msgTip, '请选择FASTA文件', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fastaText.value = e.target.result;
+                    const parsed = parseFasta(e.target.result);
+                    if (parsed.length === 0) { showMsg(msgTip, '未解析到有效FASTA序列', 'error'); return; }
+                    sequences = parsed;
+                    showMsg(msgTip, `成功加载 ${sequences.length} 条序列`, 'success');
+                    toast(`已加载 ${sequences.length} 条序列`);
+                    extractBtn.disabled = false;
+                    clearResults();
+                    updateListStats();
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = fastaText.value.trim();
+                if (!text) { showMsg(msgTip, '请粘贴FASTA内容', 'error'); return; }
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) { showMsg(msgTip, '未解析到有效FASTA序列', 'error'); return; }
+                sequences = parsed;
+                showMsg(msgTip, `成功加载 ${sequences.length} 条序列`, 'success');
+                toast(`已加载 ${sequences.length} 条序列`);
+                extractBtn.disabled = false;
+                clearResults();
+                updateListStats();
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                extractBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+                extractTip.innerHTML = '';
+                updateListStats();
+            };
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') loadFromFile();
+                else loadFromText();
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            extractBtn.addEventListener('click', doExtract);
+            copyResultBtn.addEventListener('click', copyResult);
+            downloadResultBtn.addEventListener('click', downloadResult);
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    const parsed = parseFasta(ev.target.result);
+                    if (parsed.length === 0) { showMsg(msgTip, '未解析到有效FASTA序列', 'error'); return; }
+                    sequences = parsed;
+                    showMsg(msgTip, `✅ 已读取：${file.name}，${sequences.length} 条序列`, 'success');
+                    toast(`✅ 文件 ${file.name} 加载成功`);
+                    extractBtn.disabled = false;
+                    clearResults();
+                    updateListStats();
+                };
+                reader.readAsText(file);
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            idListText.addEventListener('input', updateListStats);
+
+            sequences = [];
+            extractBtn.disabled = true;
+            clearResults();
+            msgTip.innerHTML = '';
+            extractTip.innerHTML = '';
+            idListText.value = '';
+            listStats.textContent = '';
+            document.querySelector('input[name="mode"][value="extract"]').checked = true;
+            onModeChange();
+
+            if (sequences.length > 0) extractBtn.disabled = false;
+
+            window.onModeChange = onModeChange;
+        })();
+    </script>
+
+</body>
+</html>

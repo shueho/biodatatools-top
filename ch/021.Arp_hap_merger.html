@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARP与HAP文件合并工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .result-table-wrap {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e8edf2;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        .result-table-wrap table {
+            font-size: 13px;
+            min-width: 600px;
+            width: 100%;
+        }
+        .result-table-wrap table th {
+            position: sticky;
+            top: 0;
+            background: #f7f9fc;
+            z-index: 5;
+        }
+        .result-table-wrap table td,
+        .result-table-wrap table th {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .seq-preview {
+            font-family: "Consolas", monospace;
+            font-size: 12px;
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+            color: #333;
+        }
+        .preview-box {
+            background: #f8fafc;
+            border: 1px solid #e8edf2;
+            border-radius: 6px;
+            padding: 12px;
+            min-height: 200px;
+            max-height: 450px;
+            overflow-y: auto;
+            font-family: "Consolas", monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-all;
+            height: 100%;
+        }
+        .flex-previews {
+            display: flex;
+            gap: 20px;
+            align-items: stretch;
+        }
+        .flex-previews .preview-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .flex-previews .preview-col .preview-box {
+            flex: 1;
+        }
+        .flex-previews .preview-col p {
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .flex-previews .preview-col .btn-row {
+            margin-top: 6px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        @media (max-width: 768px) {
+            .flex-previews {
+                flex-direction: column;
+            }
+        }
+        textarea[readonly] {
+            background-color: #f5f7fa;
+            cursor: default;
+        }
+        .stat-hint {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-left: 8px;
+        }
+        .result-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 30px;
+            padding: 10px 0;
+        }
+        .result-summary .item {
+            background: #f0f4f8;
+            padding: 4px 16px;
+            border-radius: 16px;
+            font-size: 0.9rem;
+        }
+        .result-summary .item strong {
+            color: #1f4068;
+        }
+        .action-bar-merge {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 12px 0 6px;
+            align-items: center;
+        }
+        .sample-select-area {
+            border: 1px solid #e8edf2;
+            border-radius: 6px;
+            padding: 12px 16px;
+            background: #fafcfe;
+            margin-top: 10px;
+        }
+        .sample-select-area .select-all-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e8edf2;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .sample-check-list {
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 16px;
+            padding: 4px 0;
+        }
+        .sample-check-list label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 400;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .sample-check-list label .size-badge {
+            color: #888;
+            font-size: 0.75rem;
+        }
+        .btn-merge-selected {
+            background: #1f4068;
+        }
+        .btn-merge-selected:hover {
+            background: #2a5688;
+        }
+        textarea.order-textarea {
+            min-height: 200px;
+            max-height: 450px;
+            font-family: "Consolas", monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            resize: vertical;
+            height: 100%;
+        }
+        .preview-col .btn-row {
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>ARP与HAP文件合并工具</h2>
+            <p>将DnaSP生成的ARP文件和HAP文件合并为单个ARP文件，可以用于导入SAMOVA软件。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入ARP文件</div>
+            <div class="radio-box">
+                <label><input type="radio" name="arpMode" value="file" checked onchange="switchArpInput()"> 上传ARP文件</label>
+                <label><input type="radio" name="arpMode" value="text" onchange="switchArpInput()"> 粘贴ARP文本</label>
+            </div>
+            <div class="file-input" id="arpFileWrap">
+                <input type="file" id="arpFileInput" accept=".arp,.txt">
+            </div>
+            <div class="text-input" id="arpTextWrap">
+                <textarea id="arpTextInput" placeholder="请粘贴ARP文件内容..." disabled></textarea>
+            </div>
+            <div id="arpMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：导入HAP文件（单倍型序列）</div>
+            <div class="radio-box">
+                <label><input type="radio" name="hapMode" value="file" checked onchange="switchHapInput()"> 上传HAP文件</label>
+                <label><input type="radio" name="hapMode" value="text" onchange="switchHapInput()"> 粘贴HAP文本</label>
+            </div>
+            <div class="file-input" id="hapFileWrap">
+                <input type="file" id="hapFileInput" accept=".hap,.txt">
+            </div>
+            <div class="text-input" id="hapTextWrap">
+                <textarea id="hapTextInput" placeholder="请粘贴HAP文件内容..." disabled></textarea>
+            </div>
+            <div id="hapMsg" class="tip-text"></div>
+            <div class="action-bar-merge">
+                <button class="btn" id="mergeBtn" disabled>导入数据</button>
+                <span id="mergeStatus" class="tip-text" style="margin-left:8px;"></span>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：合并结果（筛选群体）</div>
+            <div id="resultPanel" style="display:none;">
+                <div class="result-summary" id="resultSummary"></div>
+                <div class="result-table-wrap">
+                    <table id="resultTable">
+                        <thead>
+                            <tr>
+                                <th>群体</th>
+                                <th>样本量</th>
+                                <th>单倍型</th>
+                                <th>频数</th>
+                                <th>序列（前50bp）</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="sample-select-area" id="sampleSelectArea">
+                    <div class="select-all-bar">
+                        <label><input type="checkbox" id="selectAllSamples"> 全选</label>
+                        <label><input type="checkbox" id="invertSelectSamples"> 反选</label>
+                        <span class="stat-hint" id="sampleStat">共 0 个群体，已选 0 个</span>
+                        <button class="btn btn-merge-selected" id="mergeSelectedBtn">合并选中群体</button>
+                        <button class="btn" id="resetSamplesBtn">重置全部群体</button>
+                    </div>
+                    <div class="sample-check-list" id="sampleCheckList"></div>
+                    <div id="filterMsg" class="tip-text"></div>
+                </div>
+            </div>
+            <div id="resultEmpty" class="empty-tip">请先导入ARP和HAP文件，点击「导入数据」</div>
+        </div>
+
+        <!-- 第四步：预览 -->
+        <div class="step-card">
+            <div class="step-title">第四步：预览与导出</div>
+            <div id="previewPanel" style="display:none;">
+                <div class="flex-previews">
+                    <div class="preview-col">
+                        <p>① 合并后的ARP文件内容</p>
+                        <div class="preview-box" id="previewArpContent"></div>
+                        <div class="btn-row">
+                            <button class="btn" id="downloadBtn">下载 merged.arp</button>
+                            <button class="btn" id="copyArpBtn">复制ARP内容</button>
+                            <span id="downloadMsg" class="tip-text"></span>
+                        </div>
+                    </div>
+                    <div class="preview-col">
+                        <p>② 合并顺序（群体名称列表）</p>
+                        <textarea class="order-textarea" id="orderTextArea" readonly></textarea>
+                        <div class="btn-row">
+                            <button class="btn" id="copyOrderBtn">复制群体列表</button>
+                            <span id="copyOrderMsg" class="tip-text"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="previewEmpty" class="empty-tip">请先完成数据合并</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var arpFileInput = document.getElementById('arpFileInput');
+            var arpTextInput = document.getElementById('arpTextInput');
+            var arpFileWrap = document.getElementById('arpFileWrap');
+            var arpTextWrap = document.getElementById('arpTextWrap');
+            var arpMsg = document.getElementById('arpMsg');
+
+            var hapFileInput = document.getElementById('hapFileInput');
+            var hapTextInput = document.getElementById('hapTextInput');
+            var hapFileWrap = document.getElementById('hapFileWrap');
+            var hapTextWrap = document.getElementById('hapTextWrap');
+            var hapMsg = document.getElementById('hapMsg');
+
+            var mergeBtn = document.getElementById('mergeBtn');
+            var mergeStatus = document.getElementById('mergeStatus');
+
+            var resultPanel = document.getElementById('resultPanel');
+            var resultEmpty = document.getElementById('resultEmpty');
+            var resultBody = document.getElementById('resultBody');
+            var resultSummary = document.getElementById('resultSummary');
+
+            var previewPanel = document.getElementById('previewPanel');
+            var previewEmpty = document.getElementById('previewEmpty');
+            var previewArpContent = document.getElementById('previewArpContent');
+            var orderTextArea = document.getElementById('orderTextArea');
+
+            var downloadBtn = document.getElementById('downloadBtn');
+            var downloadMsg = document.getElementById('downloadMsg');
+            var copyArpBtn = document.getElementById('copyArpBtn');
+            var copyOrderBtn = document.getElementById('copyOrderBtn');
+            var copyOrderMsg = document.getElementById('copyOrderMsg');
+
+            var selectAllSamples = document.getElementById('selectAllSamples');
+            var invertSelectSamples = document.getElementById('invertSelectSamples');
+            var mergeSelectedBtn = document.getElementById('mergeSelectedBtn');
+            var resetSamplesBtn = document.getElementById('resetSamplesBtn');
+            var sampleCheckList = document.getElementById('sampleCheckList');
+            var sampleStat = document.getElementById('sampleStat');
+            var filterMsg = document.getElementById('filterMsg');
+
+            var arpContent = '';
+            var hapContent = '';
+            var hapMap = {};
+            var mergedLines = [];
+            var allSampleNames = [];
+            var sampleData = {};
+            var mergedArpContent = '';
+            var currentSampleNames = [];
+
+            var CUSTOM_HEADER = '#ARP file generated by BioDataTools (https://www.biodatatools.top)\n\n';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function() {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 6000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            window.switchArpInput = function() {
+                var mode = document.querySelector('input[name="arpMode"]:checked').value;
+                if (mode === 'file') {
+                    arpFileWrap.style.display = 'block';
+                    arpFileInput.disabled = false;
+                    arpTextInput.disabled = true;
+                    arpTextInput.readOnly = true;
+                    arpTextInput.style.backgroundColor = '#f5f7fa';
+                    arpTextInput.style.cursor = 'default';
+                    arpTextInput.value = '';
+                } else {
+                    arpFileWrap.style.display = 'none';
+                    arpFileInput.disabled = true;
+                    arpFileInput.value = '';
+                    arpTextInput.disabled = false;
+                    arpTextInput.readOnly = false;
+                    arpTextInput.style.backgroundColor = '';
+                    arpTextInput.style.cursor = '';
+                    if (!arpTextInput.value.trim()) {
+                        arpTextInput.placeholder = '请粘贴ARP文件内容...';
+                    }
+                }
+                arpContent = '';
+                resetAll();
+            };
+
+            window.switchHapInput = function() {
+                var mode = document.querySelector('input[name="hapMode"]:checked').value;
+                if (mode === 'file') {
+                    hapFileWrap.style.display = 'block';
+                    hapFileInput.disabled = false;
+                    hapTextInput.disabled = true;
+                    hapTextInput.readOnly = true;
+                    hapTextInput.style.backgroundColor = '#f5f7fa';
+                    hapTextInput.style.cursor = 'default';
+                    hapTextInput.value = '';
+                } else {
+                    hapFileWrap.style.display = 'none';
+                    hapFileInput.disabled = true;
+                    hapFileInput.value = '';
+                    hapTextInput.disabled = false;
+                    hapTextInput.readOnly = false;
+                    hapTextInput.style.backgroundColor = '';
+                    hapTextInput.style.cursor = '';
+                    if (!hapTextInput.value.trim()) {
+                        hapTextInput.placeholder = '请粘贴HAP文件内容...';
+                    }
+                }
+                hapContent = '';
+                resetAll();
+            };
+
+            arpFileInput.addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    arpContent = ev.target.result;
+                    arpTextInput.value = arpContent;
+                    arpTextInput.placeholder = '';
+                    showMsg(arpMsg, '✅ 已读取：' + file.name, 'success');
+                    toast('ARP 文件加载成功');
+                    checkMergeReady();
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            arpTextInput.addEventListener('input', function() {
+                arpContent = this.value;
+                checkMergeReady();
+            });
+
+            hapFileInput.addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    hapContent = ev.target.result;
+                    hapTextInput.value = hapContent;
+                    hapTextInput.placeholder = '';
+                    showMsg(hapMsg, '✅ 已读取：' + file.name, 'success');
+                    toast('HAP 文件加载成功');
+                    checkMergeReady();
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            hapTextInput.addEventListener('input', function() {
+                hapContent = this.value;
+                checkMergeReady();
+            });
+
+            function checkMergeReady() {
+                var arpReady = arpContent.trim().length > 0;
+                var hapReady = hapContent.trim().length > 0;
+                mergeBtn.disabled = !(arpReady && hapReady);
+                if (arpReady && hapReady) {
+                    mergeStatus.innerHTML = '<span class="success">✅ 两个文件均已加载，点击「导入数据」合并</span>';
+                } else {
+                    mergeStatus.innerHTML = '<span class="warn">⏳ 请加载 ARP 和 HAP 文件</span>';
+                }
+            }
+
+            function resetAll() {
+                hapMap = {};
+                mergedLines = [];
+                allSampleNames = [];
+                sampleData = {};
+                currentSampleNames = [];
+                mergedArpContent = '';
+                resultPanel.style.display = 'none';
+                resultEmpty.style.display = 'block';
+                previewPanel.style.display = 'none';
+                previewEmpty.style.display = 'block';
+                mergeBtn.disabled = true;
+                mergeStatus.innerHTML = '';
+                resultBody.innerHTML = '';
+                resultSummary.innerHTML = '';
+                previewArpContent.textContent = '';
+                orderTextArea.value = '';
+                downloadMsg.innerHTML = '';
+                copyOrderMsg.innerHTML = '';
+                filterMsg.innerHTML = '';
+                sampleCheckList.innerHTML = '';
+                sampleStat.textContent = '共 0 个群体，已选 0 个';
+                selectAllSamples.checked = false;
+            }
+
+            function parseHap(content) {
+                var map = {};
+                var lines = content.split(/\r?\n/);
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    if (!line) continue;
+                    var parts = line.split(/\s+/);
+                    if (parts.length < 2) continue;
+                    var id = parts[0];
+                    var seq = parts.slice(1).join('');
+                    if (id && seq) map[id] = seq;
+                }
+                return map;
+            }
+
+            function parseArp(content) {
+                var lines = content.split(/\r?\n/);
+                var samples = [];
+                var sampleDataMap = {};
+                var currentSample = null;
+                var sampleLines = [];
+                var currentSize = 0;
+
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i];
+                    var trimmed = line.trim();
+
+                    var nameMatch = trimmed.match(/SampleName\s*=\s*"([^"]+)"/);
+                    if (nameMatch) {
+                        if (currentSample && sampleLines.length > 0) {
+                            sampleDataMap[currentSample] = {
+                                size: currentSize,
+                                lines: sampleLines.slice()
+                            };
+                        }
+                        currentSample = nameMatch[1];
+                        samples.push(currentSample);
+                        sampleLines = [];
+                        currentSize = 0;
+                        continue;
+                    }
+
+                    var sizeMatch = trimmed.match(/SampleSize\s*=\s*(\d+)/);
+                    if (sizeMatch && currentSample) {
+                        currentSize = parseInt(sizeMatch[1]);
+                        continue;
+                    }
+
+                    if (trimmed.indexOf('SampleData=') !== -1 || trimmed.indexOf('SampleData =') !== -1) continue;
+                    if (currentSample && trimmed === '}') continue;
+                    if (currentSample && trimmed === '{') continue;
+                    if (currentSample && /^\S+\s+\d+$/.test(trimmed)) {
+                        sampleLines.push(trimmed);
+                    }
+                }
+                if (currentSample && sampleLines.length > 0) {
+                    sampleDataMap[currentSample] = {
+                        size: currentSize,
+                        lines: sampleLines.slice()
+                    };
+                }
+
+                var result = {};
+                for (var s in sampleDataMap) {
+                    var info = sampleDataMap[s];
+                    var haps = {};
+                    for (var j = 0; j < info.lines.length; j++) {
+                        var parts2 = info.lines[j].split(/\s+/);
+                        if (parts2.length >= 2) {
+                            var hid = parts2[0];
+                            var freq = parseInt(parts2[1]);
+                            if (!isNaN(freq)) haps[hid] = freq;
+                        }
+                    }
+                    result[s] = { size: info.size, haps: haps };
+                }
+                return { samples: samples, data: result };
+            }
+
+            function doMerge() {
+                hapMap = parseHap(hapContent);
+                if (Object.keys(hapMap).length === 0) {
+                    showMsg(hapMsg, '❌ 未解析到单倍型序列，请检查HAP文件格式', 'error');
+                    return;
+                }
+                var parsed = parseArp(arpContent);
+                if (parsed.samples.length === 0 || Object.keys(parsed.data).length === 0) {
+                    showMsg(arpMsg, '❌ 未解析到样本数据，请检查ARP文件格式', 'error');
+                    return;
+                }
+                allSampleNames = parsed.samples;
+                sampleData = parsed.data;
+                currentSampleNames = allSampleNames.slice();
+
+                var missingHaps = [];
+                for (var s in sampleData) {
+                    var haps = sampleData[s].haps;
+                    for (var hid in haps) {
+                        if (!hapMap[hid] && missingHaps.indexOf(hid) === -1) missingHaps.push(hid);
+                    }
+                }
+                if (missingHaps.length > 0) {
+                    showMsg(mergeStatus, '⚠️ 以下单倍型在HAP文件中未找到序列: ' + missingHaps.join(', '), 'warn');
+                }
+
+                buildAndRender();
+                showMsg(mergeStatus, '✅ 合并完成！共 ' + currentSampleNames.length + ' 个群体，' + Object.keys(hapMap).length +
+                    ' 个单倍型', 'success');
+                toast('合并完成');
+            }
+
+            function buildAndRender() {
+                buildMergedArp();
+                renderResult();
+                renderSampleCheckList();
+                renderPreviews();
+                resultPanel.style.display = 'block';
+                resultEmpty.style.display = 'none';
+                previewPanel.style.display = 'block';
+                previewEmpty.style.display = 'none';
+            }
+
+            function buildMergedArp() {
+                var output = [];
+
+                output.push('#ARP file generated by BioDataTools (https://www.biodatatools.top)');
+                output.push('');
+                output.push('');
+
+                var lines = arpContent.split(/\r?\n/);
+                var inProfile = false;
+                var inData = false;
+                var profileLines = [];
+                var dataLines = [];
+
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i];
+                    var trimmed = line.trim();
+
+                    if (trimmed === '[Profile]') {
+                        inProfile = true;
+                        continue;
+                    }
+                    if (trimmed === '[Data]') {
+                        inProfile = false;
+                        inData = true;
+                        continue;
+                    }
+                    if (inProfile) {
+                        profileLines.push(line);
+                    }
+                    if (inData) {
+                        dataLines.push(line);
+                    }
+                }
+
+                var updatedProfile = [];
+                for (var p = 0; p < profileLines.length; p++) {
+                    var pl = profileLines[p];
+                    if (pl.trim().indexOf('NbSamples') !== -1) {
+                        updatedProfile.push('   NbSamples = ' + currentSampleNames.length);
+                    } else {
+                        updatedProfile.push(pl);
+                    }
+                }
+
+                output.push('[Profile]');
+                for (var p2 = 0; p2 < updatedProfile.length; p2++) {
+                    if (updatedProfile[p2].trim()) output.push(updatedProfile[p2]);
+                }
+                output.push('');
+                output.push('[Data]');
+                output.push('');
+
+                for (var si = 0; si < currentSampleNames.length; si++) {
+                    var sName = currentSampleNames[si];
+                    var sData = sampleData[sName];
+                    if (!sData) continue;
+                    output.push('[[Samples]]');
+                    output.push('   SampleName = "' + sName + '"');
+                    output.push('   SampleSize = ' + sData.size);
+                    output.push('   SampleData= {');
+                    var hapIds = Object.keys(sData.haps);
+                    //hapIds.sort();
+                    for (var hi = 0; hi < hapIds.length; hi++) {
+                        var hid = hapIds[hi];
+                        var freq = sData.haps[hid];
+                        var seq = hapMap[hid] || '';
+                        output.push(hid + '\t' + freq + '\t' + seq);
+                    }
+                    output.push('}');
+                    output.push('');
+                }
+
+                mergedLines = output;
+                mergedArpContent = output.join('\n');
+            }
+
+            function renderResult() {
+                resultBody.innerHTML = '';
+                var totalRows = 0;
+                var totalSize = 0;
+
+                for (var si = 0; si < currentSampleNames.length; si++) {
+                    var sName = currentSampleNames[si];
+                    var sData = sampleData[sName];
+                    if (!sData) continue;
+                    totalSize += sData.size;
+                    var hapIds = Object.keys(sData.haps);
+                    //hapIds.sort();
+                    for (var hi = 0; hi < hapIds.length; hi++) {
+                        var hid = hapIds[hi];
+                        var freq = sData.haps[hid];
+                        var seq = hapMap[hid] || '';
+                        var seqPreview = seq.length > 50 ? seq.substring(0, 50) + '...' : seq;
+                        var tr = document.createElement('tr');
+                        if (hi === 0) {
+                            tr.innerHTML =
+                                '<td rowspan="' + hapIds.length + '">' + escapeHtml(sName) + '</td>' +
+                                '<td rowspan="' + hapIds.length + '">' + sData.size + '</td>' +
+                                '<td>' + escapeHtml(hid) + '</td>' +
+                                '<td>' + freq + '</td>' +
+                                '<td><span class="seq-preview" title="' + escapeHtml(seq) + '">' + escapeHtml(
+                                    seqPreview) + '</span></td>';
+                        } else {
+                            tr.innerHTML =
+                                '<td>' + escapeHtml(hid) + '</td>' +
+                                '<td>' + freq + '</td>' +
+                                '<td><span class="seq-preview" title="' + escapeHtml(seq) + '">' + escapeHtml(
+                                    seqPreview) + '</span></td>';
+                        }
+                        resultBody.appendChild(tr);
+                        totalRows++;
+                    }
+                }
+
+                var summaryHtml =
+                    '<span class="item"><strong>群体数：</strong>' + currentSampleNames.length + '</span>' +
+                    '<span class="item"><strong>总个体数：</strong>' + totalSize + '</span>' +
+                    '<span class="item"><strong>单倍型数：</strong>' + Object.keys(hapMap).length + '</span>' +
+                    '<span class="item"><strong>记录行数：</strong>' + totalRows + '</span>';
+                resultSummary.innerHTML = summaryHtml;
+            }
+
+            function renderSampleCheckList() {
+                sampleCheckList.innerHTML = '';
+                for (var i = 0; i < currentSampleNames.length; i++) {
+                    var name = currentSampleNames[i];
+                    var data = sampleData[name];
+                    var div = document.createElement('label');
+                    div.innerHTML =
+                        '<input type="checkbox" class="sample-checkbox" value="' + escapeHtml(name) + '" checked> ' +
+                        escapeHtml(name) +
+                        ' <span class="size-badge">(n=' + (data ? data.size : 0) + ')</span>';
+                    sampleCheckList.appendChild(div);
+                }
+                selectAllSamples.checked = currentSampleNames.length > 0;
+                updateSampleStat();
+
+                var checkboxes = sampleCheckList.querySelectorAll('.sample-checkbox');
+                for (var c = 0; c < checkboxes.length; c++) {
+                    checkboxes[c].addEventListener('change', function() {
+                        updateSampleStat();
+                        updateSelectAllState();
+                    });
+                }
+            }
+
+            function updateSampleStat() {
+                var checkboxes = sampleCheckList.querySelectorAll('.sample-checkbox');
+                var checked = sampleCheckList.querySelectorAll('.sample-checkbox:checked');
+                sampleStat.textContent = '共 ' + checkboxes.length + ' 个群体，已选 ' + checked.length + ' 个';
+            }
+
+            function updateSelectAllState() {
+                var checkboxes = sampleCheckList.querySelectorAll('.sample-checkbox');
+                var checked = sampleCheckList.querySelectorAll('.sample-checkbox:checked');
+                selectAllSamples.checked = checked.length === checkboxes.length && checkboxes.length > 0;
+            }
+
+            selectAllSamples.addEventListener('change', function() {
+                var checkboxes = sampleCheckList.querySelectorAll('.sample-checkbox');
+                for (var i = 0; i < checkboxes.length; i++) {
+                    checkboxes[i].checked = this.checked;
+                }
+                updateSampleStat();
+            });
+
+            invertSelectSamples.addEventListener('change', function() {
+                var checkboxes = sampleCheckList.querySelectorAll('.sample-checkbox');
+                for (var i = 0; i < checkboxes.length; i++) {
+                    checkboxes[i].checked = !checkboxes[i].checked;
+                }
+                updateSampleStat();
+                updateSelectAllState();
+                this.checked = false;
+            });
+
+            mergeSelectedBtn.addEventListener('click', function() {
+                var checkboxes = sampleCheckList.querySelectorAll('.sample-checkbox');
+                var selected = [];
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (checkboxes[i].checked) {
+                        selected.push(checkboxes[i].value);
+                    }
+                }
+                if (selected.length === 0) {
+                    showMsg(filterMsg, '⚠️ 请至少选择一个群体', 'warn');
+                    return;
+                }
+                if (selected.length === currentSampleNames.length) {
+                    showMsg(filterMsg, '⚠️ 当前已是全部群体，无需重新合并', 'warn');
+                    return;
+                }
+
+                currentSampleNames = selected;
+                buildAndRender();
+                showMsg(filterMsg, '✅ 已合并选中的 ' + currentSampleNames.length + ' 个群体', 'success');
+                toast('合并选中群体成功');
+            });
+
+            resetSamplesBtn.addEventListener('click', function() {
+                if (allSampleNames.length === currentSampleNames.length) {
+                    showMsg(filterMsg, '⚠️ 当前已是全部群体，无需重置', 'warn');
+                    return;
+                }
+                if (!confirm('确定要重置为全部群体吗？')) return;
+                currentSampleNames = allSampleNames.slice();
+                buildAndRender();
+                showMsg(filterMsg, '✅ 已重置为全部 ' + currentSampleNames.length + ' 个群体', 'success');
+                toast('重置成功');
+            });
+
+            function renderPreviews() {
+                previewArpContent.textContent = mergedArpContent || '(空)';
+                orderTextArea.value = currentSampleNames.join('\n');
+            }
+
+            function doDownload() {
+                if (!mergedArpContent) {
+                    showMsg(downloadMsg, '❌ 没有数据可下载', 'error');
+                    return;
+                }
+                var blob = new Blob([mergedArpContent], { type: 'text/plain;charset=utf-8' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'merged.arp';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(downloadMsg, '✅ 下载成功！', 'success');
+                toast('下载成功');
+            }
+
+            function copyArp() {
+                if (!mergedArpContent) {
+                    showMsg(downloadMsg, '❌ 没有内容可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(mergedArpContent).then(function() {
+                        showMsg(downloadMsg, '✅ 已复制ARP内容', 'success');
+                        toast('已复制');
+                    }).catch(function() {
+                        fallbackCopy(mergedArpContent, downloadMsg);
+                    });
+                } else {
+                    fallbackCopy(mergedArpContent, downloadMsg);
+                }
+            }
+
+            function copyOrder() {
+                var text = currentSampleNames.join('\n');
+                if (!text) {
+                    showMsg(copyOrderMsg, '❌ 没有内容可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function() {
+                        showMsg(copyOrderMsg, '✅ 已复制 ' + currentSampleNames.length + ' 个群体名', 'success');
+                        toast('已复制');
+                    }).catch(function() {
+                        fallbackCopy(text, copyOrderMsg);
+                    });
+                } else {
+                    fallbackCopy(text, copyOrderMsg);
+                }
+            }
+
+            function fallbackCopy(text, msgEl) {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    if (msgEl) showMsg(msgEl, '✅ 已复制到剪贴板', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    if (msgEl) showMsg(msgEl, '❌ 复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            mergeBtn.addEventListener('click', doMerge);
+            downloadBtn.addEventListener('click', doDownload);
+            copyArpBtn.addEventListener('click', copyArp);
+            copyOrderBtn.addEventListener('click', copyOrder);
+
+            arpTextInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    if (!mergeBtn.disabled) mergeBtn.click();
+                }
+            });
+            hapTextInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    if (!mergeBtn.disabled) mergeBtn.click();
+                }
+            });
+
+            switchArpInput();
+            switchHapInput();
+            resetAll();
+            checkMergeReady();
+        });
+    </script>
+</body>
+</html>

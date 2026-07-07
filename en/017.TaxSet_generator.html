@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DnaSP Sequence Group Generator - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>DnaSP Sequence Group Generator</h2>
+            <p>Quickly generate TaxSet statements for sequence grouping in DnaSP, reducing the manual effort of grouping.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Sample Order</div>
+            <div style="margin-bottom:8px; font-weight:500;">Paste sample list (one sample name per line)</div>
+            <div class="text-input" id="textInputWrap" style="display:block;">
+                <textarea id="sampleListInput" placeholder="One sample name per line (can be copied directly from the TAXLABELS block of a .nex file exported from DnaSP).&#10;For example:&#10;AN01&#10;AN02&#10;AN03"></textarea>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;">
+                <button class="btn" id="loadSampleBtn">Import Samples</button>
+                <button class="btn" id="loadExampleBtn">Load Example</button>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Define Groups</div>
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:6px;">
+                <span><strong>Sample → Group Mapping</strong> <span class="tip-text" style="display:inline; margin-left:10px;" id="sampleCount">0 samples</span></span>
+                <span style="font-size:0.85rem; color:#888;">(Copy to Excel, modify the second column, paste back, then click "Generate TaxSet Block")</span>
+            </div>
+            <textarea id="mappingText" style="min-height:180px; font-family:Consolas,monospace; font-size:13px; line-height:1.6; width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; resize:vertical;" placeholder="After loading samples, this will display two columns (Sample Name\tGroup Name), default group name = sample name."></textarea>
+
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;">
+                <button class="btn" id="copyMappingBtn">Copy Table</button>
+                <button class="btn" id="applyMappingBtn">Generate TaxSet Block</button>
+                <button class="btn" id="clearAllBtn">Clear All</button>
+            </div>
+            <div id="applyTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: TaxSet Block</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px;">
+                <span id="resultStats" style="font-size:0.9rem; color:#6c757d;"></span>
+                <span style="flex:1;"></span>
+                <button class="btn" id="copyResultBtn">Copy Result</button>
+            </div>
+            <div class="result-item" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px 20px; font-family:Consolas,monospace; font-size:14px; line-height:1.8; white-space:pre-wrap; word-break:break-all; max-height:400px; overflow-y:auto; color:#6c757d;">
+                No data yet. Please load samples and generate TaxSet block.
+            </div>
+            <div id="resultTip" class="tip-text"></div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+         
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const sampleListInput = document.getElementById('sampleListInput');
+            const msgTip = document.getElementById('msgTip');
+            const loadSampleBtn = document.getElementById('loadSampleBtn');
+            const loadExampleBtn = document.getElementById('loadExampleBtn');
+            const mappingText = document.getElementById('mappingText');
+            const sampleCount = document.getElementById('sampleCount');
+            const copyMappingBtn = document.getElementById('copyMappingBtn');
+            const applyMappingBtn = document.getElementById('applyMappingBtn');
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            const applyTip = document.getElementById('applyTip');
+            const resultBox = document.querySelector('.result-item');
+            const resultStats = document.getElementById('resultStats');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let samples = [];
+            let groupMap = {};
+            let currentResult = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === applyTip || el === resultTip) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseSampleList(text) {
+                return text.split(/\r?\n/).map(s => s.trim()).filter(s => s.length > 0);
+            }
+
+            function updateMappingText() {
+                if (samples.length === 0) {
+                    mappingText.value = '';
+                    sampleCount.textContent = '0 samples';
+                    return;
+                }
+                const lines = samples.map(name => {
+                    const group = groupMap[name] || name;
+                    return name + '\t' + group;
+                });
+                mappingText.value = lines.join('\n');
+                sampleCount.textContent = samples.length + ' samples';
+            }
+
+            function loadSamplesFromText(text) {
+                const list = parseSampleList(text);
+                if (list.length === 0) {
+                    showMsg(msgTip, 'No valid sample names detected', 'error');
+                    return;
+                }
+                samples = list;
+                groupMap = {};
+                samples.forEach(name => { groupMap[name] = name; });
+                updateMappingText();
+                showMsg(msgTip, `Successfully loaded ${samples.length} samples`, 'success');
+                toast(`Loaded ${samples.length} samples`);
+                resultBox.textContent = 'Click "Generate TaxSet Block" to generate results.';
+                resultStats.textContent = '';
+                currentResult = '';
+            }
+
+            function applyMapping() {
+                if (samples.length === 0) {
+                    showMsg(applyTip, 'Please load samples first', 'error');
+                    return;
+                }
+
+                const text = mappingText.value.trim();
+                if (!text) {
+                    showMsg(applyTip, 'Mapping table is empty', 'error');
+                    return;
+                }
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                const newMap = {};
+                let ok = true;
+                for (const line of lines) {
+                    const parts = line.split(/\t/);
+                    if (parts.length < 2) {
+                        showMsg(applyTip, 'Format error in a line. Please ensure each line contains "Sample Name\tGroup Name"', 'error');
+                        ok = false;
+                        break;
+                    }
+                    const name = parts[0].trim();
+                    const group = parts.slice(1).join('\t').trim() || name;
+                    if (!name) {
+                        showMsg(applyTip, 'Sample name cannot be empty', 'error');
+                        ok = false;
+                        break;
+                    }
+                    newMap[name] = group;
+                }
+                if (!ok) return;
+
+                const missing = samples.filter(n => !(n in newMap));
+                if (missing.length > 0) {
+                    showMsg(applyTip, 'The following samples were not found in the table: ' + missing.join(', '), 'error');
+                    return;
+                }
+                groupMap = newMap;
+                updateMappingText();
+
+                const groups = {};
+                for (let i = 0; i < samples.length; i++) {
+                    const name = samples[i];
+                    const g = groupMap[name] ? groupMap[name].trim() : '';
+                    if (g === '') continue;
+                    if (!groups[g]) groups[g] = [];
+                    groups[g].push(i + 1);
+                }
+
+                const groupNames = Object.keys(groups);
+                if (groupNames.length === 0) {
+                    resultBox.textContent = 'Please assign non-empty group names to at least some samples.';
+                    resultStats.textContent = '';
+                    currentResult = '';
+                    showMsg(applyTip, 'No valid groups', 'error');
+                    return;
+                }
+
+                let linesOut = ['BEGIN SETS;'];
+                groupNames.sort();
+                for (const g of groupNames) {
+                    const indices = groups[g].sort((a, b) => a - b);
+                    const ranges = [];
+                    let start = indices[0],
+                        end = indices[0];
+                    for (let i = 1; i < indices.length; i++) {
+                        if (indices[i] === end + 1) {
+                            end = indices[i];
+                        } else {
+                            ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                            start = indices[i];
+                            end = indices[i];
+                        }
+                    }
+                    ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                    linesOut.push(`   TaxSet ${g} = ${ranges.join(' ')};`);
+                }
+                linesOut.push('END;');
+                currentResult = linesOut.join('\n');
+
+                resultBox.textContent = currentResult;
+                resultStats.textContent = `${groupNames.length} groups, ${samples.length} samples`;
+                showMsg(applyTip, 'Groups applied, TaxSet statements generated', 'success');
+                toast('Groups applied');
+            }
+
+            function clearAll() {
+                if (samples.length === 0) {
+                    showMsg(applyTip, 'No data to clear', 'error');
+                    return;
+                }
+                groupMap = {};
+                samples.forEach(name => { groupMap[name] = name; });
+                mappingText.value = '';
+                sampleCount.textContent = samples.length + ' samples';
+                resultBox.textContent = 'Click "Generate TaxSet Block" to generate results.';
+                resultStats.textContent = '';
+                currentResult = '';
+                applyTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                toast('Groups and results cleared');
+            }
+
+            function copyMapping() {
+                const text = mappingText.value;
+                if (!text) {
+                    showMsg(applyTip, 'No content to copy', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showMsg(applyTip, 'Mapping table copied', 'success');
+                        toast('Copied');
+                    }).catch(() => fallbackCopy(text, applyTip));
+                } else {
+                    fallbackCopy(text, applyTip);
+                }
+            }
+
+            function copyResult() {
+                if (!currentResult) {
+                    showMsg(resultTip, 'No content to copy', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResult).then(() => {
+                        showMsg(resultTip, 'Result copied', 'success');
+                        toast('Copied');
+                    }).catch(() => fallbackCopy(currentResult));
+                } else {
+                    fallbackCopy(currentResult);
+                }
+            }
+
+            function fallbackCopy(text, tipEl) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    const el = tipEl || resultTip;
+                    showMsg(el, 'Copied to clipboard', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    const el = tipEl || resultTip;
+                    showMsg(el, 'Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            const SHORT_EXAMPLE = 'S1\nS2\nS3\nS4\nS5\nS6\nS7\nS8\nS9\nS10';
+
+            loadSampleBtn.addEventListener('click', function() {
+                const text = sampleListInput.value;
+                if (!text.trim()) {
+                    showMsg(msgTip, 'Please enter sample list', 'error');
+                    return;
+                }
+                loadSamplesFromText(text);
+            });
+
+            loadExampleBtn.addEventListener('click', function() {
+                sampleListInput.value = SHORT_EXAMPLE;
+                loadSamplesFromText(SHORT_EXAMPLE);
+            });
+
+            applyMappingBtn.addEventListener('click', applyMapping);
+            copyMappingBtn.addEventListener('click', copyMapping);
+            clearAllBtn.addEventListener('click', clearAll);
+            copyResultBtn.addEventListener('click', copyResult);
+
+            mappingText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    applyMappingBtn.click();
+                }
+            });
+
+            resultBox.textContent = 'No data yet. Please load samples and generate TaxSet block.';
+        })();
+    </script>
+</body>
+</html>

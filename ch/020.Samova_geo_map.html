@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAMOVA地图预览 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map_canvas { height: 450px; width: 100%; border-radius: 8px; background: #eef2f7; border: 1px solid #d0d7de; }
+        .legend-wrap { margin-top: 10px; padding: 8px 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #e8edf2; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+        .legend-item { display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; font-weight: 500; color: #333; }
+        .legend-color { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+        .stat-badge { display: inline-block; background: #eef2f7; padding: 2px 12px; border-radius: 12px; font-size: 0.8rem; color: #1f4068; margin-right: 8px; }
+        .action-bar { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 4px; align-items: center; }
+        .empty-tip { color: #999; text-align: center; padding: 16px 0; font-style: italic; }
+        .result-toolbar { margin: 12px 0 8px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        textarea[readonly] { background-color: #f5f7fa; cursor: default; }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>SAMOVA地图预览</h2>
+            <p>上传或粘贴SAMOVA生成的HTML文件或源码，即可预览采样点分组情况。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入SAMOVA谷歌地图数据</div>
+
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">粘贴文本</label>
+            </div>
+
+            <div class="file-input" id="fileInputWrap">
+                <input type="file" id="fileInput" accept=".htm,.html,.txt">
+            </div>
+
+            <div class="text-input" id="textInputWrap">
+                <textarea id="textInput" placeholder="将 SAMOVA2 结果的 HTML 源码完整粘贴到这里（包含 google.maps.Marker 定义）" readonly></textarea>
+            </div>
+
+            <div id="msgTip" class="tip-text"></div>
+
+            <div class="action-bar">
+                <button class="btn" id="parseBtn">转换并导出</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：预览与导出</div>
+            <div id="mapInfo" style="display:none; margin-bottom:8px;">
+                <span class="stat-badge">标记数：<strong id="markerCount">0</strong></span>
+                <span class="stat-badge">分组数：<strong id="groupCount">0</strong></span>
+            </div>
+            <div id="map_canvas"></div>
+            <div id="legendArea" style="display:none; margin-top:8px;">
+                <div class="legend-wrap" id="legendContainer"><span style="font-weight:500; color:#1f4068; margin-right:8px;">图例：</span></div>
+            </div>
+            <div id="emptyHint" class="empty-tip">导入数据后点击「转换并导出」</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportBtn" style="display:none;">下载地图HTML文件</button>
+                <span id="exportTip" class="tip-text"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var fileInput = document.getElementById('fileInput');
+            var textInput = document.getElementById('textInput');
+            var fileInputWrap = document.getElementById('fileInputWrap');
+            var parseBtn = document.getElementById('parseBtn');
+            var exampleBtn = document.getElementById('exampleBtn');
+            var msgTip = document.getElementById('msgTip');
+            var mapCanvas = document.getElementById('map_canvas');
+            var mapInfo = document.getElementById('mapInfo');
+            var markerCount = document.getElementById('markerCount');
+            var groupCount = document.getElementById('groupCount');
+            var legendContainer = document.getElementById('legendContainer');
+            var legendArea = document.getElementById('legendArea');
+            var emptyHint = document.getElementById('emptyHint');
+            var exportBtn = document.getElementById('exportBtn');
+            var exportTip = document.getElementById('exportTip');
+
+            var mapInstance = null;
+            var currentData = null;
+
+            var COLORS = {
+                'image1': '#e74c3c', 'image2': '#2ecc71', 'image3': '#3498db',
+                'image4': '#f39c12', 'image5': '#9b59b6', 'image6': '#1abc9c',
+                'image7': '#e67e22', 'image8': '#2c3e50', 'image9': '#16a085',
+                'image10': '#c0392b', 'image11': '#d35400', 'image12': '#8e44ad',
+                'image13': '#27ae60', 'image14': '#2980b9', 'image15': '#f1c40f',
+                'default': '#95a5a6'
+            };
+            function getColor(g) { return COLORS[g] || COLORS['default']; }
+
+            function parseContent(html) {
+                var result = { centerLng: null, centerLat: null, zoom: 3, markers: [], groups: new Set(), errors: [] };
+                var centerMatch = html.match(/center:\s*new\s+google\.maps\.LatLng\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
+                if (centerMatch) { result.centerLng = parseFloat(centerMatch[1]); result.centerLat = parseFloat(centerMatch[2]); }
+                var zoomMatch = html.match(/zoom:\s*(\d+)/);
+                if (zoomMatch) result.zoom = parseInt(zoomMatch[1]);
+                var markerRegex = /new\s+google\.maps\.Marker\s*\(\s*\{([^}]*)\}\s*\)/g;
+                var match;
+                while ((match = markerRegex.exec(html)) !== null) {
+                    var block = match[1];
+                    var posMatch = block.match(/position:\s*new\s+google\.maps\.LatLng\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
+                    if (!posMatch) continue;
+                    var lng = parseFloat(posMatch[1]), lat = parseFloat(posMatch[2]);
+                    if (isNaN(lng) || isNaN(lat)) continue;
+                    var iconMatch = block.match(/icon:\s*(\w+)/);
+                    var group = iconMatch ? iconMatch[1] : 'default';
+                    result.markers.push({ lat: lat, lng: lng, group: group });
+                    result.groups.add(group);
+                }
+                if (result.markers.length === 0) result.errors.push('未解析到标记点');
+                return result;
+            }
+
+            function renderMap(data) {
+                clearMap();
+                if (data.markers.length === 0) {
+                    emptyHint.style.display = 'block'; mapInfo.style.display = 'none'; legendArea.style.display = 'none'; exportBtn.style.display = 'none';
+                    showMsg(msgTip, '未找到标记点', 'error');
+                    return false;
+                }
+                var clat = data.centerLat, clng = data.centerLng;
+                if (clat === null || isNaN(clat) || clng === null || isNaN(clng)) {
+                    var sLat = 0, sLng = 0;
+                    data.markers.forEach(function(m) { sLat += m.lat; sLng += m.lng; });
+                    clat = sLat / data.markers.length; clng = sLng / data.markers.length;
+                }
+                mapInstance = L.map('map_canvas').setView([clat, clng], data.zoom || 3);
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri'
+                }).addTo(mapInstance);
+                var groupMap = new Map();
+                data.markers.forEach(function(m) {
+                    var color = getColor(m.group);
+                    L.circleMarker([m.lat, m.lng], { radius: 7, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.85 })
+                        .addTo(mapInstance)
+                        .bindPopup('<b>位置</b><br>纬度: ' + m.lat + '<br>经度: ' + m.lng + '<br>分组: <strong>' + m.group + '</strong>');
+                    if (!groupMap.has(m.group)) groupMap.set(m.group, []);
+                    groupMap.get(m.group).push(m);
+                });
+                mapInfo.style.display = 'block';
+                markerCount.textContent = data.markers.length;
+                groupCount.textContent = data.groups.size;
+                renderLegend(groupMap);
+                legendArea.style.display = 'block';
+                emptyHint.style.display = 'none';
+                exportBtn.style.display = 'inline-block';
+                currentData = data;
+                if (data.errors.length > 0) showMsg(msgTip, '警告: ' + data.errors.join('; '), 'warn');
+                else showMsg(msgTip, '转换成功！共 ' + data.markers.length + ' 个标记点', 'success');
+                setTimeout(function() { if (mapInstance) mapInstance.invalidateSize(); }, 200);
+                return true;
+            }
+
+            function renderLegend(groupMap) {
+                legendContainer.innerHTML = '<span style="font-weight:500; color:#1f4068; margin-right:8px;">图例：</span>';
+                if (groupMap.size === 0) { legendContainer.innerHTML += '<span style="color:#999;">无分组</span>'; return; }
+                Array.from(groupMap.keys()).sort().forEach(function(g) {
+                    var color = getColor(g);
+                    var count = groupMap.get(g).length;
+                    var item = document.createElement('span');
+                    item.className = 'legend-item';
+                    item.innerHTML = '<span class="legend-color" style="background:' + color + ';"></span> ' + g + ' (' + count + ')';
+                    legendContainer.appendChild(item);
+                });
+            }
+
+            function clearMap() {
+                if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+                mapInfo.style.display = 'none'; legendArea.style.display = 'none'; emptyHint.style.display = 'block';
+                exportBtn.style.display = 'none'; mapCanvas.innerHTML = ''; currentData = null;
+            }
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function() { if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = ''; }, 5000);
+            }
+
+            window.switchInputMode = function() {
+                var mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fileInputWrap.style.display = 'block';
+                    fileInput.disabled = false;
+                    textInput.readOnly = true;
+                    textInput.style.backgroundColor = '#f5f7fa';
+                    textInput.style.cursor = 'default';
+                    if (!textInput.value.trim()) {
+                        textInput.placeholder = '上传文件后，内容将自动显示在此';
+                    } else {
+                        textInput.placeholder = '';
+                    }
+                } else {
+                    fileInputWrap.style.display = 'none';
+                    fileInput.disabled = true;
+                    fileInput.value = '';
+                    textInput.readOnly = false;
+                    textInput.style.backgroundColor = '';
+                    textInput.style.cursor = '';
+                    if (!textInput.value.trim()) {
+                        textInput.placeholder = '将 SAMOVA2 结果的 HTML 源码完整粘贴到这里（包含 google.maps.Marker 定义）';
+                    } else {
+                        textInput.placeholder = '';
+                    }
+                }
+                clearMap();
+                msgTip.innerHTML = '';
+                exportTip.innerHTML = '';
+            };
+
+            fileInput.addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    textInput.value = ev.target.result;
+                    textInput.placeholder = '';
+                    msgTip.innerHTML = '<span class="success">已读取：' + file.name + '（' + textInput.value.length + ' 字符）</span>';
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            function doConvert() {
+                var content = textInput.value;
+                if (!content.trim()) {
+                    showMsg(msgTip, '请先导入数据（上传文件或粘贴文本）', 'error');
+                    return;
+                }
+                var data = parseContent(content);
+                renderMap(data);
+            }
+
+            function exportMap() {
+                if (!currentData || currentData.markers.length === 0) {
+                    showMsg(exportTip, '没有可导出的数据，请先转换', 'error');
+                    return;
+                }
+                var d = currentData;
+                var markers = d.markers;
+                var clat = d.centerLat, clng = d.centerLng;
+                if (clat === null || isNaN(clat) || clng === null || isNaN(clng)) {
+                    var sLat = 0, sLng = 0;
+                    markers.forEach(function(m) { sLat += m.lat; sLng += m.lng; });
+                    clat = sLat / markers.length; clng = sLng / markers.length;
+                }
+                var zoom = d.zoom || 3;
+                var markerJs = markers.map(function(m) {
+                    var color = getColor(m.group);
+                    return 'L.circleMarker([' + m.lat + ', ' + m.lng + '], {radius: 7, fillColor: "' + color + '", color: "#fff", weight: 2, fillOpacity: 0.85}).addTo(map).bindPopup("<b>位置</b><br>纬度: ' + m.lat + '<br>经度: ' + m.lng + '<br>分组: <strong>' + m.group + '</strong>");';
+                }).join('\n');
+                var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>SAMOVA2 地图</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><style>body{margin:0;padding:0;}#map{width:100vw;height:100vh;}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script><script>var map=L.map("map").setView([' + clat + ',' + clng + '],' + zoom + ');L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{attribution:"Tiles &copy; Esri"}).addTo(map);' + markerJs + '<\/script></body></html>';
+                var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url; a.download = 'SAMOVA2_map.html';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(exportTip, '导出成功！已下载 SAMOVA2_map.html', 'success');
+            }
+
+            var EXAMPLE_HTML = '<!DOCTYPE html>\n<html>\n    <head>\n        <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />\n        <style type="text/css">\n            html { height: 100% }\n            body { height: 100%; margin: 0; padding: 0 }\n        </style>\n        <script type="text/javascript"\n            src="http://maps.googleapis.com/maps/api/js?key=AIzaSyD7-WIwhNGlOyJrqO3_SRMyUxtpiJVEKB0&sensor=true">\n        <\/script>\n        <script type="text/javascript">\n            function initialize() {\n                var mapOptions = {\n                    center: new google.maps.LatLng(125.937, 35.0888),\n                    zoom: 3,\n                    mapTypeId: google.maps.MapTypeId.SATELLITE\n                };\n                var map = new google.maps.Map(document.getElementById("map_canvas"),mapOptions);\n                var image1 = "images/blue.png";\n                var image2 = "images/green.png";\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(119.483, 34.75), icon: image1, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(129.75, 32.5833), icon: image1, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(120.364, 36.0432), icon: image1, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(122.16, 37.5318), icon: image1, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(126.539, 37.2022), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(126.461, 35.6152), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(129.85, 33.3667), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(129.783, 33.4), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(126.417, 36.3833), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(126.746, 34.3173), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(127.75, 34.7833), icon: image2, map: map });\n            }\n        <\/script>\n    <\/head>\n    <body onload="initialize()">\n        <div id="map_canvas" style="width:100%; height:100%"><\/div>\n    <\/body>\n<\/html>';
+
+            exampleBtn.addEventListener('click', function() {
+                var radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInputMode();
+                textInput.value = EXAMPLE_HTML;
+                showMsg(msgTip, '示例已加载，自动转换中...', 'success');
+                doConvert();
+            });
+
+            parseBtn.addEventListener('click', doConvert);
+            exportBtn.addEventListener('click', exportMap);
+
+            textInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    doConvert();
+                }
+            });
+
+            switchInputMode();
+            clearMap();
+            window.addEventListener('resize', function() {
+                if (mapInstance) setTimeout(function() { mapInstance.invalidateSize(); }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

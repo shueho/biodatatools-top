@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PopART Import File Generator - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>PopART Import File Generator</h2>
+            <p>Extract haplotype sequences and population haplotype frequency matrices from Arlequin output files (XML or plain text) and generate NEXUS format files for constructing haplotype networks in PopART.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Arlequin Results</div>
+
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">Upload File (.xml/.txt)</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">Paste Text</label>
+            </div>
+
+            <div class="file-input">
+                <input type="file" id="arlequinFile" accept=".xml,.txt,.out">
+            </div>
+
+            <div class="text-input">
+                <textarea id="arlequinText" placeholder="Paste Arlequin output content (XML or plain text format)" disabled></textarea>
+            </div>
+
+            <div style="margin-top:10px; font-size:0.9rem; color:#6c757d; background:#f8f9fa; padding:8px 12px; border-radius:4px;">
+                <strong>Note:</strong> Please ensure the content includes at least the <code>Haplotype list</code> and <code>&lt;absHapFreq&gt;</code> sections.
+            </div>
+
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="loadBtn">Import & Parse</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Parsing Results Preview</div>
+            <div id="previewArea" style="display:none;">
+                <div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:10px;">
+                    <span><strong>Haplotypes:</strong><span id="hapCount">0</span></span>
+                    <span><strong>Sequence Length:</strong><span id="seqLen">0</span> bp</span>
+                    <span><strong>Populations:</strong><span id="popCount">0</span></span>
+                </div>
+                <div style="max-height:200px; overflow-y:auto; border:1px solid #e8edf2; border-radius:6px; padding:8px;">
+                    <table id="previewTable" style="font-size:0.85rem;">
+                        <thead><tr><th>Haplotype</th><th>Sequence (first 50bp)</th><th>Frequencies (first 3 populations)</th></tr></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="emptyPreview" class="empty-tip">Preview will appear here after parsing.</div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: NEXUS Output</div>
+
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyResultBtn">Copy NEXUS</button>
+                    <button class="btn" id="downloadResultBtn">Download NEXUS</button>
+                </div>
+                <div class="result-item">
+                    <div class="seq-area" id="nexusBox" style="max-height:500px; overflow-y:auto; white-space:pre-wrap; font-family:Consolas,monospace;"></div>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">NEXUS content will appear here after successful parsing.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: 'Author: Di Shang Fei Zhu',
+        };
+    </script>
+
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('arlequinFile');
+            const textInput = document.getElementById('arlequinText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const previewArea = document.getElementById('previewArea');
+            const emptyPreview = document.getElementById('emptyPreview');
+            const hapCount = document.getElementById('hapCount');
+            const seqLen = document.getElementById('seqLen');
+            const popCount = document.getElementById('popCount');
+            const previewBody = document.getElementById('previewBody');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const nexusBox = document.getElementById('nexusBox');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const downloadResultBtn = document.getElementById('downloadResultBtn');
+
+            let haplotypes = [];
+            let populations = [];
+            let sampleSizes = [];
+            let freqMatrix = [];
+            let warnings = [];
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 8000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function clearAll() {
+                haplotypes = [];
+                populations = [];
+                sampleSizes = [];
+                freqMatrix = [];
+                warnings = [];
+                previewArea.style.display = 'none';
+                emptyPreview.style.display = 'block';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                nexusBox.textContent = '';
+                msgTip.innerHTML = '';
+            }
+
+            function parseContent(content) {
+                clearAll();
+
+                const hapListIdx = content.search(/Haplotype list\s*={2,}/i);
+                if (hapListIdx === -1) {
+                    showMsg(msgTip, 'Could not find "Haplotype list" section.', 'error');
+                    return false;
+                }
+                const idLineIdx = content.indexOf('Haplotype id', hapListIdx);
+                if (idLineIdx === -1) {
+                    showMsg(msgTip, 'Could not find "Haplotype id" line.', 'error');
+                    return false;
+                }
+                const absStart = content.indexOf('<absHapFreq', idLineIdx);
+                let freqStart;
+                let useXml = false;
+                if (absStart !== -1) {
+                    freqStart = absStart;
+                    useXml = true;
+                } else {
+                    const altStart = content.search(/Haplotype frequencies in populations|Haplotype frequencies/i);
+                    if (altStart !== -1) {
+                        freqStart = altStart;
+                    } else {
+                        showMsg(msgTip, 'Could not find frequency table start marker (<absHapFreq> or "Haplotype frequencies").', 'error');
+                        return false;
+                    }
+                }
+
+                let seqRaw = content.substring(idLineIdx + 50, freqStart).trim();
+                const seqLines = seqRaw.split(/\r?\n/);
+                let hapSeqMap = {};
+                for (let line of seqLines) {
+                    line = line.trim();
+                    if (!line) continue;
+                    // Skip lines containing "Haplotype" or "definition" (header lines)
+                    if (/Haplotype|definition/i.test(line)) continue;
+                    // Skip pure separator lines
+                    if (/^[-=_]{3,}$/.test(line)) continue;
+                    // Split
+                    const parts = line.split(/\s+/);
+                    if (parts.length < 2) continue;
+                    const id = parts[0];
+                    // Skip pure separator IDs
+                    if (/^[-=_]+$/.test(id)) continue;
+                    // Check if ID contains "Haplotype" or "definition" (prevent false positives)
+                    if (/Haplotype|definition/i.test(id)) continue;
+                    const seq = parts.slice(1).join('');
+                    // Sequence must consist of letters and be at least 5 characters long
+                    if (seq.length >= 5 && /^[A-Za-z]+$/.test(seq)) {
+                        hapSeqMap[id] = seq;
+                    }
+                }
+
+                if (Object.keys(hapSeqMap).length === 0) {
+                    const allLines = content.split(/\r?\n/);
+                    let collecting = false;
+                    for (let line of allLines) {
+                        const trimmed = line.trim();
+                        if (!trimmed) continue;
+                        // Trigger collection condition
+                        if (trimmed.includes('Haplotype id') && trimmed.includes('Haplotype definition')) {
+                            collecting = true;
+                            continue;
+                        }
+                        // Stop when frequency table marker is encountered
+                        if (/<absHapFreq|Haplotype frequencies/i.test(trimmed)) break;
+                        if (!collecting) continue;
+                        // Skip pure separator lines and header lines
+                        if (/^[-=_]{3,}$/.test(trimmed)) continue;
+                        if (/Haplotype|definition/i.test(trimmed)) continue;
+                        const parts = trimmed.split(/\s+/);
+                        if (parts.length >= 2) {
+                            const id = parts[0];
+                            if (/^[-=_]+$/.test(id)) continue;
+                            if (/Haplotype|definition/i.test(id)) continue;
+                            const seq = parts.slice(1).join('');
+                            if (seq.length >= 5 && /^[A-Za-z]+$/.test(seq)) {
+                                hapSeqMap[id] = seq;
+                            }
+                        }
+                    }
+                }
+
+                if (Object.keys(hapSeqMap).length === 0) {
+                    showMsg(msgTip, 'No haplotype sequences could be parsed. Please ensure each sequence line follows the format "ID   sequence" (ID without spaces, sequence consisting of letters).', 'error');
+                    return false;
+                }
+
+                let freqBlock = '';
+                if (useXml) {
+                    const absEnd = content.indexOf('</absHapFreq>', absStart);
+                    if (absEnd !== -1) {
+                        freqBlock = content.substring(absStart, absEnd + 13);
+                    } else {
+                        freqBlock = content.substring(absStart);
+                    }
+                } else {
+                    const nextTag = content.indexOf('<', freqStart + 1);
+                    if (nextTag !== -1) {
+                        freqBlock = content.substring(freqStart, nextTag);
+                    } else {
+                        freqBlock = content.substring(freqStart);
+                    }
+                }
+                freqBlock = freqBlock.replace(/<[^>]+>/g, '');
+                const freqLines = freqBlock.split(/\r?\n/);
+
+                let headerLine = null;
+                let sampleLine = null;
+                let dataLines = [];
+                let inHeader = false;
+                for (let line of freqLines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (/^Haplotype:/i.test(trimmed) || /^Haplotype\s/.test(trimmed)) {
+                        headerLine = trimmed;
+                        inHeader = true;
+                        continue;
+                    }
+                    if (inHeader && /^\(\d+\)/.test(trimmed)) {
+                        sampleLine = trimmed;
+                        continue;
+                    }
+                    if (inHeader && !/^[-=]+$/.test(trimmed) && !/^\(\d+\)/.test(trimmed)) {
+                        const parts = trimmed.split(/\s+/);
+                        if (parts.length >= 2) {
+                            const id = parts[0];
+                            const numbers = parts.slice(1).map(v => parseInt(v));
+                            if (numbers.some(n => !isNaN(n))) {
+                                dataLines.push(trimmed);
+                            }
+                        }
+                    }
+                }
+
+                if (!headerLine) {
+                    showMsg(msgTip, 'Could not find header line "Haplotype:".', 'error');
+                    return false;
+                }
+                if (!sampleLine) {
+                    showMsg(msgTip, 'Could not find sample size line (e.g., "(20)  (20)").', 'error');
+                    return false;
+                }
+
+                const headerParts = headerLine.split(/\s+/);
+                let popNames = [];
+                let start = false;
+                for (let p of headerParts) {
+                    if (/^Haplotype:/i.test(p) || /^Haplotype$/i.test(p)) { start = true; continue; }
+                    if (start && p !== '') popNames.push(p);
+                }
+                if (popNames.length === 0) {
+                    showMsg(msgTip, 'Could not parse population names.', 'error');
+                    return false;
+                }
+
+                const sampleParts = sampleLine.trim().split(/\s+/);
+                let sizes = [];
+                for (let s of sampleParts) {
+                    const match = s.match(/\((\d+)\)/);
+                    if (match) sizes.push(parseInt(match[1]));
+                }
+                if (sizes.length === 0) {
+                    showMsg(msgTip, 'Could not parse sample size numbers.', 'error');
+                    return false;
+                }
+                while (sizes.length < popNames.length) sizes.push(0);
+                if (sizes.length > popNames.length) sizes.length = popNames.length;
+                populations = popNames;
+                sampleSizes = sizes;
+
+                let freqRows = [];
+                for (let line of dataLines) {
+                    const parts = line.split(/\s+/);
+                    const id = parts[0];
+                    if (/^[-=_]+$/.test(id)) continue;
+                    const freqs = parts.slice(1).map(v => parseInt(v) || 0);
+                    while (freqs.length < populations.length) freqs.push(0);
+                    if (freqs.length > populations.length) freqs.length = populations.length;
+                    freqRows.push({ id, freqs });
+                }
+
+                if (freqRows.length === 0) {
+                    showMsg(msgTip, 'Could not parse any frequency data.', 'error');
+                    return false;
+                }
+
+                const seqIds = Object.keys(hapSeqMap);
+                const freqIds = freqRows.map(r => r.id);
+                const common = seqIds.filter(id => freqIds.includes(id));
+
+                if (common.length === 0) {
+                    const seqSample = seqIds.slice(0, 5).join(', ');
+                    const freqSample = freqIds.slice(0, 5).join(', ');
+                    showMsg(msgTip,
+                        `The sequences and frequency table share no common haplotype IDs.<br>Sequence ID examples: ${seqSample}<br>Frequency ID examples: ${freqSample}<br>Please check if the IDs are consistent (case, spaces, etc.).`,
+                        'error'
+                    );
+                    return false;
+                }
+
+                const missingSeq = freqRows.filter(r => !hapSeqMap[r.id]).map(r => r.id);
+                const missingFreq = seqIds.filter(id => !freqIds.includes(id));
+                if (missingSeq.length > 0) {
+                    warnings.push(`The following haplotypes exist in the frequency table but lack sequence definitions and will be ignored: ${missingSeq.join(', ')}`);
+                }
+                if (missingFreq.length > 0) {
+                    warnings.push(`The following haplotypes have sequences but lack frequency data and will be ignored: ${missingFreq.join(', ')}`);
+                }
+
+                haplotypes = [];
+                freqMatrix = [];
+                for (let id of common) {
+                    const seq = hapSeqMap[id];
+                    const row = freqRows.find(r => r.id === id);
+                    if (seq && row) {
+                        haplotypes.push({ id, seq });
+                        freqMatrix.push(row.freqs);
+                    }
+                }
+
+                if (haplotypes.length === 0) {
+                    showMsg(msgTip, 'No matching haplotypes found.', 'error');
+                    return false;
+                }
+
+                const lens = haplotypes.map(h => h.seq.length);
+                if (lens.some(l => l !== lens[0])) {
+                    showMsg(msgTip, 'Haplotype sequence lengths are inconsistent.', 'error');
+                    return false;
+                }
+
+                if (warnings.length > 0) {
+                    showMsg(msgTip, '⚠️ Warnings: ' + warnings.join('; '), 'warn');
+                } else {
+                    showMsg(msgTip, `✅ Parsing successful! ${haplotypes.length} haplotypes, ${populations.length} populations.`, 'success');
+                }
+
+                showPreview();
+                try {
+                    const nexus = generateNexus();
+                    resultArea.style.display = 'block';
+                    emptyResult.style.display = 'none';
+                    nexusBox.textContent = nexus;
+                    toast('Parsing successful');
+                    return true;
+                } catch (e) {
+                    showMsg(msgTip, 'Failed to generate NEXUS: ' + e.message, 'error');
+                    return false;
+                }
+            }
+
+            function generateNexus() {
+                if (haplotypes.length === 0 || populations.length === 0) {
+                    throw new Error('No data available to generate NEXUS.');
+                }
+                const ntax = haplotypes.length;
+                const nchar = haplotypes[0].seq.length;
+                const npops = populations.length;
+
+                let dataBlock = `#NEXUS\nBegin Data;\n`;
+                dataBlock += `    Dimensions ntax=${ntax} nchar=${nchar};\n`;
+                dataBlock += `    Format datatype=DNA missing=N gap=-;\n`;
+                dataBlock += `    Matrix\n`;
+                haplotypes.forEach(h => {
+                    const id = h.id.replace(/\s/g, '_');
+                    dataBlock += `${id}\t${h.seq}\n`;
+                });
+                dataBlock += `    ;\nEnd;\n\n`;
+
+                let traitsBlock = `Begin Traits;\n`;
+                traitsBlock += `    Dimensions NTraits=${npops};\n`;
+                traitsBlock += `    Format labels=yes missing=? separator=Comma;\n`;
+                traitsBlock += `    TraitLabels ${populations.join(' ')};\n`;
+                traitsBlock += `    Matrix\n`;
+                haplotypes.forEach((h, idx) => {
+                    const id = h.id.replace(/\s/g, '_');
+                    const freqs = freqMatrix[idx];
+                    const freqStr = freqs.join(',');
+                    traitsBlock += `${id} ${freqStr}\n`;
+                });
+                traitsBlock += `    ;\nEnd;\n`;
+
+                return dataBlock + traitsBlock;
+            }
+
+            function showPreview() {
+                previewArea.style.display = 'block';
+                emptyPreview.style.display = 'none';
+                hapCount.textContent = haplotypes.length;
+                seqLen.textContent = haplotypes.length > 0 ? haplotypes[0].seq.length : 0;
+                popCount.textContent = populations.length;
+
+                let html = '';
+                const maxShow = Math.min(haplotypes.length, 10);
+                for (let i = 0; i < maxShow; i++) {
+                    const h = haplotypes[i];
+                    const seqPreview = h.seq.length > 50 ? h.seq.substring(0, 50) + '...' : h.seq;
+                    const freqs = freqMatrix[i] ? freqMatrix[i].slice(0, 3).join(',') + (populations.length > 3 ? ',...' : '') : '';
+                    html += `<tr><td>${h.id}</td><td>${seqPreview}</td><td>${freqs}</td></tr>`;
+                }
+                if (haplotypes.length > 10) {
+                    html += `<tr><td colspan="3">... ${haplotypes.length - 10} more haplotypes</td></tr>`;
+                }
+                previewBody.innerHTML = html;
+            }
+
+            function copyResult() {
+                const text = nexusBox.textContent;
+                if (!text) {
+                    showMsg(msgTip, 'No content to copy.', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showMsg(msgTip, 'NEXUS content copied.', 'success');
+                        toast('Copied');
+                    }).catch(() => fallbackCopy(text));
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(msgTip, 'NEXUS content copied.', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(msgTip, 'Copy failed. Please copy manually.', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                const text = nexusBox.textContent;
+                if (!text) {
+                    showMsg(msgTip, 'No content to download.', 'error');
+                    return;
+                }
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'arlequin_nexus.nex';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(msgTip, 'Downloaded arlequin_nexus.nex', 'success');
+                toast('Downloaded');
+            }
+
+            function loadExample() {
+                const example = `<?xml version="1.0" encoding="ISO-8859-1"?>
+<Arlequin>
+<data>
+Haplotype list
+==============
+Haplotype id                  Haplotype definition
+------------                  --------------------
+   Hap_1                      AGAAACGATTTGCGCAGTTTTGGATTGTGTTTAACGGGGTTTGGCGTGTTAGTCGGTATTTGAAACTCATACAGTTGCTTCATGTTTACCATACCCAACATCTTGGTTCGGAG
+   Hap_2                      AGAAATGATTTGCGCGGTTTTGGATTGTGTTTAACGGGGTTTGGTGTGTTAGTCGGTATTTGAAACTCATACAGTTGCTTCATGTTTACCAAACCCGACATCTTGGTTCGGAG
+   Hap_3                      AGAAATGATTTGCGCAGTTTTGGATTGTGTTTAACGGGGTTTGGCGTGTTAGTCGGTATTTGAAACTCATACAGTTGCTTCATGTTTACCAAACCCAACATCTTGGTTCGGAG
+</data>
+<absHapFreq samp="whatever" time="...">
+---------------------------------------------------------------------------------------------
+      Haplotype:     AN     BU     KI
+                   (20)   (20)    (7)
+---------------------------------------------------------------------------------------------
+ Hap_1             1      0      0   
+ Hap_2             9      2      0   
+ Hap_3             1      0      0   
+</absHapFreq>
+</Arlequin>`;
+                textInput.value = example;
+                document.querySelector('input[name="inputMode"][value="text"]').checked = true;
+                switchInput();
+                parseContent(example);
+            }
+
+            function loadFromFile() {
+                const file = fileInput.files[0];
+                if (!file) {
+                    showMsg(msgTip, 'Please select a file.', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    textInput.value = e.target.result;
+                    parseContent(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = textInput.value.trim();
+                if (!text) {
+                    showMsg(msgTip, 'Please paste Arlequin output content.', 'error');
+                    return;
+                }
+                parseContent(text);
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fileInput.disabled = false;
+                    textInput.disabled = true;
+                    textInput.value = '';
+                } else {
+                    fileInput.disabled = true;
+                    fileInput.value = '';
+                    textInput.disabled = false;
+                }
+                clearAll();
+            };
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') loadFromFile();
+                else loadFromText();
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            copyResultBtn.addEventListener('click', copyResult);
+            downloadResultBtn.addEventListener('click', downloadResult);
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    textInput.value = ev.target.result;
+                    parseContent(ev.target.result);
+                };
+                reader.readAsText(file);
+            });
+
+            textInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            switchInput();
+            clearAll();
+        })();
+    </script>
+
+</body>
+</html>

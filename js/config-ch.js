@@ -53,6 +53,12 @@ const toolConfig = [
     link: "ch/015.Sequence_cleaner.html"
 },
 
+{
+    toolName: "FASTA序列提取/重命名",
+    toolDesc: "从FASTA文件中提取指定序列，可选择是否修改序列ID。",
+    link: "ch/018.Fasta_extract_rename.html"
+},
+
         ]
     },
     {
@@ -130,6 +136,36 @@ const toolConfig = [
 
         ]
     },
+    {
+        categoryName: "小工具",
+        categoryIcon: "🔧",
+        tools: [
+{
+    toolName: "DnaSP序列分组生成器",
+    toolDesc: "快速生成用于DnaSP序列分组的TaxSet语句，减少手动分组的工作量。",
+    link: "ch/017.TaxSet_generator.html"
+},
+
+{
+    toolName: "PopART导入文件生成器",
+    toolDesc: "从Arlequin输出文件（XML或纯文本）中提取单倍型序列和群体单倍型频数矩阵，生成NEXUS格式文件用于PopART绘制单倍型网络图。",
+    link: "ch/019.PopART_nexus_generator.html"
+},
+
+{
+    toolName: "SAMOVA地图预览",
+    toolDesc: "上传或粘贴SAMOVA生成的HTML文件或源码，即可预览采样点分组情况。",
+    link: "ch/020.Samova_geo_map.html"
+},
+
+{
+    toolName: "ARP与HAP文件合并工具",
+    toolDesc: "将DnaSP生成的ARP文件和HAP文件合并为单个ARP文件，可以用于导入SAMOVA软件。",
+    link: "ch/021.Arp_hap_merger.html"
+},
+        ]
+    },
+
     {
         categoryName: "其他",
         categoryIcon: "📋",

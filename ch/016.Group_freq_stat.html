@@ -99,7 +99,13 @@
     <div id="common-footer"></div>
 
     <script>
-        window.headerConfig = {};
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+            bilibiliUrl: 'https://www.bilibili.com/video/BV11E411q7nN',
+            bilibiliText: '当前工具使用教程视频',
+            githubText: 'GitHub项目',
+            returnHomeUrl: '../index.html'
+        };
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
@@ -296,49 +302,68 @@
 
                 const suffix = format === 'count' ? '' : '(%)';
                 headers = headers.concat(charSet.map(c => c + suffix));
+headers.push('其他' + suffix);
                 headers.push('总长度');
 
-                let totalLenAll = allMerged.length;
-                const totalCounts = {};
-                charSet.forEach(c => totalCounts[c] = 0);
-                for (const ch of allMerged) {
-                    const upper = ch.toUpperCase();
-                    if (totalCounts.hasOwnProperty(upper)) totalCounts[upper]++;
-                }
+const lettersAll = allMerged.match(/[A-Za-z]/g) || [];
+let totalLenAll = lettersAll.length;
+const totalCounts = {};
+charSet.forEach(c => totalCounts[c] = 0);
+let totalOtherCount = 0;
+for (const ch of lettersAll) {
+    const upper = ch.toUpperCase();
+    if (totalCounts.hasOwnProperty(upper)) {
+        totalCounts[upper]++;
+    } else {
+        totalOtherCount++;
+    }
+} 
+               
+for (const [group, seqs] of Object.entries(groups)) {
+    const merged = seqs.join('');
+    const letters = merged.match(/[A-Za-z]/g) || [];
+    const totalLen = letters.length;
+    const counts = {};
+    charSet.forEach(c => counts[c] = 0);
+    let otherCount = 0;
+    for (const ch of letters) {
+        const upper = ch.toUpperCase();
+        if (counts.hasOwnProperty(upper)) {
+            counts[upper]++;
+        } else {
+            otherCount++;
+        }
+    }
+    const row = [group];
+    if (format === 'count') {
+        charSet.forEach(c => row.push(counts[c] || 0));
+        row.push(otherCount);
+    } else {
+        charSet.forEach(c => {
+            const pct = totalLen > 0 ? ((counts[c] || 0) / totalLen * 100) : 0;
+            row.push(pct.toFixed(2));
+        });
+        const otherPct = totalLen > 0 ? (otherCount / totalLen * 100) : 0;
+        row.push(otherPct.toFixed(2));
+    }
+    row.push(totalLen);
+    resultRows.push(row);
+}
 
-                for (const [group, seqs] of Object.entries(groups)) {
-                    const merged = seqs.join('');
-                    const totalLen = merged.length;
-                    const counts = {};
-                    charSet.forEach(c => counts[c] = 0);
-                    for (const ch of merged) {
-                        const upper = ch.toUpperCase();
-                        if (counts.hasOwnProperty(upper)) counts[upper]++;
-                    }
-                    const row = [group];
-                    if (format === 'count') {
-                        charSet.forEach(c => row.push(counts[c] || 0));
-                    } else {
-                        charSet.forEach(c => {
-                            const pct = totalLen > 0 ? ((counts[c] || 0) / totalLen * 100) : 0;
-                            row.push(pct.toFixed(2));
-                        });
-                    }
-                    row.push(totalLen);
-                    resultRows.push(row);
-                }
-
-                const totalRow = ['汇总'];
-                if (format === 'count') {
-                    charSet.forEach(c => totalRow.push(totalCounts[c] || 0));
-                } else {
-                    charSet.forEach(c => {
-                        const pct = totalLenAll > 0 ? ((totalCounts[c] || 0) / totalLenAll * 100) : 0;
-                        totalRow.push(pct.toFixed(2));
-                    });
-                }
-                totalRow.push(totalLenAll);
-                resultRows.push(totalRow);
+const totalRow = ['汇总'];
+if (format === 'count') {
+    charSet.forEach(c => totalRow.push(totalCounts[c] || 0));
+    totalRow.push(totalOtherCount);
+} else {
+    charSet.forEach(c => {
+        const pct = totalLenAll > 0 ? ((totalCounts[c] || 0) / totalLenAll * 100) : 0;
+        totalRow.push(pct.toFixed(2));
+    });
+    const otherPctAll = totalLenAll > 0 ? (totalOtherCount / totalLenAll * 100) : 0;
+    totalRow.push(otherPctAll.toFixed(2));
+}
+totalRow.push(totalLenAll);
+resultRows.push(totalRow);
 
                 resultHead.innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
                 let tbody = '';

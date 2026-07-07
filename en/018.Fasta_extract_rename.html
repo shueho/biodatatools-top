@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FASTA Sequence Extractor & Renamer - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>FASTA Sequence Extractor & Renamer</h2>
+            <p>Extract specified sequences from a FASTA file, with optional sequence ID renaming.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import FASTA Sequences</div>
+
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">Upload FASTA File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">Paste FASTA Text</label>
+            </div>
+
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.txt,.fas">
+            </div>
+
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="Paste standard FASTA content (multiple sequences supported)" disabled></textarea>
+            </div>
+
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="loadBtn">Import Sequences</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Select Mode and Input Sequence ID List</div>
+
+            <div class="radio-box" style="margin-bottom:8px;">
+                <label><input type="radio" name="mode" value="extract" checked onchange="onModeChange()">Extract Only</label>
+                <label><input type="radio" name="mode" value="rename" onchange="onModeChange()">Extract and Rename</label>
+            </div>
+
+            <div id="modeHint" class="tip-text" style="color:#1f4068; margin-bottom:8px;">
+                Current mode: <strong>Extract Only</strong> — one sequence ID per line, extracts matching sequences from FASTA (keeps original IDs).
+            </div>
+
+            <div class="text-input">
+                <textarea id="idListText" placeholder="One sequence ID per line (Extract Only mode)"></textarea>
+            </div>
+
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                <button class="btn" id="extractBtn" disabled>Extract</button>
+                <span id="listStats" style="font-size:0.85rem; color:#6c757d; margin-left:4px;"></span>
+            </div>
+
+            <div id="extractTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Extraction Results</div>
+
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyResultBtn">Copy FASTA</button>
+                    <button class="btn" id="downloadResultBtn">Download FASTA</button>
+                </div>
+                <div class="result-item">
+                    <div class="seq-area" id="resultFastaBox" style="max-height:500px; overflow-y:auto; white-space:pre-wrap;"></div>
+                </div>
+            </div>
+
+            <div id="emptyResult" class="empty-tip">Results will appear here after extraction.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const idListText = document.getElementById('idListText');
+            const extractBtn = document.getElementById('extractBtn');
+            const extractTip = document.getElementById('extractTip');
+            const listStats = document.getElementById('listStats');
+            const modeHint = document.getElementById('modeHint');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultFastaBox = document.getElementById('resultFastaBox');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const downloadResultBtn = document.getElementById('downloadResultBtn');
+
+            let sequences = [];
+            let currentResult = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === extractTip) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ id: name, seq: seq });
+                        name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ id: name, seq: seq });
+                return seqs;
+            }
+
+            function getMode() {
+                return document.querySelector('input[name="mode"]:checked').value;
+            }
+
+            function isSingleColumn(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length === 0) return true;
+                for (const line of lines) {
+                    if (line.includes('\t')) return false;
+                }
+                return true;
+            }
+
+            function convertToTwoColumn(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                return lines.map(line => line.trim() + '\t' + line.trim()).join('\n');
+            }
+
+            function convertToSingleColumn(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                return lines.map(line => line.split(/\t/)[0].trim()).join('\n');
+            }
+
+            function onModeChange() {
+                const mode = getMode();
+                const currentText = idListText.value;
+
+                if (mode === 'extract') {
+                    if (!isSingleColumn(currentText) && currentText.trim() !== '') {
+                        const newText = convertToSingleColumn(currentText);
+                        idListText.value = newText;
+                        showMsg(extractTip, 'Converted to single-column format (keeping original IDs).', 'success');
+                    }
+                    modeHint.innerHTML = 'Current mode: <strong>Extract Only</strong> — one sequence ID per line, extracts matching sequences from FASTA (keeps original IDs).';
+                    idListText.placeholder = 'One sequence ID per line (Extract Only mode)';
+                } else {
+                    if (isSingleColumn(currentText) && currentText.trim() !== '') {
+                        const newText = convertToTwoColumn(currentText);
+                        idListText.value = newText;
+                        showMsg(extractTip, 'Converted to two-column format (original ID\tnew ID). Please edit the second column.', 'success');
+                    }
+                    modeHint.innerHTML = 'Current mode: <strong>Extract and Rename</strong> — two columns per line (tab-separated): <strong>original sequence ID</strong> (first column) and <strong>new sequence ID</strong> (second column). You can paste two columns directly from Excel.';
+                    idListText.placeholder = 'original ID\tnew ID\nseq1\tnew_name1\nseq2\tnew_name2';
+                }
+                updateListStats();
+                clearResults();
+            }
+
+            function updateListStats() {
+                const text = idListText.value.trim();
+                if (!text) {
+                    listStats.textContent = '';
+                    return;
+                }
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                listStats.textContent = `Total ${lines.length} lines`;
+            }
+
+            function clearResults() {
+                currentResult = '';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultFastaBox.textContent = '';
+            }
+
+            function doExtract() {
+                if (sequences.length === 0) {
+                    showMsg(extractTip, 'Please import FASTA sequences first.', 'error');
+                    return;
+                }
+
+                const text = idListText.value;
+                if (!text.trim()) {
+                    showMsg(extractTip, 'Please enter a list of sequence IDs.', 'error');
+                    return;
+                }
+
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length === 0) {
+                    showMsg(extractTip, 'The list is empty.', 'error');
+                    return;
+                }
+
+                const mode = getMode();
+                const seqMap = {};
+                sequences.forEach(s => { seqMap[s.id] = s.seq; });
+
+                let matched = [];
+
+                if (mode === 'extract') {
+                    for (const line of lines) {
+                        const id = line.trim();
+                        if (!id) continue;
+                        if (seqMap[id] !== undefined) {
+                            matched.push({ id: id, seq: seqMap[id] });
+                        }
+                    }
+                } else {
+                    for (const line of lines) {
+                        const parts = line.split(/\t/);
+                        if (parts.length < 2) continue;
+                        const oldId = parts[0].trim();
+                        const newId = parts.slice(1).join('\t').trim();
+                        if (!oldId || !newId) continue;
+                        if (seqMap[oldId] !== undefined) {
+                            matched.push({ id: newId, seq: seqMap[oldId] });
+                        }
+                    }
+                }
+
+                if (matched.length === 0) {
+                    showMsg(extractTip, '⚠️ No matching sequences found. Please check your list.', 'warn');
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+
+                let fasta = '';
+                matched.forEach(item => {
+                    fasta += '>' + item.id + '\n';
+                    fasta += item.seq + '\n';
+                });
+                currentResult = fasta;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                resultFastaBox.textContent = fasta;
+
+                showMsg(extractTip, `✅ Extraction completed, ${matched.length} sequences extracted.`, 'success');
+                toast(`Extraction completed, ${matched.length} sequences extracted.`);
+            }
+
+            function copyResult() {
+                if (!currentResult) {
+                    showMsg(extractTip, 'No content to copy.', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResult)
+                        .then(() => { showMsg(extractTip, 'FASTA content copied.', 'success'); toast('Copied'); })
+                        .catch(() => fallbackCopy(currentResult));
+                } else {
+                    fallbackCopy(currentResult);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(extractTip, 'FASTA content copied.', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(extractTip, 'Copy failed. Please copy manually.', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!currentResult) {
+                    showMsg(extractTip, 'No content to download.', 'error');
+                    return;
+                }
+                const blob = new Blob([currentResult], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'extracted_sequences.fasta';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(extractTip, 'Downloaded extracted_sequences.fasta', 'success');
+                toast('Downloaded');
+            }
+
+            function loadExample() {
+                const exampleFasta = `>seq1
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq2
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq3
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq4
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq5
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
+                const exampleList = `seq1\tnew_gene1
+seq2\tnew_gene2
+seq3\tnew_gene3
+seq4\tnew_gene4
+seq5\tnew_gene5`;
+
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                fastaFile.disabled = true;
+                fastaFile.value = '';
+                fastaText.disabled = false;
+                fastaText.value = exampleFasta;
+                idListText.value = exampleList;
+
+                const parsed = parseFasta(exampleFasta);
+                if (parsed.length > 0) {
+                    sequences = parsed;
+                    showMsg(msgTip, `✅ Example loaded successfully, ${sequences.length} sequences.`, 'success');
+                    toast('Example loaded');
+                    extractBtn.disabled = false;
+                    clearResults();
+                    updateListStats();
+                    const renameRadio = document.querySelector('input[name="mode"][value="rename"]');
+                    if (renameRadio) {
+                        renameRadio.checked = true;
+                        onModeChange();
+                    }
+                }
+            }
+
+            function loadFromFile() {
+                const file = fastaFile.files[0];
+                if (!file) { showMsg(msgTip, 'Please select a FASTA file.', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fastaText.value = e.target.result;
+                    const parsed = parseFasta(e.target.result);
+                    if (parsed.length === 0) { showMsg(msgTip, 'No valid FASTA sequences parsed.', 'error'); return; }
+                    sequences = parsed;
+                    showMsg(msgTip, `Successfully loaded ${sequences.length} sequences.`, 'success');
+                    toast(`Loaded ${sequences.length} sequences.`);
+                    extractBtn.disabled = false;
+                    clearResults();
+                    updateListStats();
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = fastaText.value.trim();
+                if (!text) { showMsg(msgTip, 'Please paste FASTA content.', 'error'); return; }
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) { showMsg(msgTip, 'No valid FASTA sequences parsed.', 'error'); return; }
+                sequences = parsed;
+                showMsg(msgTip, `Successfully loaded ${sequences.length} sequences.`, 'success');
+                toast(`Loaded ${sequences.length} sequences.`);
+                extractBtn.disabled = false;
+                clearResults();
+                updateListStats();
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                extractBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+                extractTip.innerHTML = '';
+                updateListStats();
+            };
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') loadFromFile();
+                else loadFromText();
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            extractBtn.addEventListener('click', doExtract);
+            copyResultBtn.addEventListener('click', copyResult);
+            downloadResultBtn.addEventListener('click', downloadResult);
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    const parsed = parseFasta(ev.target.result);
+                    if (parsed.length === 0) { showMsg(msgTip, 'No valid FASTA sequences parsed.', 'error'); return; }
+                    sequences = parsed;
+                    showMsg(msgTip, `✅ Read: ${file.name}, ${sequences.length} sequences.`, 'success');
+                    toast(`✅ File ${file.name} loaded successfully.`);
+                    extractBtn.disabled = false;
+                    clearResults();
+                    updateListStats();
+                };
+                reader.readAsText(file);
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            idListText.addEventListener('input', updateListStats);
+
+            sequences = [];
+            extractBtn.disabled = true;
+            clearResults();
+            msgTip.innerHTML = '';
+            extractTip.innerHTML = '';
+            idListText.value = '';
+            listStats.textContent = '';
+            document.querySelector('input[name="mode"][value="extract"]').checked = true;
+            onModeChange();
+
+            if (sequences.length > 0) extractBtn.disabled = false;
+
+            window.onModeChange = onModeChange;
+        })();
+    </script>
+
+</body>
+</html>

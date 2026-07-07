@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DnaSP序列分组生成器 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>DnaSP序列分组生成器</h2>
+            <p>快速生成用于DnaSP序列分组的TaxSet语句，减少手动分组的工作量。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入样本顺序</div>
+            <div style="margin-bottom:8px; font-weight:500;">粘贴样本列表（每行一个样本名）</div>
+            <div class="text-input" id="textInputWrap" style="display:block;">
+                <textarea id="sampleListInput" placeholder="每行一个样本名（可直接从DnaSP导出的.nex文件的TAXLABELS块中复制）。&#10;例如：&#10;AN01&#10;AN02&#10;AN03"></textarea>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;">
+                <button class="btn" id="loadSampleBtn">导入样本</button>
+                <button class="btn" id="loadExampleBtn">加载示例</button>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：定义分组</div>
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:6px;">
+                <span><strong>样本名 → 分组映射表</strong> <span class="tip-text" style="display:inline; margin-left:10px;" id="sampleCount">0 个样本</span></span>
+                <span style="font-size:0.85rem; color:#888;">（可复制到Excel修改第二列后粘贴回来，点击“生成TaxSet语句块”即可生成TaxSet语句块）</span>
+            </div>
+            <textarea id="mappingText" style="min-height:180px; font-family:Consolas,monospace; font-size:13px; line-height:1.6; width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; resize:vertical;" placeholder="加载样本后，此处显示两列（样本名\t分组名），默认分组名 = 样本名。"></textarea>
+
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;">
+                <button class="btn" id="copyMappingBtn">复制表格</button>
+                <button class="btn" id="applyMappingBtn">生成TaxSet语句块</button>
+                <button class="btn" id="clearAllBtn">清空所有</button>
+            </div>
+            <div id="applyTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：TaxSet语句块</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px;">
+                <span id="resultStats" style="font-size:0.9rem; color:#6c757d;"></span>
+                <span style="flex:1;"></span>
+                <button class="btn" id="copyResultBtn">复制结果</button>
+            </div>
+            <div class="result-item" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px 20px; font-family:Consolas,monospace; font-size:14px; line-height:1.8; white-space:pre-wrap; word-break:break-all; max-height:400px; overflow-y:auto; color:#6c757d;">
+                暂无数据，请先加载样本并生成TaxSet语句块。
+            </div>
+            <div id="resultTip" class="tip-text"></div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+           
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const sampleListInput = document.getElementById('sampleListInput');
+            const msgTip = document.getElementById('msgTip');
+            const loadSampleBtn = document.getElementById('loadSampleBtn');
+            const loadExampleBtn = document.getElementById('loadExampleBtn');
+            const mappingText = document.getElementById('mappingText');
+            const sampleCount = document.getElementById('sampleCount');
+            const copyMappingBtn = document.getElementById('copyMappingBtn');
+            const applyMappingBtn = document.getElementById('applyMappingBtn');
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            const applyTip = document.getElementById('applyTip');
+            const resultBox = document.querySelector('.result-item');
+            const resultStats = document.getElementById('resultStats');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let samples = [];
+            let groupMap = {};
+            let currentResult = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === applyTip || el === resultTip) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseSampleList(text) {
+                return text.split(/\r?\n/).map(s => s.trim()).filter(s => s.length > 0);
+            }
+
+            function updateMappingText() {
+                if (samples.length === 0) {
+                    mappingText.value = '';
+                    sampleCount.textContent = '0 个样本';
+                    return;
+                }
+                const lines = samples.map(name => {
+                    const group = groupMap[name] || name;
+                    return name + '\t' + group;
+                });
+                mappingText.value = lines.join('\n');
+                sampleCount.textContent = samples.length + ' 个样本';
+            }
+
+            function loadSamplesFromText(text) {
+                const list = parseSampleList(text);
+                if (list.length === 0) {
+                    showMsg(msgTip, '未检测到有效样本名', 'error');
+                    return;
+                }
+                samples = list;
+                groupMap = {};
+                samples.forEach(name => { groupMap[name] = name; });
+                updateMappingText();
+                showMsg(msgTip, `成功加载 ${samples.length} 个样本`, 'success');
+                toast(`已加载 ${samples.length} 个样本`);
+                resultBox.textContent = '请点击 "生成TaxSet语句块" 生成结果。';
+                resultStats.textContent = '';
+                currentResult = '';
+            }
+
+            function applyMapping() {
+                if (samples.length === 0) {
+                    showMsg(applyTip, '请先加载样本', 'error');
+                    return;
+                }
+
+                const text = mappingText.value.trim();
+                if (!text) {
+                    showMsg(applyTip, '映射表为空', 'error');
+                    return;
+                }
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                const newMap = {};
+                let ok = true;
+                for (const line of lines) {
+                    const parts = line.split(/\t/);
+                    if (parts.length < 2) {
+                        showMsg(applyTip, '某行格式错误，请确保每行包含"样本名\t分组名"', 'error');
+                        ok = false;
+                        break;
+                    }
+                    const name = parts[0].trim();
+                    const group = parts.slice(1).join('\t').trim() || name;
+                    if (!name) {
+                        showMsg(applyTip, '样本名不能为空', 'error');
+                        ok = false;
+                        break;
+                    }
+                    newMap[name] = group;
+                }
+                if (!ok) return;
+
+                const missing = samples.filter(n => !(n in newMap));
+                if (missing.length > 0) {
+                    showMsg(applyTip, '以下样本未在表中找到：' + missing.join(', '), 'error');
+                    return;
+                }
+                groupMap = newMap;
+                updateMappingText();
+
+                const groups = {};
+                for (let i = 0; i < samples.length; i++) {
+                    const name = samples[i];
+                    const g = groupMap[name] ? groupMap[name].trim() : '';
+                    if (g === '') continue;
+                    if (!groups[g]) groups[g] = [];
+                    groups[g].push(i + 1);
+                }
+
+                const groupNames = Object.keys(groups);
+                if (groupNames.length === 0) {
+                    resultBox.textContent = '请至少为一些样本指定非空分组名。';
+                    resultStats.textContent = '';
+                    currentResult = '';
+                    showMsg(applyTip, '没有有效的分组', 'error');
+                    return;
+                }
+
+                let linesOut = ['BEGIN SETS;'];
+                groupNames.sort();
+                for (const g of groupNames) {
+                    const indices = groups[g].sort((a, b) => a - b);
+                    const ranges = [];
+                    let start = indices[0],
+                        end = indices[0];
+                    for (let i = 1; i < indices.length; i++) {
+                        if (indices[i] === end + 1) {
+                            end = indices[i];
+                        } else {
+                            ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                            start = indices[i];
+                            end = indices[i];
+                        }
+                    }
+                    ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                    linesOut.push(`   TaxSet ${g} = ${ranges.join(' ')};`);
+                }
+                linesOut.push('END;');
+                currentResult = linesOut.join('\n');
+
+                resultBox.textContent = currentResult;
+                resultStats.textContent = `共 ${groupNames.length} 个分组，${samples.length} 个样本`;
+                showMsg(applyTip, '分组已应用，TaxSet 语句已生成', 'success');
+                toast('分组已应用');
+            }
+
+            function clearAll() {
+                if (samples.length === 0) {
+                    showMsg(applyTip, '没有数据可清空', 'error');
+                    return;
+                }
+                groupMap = {};
+                samples.forEach(name => { groupMap[name] = name; });
+                mappingText.value = '';
+                sampleCount.textContent = samples.length + ' 个样本';
+                resultBox.textContent = '请点击 "生成TaxSet语句块" 生成结果。';
+                resultStats.textContent = '';
+                currentResult = '';
+                applyTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                toast('已清空分组和结果');
+            }
+
+            function copyMapping() {
+                const text = mappingText.value;
+                if (!text) {
+                    showMsg(applyTip, '没有可复制的内容', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showMsg(applyTip, '已复制映射表', 'success');
+                        toast('已复制');
+                    }).catch(() => fallbackCopy(text, applyTip));
+                } else {
+                    fallbackCopy(text, applyTip);
+                }
+            }
+
+            function copyResult() {
+                if (!currentResult) {
+                    showMsg(resultTip, '没有内容可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResult).then(() => {
+                        showMsg(resultTip, '已复制结果', 'success');
+                        toast('已复制');
+                    }).catch(() => fallbackCopy(currentResult));
+                } else {
+                    fallbackCopy(currentResult);
+                }
+            }
+
+            function fallbackCopy(text, tipEl) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    const el = tipEl || resultTip;
+                    showMsg(el, '已复制到剪贴板', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    const el = tipEl || resultTip;
+                    showMsg(el, '复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            
+            const SHORT_EXAMPLE = 'S1\nS2\nS3\nS4\nS5\nS6\nS7\nS8\nS9\nS10';
+
+            loadSampleBtn.addEventListener('click', function() {
+    const text = sampleListInput.value;
+    if (!text.trim()) {
+        showMsg(msgTip, '请输入样本列表', 'error');
+        return;
+    }
+    loadSamplesFromText(text);
+});
+
+loadExampleBtn.addEventListener('click', function() {
+    sampleListInput.value = SHORT_EXAMPLE;
+    loadSamplesFromText(SHORT_EXAMPLE);
+});
+
+            applyMappingBtn.addEventListener('click', applyMapping);
+            copyMappingBtn.addEventListener('click', copyMapping);
+            clearAllBtn.addEventListener('click', clearAll);
+            copyResultBtn.addEventListener('click', copyResult);
+
+            mappingText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    applyMappingBtn.click();
+                }
+            });
+
+
+            resultBox.textContent = '暂无数据，请先加载样本并生成TaxSet语句块。';
+        })();
+    </script>
+</body>
+</html>

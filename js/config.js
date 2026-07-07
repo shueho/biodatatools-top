@@ -53,6 +53,12 @@ const toolConfig = [
     link: "en/015.Sequence_cleaner.html"
 },
 
+{
+    toolName: "FASTA Sequence Extractor & Renamer",
+    toolDesc: "Extract specified sequences from a FASTA file, with optional sequence ID renaming.",
+    link: "en/018.Fasta_extract_rename.html"
+},
+
         ]
     },
     {
@@ -127,6 +133,36 @@ const toolConfig = [
     link: "en/008.Visualize_gene_arrangement.html"
 },
 
+
+        ]
+    },
+    {
+        categoryName: "Gadget",
+        categoryIcon: "🔧",
+        tools: [
+{
+    toolName: "DnaSP Sequence Group Generator",
+    toolDesc: "Quickly generate TaxSet statements for sequence grouping in DnaSP, reducing the manual effort of grouping.",
+    link: "en/017.TaxSet_generator.html"
+},
+
+{
+    toolName: "PopART Import File Generator",
+    toolDesc: "Extract haplotype sequences and population haplotype frequency matrices from Arlequin output files (XML or plain text) and generate NEXUS format files for constructing haplotype networks in PopART.",
+    link: "en/019.PopART_nexus_generator.html"
+},
+
+{
+    toolName: "SAMOVA Map Preview",
+    toolDesc: "Upload or paste the SAMOVA-generated HTML file or source code to preview sampling site grouping.",
+    link: "en/020.Samova_geo_map.html"
+},
+
+{
+    toolName: "ARP & HAP Merger Tool",
+    toolDesc: "Merge DnaSP-generated ARP and HAP files into a single ARP file for import into SAMOVA.",
+    link: "en/021.Arp_hap_merger.html"
+},
 
         ]
     },
