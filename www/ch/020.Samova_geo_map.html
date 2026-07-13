@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAMOVA Map Preview - BioDataTools</title>
+    <title>SAMOVA地图预览 - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -25,16 +25,16 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>SAMOVA Map Preview</h2>
-            <p>Upload or paste the SAMOVA-generated HTML file or source code to preview sampling site grouping.</p>
+            <h2>SAMOVA地图预览</h2>
+            <p>上传或粘贴SAMOVA生成的HTML文件或源码，即可预览采样点分组情况。</p>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 1: Import SAMOVA Google Maps Data</div>
+            <div class="step-title">第一步：导入SAMOVA谷歌地图数据</div>
 
             <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">Upload File</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">Paste Text</label>
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">粘贴文本</label>
             </div>
 
             <div class="file-input" id="fileInputWrap">
@@ -42,30 +42,30 @@
             </div>
 
             <div class="text-input" id="textInputWrap">
-                <textarea id="textInput" placeholder="Paste the full SAMOVA2 result HTML source code here (containing google.maps.Marker definitions)" readonly></textarea>
+                <textarea id="textInput" placeholder="将 SAMOVA2 结果的 HTML 源码完整粘贴到这里（包含 google.maps.Marker 定义）" readonly></textarea>
             </div>
 
             <div id="msgTip" class="tip-text"></div>
 
             <div class="action-bar">
-                <button class="btn" id="parseBtn">Convert & Export</button>
-                <button class="btn" id="exampleBtn">Load Example</button>
+                <button class="btn" id="parseBtn">转换并导出</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
             </div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 2: Preview & Export</div>
+            <div class="step-title">第二步：预览与导出</div>
             <div id="mapInfo" style="display:none; margin-bottom:8px;">
-                <span class="stat-badge">Markers: <strong id="markerCount">0</strong></span>
-                <span class="stat-badge">Groups: <strong id="groupCount">0</strong></span>
+                <span class="stat-badge">标记数：<strong id="markerCount">0</strong></span>
+                <span class="stat-badge">分组数：<strong id="groupCount">0</strong></span>
             </div>
             <div id="map_canvas"></div>
             <div id="legendArea" style="display:none; margin-top:8px;">
-                <div class="legend-wrap" id="legendContainer"><span style="font-weight:500; color:#1f4068; margin-right:8px;">Legend:</span></div>
+                <div class="legend-wrap" id="legendContainer"><span style="font-weight:500; color:#1f4068; margin-right:8px;">图例：</span></div>
             </div>
-            <div id="emptyHint" class="empty-tip">Import data and click "Convert & Export"</div>
+            <div id="emptyHint" class="empty-tip">导入数据后点击「转换并导出」</div>
             <div class="result-toolbar">
-                <button class="btn" id="exportBtn" style="display:none;">Download Map HTML</button>
+                <button class="btn" id="exportBtn" style="display:none;">下载地图HTML文件</button>
                 <span id="exportTip" class="tip-text"></span>
             </div>
         </div>
@@ -74,13 +74,13 @@
     <div id="common-footer"></div>
     <script>
         window.headerConfig = {
-            //author: 'Author: Di Shang Fei Zhu',
+            //author: '作者：地上飞猪',
         };
     </script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/footer.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -116,7 +116,7 @@
             function parseContent(html) {
                 var result = { centerLng: null, centerLat: null, zoom: 3, markers: [], groups: new Set(), errors: [] };
                 var centerMatch = html.match(/center:\s*new\s+google\.maps\.LatLng\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
-                if (centerMatch) { result.centerLng = parseFloat(centerMatch[1]); result.centerLat = parseFloat(centerMatch[2]); }
+                if (centerMatch) { result.centerLng = parseFloat(centerMatch[2]); result.centerLat = parseFloat(centerMatch[1]); }
                 var zoomMatch = html.match(/zoom:\s*(\d+)/);
                 if (zoomMatch) result.zoom = parseInt(zoomMatch[1]);
                 var markerRegex = /new\s+google\.maps\.Marker\s*\(\s*\{([^}]*)\}\s*\)/g;
@@ -125,14 +125,14 @@
                     var block = match[1];
                     var posMatch = block.match(/position:\s*new\s+google\.maps\.LatLng\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
                     if (!posMatch) continue;
-                    var lng = parseFloat(posMatch[1]), lat = parseFloat(posMatch[2]);
+                    var lng = parseFloat(posMatch[2]), lat = parseFloat(posMatch[1]);
                     if (isNaN(lng) || isNaN(lat)) continue;
                     var iconMatch = block.match(/icon:\s*(\w+)/);
                     var group = iconMatch ? iconMatch[1] : 'default';
                     result.markers.push({ lat: lat, lng: lng, group: group });
                     result.groups.add(group);
                 }
-                if (result.markers.length === 0) result.errors.push('No markers parsed');
+                if (result.markers.length === 0) result.errors.push('未解析到标记点');
                 return result;
             }
 
@@ -140,7 +140,7 @@
                 clearMap();
                 if (data.markers.length === 0) {
                     emptyHint.style.display = 'block'; mapInfo.style.display = 'none'; legendArea.style.display = 'none'; exportBtn.style.display = 'none';
-                    showMsg(msgTip, 'No markers found', 'error');
+                    showMsg(msgTip, '未找到标记点', 'error');
                     return false;
                 }
                 var clat = data.centerLat, clng = data.centerLng;
@@ -158,7 +158,7 @@
                     var color = getColor(m.group);
                     L.circleMarker([m.lat, m.lng], { radius: 7, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.85 })
                         .addTo(mapInstance)
-                        .bindPopup('<b>Location</b><br>Lat: ' + m.lat + '<br>Lng: ' + m.lng + '<br>Group: <strong>' + m.group + '</strong>');
+                        .bindPopup('<b>位置</b><br>纬度: ' + m.lat + '<br>经度: ' + m.lng + '<br>分组: <strong>' + m.group + '</strong>');
                     if (!groupMap.has(m.group)) groupMap.set(m.group, []);
                     groupMap.get(m.group).push(m);
                 });
@@ -170,15 +170,15 @@
                 emptyHint.style.display = 'none';
                 exportBtn.style.display = 'inline-block';
                 currentData = data;
-                if (data.errors.length > 0) showMsg(msgTip, 'Warning: ' + data.errors.join('; '), 'warn');
-                else showMsg(msgTip, 'Conversion successful! ' + data.markers.length + ' markers loaded', 'success');
+                if (data.errors.length > 0) showMsg(msgTip, '警告: ' + data.errors.join('; '), 'warn');
+                else showMsg(msgTip, '转换成功！共 ' + data.markers.length + ' 个标记点', 'success');
                 setTimeout(function() { if (mapInstance) mapInstance.invalidateSize(); }, 200);
                 return true;
             }
 
             function renderLegend(groupMap) {
-                legendContainer.innerHTML = '<span style="font-weight:500; color:#1f4068; margin-right:8px;">Legend:</span>';
-                if (groupMap.size === 0) { legendContainer.innerHTML += '<span style="color:#999;">No groups</span>'; return; }
+                legendContainer.innerHTML = '<span style="font-weight:500; color:#1f4068; margin-right:8px;">图例：</span>';
+                if (groupMap.size === 0) { legendContainer.innerHTML += '<span style="color:#999;">无分组</span>'; return; }
                 Array.from(groupMap.keys()).sort().forEach(function(g) {
                     var color = getColor(g);
                     var count = groupMap.get(g).length;
@@ -209,7 +209,7 @@
                     textInput.style.backgroundColor = '#f5f7fa';
                     textInput.style.cursor = 'default';
                     if (!textInput.value.trim()) {
-                        textInput.placeholder = 'File content will appear here (read-only)';
+                        textInput.placeholder = '上传文件后，内容将自动显示在此';
                     } else {
                         textInput.placeholder = '';
                     }
@@ -221,7 +221,7 @@
                     textInput.style.backgroundColor = '';
                     textInput.style.cursor = '';
                     if (!textInput.value.trim()) {
-                        textInput.placeholder = 'Paste the full SAMOVA2 result HTML source code here (containing google.maps.Marker definitions)';
+                        textInput.placeholder = '将 SAMOVA2 结果的 HTML 源码完整粘贴到这里（包含 google.maps.Marker 定义）';
                     } else {
                         textInput.placeholder = '';
                     }
@@ -238,7 +238,7 @@
                 reader.onload = function(ev) {
                     textInput.value = ev.target.result;
                     textInput.placeholder = '';
-                    msgTip.innerHTML = '<span class="success">Loaded: ' + file.name + ' (' + textInput.value.length + ' chars)</span>';
+                    msgTip.innerHTML = '<span class="success">已读取：' + file.name + '（' + textInput.value.length + ' 字符）</span>';
                 };
                 reader.readAsText(file);
                 this.value = '';
@@ -247,7 +247,7 @@
             function doConvert() {
                 var content = textInput.value;
                 if (!content.trim()) {
-                    showMsg(msgTip, 'Please import data first (upload file or paste text)', 'error');
+                    showMsg(msgTip, '请先导入数据（上传文件或粘贴文本）', 'error');
                     return;
                 }
                 var data = parseContent(content);
@@ -256,7 +256,7 @@
 
             function exportMap() {
                 if (!currentData || currentData.markers.length === 0) {
-                    showMsg(exportTip, 'No data to export, please convert first', 'error');
+                    showMsg(exportTip, '没有可导出的数据，请先转换', 'error');
                     return;
                 }
                 var d = currentData;
@@ -270,16 +270,16 @@
                 var zoom = d.zoom || 3;
                 var markerJs = markers.map(function(m) {
                     var color = getColor(m.group);
-                    return 'L.circleMarker([' + m.lat + ', ' + m.lng + '], {radius: 7, fillColor: "' + color + '", color: "#fff", weight: 2, fillOpacity: 0.85}).addTo(map).bindPopup("<b>Location</b><br>Lat: ' + m.lat + '<br>Lng: ' + m.lng + '<br>Group: <strong>' + m.group + '</strong>");';
+                    return 'L.circleMarker([' + m.lat + ', ' + m.lng + '], {radius: 7, fillColor: "' + color + '", color: "#fff", weight: 2, fillOpacity: 0.85}).addTo(map).bindPopup("<b>位置</b><br>纬度: ' + m.lat + '<br>经度: ' + m.lng + '<br>分组: <strong>' + m.group + '</strong>");';
                 }).join('\n');
-                var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>SAMOVA2 Map</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><style>body{margin:0;padding:0;}#map{width:100vw;height:100vh;}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script><script>var map=L.map("map").setView([' + clat + ',' + clng + '],' + zoom + ');L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{attribution:"Tiles &copy; Esri"}).addTo(map);' + markerJs + '<\/script></body></html>';
+                var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>SAMOVA2 地图</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /><style>body{margin:0;padding:0;}#map{width:100vw;height:100vh;}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script><script>var map=L.map("map").setView([' + clat + ',' + clng + '],' + zoom + ');L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{attribution:"Tiles &copy; Esri"}).addTo(map);' + markerJs + '<\/script></body></html>';
                 var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement('a');
                 a.href = url; a.download = 'SAMOVA2_map.html';
                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showMsg(exportTip, 'Export successful! Downloaded SAMOVA2_map.html', 'success');
+                showMsg(exportTip, '导出成功！已下载 SAMOVA2_map.html', 'success');
             }
 
             var EXAMPLE_HTML = '<!DOCTYPE html>\n<html>\n    <head>\n        <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />\n        <style type="text/css">\n            html { height: 100% }\n            body { height: 100%; margin: 0; padding: 0 }\n        </style>\n        <script type="text/javascript"\n            src="http://maps.googleapis.com/maps/api/js?key=AIzaSyD7-WIwhNGlOyJrqO3_SRMyUxtpiJVEKB0&sensor=true">\n        <\/script>\n        <script type="text/javascript">\n            function initialize() {\n                var mapOptions = {\n                    center: new google.maps.LatLng(125.937, 35.0888),\n                    zoom: 3,\n                    mapTypeId: google.maps.MapTypeId.SATELLITE\n                };\n                var map = new google.maps.Map(document.getElementById("map_canvas"),mapOptions);\n                var image1 = "images/blue.png";\n                var image2 = "images/green.png";\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(119.483, 34.75), icon: image1, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(129.75, 32.5833), icon: image1, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(120.364, 36.0432), icon: image1, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(122.16, 37.5318), icon: image1, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(126.539, 37.2022), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(126.461, 35.6152), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(129.85, 33.3667), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(129.783, 33.4), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(126.417, 36.3833), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(126.746, 34.3173), icon: image2, map: map });\n                var marker = new google.maps.Marker({ position: new google.maps.LatLng(127.75, 34.7833), icon: image2, map: map });\n            }\n        <\/script>\n    <\/head>\n    <body onload="initialize()">\n        <div id="map_canvas" style="width:100%; height:100%"><\/div>\n    <\/body>\n<\/html>';
@@ -289,7 +289,7 @@
                 if (radio) radio.checked = true;
                 switchInputMode();
                 textInput.value = EXAMPLE_HTML;
-                showMsg(msgTip, 'Example loaded, converting automatically...', 'success');
+                showMsg(msgTip, '示例已加载，自动转换中...', 'success');
                 doConvert();
             });
 

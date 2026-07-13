@@ -16,7 +16,7 @@
         const currentYear = new Date().getFullYear();
         const startYear = 2023;
         const yearText = currentYear > startYear ? `${startYear}-${currentYear}` : `${startYear}`;
-        const donateImgSrc = 'https://biodatatools.top/images/donate.png';
+        const donateImgSrc = 'https://www.biodatatools.top/images/donate.png';
 
         const footerHTML = `
         <footer>
@@ -43,12 +43,11 @@
                 .footer-block-title {
                     background: #4773AA;
                     padding: 1.2rem 0 0.8rem;
-                    //border-bottom: 1px solid #1a4670;
                     text-align: center;
                 }
                 .footer-block-title .title-text {
                     font-weight: 700;
-                    font-size: 1.1rem;
+                    font-size: 1.2rem;
                     color: #ffffff;
                     font-family: "Roboto", "Helvetica Neue", Arial, Tahoma;
                 }
@@ -56,7 +55,6 @@
                 .footer-block-icons {
                     background: #DBDBDB;
                     padding: 1.2rem 0;
-                    //border-bottom: 1px solid #c8c8c8;
                     text-align: center;
                 }
                 .footer-block-icons .icon-grid {
@@ -188,7 +186,6 @@
                     line-height: 1.8;
                 }
 
-
                 @media (max-width: 768px) {
                     .link-columns {
                         flex-wrap: wrap;
@@ -291,7 +288,7 @@
                     <div class="container">
                         <div class="link-columns">
                             <div class="link-column left-col">
-                                <h4>联系作者</h4>
+                                <h4>Contact</h4>
                                 <ul>
                                     <li><a href="mailto:studid@163.com">studid@163.com</a></li>
                                     <li><a href="mailto:xshueho@gmail.com">xshueho@gmail.com</a></li>
@@ -300,25 +297,25 @@
 
                             <div class="link-column center-col">
                                 <span class="donate-title">
-                                    赞赏支持
+                                    Donate
                                     <span class="donate-tip">
-                                        <img src="${donateImgSrc}" alt="捐赠二维码">
+                                        <img src="${donateImgSrc}" alt="Donation QR Code">
                                     </span>
                                 </span>
                             </div>
 
                             <div class="link-column right-col">
-                                <h4>建议引用格式（二选一）</h4>
+                                <h4>Suggested Citation (Choose one)</h4>
                                 <ul>
-                                    <li>使用了 <a href="https://www.biodatatools.top" target="_blank">BioDataTools（https://www.biodatatools.top）</a> 进行XXX分析；</li>
-                                    <li>使用了 <a href="https://github.com/shueho/BioDataTools" target="_blank">BioDataTools（https://github.com/shueho/BioDataTools）</a> 进行XXX分析。</li>
+                                    <li>Used <a href="https://www.biodatatools.cn" target="_blank">BioDataTools (https://www.biodatatools.cn)</a> for XXX analysis;</li>
+                                    <li>Used <a href="https://www.biodatatools.top" target="_blank">BioDataTools (https://www.biodatatools.top)</a> for XXX analysis.</li>
                                 </ul>
                             </div>
                         </div>
 
                         <div class="footer-bottom">
-                            <p>BioDataTools &copy; ${yearText} 地上飞猪</p>
-                            <p>参考文献：薛浩, 大石鸡（<em>Alectoris magna</em>）基因组结构与比较基因组分析[D]. 烟台: 烟台大学, 2024.</p>
+                            <p>BioDataTools &copy; ${yearText} Di Shang Fei Zhu (Hao Xue)</p>
+                            <p>Reference: Xue H. <em>Genome structure and comparative genomic analysis of the Przewalski's partridge (Alectoris magna)</em> [D]. Yantai University, 2024.</p>
                         </div>
                     </div>
                 </div>
