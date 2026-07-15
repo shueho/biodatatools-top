@@ -3,12 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>地上飞猪个人博客 - BioDataTools</title>
+    <meta name="description" content="Blog - 地上飞猪个人博客">
+    <meta property="og:title" content="Blog - BioDataTools">
+    <meta property="og:description" content="地上飞猪个人博客，发布生物信息学分析方法。">
+    <meta property="og:image" content="https://www.biodatatools.top/images/logo.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:url" content="https://www.biodatatools.top/blog/home.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="BioDataTools">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <title>Blog - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="css/blog.css">
+
 </head>
 <body>
 
-    <div id="common-header"></div>
+<header>
+        <div class="header-wrap">
+            <div class="header-left">
+                <img src="../images/logo.png" alt="BioDataTools Logo" class="header-logo">
+                <div class="site-title">
+                    <h1>BioStatPlot</h1>
+                    <div class="author" id="authorText">作者：地上飞猪</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <a href="https://space.bilibili.com/33053326" target="_blank" class="bilibili-link" id="bilibiliText">前往B站主页</a>
+                <a href="https://github.com/shueho/BioDataTools" target="_blank" class="github-link" id="githubText">GitHub项目</a>
+                <a href="../index-ch.html" class="back-home" id="backHomeText">返回BioDataTools</a>
+            </div>
+        </div>
+    </header>
 
     <div class="main">
         <div class="page-intro">
@@ -73,14 +101,13 @@
 
     <!-- 引入公共组件（页眉、页脚、工具函数） -->
     <script src="../COMMON/utils.js"></script>
-    <script src="../COMMON/header.js"></script>
-    <script src="./js/footer.js"></script>
+    <script src="../COMMON/footer.js"></script>
 
     <!-- 博客业务逻辑 -->
     <script>
         async function loadArticleList() {
     try {
-        const res = await fetch('https://biodatatools.top/blog/list.txt');
+        const res = await fetch('https://www.biodatatools.top/blog/list.txt');
         if (!res.ok) throw new Error('文件请求失败');
         const raw = await res.text();
         const lines = raw.split(/\r?\n/)
@@ -159,7 +186,7 @@
 
         async function loadNotice() {
             try {
-                const res = await fetch('https://biodatatools.top/blog/notice.txt');
+                const res = await fetch('https://www.biodatatools.top/blog/notice.txt');
                 const text = await res.text();
                 document.getElementById('noticeBoard').innerHTML = `<p class="author-desc">${text.replace(/\n/g, '<br>')}</p>`;
             } catch (e) {
