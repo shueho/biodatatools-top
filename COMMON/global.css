@@ -791,3 +791,13 @@ svg text {
     transform: scale(0.97);
     box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
 }
+
+.info-box {
+            background: #f0f7ff;
+            border-left: 4px solid #1f4068;
+            padding: 10px 14px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #1f4068;
+            margin: 6px 0 12px;
+        }

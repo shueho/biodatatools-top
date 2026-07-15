@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wide/Long Table Reshaper - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+
+    <style>
+        .col-check-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 18px;
+            padding: 10px 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 8px 0 12px;
+        }
+        .col-check-grid label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 400;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .col-check-grid label:hover {
+            background: #eef2f7;
+        }
+        .direction-group {
+            display: flex;
+            gap: 20px;
+            margin: 6px 0 12px;
+            flex-wrap: wrap;
+        }
+        .direction-group label {
+            font-weight: 500;
+            cursor: pointer;
+            padding: 4px 14px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            transition: 0.2s;
+        }
+        .direction-group label:hover {
+            border-color: #1f4068;
+            background: #eef2f7;
+        }
+        .direction-group label:has(input:checked) {
+            background: #1f4068;
+            color: #fff;
+            border-color: #1f4068;
+        }
+        .direction-group label input {
+            margin-right: 4px;
+        }
+
+        .inline-tip {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-left: 6px;
+        }
+        .empty-hint {
+            color: #999;
+            text-align: center;
+            padding: 20px 0;
+            font-style: italic;
+        }
+        .action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Wide/Long Table Reshaper</h2>
+            <p>Flexibly convert table data between wide format (multiple columns) and long format (variable-value pairs).</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Table Data</div>
+
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">Paste Text</label>
+            </div>
+
+            <div class="file-input">
+                <input type="file" id="fileInput" accept=".csv,.tsv,.txt,.tab">
+            </div>
+
+            <div class="text-input">
+                <textarea id="textInput" placeholder="Paste tabular data with column headers (first row as column names)"></textarea>
+            </div>
+
+            <div class="filter-box" style="margin:12px 0 6px;">
+                <label style="font-weight:500;">Delimiter:</label>
+                <label><input type="radio" name="delimiter" value="tab" checked>Tab</label>
+                <label><input type="radio" name="delimiter" value="space">Space</label>
+                <label><input type="radio" name="delimiter" value="comma">Comma</label>
+                <label><input type="radio" name="delimiter" value="custom">Custom</label>
+                <input type="text" id="customDelimiter" value="|" style="width:50px;padding:2px 4px;" disabled>
+                <span class="inline-tip">(first row as column names)</span>
+            </div>
+
+            <div class="action-bar">
+                <button class="btn" id="loadBtn">Import & Preview</button>
+                <button class="btn" id="exampleWideBtn">Wide Format Example</button>
+                <button class="btn" id="exampleLongBtn">Long Format Example</button>
+                <span id="loadMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+
+            <div id="previewArea" style="display:none; margin-top:14px;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; align-items:center;">
+                    <span style="font-weight:500;">Data Preview <span id="previewDim" class="inline-tip"></span></span>
+                    <span style="font-size:0.85rem; color:#6c757d;" id="previewInfo"></span>
+                </div>
+                <div class="table-container" id="previewTableWrap">
+                    <table id="previewTable">
+                        <thead id="previewHead"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:4px; font-size:0.8rem; color:#999;">
+                    Showing first 1000 rows; all data will be used for conversion
+                </div>
+            </div>
+            <div id="emptyPreview" class="empty-hint">Import data to preview</div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Conversion Settings</div>
+
+            <div class="direction-group">
+                <label><input type="radio" name="direction" value="wide2long" checked onchange="onDirectionChange()">Wide to Long</label>
+                <label><input type="radio" name="direction" value="long2wide" onchange="onDirectionChange()">Long to Wide</label>
+            </div>
+
+            <div id="panelWide2Long" class="mode-panel">
+                <div class="info-box">
+                    <strong>Wide to Long (Unpivot)</strong>: Collapse multiple variable columns into two columns (variable name + value). Unchecked columns will be kept as fixed identifier columns (e.g., Student ID, Name).<br>
+                    Example: <code>ID Name Math English</code> → <code>ID Name Subject Score</code>
+                </div>
+                <div style="margin:8px 0 4px; font-weight:500;">Select columns to convert (unchecked columns will be kept as fixed identifiers):</div>
+                <div id="colCheckList" class="col-check-grid">
+                    <span class="empty-hint" style="padding:4px 0;">Please import data first</span>
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin:4px 0 8px;">
+                    <button class="btn btn-sm" id="checkAllBtn">Select All</button>
+                    <button class="btn btn-sm" id="uncheckAllBtn">Deselect All</button>
+                    <button class="btn btn-sm" id="invertCheckBtn">Invert Selection</button>
+                    <span class="inline-tip" id="selectedCount">0 columns selected</span>
+                </div>
+                <button class="btn" id="execWide2LongBtn" disabled>Convert</button>
+                <span id="w2lMsg" class="tip-text" style="margin-left:12px;"></span>
+            </div>
+
+            <div id="panelLong2Wide" class="mode-panel" style="display:none;">
+                <div class="info-box">
+                    <strong>Long to Wide (Pivot)</strong>: Expand unique values from the variable column into multiple columns. Identifier columns remain unchanged (e.g., Student ID, Name). Only the variable name column and value column are transformed.<br>
+                    Example: <code>ID Name Subject Score</code> → <code>ID Name Math English</code>
+                </div>
+                <div style="margin:8px 0 4px; font-weight:500;">Select identifier columns (these columns will not be affected by the conversion):</div>
+                <div id="idColCheckList" class="col-check-grid">
+                    <span class="empty-hint" style="padding:4px 0;">Please import data first</span>
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin:4px 0 8px;">
+                    <button class="btn btn-sm" id="idCheckAllBtn">Select All</button>
+                    <button class="btn btn-sm" id="idUncheckAllBtn">Deselect All</button>
+                    <button class="btn btn-sm" id="idInvertCheckBtn">Invert Selection</button>
+                    <span class="inline-tip" id="idSelectedCount">0 columns selected</span>
+                </div>
+                <div class="filter-box" style="margin:8px 0;">
+                    <label>Variable name column (values will become new column names):
+                        <select id="varColSelect" style="min-width:120px;"></select>
+                    </label>
+                    <label>Value column:
+                        <select id="valColSelect" style="min-width:120px;"></select>
+                    </label>
+                </div>
+                <button class="btn" id="execLong2WideBtn" disabled>Convert</button>
+                <span id="l2wMsg" class="tip-text" style="margin-left:12px;"></span>
+            </div>
+
+            <div id="convertMsg" class="tip-text" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Conversion Result</div>
+
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyResultBtn">Copy Result</button>
+                    <button class="btn" id="exportCsvBtn">Export CSV</button>
+                    <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+                </div>
+                <div class="table-container" id="resultTableWrap">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-hint">Result will appear here after conversion</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+          
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('fileInput');
+            const textInput = document.getElementById('textInput');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleWideBtn = document.getElementById('exampleWideBtn');
+            const exampleLongBtn = document.getElementById('exampleLongBtn');
+            const loadMsg = document.getElementById('loadMsg');
+
+            const previewArea = document.getElementById('previewArea');
+            const emptyPreview = document.getElementById('emptyPreview');
+            const previewHead = document.getElementById('previewHead');
+            const previewBody = document.getElementById('previewBody');
+            const previewDim = document.getElementById('previewDim');
+            const previewInfo = document.getElementById('previewInfo');
+
+            const colCheckList = document.getElementById('colCheckList');
+            const checkAllBtn = document.getElementById('checkAllBtn');
+            const uncheckAllBtn = document.getElementById('uncheckAllBtn');
+            const invertCheckBtn = document.getElementById('invertCheckBtn');
+            const selectedCount = document.getElementById('selectedCount');
+            const execWide2LongBtn = document.getElementById('execWide2LongBtn');
+            const w2lMsg = document.getElementById('w2lMsg');
+
+            const idColCheckList = document.getElementById('idColCheckList');
+            const idCheckAllBtn = document.getElementById('idCheckAllBtn');
+            const idUncheckAllBtn = document.getElementById('idUncheckAllBtn');
+            const idInvertCheckBtn = document.getElementById('idInvertCheckBtn');
+            const idSelectedCount = document.getElementById('idSelectedCount');
+            const varColSelect = document.getElementById('varColSelect');
+            const valColSelect = document.getElementById('valColSelect');
+            const execLong2WideBtn = document.getElementById('execLong2WideBtn');
+            const l2wMsg = document.getElementById('l2wMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            const resultMsg = document.getElementById('resultMsg');
+            const convertMsg = document.getElementById('convertMsg');
+
+            let rawData = [];
+            let headers = [];
+            let currentResult = [];
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === loadMsg || el === w2lMsg || el === l2wMsg || el === resultMsg || el === convertMsg) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 6000);
+                }
+            }
+            function toast(msg) { if (window.showToast) window.showToast(msg); }
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m));
+            }
+
+            function getDelimiter() {
+                const radios = document.querySelectorAll('input[name="delimiter"]');
+                let val = 'tab';
+                for (const r of radios) if (r.checked) { val = r.value; break; }
+                if (val === 'custom') return document.getElementById('customDelimiter').value || '\t';
+                if (val === 'tab') return '\t';
+                if (val === 'space') return ' ';
+                if (val === 'comma') return ',';
+                return '\t';
+            }
+            document.querySelectorAll('input[name="delimiter"]').forEach(r => {
+                r.addEventListener('change', function() {
+                    document.getElementById('customDelimiter').disabled = (this.value !== 'custom');
+                    if (rawData.length > 0 && textInput.value.trim()) loadData(textInput.value);
+                });
+            });
+            document.getElementById('customDelimiter').addEventListener('input', function() {
+                if (document.querySelector('input[name="delimiter"][value="custom"]').checked) {
+                    if (rawData.length > 0 && textInput.value.trim()) loadData(textInput.value);
+                }
+            });
+
+            function parseTable(text, delimiter) {
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length === 0) return null;
+                return lines.map(line => line.split(delimiter).map(cell => cell.trim()));
+            }
+            function loadData(text) {
+                const delim = getDelimiter();
+                const rows = parseTable(text, delim);
+                if (!rows || rows.length < 2) {
+                    showMsg(loadMsg, '❌ Invalid data format: at least header + 1 data row required', 'error');
+                    return false;
+                }
+                rawData = rows;
+                headers = rows[0];
+                renderPreview();
+                updateColumnSelectors();
+                showMsg(loadMsg, `✅ Successfully loaded ${rows.length - 1} rows × ${headers.length} columns`, 'success');
+                toast(`Loaded ${rows.length - 1} rows`);
+                return true;
+            }
+
+            function renderPreview() {
+                if (!rawData || rawData.length < 2) {
+                    previewArea.style.display = 'none';
+                    emptyPreview.style.display = 'block';
+                    return;
+                }
+                previewArea.style.display = 'block';
+                emptyPreview.style.display = 'none';
+
+                const maxRows = Math.min(rawData.length, 1001);
+                const head = rawData[0];
+                previewDim.textContent = `(${rawData.length - 1} rows × ${head.length} columns)`;
+                previewInfo.textContent = `Header: ${head.join(' | ')}`;
+
+                let thead = '<tr>';
+                for (const h of head) thead += `<th>${escapeHtml(h)}</th>`;
+                thead += '</tr>';
+                previewHead.innerHTML = thead;
+
+                let tbody = '';
+                for (let i = 1; i < maxRows; i++) {
+                    const row = rawData[i];
+                    if (!row) continue;
+                    tbody += '<tr>';
+                    for (let j = 0; j < head.length; j++) {
+                        const val = (j < row.length) ? row[j] : '';
+                        tbody += `<td>${escapeHtml(val)}</td>`;
+                    }
+                    tbody += '</tr>';
+                }
+                previewBody.innerHTML = tbody;
+            }
+
+            function updateColumnSelectors() {
+                if (!headers || headers.length === 0) return;
+
+                colCheckList.innerHTML = '';
+                headers.forEach((h, idx) => {
+                    const label = document.createElement('label');
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = idx;
+                    cb.checked = idx >= 2;
+                    cb.addEventListener('change', updateSelectedCount);
+                    label.appendChild(cb);
+                    label.appendChild(document.createTextNode(` ${escapeHtml(h)}`));
+                    colCheckList.appendChild(label);
+                });
+                updateSelectedCount();
+                execWide2LongBtn.disabled = false;
+
+                idColCheckList.innerHTML = '';
+                headers.forEach((h, idx) => {
+                    const label = document.createElement('label');
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = idx;
+                    cb.checked = idx < 2;
+                    cb.addEventListener('change', updateIdSelectedCount);
+                    label.appendChild(cb);
+                    label.appendChild(document.createTextNode(` ${escapeHtml(h)}`));
+                    idColCheckList.appendChild(label);
+                });
+                updateIdSelectedCount();
+
+                const populateSelect = (sel, placeholder) => {
+                    sel.innerHTML = '';
+                    const opt = document.createElement('option');
+                    opt.value = '';
+                    opt.textContent = `-- ${placeholder} --`;
+                    sel.appendChild(opt);
+                    headers.forEach((h, idx) => {
+                        const o = document.createElement('option');
+                        o.value = idx;
+                        o.textContent = `${idx}: ${h}`;
+                        sel.appendChild(o);
+                    });
+                };
+                populateSelect(varColSelect, 'Variable Column');
+                populateSelect(valColSelect, 'Value Column');
+                if (headers.length >= 2) {
+                    varColSelect.value = headers.length - 2;
+                    valColSelect.value = headers.length - 1;
+                }
+                execLong2WideBtn.disabled = false;
+            }
+
+            function updateSelectedCount() {
+                const checked = colCheckList.querySelectorAll('input[type="checkbox"]:checked');
+                selectedCount.textContent = `${checked.length} columns selected`;
+                if (checked.length === 0) selectedCount.textContent += ' ⚠️ Please select at least one column';
+            }
+            function updateIdSelectedCount() {
+                const checked = idColCheckList.querySelectorAll('input[type="checkbox"]:checked');
+                idSelectedCount.textContent = `${checked.length} columns selected`;
+                if (checked.length === 0) idSelectedCount.textContent += ' ⚠️ Please select at least one identifier column';
+            }
+
+            function wide2Long(idIndices, valueIndices) {
+                if (!rawData || rawData.length < 2) return null;
+                const dataRows = rawData.slice(1);
+                const head = rawData[0];
+                const idNames = idIndices.map(i => head[i]);
+                const resultHead = [...idNames, 'Variable', 'Value'];
+                const resultRows = [];
+                for (const row of dataRows) {
+                    for (const vi of valueIndices) {
+                        const idVals = idIndices.map(i => (i < row.length) ? row[i] : '');
+                        const val = (vi < row.length) ? row[vi] : '';
+                        resultRows.push([...idVals, head[vi], val]);
+                    }
+                }
+                return [resultHead, ...resultRows];
+            }
+
+            function long2Wide(idIndices, varIdx, valIdx) {
+                if (!rawData || rawData.length < 2) return null;
+                const head = rawData[0];
+                const dataRows = rawData.slice(1);
+                const idNames = idIndices.map(i => head[i]);
+
+                const varSet = new Set();
+                for (const row of dataRows) {
+                    const v = (varIdx < row.length) ? row[varIdx] : '';
+                    if (v !== '') varSet.add(v);
+                }
+                const varValues = Array.from(varSet).sort();
+                const resultHead = [...idNames, ...varValues];
+
+                const groups = new Map();
+                for (const row of dataRows) {
+                    const key = idIndices.map(i => (i < row.length) ? row[i] : '').join('|||');
+                    const varVal = (varIdx < row.length) ? row[varIdx] : '';
+                    const val = (valIdx < row.length) ? row[valIdx] : '';
+                    if (!groups.has(key)) {
+                        const idVals = idIndices.map(i => (i < row.length) ? row[i] : '');
+                        groups.set(key, { idVals, map: new Map() });
+                    }
+                    groups.get(key).map.set(varVal, val);
+                }
+
+                const resultRows = [];
+                for (const [key, group] of groups) {
+                    const row = [...group.idVals];
+                    for (const vv of varValues) row.push(group.map.get(vv) || '');
+                    resultRows.push(row);
+                }
+                return [resultHead, ...resultRows];
+            }
+
+            function doWide2Long() {
+                if (!rawData || rawData.length < 2) { showMsg(w2lMsg, '❌ Please import data first', 'error'); return; }
+                const checks = colCheckList.querySelectorAll('input[type="checkbox"]:checked');
+                if (checks.length === 0) { showMsg(w2lMsg, '❌ Please select at least one column to convert', 'error'); return; }
+                const valueIndices = [];
+                const allIndices = new Set();
+                colCheckList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    const idx = parseInt(cb.value);
+                    allIndices.add(idx);
+                    if (cb.checked) valueIndices.push(idx);
+                });
+                const idIndices = [];
+                for (const idx of allIndices) if (!valueIndices.includes(idx)) idIndices.push(idx);
+                if (idIndices.length === 0) { showMsg(w2lMsg, '❌ At least one identifier column must be kept', 'error'); return; }
+                const result = wide2Long(idIndices, valueIndices);
+                if (!result) { showMsg(w2lMsg, '❌ Conversion failed', 'error'); return; }
+                currentResult = result;
+                renderResult(result);
+                showMsg(w2lMsg, `✅ Wide to long complete! ${result.length - 1} rows × ${result[0].length} columns`, 'success');
+                toast('Wide to long complete');
+            }
+
+            function doLong2Wide() {
+                if (!rawData || rawData.length < 2) { showMsg(l2wMsg, '❌ Please import data first', 'error'); return; }
+                const idChecks = idColCheckList.querySelectorAll('input[type="checkbox"]:checked');
+                if (idChecks.length === 0) { showMsg(l2wMsg, '❌ Please select at least one identifier column', 'error'); return; }
+                const idIndices = [];
+                for (const cb of idChecks) idIndices.push(parseInt(cb.value));
+
+                const varIdx = parseInt(varColSelect.value);
+                const valIdx = parseInt(valColSelect.value);
+                if (isNaN(varIdx) || isNaN(valIdx) || varIdx < 0 || valIdx < 0) {
+                    showMsg(l2wMsg, '❌ Please select variable column and value column', 'error');
+                    return;
+                }
+                if (varIdx === valIdx) { showMsg(l2wMsg, '❌ Variable column and value column cannot be the same', 'error'); return; }
+                if (idIndices.includes(varIdx) || idIndices.includes(valIdx)) {
+                    showMsg(l2wMsg, '❌ Identifier, variable, and value columns cannot overlap', 'error');
+                    return;
+                }
+
+                const result = long2Wide(idIndices, varIdx, valIdx);
+                if (!result) { showMsg(l2wMsg, '❌ Conversion failed', 'error'); return; }
+                currentResult = result;
+                renderResult(result);
+                showMsg(l2wMsg, `✅ Long to wide complete! ${result.length - 1} rows × ${result[0].length} columns`, 'success');
+                toast('Long to wide complete');
+            }
+
+            function renderResult(result) {
+                if (!result || result.length < 2) {
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                const head = result[0];
+                const rows = result.slice(1);
+
+                let thead = '<tr>';
+                for (const h of head) thead += `<th>${escapeHtml(h)}</th>`;
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                let tbody = '';
+                const maxShow = Math.min(rows.length, 1000);
+                for (let i = 0; i < maxShow; i++) {
+                    const row = rows[i];
+                    tbody += '<tr>';
+                    for (let j = 0; j < head.length; j++) {
+                        const val = (j < row.length) ? row[j] : '';
+                        tbody += `<td>${escapeHtml(val)}</td>`;
+                    }
+                    tbody += '</tr>';
+                }
+                if (rows.length > 1000) {
+                    tbody += `<tr><td colspan="${head.length}" style="color:#999;text-align:center;">... ${rows.length - 1000} more rows</td></tr>`;
+                }
+                resultBody.innerHTML = tbody;
+
+                copyResultBtn.disabled = false;
+                exportCsvBtn.disabled = false;
+            }
+
+            function getResultText(delimiter) {
+                if (!currentResult || currentResult.length < 2) return '';
+                return currentResult.map(row => row.join(delimiter)).join('\n');
+            }
+            function copyResult() {
+                const text = getResultText('\t');
+                if (!text) { showMsg(resultMsg, '❌ No result to copy', 'error'); return; }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showMsg(resultMsg, '✅ Result copied', 'success');
+                        toast('Copied');
+                    }).catch(() => fallbackCopy(text));
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '✅ Result copied', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(resultMsg, '❌ Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+            function exportFile(delimiter, ext, label) {
+                const text = getResultText(delimiter);
+                if (!text) { showMsg(resultMsg, '❌ No result to export', 'error'); return; }
+                const blob = new Blob(['\uFEFF' + text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `reshaped_table.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, `✅ ${label} file exported`, 'success');
+                toast(`Exported ${label}`);
+            }
+
+            window.switchInputMode = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fileInput.disabled = false;
+                    textInput.disabled = true;
+                    textInput.readOnly = true;
+                    textInput.style.backgroundColor = '#f5f7fa';
+                    textInput.style.cursor = 'default';
+                } else {
+                    fileInput.disabled = true;
+                    fileInput.value = '';
+                    textInput.disabled = false;
+                    textInput.readOnly = false;
+                    textInput.style.backgroundColor = '';
+                    textInput.style.cursor = '';
+                }
+                rawData = [];
+                headers = [];
+                currentResult = [];
+                previewArea.style.display = 'none';
+                emptyPreview.style.display = 'block';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                loadMsg.innerHTML = '';
+                w2lMsg.innerHTML = '';
+                l2wMsg.innerHTML = '';
+                resultMsg.innerHTML = '';
+                convertMsg.innerHTML = '';
+                colCheckList.innerHTML = '<span class="empty-hint" style="padding:4px 0;">Please import data first</span>';
+                idColCheckList.innerHTML = '<span class="empty-hint" style="padding:4px 0;">Please import data first</span>';
+                execWide2LongBtn.disabled = true;
+                execLong2WideBtn.disabled = true;
+            };
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    textInput.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fileInput.files || fileInput.files.length === 0) {
+                        if (textInput.value.trim()) { loadData(textInput.value); return; }
+                        showMsg(loadMsg, '❌ Please select a file or paste data', 'error');
+                        return;
+                    }
+                } else {
+                    const text = textInput.value.trim();
+                    if (!text) { showMsg(loadMsg, '❌ Please paste table data', 'error'); return; }
+                    loadData(text);
+                }
+            });
+
+            function loadWideExample() {
+                const example =
+                    'ID\tName\tMath\tEnglish\tPhysics\tChemistry\n1\tZhang San\t90\t85\t88\t92\t78\n2\tLi Si\t92\t87\t90\t85\t82\n3\tWang Wu\t78\t80\t85\t90\t88\n4\tZhao Liu\t85\t90\t82\t78\t85\n5\tSun Qi\t88\t92\t90\t85\t80';
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInputMode();
+                textInput.value = example;
+                loadData(example);
+                showMsg(loadMsg, '✅ Wide format example loaded (5 rows × 7 columns)', 'success');
+                toast('Wide format example loaded');
+            }
+
+            function loadLongExample() {
+                const example =
+                    'ID\tName\tSubject\tScore\n1\tZhang San\tMath\t90\n1\tZhang San\tEnglish\t85\n1\tZhang San\tPhysics\t88\n1\tZhang San\tChemistry\t92\n1\tZhang San\tBiology\t78\n2\tLi Si\tMath\t92\n2\tLi Si\tEnglish\t87\n2\tLi Si\tPhysics\t90\n2\tLi Si\tChemistry\t85\n2\tLi Si\tBiology\t82\n3\tWang Wu\tMath\t78\n3\tWang Wu\tEnglish\t80\n3\tWang Wu\tPhysics\t85\n3\tWang Wu\tChemistry\t90\n3\tWang Wu\tBiology\t88\n4\tZhao Liu\tMath\t85\n4\tZhao Liu\tEnglish\t90\n4\tZhao Liu\tPhysics\t82\n4\tZhao Liu\tChemistry\t78\n4\tZhao Liu\tBiology\t85\n5\tSun Qi\tMath\t88\n5\tSun Qi\tEnglish\t92\n5\tSun Qi\tPhysics\t90\n5\tSun Qi\tChemistry\t85\n5\tSun Qi\tBiology\t80';
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInputMode();
+                textInput.value = example;
+                loadData(example);
+                showMsg(loadMsg, '✅ Long format example loaded (25 rows × 4 columns)', 'success');
+                toast('Long format example loaded');
+            }
+
+            exampleWideBtn.addEventListener('click', loadWideExample);
+            exampleLongBtn.addEventListener('click', loadLongExample);
+
+            window.onDirectionChange = function() {
+                const isW2L = document.querySelector('input[name="direction"][value="wide2long"]').checked;
+                document.getElementById('panelWide2Long').style.display = isW2L ? 'block' : 'none';
+                document.getElementById('panelLong2Wide').style.display = isW2L ? 'none' : 'block';
+                currentResult = [];
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultMsg.innerHTML = '';
+                convertMsg.innerHTML = '';
+            };
+
+            checkAllBtn.addEventListener('click', function() {
+                colCheckList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+                updateSelectedCount();
+            });
+            uncheckAllBtn.addEventListener('click', function() {
+                colCheckList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                updateSelectedCount();
+            });
+            invertCheckBtn.addEventListener('click', function() {
+                colCheckList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = !cb.checked);
+                updateSelectedCount();
+            });
+            execWide2LongBtn.addEventListener('click', doWide2Long);
+
+            idCheckAllBtn.addEventListener('click', function() {
+                idColCheckList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+                updateIdSelectedCount();
+            });
+            idUncheckAllBtn.addEventListener('click', function() {
+                idColCheckList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                updateIdSelectedCount();
+            });
+            idInvertCheckBtn.addEventListener('click', function() {
+                idColCheckList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = !cb.checked);
+                updateIdSelectedCount();
+            });
+            execLong2WideBtn.addEventListener('click', doLong2Wide);
+
+            copyResultBtn.addEventListener('click', copyResult);
+            exportCsvBtn.addEventListener('click', function() { exportFile(',', 'csv', 'CSV'); });
+
+            textInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault();
+                    loadBtn.click(); }
+            });
+
+            switchInputMode();
+            resultArea.style.display = 'none';
+            emptyResult.style.display = 'block';
+            execWide2LongBtn.disabled = true;
+            execLong2WideBtn.disabled = true;
+            copyResultBtn.disabled = true;
+            exportCsvBtn.disabled = true;
+
+        })();
+    </script>
+
+</body>
+</html>

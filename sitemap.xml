@@ -4,7 +4,7 @@
   <!-- ========== 首页（根路径） ========== -->
   <url>
     <loc>https://www.biodatatools.top/</loc>
-    <lastmod>2026-07-11</lastmod>
+    <lastmod>2026-07-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -151,6 +151,12 @@
   <url>
     <loc>https://www.biodatatools.top/en/021.Arp_hap_merger.html</loc>
     <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/022.Wide_long_table_reshaping.html</loc>
+    <lastmod>2026-07-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -303,6 +309,12 @@
   <url>
     <loc>https://www.biodatatools.top/ch/021.Arp_hap_merger.html</loc>
     <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/022.Wide_long_table_reshaping.html</loc>
+    <lastmod>2026-07-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

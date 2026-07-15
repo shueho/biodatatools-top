@@ -163,6 +163,12 @@ const toolConfig = [
     toolDesc: "将DnaSP生成的ARP文件和HAP文件合并为单个ARP文件，可以用于导入SAMOVA软件。",
     link: "ch/021.Arp_hap_merger.html"
 },
+
+{
+    toolName: "宽表格与长表格数据互转工具",
+    toolDesc: "在宽格式（多列变量）与长格式（变量-值对）之间灵活转换表格数据。",
+    link: "ch/022.Wide_long_table_reshaping.html"
+},
         ]
     },
 

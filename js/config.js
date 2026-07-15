@@ -164,6 +164,12 @@ const toolConfig = [
     link: "en/021.Arp_hap_merger.html"
 },
 
+{
+    toolName: "Wide/Long Table Reshaper",
+    toolDesc: "Flexibly convert table data between wide format (multiple columns) and long format (variable-value pairs).",
+    link: "en/022.Wide_long_table_reshaping.html"
+},
+
         ]
     },
     {
