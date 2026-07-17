@@ -4,13 +4,17 @@
     { "title": "PopART v1.7", "desc": "PopART v1.7软件下载链接（Win）", "url": "https://shueho.github.io/software/popart_1.7.zip", "type": "download" },
     { "title": "PopART v1.7", "desc": "PopART v1.7软件下载链接（Mac OS）", "url": "https://shueho.github.io/software/popart_1.7.dmg_.zip", "type": "download" },
     { "title": "DnaSP v6.12.03", "desc": "DnaSP v6.12.03软件下载链接", "url": "https://www.ub.edu/dnasp/", "type": "link" },
-    { "title": "Arlequin v3.5.2.2", "desc": "Arlequin", "url": "https://cmpg.unibe.ch/software/arlequin35/Arl35Downloads.html", "type": "link" }
+    { "title": "Arlequin v3.5.2.2", "desc": "Arlequin", "url": "https://cmpg.unibe.ch/software/arlequin35/Arl35Downloads.html", "type": "link" },
+    { "title": "Arlequin v3.1.1", "desc": "Arlequin v3.1.1", "url": "https://shueho.github.io/software/arlequin31.zip", "type": "download" },
+    { "title": "Arlequin v3.1.1", "desc": "Arlequin v3.1.1", "url": "https://cmpg.unibe.ch/software/arlequin3/", "type": "link" }
   ],
   "en": [
     { "title": "DnaSP v6.12.01", "desc": "Download link for DnaSP v6.12.01", "url": "https://shueho.github.io/software/DnaSP_v6.zip", "type": "download" },
     { "title": "PopART v1.7", "desc": "Download link for PopART v1.7 (Win)", "url": "https://shueho.github.io/software/popart_1.7.zip", "type": "download" },
     { "title": "PopART v1.7", "desc": "Download link for PopART v1.7 (Mac OS)", "url": "https://shueho.github.io/software/popart_1.7.dmg_.zip", "type": "download" },
     { "title": "DnaSP v6.12.03", "desc": "Download link for DnaSP v6.12.03", "url": "https://www.ub.edu/dnasp/", "type": "link" },
-    { "title": "Arlequin v3.5.2.2", "desc": "Arlequin", "url": "https://cmpg.unibe.ch/software/arlequin35/Arl35Downloads.html", "type": "link" }
+    { "title": "Arlequin v3.5.2.2", "desc": "Arlequin", "url": "https://cmpg.unibe.ch/software/arlequin35/Arl35Downloads.html", "type": "link" },
+    { "title": "Arlequin v3.1.1", "desc": "Arlequin v3.1.1", "url": "https://shueho.github.io/software/arlequin31.zip", "type": "download" },
+    { "title": "Arlequin v3.1.1", "desc": "Arlequin v3.1.1", "url": "https://cmpg.unibe.ch/software/arlequin3/", "type": "link" }
   ]
 }
