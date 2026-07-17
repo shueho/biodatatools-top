@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triangular Matrix Reordering Tool - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+    <div id="common-header"></div>
+    <div class="main">
+        <div class="page-intro">
+            <h2>Triangular Matrix Reordering Tool</h2>
+            <p>Import a lower triangular matrix, reorder rows/columns or subset, generate new lower triangular matrix and long-format data.</p>
+        </div>
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Triangular Matrix</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">Paste Text</label>
+            </div>
+            <div class="file-input" id="fileInputWrap">
+                <input type="file" id="fileInput" accept=".csv,.tsv,.txt,.tab">
+            </div>
+            <div class="text-input" id="textInputWrap">
+                <textarea id="textInput" placeholder="Paste lower triangular matrix data (must include row and column names, consistent names, see example)" disabled></textarea>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="loadBtn">Import Data</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div class="info-box">
+                <strong>The first cell of the first row must contain a label (e.g., "ID" or "#"), do not leave blank, otherwise column names may shift.</strong> The example shows different row/column names for demonstration; in practice they are often identical.
+            </div>
+            <div id="previewArea" style="display:none; margin-top:12px;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+                    <span><strong>Data Preview</strong> <span id="previewDim" class="tip-text" style="display:inline;"></span></span>
+                </div>
+                <div class="table-container" id="previewTableWrap">
+                    <table id="previewTable"><tbody></tbody></table>
+                </div>
+            </div>
+            <div id="emptyPreview" class="empty-tip">Please import data</div>
+        </div>
+        <div class="step-card">
+            <div class="step-title">Step 2: Adjust Row/Column Order</div>
+            <p>Edit the order in the text box below (one per line). You can reorder or subset (delete rows to extract submatrix). Click "Apply Order" after modification.</p>
+            <textarea id="orderText" rows="10" style="width:100%; font-family:Consolas,monospace;"></textarea>
+            <div style="margin-top:8px;">
+                <button class="btn" id="applyOrderBtn" disabled>Apply Order</button>
+                <button class="btn" id="resetOrderBtn" disabled>Reset to Original</button>
+                <span id="orderMsg" class="tip-text"></span>
+            </div>
+        </div>
+        <div class="step-card">
+            <div class="step-title">Step 3: Output Results</div>
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyMatrixBtn">Copy New Matrix</button>
+                    <button class="btn" id="copyLongBtn">Copy Three-Column Table</button>
+                    <button class="btn" id="exportBtn">Export All</button>
+                    <span id="resultMsg" class="tip-text"></span>
+                </div>
+                <h4>New Matrix</h4>
+                <div class="table-container" id="newMatrixWrap">
+                    <table id="newMatrixTable"><tbody></tbody></table>
+                </div>
+                <h4>Three-Column Format (Row-Column-Value)</h4>
+                <div class="table-container" id="longTableWrap">
+                    <table id="longTable"><tbody></tbody></table>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Please import data and apply order first.</div>
+        </div>
+    </div>
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('fileInput');
+            const textInput = document.getElementById('textInput');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+            const previewArea = document.getElementById('previewArea');
+            const emptyPreview = document.getElementById('emptyPreview');
+            const previewTable = document.getElementById('previewTable');
+            const previewDim = document.getElementById('previewDim');
+            const orderText = document.getElementById('orderText');
+            const applyOrderBtn = document.getElementById('applyOrderBtn');
+            const resetOrderBtn = document.getElementById('resetOrderBtn');
+            const orderMsg = document.getElementById('orderMsg');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const newMatrixTable = document.getElementById('newMatrixTable');
+            const longTable = document.getElementById('longTable');
+            const copyMatrixBtn = document.getElementById('copyMatrixBtn');
+            const copyLongBtn = document.getElementById('copyLongBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let originalHeaders = []; 
+            let originalRowNames = []; 
+            let originalData = []; 
+            let currentOrder = []; 
+            let currentMatrixData = null; 
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function getDelimiter(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                if (lines.length === 0) return '\t';
+                const first = lines[0];
+                if (first.includes('\t')) return '\t';
+                if (first.includes(',')) return ',';
+                if (first.includes(' ')) return ' ';
+                return '\t';
+            }
+
+            function parseMatrix(text) {
+                const delim = getDelimiter(text);
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length < 2) return null;
+
+                const rows = lines.map(line => line.split(delim).map(cell => cell.trim()));
+
+                let maxCol = 0;
+                rows.forEach(row => { if (row.length > maxCol) maxCol = row.length; });
+                rows.forEach(row => { while (row.length < maxCol) row.push(''); });
+
+                const headers = rows[0].slice(1); 
+                const rowNames = [];
+                const data = [];
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    rowNames.push(row[0] || '');
+                    const values = row.slice(1);
+                    while (values.length < headers.length) values.push('');
+                    data.push(values);
+                }
+
+                if (data.length !== headers.length) {
+                    return null;
+                }
+
+                return { headers, rowNames, data };
+            }
+
+            function renderPreview(data) {
+                if (!data) {
+                    previewArea.style.display = 'none';
+                    emptyPreview.style.display = 'block';
+                    return;
+                }
+                previewArea.style.display = 'block';
+                emptyPreview.style.display = 'none';
+                const { headers, rowNames, data: matrix } = data;
+                previewDim.textContent = `（${matrix.length}×${matrix.length}）`;
+
+                let html = '<thead><tr><th></th>';
+                headers.forEach(h => html += `<th>${escapeHtml(h)}</th>`);
+                html += '</tr></thead><tbody>';
+                for (let i = 0; i < matrix.length; i++) {
+                    html += `<tr><td><strong>${escapeHtml(rowNames[i])}</strong></td>`;
+                    for (let j = 0; j < matrix[i].length; j++) {
+                        const val = matrix[i][j];
+                        const isLower = i >= j;
+                        const bgColor = isLower ? (val ? '#e3f2fd' : '#f0f4f8') : '#f5f5f5';
+                        const display = val || '';
+                        html += `<td style="background-color:${bgColor};">${escapeHtml(display)}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody>';
+                previewTable.innerHTML = html;
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[m] || m));
+            }
+
+            function loadData(text) {
+                const parsed = parseMatrix(text);
+                if (!parsed) {
+                    showMsg(msgTip, 'Parse failed. Please check format (square matrix, tab/comma separated).', 'error');
+                    return false;
+                }
+                originalHeaders = parsed.headers;
+                originalRowNames = parsed.rowNames;
+                originalData = parsed.data;
+
+                currentOrder = originalRowNames.slice();
+                orderText.value = currentOrder.join('\n');
+                applyOrderBtn.disabled = false;
+                resetOrderBtn.disabled = false;
+
+                renderPreview(parsed);
+                showMsg(msgTip, `✅ Loaded ${originalRowNames.length}×${originalRowNames.length} matrix`, 'success');
+                toast('Data loaded successfully');
+
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentMatrixData = null;
+                return true;
+            }
+
+            function applyOrder() {
+                const lines = orderText.value.split(/\r?\n/).filter(s => s.trim() !== '');
+                const newOrder = lines.map(s => s.trim());
+                const originalSet = new Set(originalRowNames);
+                const newSet = new Set(newOrder);
+
+                if (newSet.size !== newOrder.length) {
+                    showMsg(orderMsg, 'Duplicate items in list', 'error');
+                    return;
+                }
+                for (let name of newOrder) {
+                    if (!originalSet.has(name)) {
+                        showMsg(orderMsg, `Item "${name}" not in original matrix`, 'error');
+                        return;
+                    }
+                }
+
+                const pairMap = {};
+                const n = originalRowNames.length;
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j <= i; j++) { 
+                        const val = originalData[i][j];
+                        if (val !== undefined && val !== null && val !== '') {
+                            const key = [originalRowNames[i], originalRowNames[j]].sort().join('|');
+                            pairMap[key] = val;
+                        }
+                    }
+                }
+
+                const newData = [];
+                for (let i = 0; i < newOrder.length; i++) {
+                    newData[i] = [];
+                    const row = newOrder[i];
+                    for (let j = 0; j < newOrder.length; j++) {
+                        const col = newOrder[j];
+                        if (i >= j) { 
+                            const key = [row, col].sort().join('|');
+                            newData[i][j] = pairMap[key] || '';
+                        } else {
+                            newData[i][j] = ''; 
+                        }
+                    }
+                }
+
+                currentMatrixData = {
+                    headers: newOrder.slice(),
+                    rowNames: newOrder.slice(),
+                    data: newData
+                };
+
+                renderResults(currentMatrixData);
+                showMsg(orderMsg, '✅ Order applied', 'success');
+                toast('Order applied');
+            }
+
+            function renderResults(matrixData) {
+                const { headers, rowNames, data } = matrixData;
+                let html = '<thead><tr><th></th>';
+                headers.forEach(h => html += `<th>${escapeHtml(h)}</th>`);
+                html += '</tr></thead><tbody>';
+                for (let i = 0; i < data.length; i++) {
+                    html += `<tr><td><strong>${escapeHtml(rowNames[i])}</strong></td>`;
+                    for (let j = 0; j < data[i].length; j++) {
+                        const val = data[i][j];
+                        const isLower = i >= j;
+                        const bgColor = isLower ? (val ? '#e3f2fd' : '#f0f4f8') : '#f5f5f5';
+                        const display = val || '';
+                        html += `<td style="background-color:${bgColor};">${escapeHtml(display)}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody>';
+                newMatrixTable.innerHTML = html;
+
+                const longRows = [];
+                for (let i = 0; i < data.length; i++) {
+                    for (let j = 0; j < data[i].length; j++) {
+                        if (i >= j && data[i][j] && data[i][j] !== '') {
+                            longRows.push({ row: rowNames[i], col: headers[j], value: data[i][j] });
+                        }
+                    }
+                }
+                let longHtml = '<thead><tr><th>Row</th><th>Column</th><th>Value</th></tr></thead><tbody>';
+                longRows.forEach(item => {
+                    longHtml += `<tr><td>${escapeHtml(item.row)}</td><td>${escapeHtml(item.col)}</td><td>${escapeHtml(item.value)}</td></tr>`;
+                });
+                longHtml += '</tbody>';
+                longTable.innerHTML = longHtml;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                window._longRows = longRows;
+                window._matrixData = matrixData;
+            }
+
+            function resetOrder() {
+                if (originalRowNames.length === 0) {
+                    showMsg(orderMsg, 'No data', 'error');
+                    return;
+                }
+                currentOrder = originalRowNames.slice();
+                orderText.value = currentOrder.join('\n');
+                showMsg(orderMsg, 'Reset to original order', 'success');
+
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentMatrixData = null;
+            }
+
+            function copyMatrix() {
+                if (!currentMatrixData) {
+                    showMsg(resultMsg, 'No matrix to copy', 'error');
+                    return;
+                }
+                const text = matrixToText(currentMatrixData);
+                copyText(text);
+                showMsg(resultMsg, 'New matrix copied', 'success');
+            }
+
+            function copyLong() {
+                if (!window._longRows || window._longRows.length === 0) {
+                    showMsg(resultMsg, 'No long-format data', 'error');
+                    return;
+                }
+                let lines = ['Row\tColumn\tValue'];
+                window._longRows.forEach(item => {
+                    lines.push(`${item.row}\t${item.col}\t${item.value}`);
+                });
+                copyText(lines.join('\n'));
+                showMsg(resultMsg, 'Long-format copied', 'success');
+            }
+
+            function matrixToText(matrixData) {
+                const { headers, rowNames, data } = matrixData;
+                const delim = '\t';
+                let lines = [];
+                lines.push(['', ...headers].join(delim));
+                for (let i = 0; i < data.length; i++) {
+                    const row = [rowNames[i], ...data[i].map(v => v || '')];
+                    lines.push(row.join(delim));
+                }
+                return lines.join('\n');
+            }
+
+            function copyText(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => toast('Copied')).catch(() => fallbackCopy(text));
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); toast('Copied'); } catch (e) { toast('Copy failed'); }
+                document.body.removeChild(ta);
+            }
+
+            function exportAll() {
+                if (!currentMatrixData) {
+                    showMsg(resultMsg, 'No data to export', 'error');
+                    return;
+                }
+                const matrixText = matrixToText(currentMatrixData);
+                let longLines = ['Row\tColumn\tValue'];
+                (window._longRows || []).forEach(item => {
+                    longLines.push(`${item.row}\t${item.col}\t${item.value}`);
+                });
+                const longText = longLines.join('\n');
+                const content = `=== New Matrix ===\n${matrixText}\n\n=== Long Format ===\n${longText}`;
+                const blob = new Blob(['\uFEFF' + content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'reordered_matrix.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, 'File exported', 'success');
+                toast('Exported');
+            }
+
+            window.switchInputMode = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fileInput.disabled = false;
+                    textInput.disabled = true;
+                    textInput.readOnly = true;
+                    textInput.style.backgroundColor = '#f5f7fa';
+                } else {
+                    fileInput.disabled = true;
+                    fileInput.value = '';
+                    textInput.disabled = false;
+                    textInput.readOnly = false;
+                    textInput.style.backgroundColor = '';
+                }
+                originalHeaders = [];
+                originalRowNames = [];
+                originalData = [];
+                currentOrder = [];
+                currentMatrixData = null;
+                previewArea.style.display = 'none';
+                emptyPreview.style.display = 'block';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                msgTip.innerHTML = '';
+                orderMsg.innerHTML = '';
+                resultMsg.innerHTML = '';
+                orderText.value = '';
+                applyOrderBtn.disabled = true;
+                resetOrderBtn.disabled = true;
+            };
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    textInput.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fileInput.files || fileInput.files.length === 0) {
+                        if (textInput.value.trim()) {
+                            loadData(textInput.value);
+                            return;
+                        }
+                        showMsg(msgTip, 'Please select a file or paste data', 'error');
+                        return;
+                    }
+                } else {
+                    const text = textInput.value.trim();
+                    if (!text) {
+                        showMsg(msgTip, 'Please paste data', 'error');
+                        return;
+                    }
+                    loadData(text);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function() {
+                const example =
+`#\tA\tB\tC\tD\tE
+A\t1\t\t\t\t
+B\t5\t6\t\t\t
+C\t9\t10\t11\t\t
+D\t13\t14\t15\t16\t
+E\t17\t18\t19\t20\t21`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInputMode();
+                textInput.value = example;
+                loadData(example);
+            });
+
+            applyOrderBtn.addEventListener('click', applyOrder);
+            resetOrderBtn.addEventListener('click', resetOrder);
+            copyMatrixBtn.addEventListener('click', copyMatrix);
+            copyLongBtn.addEventListener('click', copyLong);
+            exportBtn.addEventListener('click', exportAll);
+
+            switchInputMode();
+            emptyPreview.style.display = 'block';
+            previewArea.style.display = 'none';
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+        })();
+    </script>
+</body>
+</html>

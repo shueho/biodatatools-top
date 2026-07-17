@@ -171,9 +171,21 @@ const toolConfig = [
 },
 
 {
-    toolName: "三角形矩阵合并与拆分工具",
+    toolName: "三角矩阵合并与拆分工具",
     toolDesc: "将完整方阵拆分为左下三角和右上三角矩阵，或将两个三角矩阵合并为完整方阵。",
     link: "ch/023.Triangular_matrix_tool.html"
+},
+
+{
+    toolName: "三角矩阵重排工具",
+    toolDesc: "导入左下三角矩阵，调整行/列顺序或选取子集，生成新的下三角矩阵及长格式数据。",
+    link: "ch/024.Triangular_matrix_reorder.html"
+},
+
+{
+    toolName: "经纬度格式互转工具",
+    toolDesc: "经纬度格式转换工具，支持度分秒(DMS)与十进制之间的相互转换。",
+    link: "ch/025.Geo_coordinate_converter.html"
 },
         ]
     },

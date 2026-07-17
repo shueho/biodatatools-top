@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>经纬度格式互转工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .inline-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+            align-items: center;
+            margin-top: 12px;
+            padding: 8px 0;
+        }
+        .inline-controls .btn { margin: 0; }
+        .inline-controls label {
+            font-weight: 400;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+        .table-input-hint {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 6px;
+        }
+
+        textarea:disabled {
+            background-color: #f5f7fa;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="common-header"></div>
+    <div class="main">
+        <div class="page-intro">
+            <h2>经纬度格式互转工具</h2>
+            <p>经纬度格式转换工具，支持度分秒(DMS)与十进制之间的相互转换。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：选择模式并导入数据</div>
+            <div class="inline-controls">
+                <label><input type="radio" name="direction" value="dms2dec" checked onchange="updateExampleHint()">度分秒转十进制</label>
+                <label><input type="radio" name="direction" value="dec2dms" onchange="updateExampleHint()">十进制转度分秒</label>
+                <button class="btn" id="loadExampleBtn">加载示例</button>
+            </div>
+            <div class="info-box" id="modeHint">
+                <strong>当前模式：</strong>度分秒转十进制。
+            </div>
+
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="text" checked onchange="switchInputMode()">粘贴文本</label>
+                <label><input type="radio" name="inputMode" value="file" onchange="switchInputMode()">上传文件</label>
+            </div>
+
+            <div class="file-input" id="fileInputWrap">
+                <input type="file" id="fileInput" accept=".csv,.tsv,.txt,.tab">
+            </div>
+
+            <div class="text-input" id="textInputWrap">
+                <div class="table-input-hint">每行两列：<strong>经度</strong>（第一列） <strong>纬度</strong>（第二列），制表符或逗号分隔。</div>
+                <textarea id="inputText" placeholder="116.4074	39.9042
+-74.0060	40.7128
+139.6917	35.6895
+151.2093	-33.8688"></textarea>
+            </div>
+
+            <div id="msgTip" class="tip-text"></div>
+
+            <button class="btn" id="convertBtn" style="margin-top:12px;">格式转换</button>
+            <div id="directionMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：转换结果</div>
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyResultBtn">复制结果</button>
+                    <button class="btn" id="exportCsvBtn">导出表格</button>
+                    <span id="resultMsg" class="tip-text"></span>
+                </div>
+                <div class="result-table-wrap" id="resultTableWrap">
+                    <table id="resultTable">
+                        <thead>
+                            <tr><th>#</th><th>原始经度</th><th>原始纬度</th><th>→</th><th>转换后经度</th><th>转换后纬度</th></tr>
+                        </thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    共 <span id="rowCount">0</span> 条记录。
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">请先输入数据并点击“格式转换”。</div>
+        </div>
+    </div>
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const inputText = document.getElementById('inputText');
+            const fileInput = document.getElementById('fileInput');
+            const fileInputWrap = document.getElementById('fileInputWrap');
+            const loadExampleBtn = document.getElementById('loadExampleBtn');
+            const convertBtn = document.getElementById('convertBtn');
+            const msgTip = document.getElementById('msgTip');
+            const directionMsg = document.getElementById('directionMsg');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            const resultMsg = document.getElementById('resultMsg');
+            const directionRadios = document.querySelectorAll('input[name="direction"]');
+            const modeHint = document.getElementById('modeHint');
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                setTimeout(() => {
+                    if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = '';
+                }, 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, m => {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+
+            const DECIMAL_EXAMPLE =
+`116.4074	39.9042
+-74.0060	40.7128
+139.6917	35.6895
+151.2093	-33.8688
+0.0	0.0
+-90.5678	-45.1234`;
+
+            const DMS_EXAMPLE =
+`116°24'26.64"E	39°54'15.12"N
+74°00'21.6"W	40°42'46.08"N
+139°41'30.0"E	35°41'22.2"N
+151°12'33.5"E	33°52'07.7"S
+0°0'0"E	0°0'0"N
+90°00'00"W	45°30'00"N`;
+
+            function getSelectedDirection() {
+                for (let radio of directionRadios) {
+                    if (radio.checked) return radio.value;
+                }
+                return 'dms2dec';
+            }
+
+            function updateExampleHint() {
+                let dir = getSelectedDirection();
+                if (dir === 'dec2dms') {
+                    modeHint.innerHTML = '<strong>当前模式：</strong>十进制转度分秒。转换后自动添加方向标记（经度 E/W，纬度 N/S）。';
+                } else {
+                    modeHint.innerHTML = '<strong>当前模式：</strong>度分秒转十进制。输出带符号的十进制数（负数表示南/西）。';
+                }
+            }
+
+function loadExample() {
+    const textRadio = document.querySelector('input[name="inputMode"][value="text"]');
+    if (textRadio) {
+        textRadio.checked = true;
+        switchInputMode(); // 更新界面状态（启用文本框，禁用文件输入）
+    }
+    let dir = getSelectedDirection();
+    if (dir === 'dec2dms') {
+        inputText.value = DECIMAL_EXAMPLE;
+        showMsg(msgTip, '已加载十进制格式示例。', 'info');
+    } else {
+        inputText.value = DMS_EXAMPLE;
+        showMsg(msgTip, '已加载度分秒格式示例。', 'info');
+    }
+    toast('示例已加载');
+}
+
+            window.switchInputMode = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fileInput.removeAttribute('disabled');
+                    fileInputWrap.classList.remove('disabled');
+                    inputText.setAttribute('disabled', 'disabled');
+                    inputText.style.backgroundColor = '#f5f7fa';
+                } else {
+                    fileInput.setAttribute('disabled', 'disabled');
+                    fileInputWrap.classList.add('disabled');
+                    fileInput.value = '';
+                    inputText.removeAttribute('disabled');
+                    inputText.style.backgroundColor = '';
+                }
+            };
+
+            function parseDMS(str) {
+                let s = str.trim();
+                let dir = null;
+                const dirMatch = s.match(/^([NSEWnsew])\s*|([NSEWnsew])\s*$/);
+                if (dirMatch) {
+                    dir = (dirMatch[1] || dirMatch[2]).toUpperCase();
+                    s = s.replace(/[NSEWnsew]/g, '').trim();
+                }
+                let patterns = [
+                    /^\s*([-+]?\d+(?:\.\d+)?)\s*[°度d]\s*([-+]?\d+(?:\.\d+)?)\s*['′]\s*([-+]?\d+(?:\.\d+)?)\s*["″]\s*$/,
+                    /^\s*([-+]?\d+(?:\.\d+)?)\s*[°度d]\s*([-+]?\d+(?:\.\d+)?)\s*['′]?\s*$/,
+                    /^\s*([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)\s*$/,
+                    /^\s*([-+]?\d+(?:\.\d+)?)\s+([-+]?\d+(?:\.\d+)?)\s*$/,
+                    /^\s*([-+]?\d+(?:\.\d+)?)\s*[-:]\s*([-+]?\d+(?:\.\d+)?)\s*[-:]\s*([-+]?\d+(?:\.\d+)?)\s*$/,
+                    /^\s*([-+]?\d+(?:\.\d+)?)\s*[-:]\s*([-+]?\d+(?:\.\d+)?)\s*$/
+                ];
+                let parts = null;
+                for (let regex of patterns) {
+                    const match = s.match(regex);
+                    if (match) {
+                        const nums = match.slice(1).map(Number);
+                        if (nums.length === 3) parts = { deg: nums[0], min: nums[1], sec: nums[2] };
+                        else if (nums.length === 2) parts = { deg: nums[0], min: nums[1], sec: 0 };
+                        break;
+                    }
+                }
+                if (parts) {
+                    let deg = parts.deg;
+                    let min = Math.abs(parts.min);
+                    let sec = Math.abs(parts.sec);
+                    if (deg < 0) { min = Math.abs(min); sec = Math.abs(sec); }
+                    else { if (parts.min < 0 || parts.sec < 0) { deg = -Math.abs(deg); min = Math.abs(parts.min); sec = Math.abs(parts.sec); } }
+                    return { degrees: deg, minutes: min, seconds: sec, direction: dir };
+                } else {
+                    const dec = parseFloat(s);
+                    if (!isNaN(dec)) return { decimal: dec, direction: dir };
+                    return null;
+                }
+            }
+
+            function dmsToDecimal(dmsObj) {
+                let deg = dmsObj.degrees;
+                let min = dmsObj.minutes;
+                let sec = dmsObj.seconds;
+                let val = Math.abs(deg) + min/60 + sec/3600;
+                if (deg < 0) val = -val;
+                return val;
+            }
+
+            function decimalToDMS(dec, coordType) {
+                let sign = dec < 0 ? -1 : 1;
+                let abs = Math.abs(dec);
+                let deg = Math.floor(abs);
+                let min = Math.floor((abs - deg) * 60);
+                let sec = ((abs - deg - min/60) * 3600);
+                sec = Math.round(sec * 1000) / 1000;
+                if (sec >= 60) { sec -= 60; min += 1; }
+                if (min >= 60) { min -= 60; deg += 1; }
+                let dmsStr = `${deg}°${String(min).padStart(2,'0')}′${sec.toFixed(2)}″`;
+                let dir = (coordType === 'lon') ? (sign > 0 ? 'E' : 'W') : (sign > 0 ? 'N' : 'S');
+                return dmsStr + dir;
+            }
+
+            function convertValue(val, direction, coordType) {
+                if (!val) return null;
+                let dmsObj = parseDMS(val);
+                if (!dmsObj) return null;
+                if (dmsObj.decimal !== undefined) {
+                    if (direction === 'dms2dec') return null;
+                    let dmsStr = decimalToDMS(dmsObj.decimal, coordType);
+                    if (dmsObj.direction) {
+                        let useDir = dmsObj.direction;
+                        if ((coordType === 'lon' && (useDir === 'E' || useDir === 'W')) ||
+                            (coordType === 'lat' && (useDir === 'N' || useDir === 'S'))) {
+                            dmsStr = dmsStr.slice(0, -1) + useDir;
+                        }
+                    }
+                    return dmsStr;
+                } else {
+                    if (direction === 'dec2dms') return null;
+                    let dec = dmsToDecimal(dmsObj);
+                    if (dmsObj.direction) {
+                        if (dmsObj.direction === 'S' || dmsObj.direction === 'W') dec = -Math.abs(dec);
+                        else dec = Math.abs(dec);
+                    }
+                    return dec.toFixed(6);
+                }
+            }
+
+            function performConversion() {
+                const text = inputText.value;
+                if (!text.trim()) { showMsg(msgTip, '请输入或粘贴数据', 'error'); return; }
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length === 0) { showMsg(msgTip, '没有有效数据行', 'error'); return; }
+
+                let direction = getSelectedDirection();
+                let results = [];
+                let validCount = 0;
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    let parts = line.split(/[\t,;]+/).map(s => s.trim()).filter(s => s);
+                    if (parts.length < 2) {
+                        if (!/[°′"']/.test(line)) {
+                            parts = line.split(/\s+/).filter(s => s);
+                        }
+                    }
+                    if (parts.length < 2) {
+                        results.push({ index: i+1, lon: parts[0]||'', lat: parts[1]||'', lonOut: '列数不足', latOut: '列数不足' });
+                        continue;
+                    }
+                    const lon = parts[0];
+                    const lat = parts[1];
+                    let lonOut = convertValue(lon, direction, 'lon');
+                    let latOut = convertValue(lat, direction, 'lat');
+                    if (lonOut === null) lonOut = '不匹配方向';
+                    if (latOut === null) latOut = '不匹配方向';
+                    if (lonOut !== '不匹配方向' && lonOut !== '列数不足' &&
+                        latOut !== '不匹配方向' && latOut !== '列数不足') validCount++;
+                    results.push({ index: i+1, lon, lat, lonOut, latOut });
+                }
+
+                renderResults(results);
+                showMsg(msgTip, `转换完成，共 ${results.length} 条，成功 ${validCount} 条`, 'success');
+                toast('转换完成');
+            }
+
+            function renderResults(results) {
+                if (results.length === 0) {
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                let html = '';
+                results.forEach(r => {
+                    const lonClass = (r.lonOut === '不匹配方向' || r.lonOut === '列数不足') ? '' : 'converted';
+                    const latClass = (r.latOut === '不匹配方向' || r.latOut === '列数不足') ? '' : 'converted';
+                    html += `<tr>
+                        <td>${r.index}</td>
+                        <td>${escapeHtml(r.lon)}</td>
+                        <td>${escapeHtml(r.lat)}</td>
+                        <td>→</td>
+                        <td class="${lonClass}">${escapeHtml(r.lonOut)}</td>
+                        <td class="${latClass}">${escapeHtml(r.latOut)}</td>
+                    </tr>`;
+                });
+                resultBody.innerHTML = html;
+                rowCount.textContent = results.length;
+                window._resultData = results;
+            }
+
+            function copyResult() {
+                if (!window._resultData || window._resultData.length === 0) {
+                    showMsg(resultMsg, '没有结果可复制', 'error');
+                    return;
+                }
+                let lines = ['#\t原始经度\t原始纬度\t转换后经度\t转换后纬度'];
+                window._resultData.forEach(r => {
+                    lines.push(`${r.index}\t${r.lon}\t${r.lat}\t${r.lonOut}\t${r.latOut}`);
+                });
+                const text = lines.join('\n');
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showMsg(resultMsg, '已复制', 'success');
+                        toast('已复制');
+                    }).catch(() => fallbackCopy(text));
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); toast('已复制'); } catch (e) { toast('复制失败'); }
+                document.body.removeChild(ta);
+            }
+
+            function exportCsv() {
+                if (!window._resultData || window._resultData.length === 0) {
+                    showMsg(resultMsg, '没有结果可导出', 'error');
+                    return;
+                }
+                let lines = ['序号,原始经度,原始纬度,转换后经度,转换后纬度'];
+                window._resultData.forEach(r => {
+                    lines.push(`"${r.index}","${r.lon}","${r.lat}","${r.lonOut}","${r.latOut}"`);
+                });
+                const content = '\uFEFF' + lines.join('\n');
+                const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'coordinate_conversion.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '已导出表格', 'success');
+                toast('已导出表格');
+            }
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    inputText.value = ev.target.result;
+                    showMsg(msgTip, `已读取文件：${file.name}`, 'success');
+                    toast('文件读取成功');
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            convertBtn.addEventListener('click', performConversion);
+            loadExampleBtn.addEventListener('click', loadExample);
+            copyResultBtn.addEventListener('click', copyResult);
+            exportCsvBtn.addEventListener('click', exportCsv);
+            directionRadios.forEach(r => r.addEventListener('change', updateExampleHint));
+
+            window.switchInputMode();
+            updateExampleHint();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+        })();
+    </script>
+</body>
+</html>

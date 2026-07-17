@@ -3,10 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>三角形矩阵合并与拆分工具 - BioDataTools</title>
+    <title>三角矩阵合并与拆分工具 - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../COMMON/global.css">
     <style>
+.matrix-table-wrap {
+    overflow-x: auto !important;   
+    overflow-y: auto;              
+}
+.matrix-table-wrap table {
+    white-space: nowrap !important; 
+    width: auto !important;         
+    min-width: 100% !important;     
+}
+.matrix-table-wrap th,
+.matrix-table-wrap td {
+    white-space: nowrap !important;
+}
         .matrix-table-wrap .row-header-col {
             background: #f7f9fc;
             font-weight: 500;
@@ -108,7 +121,7 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>三角形矩阵合并与拆分工具</h2>
+            <h2>三角矩阵合并与拆分工具</h2>
             <p>将完整方阵拆分为左下三角和右上三角矩阵，或将两个三角矩阵合并为完整方阵。</p>
         </div>
 

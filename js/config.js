@@ -176,6 +176,18 @@ const toolConfig = [
     link: "en/023.Triangular_matrix_tool.html"
 },
 
+{
+    toolName: "Triangular Matrix Reordering Tool",
+    toolDesc: "Import a lower triangular matrix, reorder rows/columns or subset, generate new lower triangular matrix and long-format data.",
+    link: "en/024.Triangular_matrix_reorder.html"
+},
+
+{
+    toolName: "Coordinate Format Converter",
+    toolDesc: "Convert between Decimal Degrees and Degrees/Minutes/Seconds (DMS) formats for geographic coordinates.",
+    link: "en/025.Geo_coordinate_converter.html"
+},
+
         ]
     },
     {

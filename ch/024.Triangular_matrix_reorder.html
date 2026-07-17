@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角矩阵重排工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+    <div id="common-header"></div>
+    <div class="main">
+        <div class="page-intro">
+            <h2>三角矩阵重排工具</h2>
+            <p>导入左下三角矩阵，调整行/列顺序或选取子集，生成新的下三角矩阵及长格式数据。</p>
+        </div>
+        <div class="step-card">
+            <div class="step-title">第一步：导入三角矩阵</div>
+            <div class="radio-box">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">粘贴文本</label>
+            </div>
+            <div class="file-input" id="fileInputWrap">
+                <input type="file" id="fileInput" accept=".csv,.tsv,.txt,.tab">
+            </div>
+            <div class="text-input" id="textInputWrap">
+                <textarea id="textInput" placeholder="粘贴左下三角矩阵数据（需要包括行名列名并且行、列名称一致，可参考示例数据）" disabled></textarea>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="loadBtn">导入数据</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+                <div class="info-box">
+                    <strong>第一行第一列必须填写标签（如“ID”或“#”），不可留空，否则导入时列名会错位。</strong> 示例中行列名不同仅为演示，实际使用的方阵中二者往往一致。
+                </div>
+            <div id="previewArea" style="display:none; margin-top:12px;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+                    <span><strong>数据预览</strong> <span id="previewDim" class="tip-text" style="display:inline;"></span></span>
+                </div>
+                <div class="table-container" id="previewTableWrap">
+                    <table id="previewTable"><tbody></tbody></table>
+                </div>
+            </div>
+            <div id="emptyPreview" class="empty-tip">请导入数据</div>
+        </div>
+        <div class="step-card">
+            <div class="step-title">第二步：调整行/列顺序</div>
+            <p>在下方文本框中编辑顺序（每行一个），可调整顺序或选取子集。修改后点击“应用顺序”。</p>
+            <textarea id="orderText" rows="10" style="width:100%; font-family:Consolas,monospace;"></textarea>
+            <div style="margin-top:8px;">
+                <button class="btn" id="applyOrderBtn" disabled>应用顺序</button>
+                <button class="btn" id="resetOrderBtn" disabled>重置为原始顺序</button>
+                <span id="orderMsg" class="tip-text"></span>
+            </div>
+        </div>
+        <div class="step-card">
+            <div class="step-title">第三步：转换结果</div>
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyMatrixBtn">复制新矩阵</button>
+                    <button class="btn" id="copyLongBtn">复制三列表</button>
+                    <button class="btn" id="exportBtn">导出全部</button>
+                    <span id="resultMsg" class="tip-text"></span>
+                </div>
+                <h4>新矩阵</h4>
+                <div class="table-container" id="newMatrixWrap">
+                    <table id="newMatrixTable"><tbody></tbody></table>
+                </div>
+                <h4>三列表格式（行名-列名-值）</h4>
+                <div class="table-container" id="longTableWrap">
+                    <table id="longTable"><tbody></tbody></table>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">请先导入数据并应用顺序。</div>
+        </div>
+    </div>
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('fileInput');
+            const textInput = document.getElementById('textInput');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+            const previewArea = document.getElementById('previewArea');
+            const emptyPreview = document.getElementById('emptyPreview');
+            const previewTable = document.getElementById('previewTable');
+            const previewDim = document.getElementById('previewDim');
+            const orderText = document.getElementById('orderText');
+            const applyOrderBtn = document.getElementById('applyOrderBtn');
+            const resetOrderBtn = document.getElementById('resetOrderBtn');
+            const orderMsg = document.getElementById('orderMsg');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const newMatrixTable = document.getElementById('newMatrixTable');
+            const longTable = document.getElementById('longTable');
+            const copyMatrixBtn = document.getElementById('copyMatrixBtn');
+            const copyLongBtn = document.getElementById('copyLongBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let originalHeaders = []; 
+            let originalRowNames = []; 
+            let originalData = []; 
+            let currentOrder = []; 
+            let currentMatrixData = null; 
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function getDelimiter(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                if (lines.length === 0) return '\t';
+                const first = lines[0];
+                if (first.includes('\t')) return '\t';
+                if (first.includes(',')) return ',';
+                if (first.includes(' ')) return ' ';
+                return '\t';
+            }
+
+            function parseMatrix(text) {
+                const delim = getDelimiter(text);
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length < 2) return null;
+
+                const rows = lines.map(line => line.split(delim).map(cell => cell.trim()));
+
+                let maxCol = 0;
+                rows.forEach(row => { if (row.length > maxCol) maxCol = row.length; });
+                rows.forEach(row => { while (row.length < maxCol) row.push(''); });
+
+                const headers = rows[0].slice(1); 
+                const rowNames = [];
+                const data = [];
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    rowNames.push(row[0] || '');
+                    const values = row.slice(1);
+                    while (values.length < headers.length) values.push('');
+                    data.push(values);
+                }
+
+                if (data.length !== headers.length) {
+                    return null;
+                }
+
+                
+                return { headers, rowNames, data };
+            }
+
+            function renderPreview(data) {
+                if (!data) {
+                    previewArea.style.display = 'none';
+                    emptyPreview.style.display = 'block';
+                    return;
+                }
+                previewArea.style.display = 'block';
+                emptyPreview.style.display = 'none';
+                const { headers, rowNames, data: matrix } = data;
+                previewDim.textContent = `（${matrix.length}×${matrix.length}）`;
+
+                let html = '<thead><tr><th></th>';
+                headers.forEach(h => html += `<th>${escapeHtml(h)}</th>`);
+                html += '</tr></thead><tbody>';
+                for (let i = 0; i < matrix.length; i++) {
+                    html += `<tr><td><strong>${escapeHtml(rowNames[i])}</strong></td>`;
+                    for (let j = 0; j < matrix[i].length; j++) {
+                        const val = matrix[i][j];
+                        const isLower = i >= j;
+                        const bgColor = isLower ? (val ? '#e3f2fd' : '#f0f4f8') : '#f5f5f5';
+                        const display = val || '';
+                        html += `<td style="background-color:${bgColor};">${escapeHtml(display)}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody>';
+                previewTable.innerHTML = html;
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[m] || m));
+            }
+
+            function loadData(text) {
+                const parsed = parseMatrix(text);
+                if (!parsed) {
+                    showMsg(msgTip, '解析失败，请检查数据格式（方阵，制表符/逗号分隔）', 'error');
+                    return false;
+                }
+                originalHeaders = parsed.headers;
+                originalRowNames = parsed.rowNames;
+                originalData = parsed.data;
+
+                currentOrder = originalRowNames.slice();
+                orderText.value = currentOrder.join('\n');
+                applyOrderBtn.disabled = false;
+                resetOrderBtn.disabled = false;
+
+                renderPreview(parsed);
+                showMsg(msgTip, `✅ 已加载 ${originalRowNames.length}×${originalRowNames.length} 矩阵`, 'success');
+                toast('数据加载成功');
+
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentMatrixData = null;
+                return true;
+            }
+
+function applyOrder() {
+    const lines = orderText.value.split(/\r?\n/).filter(s => s.trim() !== '');
+    const newOrder = lines.map(s => s.trim());
+    const originalSet = new Set(originalRowNames);
+    const newSet = new Set(newOrder);
+
+    if (newSet.size !== newOrder.length) {
+        showMsg(orderMsg, '列表中存在重复', 'error');
+        return;
+    }
+    for (let name of newOrder) {
+        if (!originalSet.has(name)) {
+            showMsg(orderMsg, `项目 "${name}" 不在原始矩阵中`, 'error');
+            return;
+        }
+    }
+
+    const pairMap = {};
+    const n = originalRowNames.length;
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j <= i; j++) { 
+            const val = originalData[i][j];
+            if (val !== undefined && val !== null && val !== '') {
+                const key = [originalRowNames[i], originalRowNames[j]].sort().join('|');
+                pairMap[key] = val;
+            }
+        }
+    }
+
+    const newData = [];
+    for (let i = 0; i < newOrder.length; i++) {
+        newData[i] = [];
+        const row = newOrder[i];
+        for (let j = 0; j < newOrder.length; j++) {
+            const col = newOrder[j];
+            if (i >= j) { 
+                const key = [row, col].sort().join('|');
+                newData[i][j] = pairMap[key] || '';
+            } else {
+                newData[i][j] = ''; 
+            }
+        }
+    }
+
+    currentMatrixData = {
+        headers: newOrder.slice(),
+        rowNames: newOrder.slice(),
+        data: newData
+    };
+
+    renderResults(currentMatrixData);
+    showMsg(orderMsg, '✅ 顺序已应用', 'success');
+    toast('顺序已应用');
+}
+
+            function renderResults(matrixData) {
+                const { headers, rowNames, data } = matrixData;
+                let html = '<thead><tr><th></th>';
+                headers.forEach(h => html += `<th>${escapeHtml(h)}</th>`);
+                html += '</tr></thead><tbody>';
+                for (let i = 0; i < data.length; i++) {
+                    html += `<tr><td><strong>${escapeHtml(rowNames[i])}</strong></td>`;
+                    for (let j = 0; j < data[i].length; j++) {
+                        const val = data[i][j];
+                        const isLower = i >= j;
+                        const bgColor = isLower ? (val ? '#e3f2fd' : '#f0f4f8') : '#f5f5f5';
+                        const display = val || '';
+                        html += `<td style="background-color:${bgColor};">${escapeHtml(display)}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody>';
+                newMatrixTable.innerHTML = html;
+
+                const longRows = [];
+                for (let i = 0; i < data.length; i++) {
+                    for (let j = 0; j < data[i].length; j++) {
+                        if (i >= j && data[i][j] && data[i][j] !== '') {
+                            longRows.push({ row: rowNames[i], col: headers[j], value: data[i][j] });
+                        }
+                    }
+                }
+                let longHtml = '<thead><tr><th>行名</th><th>列名</th><th>值</th></tr></thead><tbody>';
+                longRows.forEach(item => {
+                    longHtml += `<tr><td>${escapeHtml(item.row)}</td><td>${escapeHtml(item.col)}</td><td>${escapeHtml(item.value)}</td></tr>`;
+                });
+                longHtml += '</tbody>';
+                longTable.innerHTML = longHtml;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                window._longRows = longRows;
+                window._matrixData = matrixData;
+            }
+
+            function resetOrder() {
+                if (originalRowNames.length === 0) {
+                    showMsg(orderMsg, '没有数据', 'error');
+                    return;
+                }
+                currentOrder = originalRowNames.slice();
+                orderText.value = currentOrder.join('\n');
+                showMsg(orderMsg, '已重置为原始顺序', 'success');
+
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentMatrixData = null;
+            }
+
+            function copyMatrix() {
+                if (!currentMatrixData) {
+                    showMsg(resultMsg, '没有矩阵可复制', 'error');
+                    return;
+                }
+                const text = matrixToText(currentMatrixData);
+                copyText(text);
+                showMsg(resultMsg, '已复制新矩阵', 'success');
+            }
+
+            function copyLong() {
+                if (!window._longRows || window._longRows.length === 0) {
+                    showMsg(resultMsg, '没有长格式数据', 'error');
+                    return;
+                }
+                let lines = ['行名\t列名\t值'];
+                window._longRows.forEach(item => {
+                    lines.push(`${item.row}\t${item.col}\t${item.value}`);
+                });
+                copyText(lines.join('\n'));
+                showMsg(resultMsg, '已复制长格式', 'success');
+            }
+
+            function matrixToText(matrixData) {
+                const { headers, rowNames, data } = matrixData;
+                const delim = '\t';
+                let lines = [];
+                lines.push(['', ...headers].join(delim));
+                for (let i = 0; i < data.length; i++) {
+                    const row = [rowNames[i], ...data[i].map(v => v || '')];
+                    lines.push(row.join(delim));
+                }
+                return lines.join('\n');
+            }
+
+            function copyText(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => toast('已复制')).catch(() => fallbackCopy(text));
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); toast('已复制'); } catch (e) { toast('复制失败'); }
+                document.body.removeChild(ta);
+            }
+
+            function exportAll() {
+                if (!currentMatrixData) {
+                    showMsg(resultMsg, '没有数据可导出', 'error');
+                    return;
+                }
+                const matrixText = matrixToText(currentMatrixData);
+                let longLines = ['行名\t列名\t值'];
+                (window._longRows || []).forEach(item => {
+                    longLines.push(`${item.row}\t${item.col}\t${item.value}`);
+                });
+                const longText = longLines.join('\n');
+                const content = `=== 新矩阵 ===\n${matrixText}\n\n=== 长格式 ===\n${longText}`;
+                const blob = new Blob(['\uFEFF' + content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'reordered_matrix.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '已导出文件', 'success');
+                toast('已导出');
+            }
+
+            window.switchInputMode = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fileInput.disabled = false;
+                    textInput.disabled = true;
+                    textInput.readOnly = true;
+                    textInput.style.backgroundColor = '#f5f7fa';
+                } else {
+                    fileInput.disabled = true;
+                    fileInput.value = '';
+                    textInput.disabled = false;
+                    textInput.readOnly = false;
+                    textInput.style.backgroundColor = '';
+                }
+                originalHeaders = [];
+                originalRowNames = [];
+                originalData = [];
+                currentOrder = [];
+                currentMatrixData = null;
+                previewArea.style.display = 'none';
+                emptyPreview.style.display = 'block';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                msgTip.innerHTML = '';
+                orderMsg.innerHTML = '';
+                resultMsg.innerHTML = '';
+                orderText.value = '';
+                applyOrderBtn.disabled = true;
+                resetOrderBtn.disabled = true;
+            };
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    textInput.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fileInput.files || fileInput.files.length === 0) {
+                        if (textInput.value.trim()) {
+                            loadData(textInput.value);
+                            return;
+                        }
+                        showMsg(msgTip, '请选择文件或粘贴数据', 'error');
+                        return;
+                    }
+                } else {
+                    const text = textInput.value.trim();
+                    if (!text) {
+                        showMsg(msgTip, '请粘贴数据', 'error');
+                        return;
+                    }
+                    loadData(text);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function() {
+                const example =
+`#\tA\tB\tC\tD\tE
+A\t1\t\t\t\t
+B\t5\t6\t\t\t
+C\t9\t10\t11\t\t
+D\t13\t14\t15\t16\t
+E\t17\t18\t19\t20\t21`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInputMode();
+                textInput.value = example;
+                loadData(example);
+            });
+
+            applyOrderBtn.addEventListener('click', applyOrder);
+            resetOrderBtn.addEventListener('click', resetOrder);
+            copyMatrixBtn.addEventListener('click', copyMatrix);
+            copyLongBtn.addEventListener('click', copyLong);
+            exportBtn.addEventListener('click', exportAll);
+
+            switchInputMode();
+            emptyPreview.style.display = 'block';
+            previewArea.style.display = 'none';
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+        })();
+    </script>
+</body>
+</html>
