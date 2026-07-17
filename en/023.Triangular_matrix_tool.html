@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triangular Matrix Merge & Split Tool - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .matrix-table-wrap .row-header-col {
+            background: #f7f9fc;
+            font-weight: 500;
+            position: sticky;
+            left: 0;
+            z-index: 4;
+            border-right: 1px solid #ddd;
+        }
+        .matrix-table-wrap .corner-cell {
+            background: #f7f9fc;
+            position: sticky;
+            left: 0;
+            top: 0;
+            z-index: 7;
+            min-width: 50px;
+        }
+        .matrix-table-wrap .tri-left {
+            background: #e3f2fd;
+        }
+        .matrix-table-wrap .tri-right {
+            background: #fce4ec;
+        }
+        .matrix-table-wrap .diag-cell {
+            background: #fff3e0;
+        }
+        .matrix-table-wrap .empty-cell {
+            color: #bbb;
+            font-style: italic;
+        }
+        .result-pair {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .result-pair .result-box {
+            flex: 1;
+            min-width: 280px;
+        }
+        .result-pair .result-box h5 {
+            margin: 6px 0 2px;
+            color: #1f4068;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .result-pair .result-box h5 .badge {
+            font-weight: 400;
+            color: #888;
+            font-size: 0.8rem;
+        }
+
+        .hide {
+            display: none !important;
+        }
+        .diag-fill-input {
+            width: 60px;
+        }
+        .inline-tip {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-left: 4px;
+        }
+        .preview-info {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin: 4px 0 8px;
+        }
+        .empty-hint {
+            color: #999;
+            text-align: center;
+            padding: 20px 0;
+            font-style: italic;
+        }
+        .mode-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px 20px;
+            margin-bottom: 16px;
+        }
+        .mode-bar .btn {
+            margin-left: auto;
+        }
+        .import-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin: 6px 0;
+        }
+        .import-actions .btn {
+            margin-right: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Triangular Matrix Merge & Split Tool</h2>
+            <p>Split a full square matrix into lower‑left and upper‑right triangular matrices, or merge two triangular matrices into a full square matrix.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Select Mode & Import Data</div>
+
+            <div class="mode-bar">
+                <label style="font-weight:500;">Mode:</label>
+                <label><input type="radio" name="mode" value="split" checked onchange="onModeChange()">Split Square Matrix</label>
+                <label><input type="radio" name="mode" value="merge" onchange="onModeChange()">Merge Triangular Matrices</label>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+
+            <div id="splitPanel">
+                <div class="info-box">
+                    <strong>Split Square Matrix Mode</strong>: Split a full square matrix into <strong>lower‑left</strong> and <strong>upper‑right</strong> triangular matrices.<br>
+                    <strong>The first cell of the first row must contain a row label (e.g., "ID" or "#"), and cannot be left empty; otherwise, the column names will be misaligned upon import.</strong> The different row and column names in the examples are for demonstration purposes only; in actual use, they are often identical.
+                </div>
+                <div class="radio-box">
+                    <label><input type="radio" name="splitInputMode" value="file" checked onchange="switchSplitInput()">Upload File</label>
+                    <label><input type="radio" name="splitInputMode" value="text" onchange="switchSplitInput()">Paste Text</label>
+                </div>
+                <div class="file-input" id="splitFileWrap">
+                    <input type="file" id="splitFileInput" accept=".csv,.tsv,.txt,.tab">
+                </div>
+                <div class="text-input" id="splitTextWrap">
+                    <textarea id="splitTextInput" placeholder="Paste full matrix data (first row: column names, first column: row names)" disabled></textarea>
+                </div>
+                <div id="splitMsg" class="tip-text"></div>
+                <div class="import-actions">
+                    <button class="btn" id="splitLoadBtn">Import Data</button>
+                </div>
+                <div id="splitPreviewArea" style="display:none; margin-top:10px;">
+                    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;">
+                        <span style="font-weight:500;">Data Preview <span id="splitPreviewDim" class="inline-tip"></span></span>
+                        <span id="splitPreviewInfo" class="preview-info"></span>
+                    </div>
+                    <div class="table-container matrix-table-wrap" id="splitPreviewTableWrap">
+                        <table id="splitPreviewTable"><tbody></tbody></table>
+                    </div>
+                </div>
+                <div id="splitEmptyPreview" class="empty-hint">Please import a full matrix.</div>
+            </div>
+
+            <div id="mergePanel" style="display:none;">
+                <div class="info-box">
+                    <strong>Merge Triangular Matrices Mode</strong>: Merge <strong>two lower‑left triangular matrices</strong> into a full square matrix.<br>
+                    Result: Matrix A is placed on the lower‑left, and Matrix B is placed on the upper‑right.<br>
+                    <strong>Note</strong>: Both matrices must be in lower‑left triangular format (only the lower triangle contains data; the upper triangle is empty). It is recommended to check the example data format first.<br>
+                    If your matrix is in upper‑right triangular format, please transpose it to lower‑left before importing.<br>
+                    <strong>The first cell of the first row must contain a row label (e.g., "ID" or "#"), and cannot be left empty; otherwise, the column names will be misaligned upon import.</strong> The different row and column names in the examples are for demonstration purposes only; in actual use, they are often identical.
+                </div>
+
+                <div style="border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
+                    <div style="font-weight:600; color:#1f4068; margin-bottom:4px;">Triangular Matrix A</div>
+                    <div class="radio-box">
+                        <label><input type="radio" name="mergeLeftInputMode" value="file" checked onchange="switchMergeLeftInput()">Upload File</label>
+                        <label><input type="radio" name="mergeLeftInputMode" value="text" onchange="switchMergeLeftInput()">Paste Text</label>
+                    </div>
+                    <div class="file-input" id="mergeLeftFileWrap">
+                        <input type="file" id="mergeLeftFileInput" accept=".csv,.tsv,.txt,.tab">
+                    </div>
+                    <div class="text-input" id="mergeLeftTextWrap">
+                        <textarea id="mergeLeftTextInput" placeholder="Paste triangular matrix A" disabled></textarea>
+                    </div>
+                    <div id="mergeLeftMsg" class="tip-text"></div>
+                    <button class="btn" id="mergeLeftLoadBtn" style="margin-top:4px;">Import Matrix A</button>
+                    <div id="mergeLeftPreviewArea" style="display:none; margin-top:6px;">
+                        <div class="table-container matrix-table-wrap" style="max-height:180px;"><table id="mergeLeftPreviewTable"><tbody></tbody></table></div>
+                    </div>
+                    <div id="mergeLeftEmptyPreview" class="empty-hint" style="padding:6px 0;">Please import matrix A.</div>
+                </div>
+
+                <div>
+                    <div style="font-weight:600; color:#1f4068; margin-bottom:4px;">Triangular Matrix B</div>
+                    <div class="radio-box">
+                        <label><input type="radio" name="mergeRightInputMode" value="file" checked onchange="switchMergeRightInput()">Upload File</label>
+                        <label><input type="radio" name="mergeRightInputMode" value="text" onchange="switchMergeRightInput()">Paste Text</label>
+                    </div>
+                    <div class="file-input" id="mergeRightFileWrap">
+                        <input type="file" id="mergeRightFileInput" accept=".csv,.tsv,.txt,.tab">
+                    </div>
+                    <div class="text-input" id="mergeRightTextWrap">
+                        <textarea id="mergeRightTextInput" placeholder="Paste triangular matrix B" disabled></textarea>
+                    </div>
+                    <div id="mergeRightMsg" class="tip-text"></div>
+                    <button class="btn" id="mergeRightLoadBtn" style="margin-top:4px;">Import Matrix B</button>
+                    <div id="mergeRightPreviewArea" style="display:none; margin-top:6px;">
+                        <div class="table-container matrix-table-wrap" style="max-height:180px;"><table id="mergeRightPreviewTable"><tbody></tbody></table></div>
+                    </div>
+                    <div id="mergeRightEmptyPreview" class="empty-hint" style="padding:6px 0;">Please import matrix B.</div>
+                </div>
+
+                <div id="mergeMsg" class="tip-text" style="margin-top:6px;"></div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Parameters</div>
+
+            <div id="splitParams">
+                <div class="filter-box" style="gap:16px;">
+                    <label>Diagonal fill value:
+                        <input type="text" id="diagFillValue" value="NA" class="diag-fill-input">
+                        <span class="inline-tip">(replaces diagonal values)</span>
+                    </label>
+                    <button class="btn" id="execSplitBtn">Execute Split</button>
+                </div>
+                <div id="splitParamTip" class="tip-text"></div>
+            </div>
+
+            <div id="mergeParams" style="display:none;">
+                <div class="filter-box" style="gap:16px;">
+                    <label>Diagonal fill value:
+                        <input type="text" id="mergeDiagFillValue" value="NA" class="diag-fill-input">
+                        <span class="inline-tip">(value placed on the diagonal after merge)</span>
+                    </label>
+                    <button class="btn" id="execMergeBtn">Execute Merge</button>
+                </div>
+                <div id="mergeParamTip" class="tip-text"></div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Results</div>
+
+            <div id="splitResultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="splitCopyLeftBtn">Copy Matrix A</button>
+                    <button class="btn" id="splitCopyRightBtn">Copy Matrix B</button>
+                    <button class="btn" id="splitCopyBothBtn">Copy All</button>
+                    <button class="btn" id="splitExportBtn">Export CSV</button>
+                    <span id="splitResultTip" class="tip-text" style="margin:0;"></span>
+                </div>
+                <div class="result-pair">
+                    <div class="result-box">
+                        <h5>Matrix A</h5>
+                        <div class="table-container matrix-table-wrap" id="splitLeftResultWrap"><table id="splitLeftResultTable"><tbody></tbody></table></div>
+                    </div>
+                    <div class="result-box">
+                        <h5>Matrix B</h5>
+                        <div class="table-container matrix-table-wrap" id="splitRightResultWrap"><table id="splitRightResultTable"><tbody></tbody></table></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="mergeResultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="mergeCopyBtn">Copy Full Matrix</button>
+                    <button class="btn" id="mergeExportBtn">Export CSV</button>
+                    <span id="mergeResultTip" class="tip-text" style="margin:0;"></span>
+                </div>
+                <div style="max-width:100%;">
+                    <h5>Full Matrix</h5>
+                    <div class="table-container matrix-table-wrap" id="mergeResultWrap"><table id="mergeResultTable"><tbody></tbody></table></div>
+                </div>
+            </div>
+
+            <div id="emptyResult" class="empty-hint">Results will appear here after execution.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            // author: 'Author: Di Shang Fei Zhu',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const splitFileInput = document.getElementById('splitFileInput');
+            const splitTextInput = document.getElementById('splitTextInput');
+            const splitLoadBtn = document.getElementById('splitLoadBtn');
+            const splitMsg = document.getElementById('splitMsg');
+            const splitPreviewArea = document.getElementById('splitPreviewArea');
+            const splitEmptyPreview = document.getElementById('splitEmptyPreview');
+            const splitPreviewTable = document.getElementById('splitPreviewTable');
+            const splitPreviewDim = document.getElementById('splitPreviewDim');
+            const splitPreviewInfo = document.getElementById('splitPreviewInfo');
+            const diagFillValue = document.getElementById('diagFillValue');
+            const execSplitBtn = document.getElementById('execSplitBtn');
+            const splitParamTip = document.getElementById('splitParamTip');
+            const splitResultArea = document.getElementById('splitResultArea');
+            const splitLeftResultTable = document.getElementById('splitLeftResultTable');
+            const splitRightResultTable = document.getElementById('splitRightResultTable');
+            const splitCopyLeftBtn = document.getElementById('splitCopyLeftBtn');
+            const splitCopyRightBtn = document.getElementById('splitCopyRightBtn');
+            const splitCopyBothBtn = document.getElementById('splitCopyBothBtn');
+            const splitExportBtn = document.getElementById('splitExportBtn');
+            const splitResultTip = document.getElementById('splitResultTip');
+
+            const mergeLeftFileInput = document.getElementById('mergeLeftFileInput');
+            const mergeLeftTextInput = document.getElementById('mergeLeftTextInput');
+            const mergeLeftLoadBtn = document.getElementById('mergeLeftLoadBtn');
+            const mergeLeftMsg = document.getElementById('mergeLeftMsg');
+            const mergeLeftPreviewArea = document.getElementById('mergeLeftPreviewArea');
+            const mergeLeftEmptyPreview = document.getElementById('mergeLeftEmptyPreview');
+            const mergeLeftPreviewTable = document.getElementById('mergeLeftPreviewTable');
+
+            const mergeRightFileInput = document.getElementById('mergeRightFileInput');
+            const mergeRightTextInput = document.getElementById('mergeRightTextInput');
+            const mergeRightLoadBtn = document.getElementById('mergeRightLoadBtn');
+            const mergeRightMsg = document.getElementById('mergeRightMsg');
+            const mergeRightPreviewArea = document.getElementById('mergeRightPreviewArea');
+            const mergeRightEmptyPreview = document.getElementById('mergeRightEmptyPreview');
+            const mergeRightPreviewTable = document.getElementById('mergeRightPreviewTable');
+
+            const mergeMsg = document.getElementById('mergeMsg');
+            const mergeDiagFillValue = document.getElementById('mergeDiagFillValue');
+            const execMergeBtn = document.getElementById('execMergeBtn');
+            const mergeParamTip = document.getElementById('mergeParamTip');
+            const mergeResultArea = document.getElementById('mergeResultArea');
+            const mergeResultTable = document.getElementById('mergeResultTable');
+            const mergeCopyBtn = document.getElementById('mergeCopyBtn');
+            const mergeExportBtn = document.getElementById('mergeExportBtn');
+            const mergeResultTip = document.getElementById('mergeResultTip');
+
+            const emptyResult = document.getElementById('emptyResult');
+            const splitParams = document.getElementById('splitParams');
+            const mergeParams = document.getElementById('mergeParams');
+            const splitPanel = document.getElementById('splitPanel');
+            const mergePanel = document.getElementById('mergePanel');
+            const exampleBtn = document.getElementById('exampleBtn');
+
+            let splitMatrixData = null;
+            let mergeLeftData = null;
+            let mergeRightData = null;
+            let splitResultLeft = null;
+            let splitResultRight = null;
+            let mergeResultData = null;
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m));
+            }
+
+            function getDelimiter(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                if (lines.length === 0) return '\t';
+                const first = lines[0];
+                if (first.includes('\t')) return '\t';
+                if (first.includes(',')) return ',';
+                if (first.includes(' ')) return ' ';
+                return '\t';
+            }
+
+            function parseMatrix(text) {
+                const delim = getDelimiter(text);
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length < 2) return null;
+
+                const rows = lines.map(line => line.split(delim).map(cell => cell.trim()));
+
+                let maxCol = 0;
+                for (let row of rows) {
+                    if (row.length > maxCol) maxCol = row.length;
+                }
+                for (let row of rows) {
+                    while (row.length < maxCol) row.push('');
+                }
+
+                const headers = rows[0].slice(1);
+                if (headers.length === 0) return null;
+
+                const rowNames = [];
+                const data = [];
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    rowNames.push(row[0] || '');
+                    const values = row.slice(1);
+                    while (values.length < headers.length) values.push('');
+                    data.push(values.map(v => (v === '' || v === 'NA' || v === 'N/A') ? null : v));
+                }
+
+                const nrow = data.length;
+                const ncol = headers.length;
+                if (nrow !== ncol) {
+                    return null;
+                }
+
+                return { headers, rowNames, data };
+            }
+
+            function isSquareMatrix(data) {
+                if (!data || data.length === 0) return false;
+                const n = data.length;
+                for (let i = 0; i < n; i++) {
+                    if (data[i].length !== n) return false;
+                }
+                return true;
+            }
+
+            function renderMatrixTable(tableEl, headers, rowNames, data, options) {
+                options = options || {};
+                const highlightDiag = options.highlightDiag !== false;
+
+                const nrow = data ? data.length : 0;
+                const ncol = headers ? headers.length : 0;
+                let html = '<thead><tr><th class="corner-cell"></th>';
+                for (let j = 0; j < ncol; j++) {
+                    html += `<th>${escapeHtml(headers[j] || '')}</th>`;
+                }
+                html += '</tr></thead><tbody>';
+                for (let i = 0; i < nrow; i++) {
+                    const rn = rowNames && rowNames[i] ? rowNames[i] : '';
+                    html += `<tr><td class="row-header-col">${escapeHtml(rn)}</td>`;
+                    const row = data[i] || [];
+                    for (let j = 0; j < ncol; j++) {
+                        let val = j < row.length ? row[j] : null;
+                        let cls = '';
+                        let display = '';
+                        if (val === null || val === undefined || val === '') {
+                            display = '';
+                            cls = 'empty-cell';
+                        } else {
+                            display = String(val);
+                        }
+                        if (highlightDiag && i === j && val !== null) cls += ' diag-cell';
+                        if (i > j) cls += ' tri-left';
+                        if (i < j) cls += ' tri-right';
+                        html += `<td class="${cls}">${escapeHtml(display)}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody>';
+                tableEl.innerHTML = html;
+            }
+
+            function matrixToText(headers, rowNames, data, delim) {
+                delim = delim || '\t';
+                let lines = [];
+                lines.push(['', ...headers].join(delim));
+                for (let i = 0; i < data.length; i++) {
+                    const row = [rowNames[i] || ''];
+                    for (let j = 0; j < headers.length; j++) {
+                        const v = (j < data[i].length && data[i][j] !== null && data[i][j] !== undefined) ? data[i][j] : '';
+                        row.push(String(v));
+                    }
+                    lines.push(row.join(delim));
+                }
+                return lines.join('\n');
+            }
+
+            function copyText(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => { toast('Copied'); }).catch(() => fallbackCopy(text));
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy');
+                    toast('Copied'); } catch (e) { toast('Copy failed'); }
+                document.body.removeChild(ta);
+            }
+
+            function downloadFile(content, filename) {
+                const blob = new Blob(['\uFEFF' + content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            window.onModeChange = function() {
+                const mode = document.querySelector('input[name="mode"]:checked').value;
+                if (mode === 'split') {
+                    splitPanel.style.display = 'block';
+                    mergePanel.style.display = 'none';
+                    splitParams.style.display = 'block';
+                    mergeParams.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    splitResultArea.style.display = 'none';
+                    mergeResultArea.style.display = 'none';
+                } else {
+                    splitPanel.style.display = 'none';
+                    mergePanel.style.display = 'block';
+                    splitParams.style.display = 'none';
+                    mergeParams.style.display = 'block';
+                    emptyResult.style.display = 'block';
+                    splitResultArea.style.display = 'none';
+                    mergeResultArea.style.display = 'none';
+                }
+                clearResults();
+            };
+
+            exampleBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="mode"]:checked').value;
+                if (mode === 'split') {
+                    const example =
+                        'tem\tcolA\tcolB\tcolC\tcolD\nrowA\t1\t2\t3\t4\nrowB\t5\t6\t7\t8\nrowC\t9\t10\t11\t12\nrowD\t13\t14\t15\t16';
+                    const radio = document.querySelector('input[name="splitInputMode"][value="text"]');
+                    if (radio) radio.checked = true;
+                    switchSplitInput();
+                    splitTextInput.value = example;
+                    loadSplitData(example);
+                } else {
+                    const leftExample =
+                        'tem\tcolA\tcolB\tcolC\tcolD\nrowA\t1\t\t\t\nrowB\t5\t6\t\t\nrowC\t9\t10\t11\t\nrowD\t13\t14\t15\t16';
+                    const rightExample =
+                        'tem\tcolA\tcolB\tcolC\tcolD\nrowA\t1\t\t\t\nrowB\t2\t3\t\t\nrowC\t4\t5\t6\t\nrowD\t7\t8\t9\t10';
+                    const leftRadio = document.querySelector('input[name="mergeLeftInputMode"][value="text"]');
+                    if (leftRadio) leftRadio.checked = true;
+                    switchMergeLeftInput();
+                    mergeLeftTextInput.value = leftExample;
+                    loadMergeLeftData(leftExample);
+                    const rightRadio = document.querySelector('input[name="mergeRightInputMode"][value="text"]');
+                    if (rightRadio) rightRadio.checked = true;
+                    switchMergeRightInput();
+                    mergeRightTextInput.value = rightExample;
+                    loadMergeRightData(rightExample);
+                    showMsg(mergeMsg, '✅ Example loaded. Click "Execute Merge" to see the result.', 'success');
+                    toast('Example loaded');
+                }
+            });
+
+            window.switchSplitInput = function() {
+                const mode = document.querySelector('input[name="splitInputMode"]:checked').value;
+                if (mode === 'file') {
+                    splitFileInput.disabled = false;
+                    splitTextInput.disabled = true;
+                    splitTextInput.readOnly = true;
+                    splitTextInput.style.backgroundColor = '#f5f7fa';
+                } else {
+                    splitFileInput.disabled = true;
+                    splitFileInput.value = '';
+                    splitTextInput.disabled = false;
+                    splitTextInput.readOnly = false;
+                    splitTextInput.style.backgroundColor = '';
+                }
+                splitMatrixData = null;
+                splitPreviewArea.style.display = 'none';
+                splitEmptyPreview.style.display = 'block';
+                splitResultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                splitMsg.innerHTML = '';
+            };
+
+            window.switchMergeLeftInput = function() {
+                const mode = document.querySelector('input[name="mergeLeftInputMode"]:checked').value;
+                if (mode === 'file') {
+                    mergeLeftFileInput.disabled = false;
+                    mergeLeftTextInput.disabled = true;
+                    mergeLeftTextInput.readOnly = true;
+                    mergeLeftTextInput.style.backgroundColor = '#f5f7fa';
+                } else {
+                    mergeLeftFileInput.disabled = true;
+                    mergeLeftFileInput.value = '';
+                    mergeLeftTextInput.disabled = false;
+                    mergeLeftTextInput.readOnly = false;
+                    mergeLeftTextInput.style.backgroundColor = '';
+                }
+                mergeLeftData = null;
+                mergeLeftPreviewArea.style.display = 'none';
+                mergeLeftEmptyPreview.style.display = 'block';
+                mergeLeftMsg.innerHTML = '';
+                clearResults();
+            };
+
+            window.switchMergeRightInput = function() {
+                const mode = document.querySelector('input[name="mergeRightInputMode"]:checked').value;
+                if (mode === 'file') {
+                    mergeRightFileInput.disabled = false;
+                    mergeRightTextInput.disabled = true;
+                    mergeRightTextInput.readOnly = true;
+                    mergeRightTextInput.style.backgroundColor = '#f5f7fa';
+                } else {
+                    mergeRightFileInput.disabled = true;
+                    mergeRightFileInput.value = '';
+                    mergeRightTextInput.disabled = false;
+                    mergeRightTextInput.readOnly = false;
+                    mergeRightTextInput.style.backgroundColor = '';
+                }
+                mergeRightData = null;
+                mergeRightPreviewArea.style.display = 'none';
+                mergeRightEmptyPreview.style.display = 'block';
+                mergeRightMsg.innerHTML = '';
+                clearResults();
+            };
+
+            function loadSplitData(text) {
+                const parsed = parseMatrix(text);
+                if (!parsed) {
+                    showMsg(splitMsg, 'Parse error. Please check the format (tab/comma‑separated square matrix).', 'error');
+                    return;
+                }
+                if (parsed.data.length === 0 || parsed.headers.length === 0) {
+                    showMsg(splitMsg, 'Data is empty.', 'error');
+                    return;
+                }
+                splitMatrixData = parsed;
+                splitPreviewArea.style.display = 'block';
+                splitEmptyPreview.style.display = 'none';
+                const dim = parsed.data.length;
+                splitPreviewDim.textContent = `(${dim}×${dim})`;
+                splitPreviewInfo.textContent = `Row names: ${parsed.rowNames.join(', ')}`;
+                renderMatrixTable(splitPreviewTable, parsed.headers, parsed.rowNames, parsed.data, { highlightDiag: true });
+                showMsg(splitMsg, `✅ Full matrix ${dim}×${dim} loaded.`, 'success');
+                toast('Full matrix loaded');
+                splitResultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                splitParamTip.innerHTML = '';
+            }
+
+            splitFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    splitTextInput.value = ev.target.result;
+                    loadSplitData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            splitLoadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="splitInputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!splitFileInput.files || splitFileInput.files.length === 0) {
+                        if (splitTextInput.value.trim()) { loadSplitData(splitTextInput.value); return; }
+                        showMsg(splitMsg, 'Please select a file or paste data.', 'error');
+                        return;
+                    }
+                } else {
+                    const text = splitTextInput.value.trim();
+                    if (!text) { showMsg(splitMsg, 'Please paste data.', 'error'); return; }
+                    loadSplitData(text);
+                }
+            });
+
+            execSplitBtn.addEventListener('click', function() {
+                if (!splitMatrixData) { showMsg(splitParamTip, 'Please import a full matrix first.', 'error'); return; }
+                const diagFill = diagFillValue.value.trim() !== '' ? diagFillValue.value.trim() : '';
+                const headers = splitMatrixData.headers;
+                const rowNames = splitMatrixData.rowNames;
+                const data = splitMatrixData.data;
+                const n = data.length;
+
+                const leftData = [];
+                const rightData = [];
+                for (let i = 0; i < n; i++) {
+                    leftData.push([]);
+                    rightData.push([]);
+                    for (let j = 0; j < n; j++) {
+                        const val = data[i][j];
+                        if (i > j) {
+                            leftData[i].push(val);
+                            rightData[i].push(null);
+                        } else if (i < j) {
+                            leftData[i].push(null);
+                            rightData[i].push(val);
+                        } else {
+                            leftData[i].push(diagFill);
+                            rightData[i].push(diagFill);
+                        }
+                    }
+                }
+
+                splitResultLeft = { headers: headers.slice(), rowNames: rowNames.slice(), data: leftData };
+                splitResultRight = { headers: headers.slice(), rowNames: rowNames.slice(), data: rightData };
+
+                renderMatrixTable(splitLeftResultTable, headers, rowNames, leftData, { highlightDiag: true });
+                renderMatrixTable(splitRightResultTable, headers, rowNames, rightData, { highlightDiag: true });
+                splitResultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                showMsg(splitParamTip, `✅ Split complete. Matrix A + Matrix B (${n}×${n})`, 'success');
+                toast('Split complete');
+            });
+
+            function loadMergeLeftData(text) {
+                const parsed = parseMatrix(text);
+                if (!parsed) { showMsg(mergeLeftMsg, 'Parse error. Please check the format.', 'error'); return; }
+                if (parsed.data.length === 0 || parsed.headers.length === 0) { showMsg(mergeLeftMsg, 'Data is empty.', 'error');
+                    return; }
+                mergeLeftData = parsed;
+                mergeLeftPreviewArea.style.display = 'block';
+                mergeLeftEmptyPreview.style.display = 'none';
+                renderMatrixTable(mergeLeftPreviewTable, parsed.headers, parsed.rowNames, parsed.data, { highlightDiag: true });
+                showMsg(mergeLeftMsg, `✅ Matrix A loaded (${parsed.data.length}×${parsed.data.length})`, 'success');
+                clearResults();
+                checkMergeReady();
+            }
+
+            mergeLeftFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    mergeLeftTextInput.value = ev.target.result;
+                    loadMergeLeftData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            mergeLeftLoadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="mergeLeftInputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!mergeLeftFileInput.files || mergeLeftFileInput.files.length === 0) {
+                        if (mergeLeftTextInput.value.trim()) { loadMergeLeftData(mergeLeftTextInput.value); return; }
+                        showMsg(mergeLeftMsg, 'Please select a file or paste data.', 'error');
+                        return;
+                    }
+                } else {
+                    const text = mergeLeftTextInput.value.trim();
+                    if (!text) { showMsg(mergeLeftMsg, 'Please paste data.', 'error'); return; }
+                    loadMergeLeftData(text);
+                }
+            });
+
+            function loadMergeRightData(text) {
+                const parsed = parseMatrix(text);
+                if (!parsed) { showMsg(mergeRightMsg, 'Parse error. Please check the format.', 'error'); return; }
+                if (parsed.data.length === 0 || parsed.headers.length === 0) { showMsg(mergeRightMsg, 'Data is empty.', 'error');
+                    return; }
+                mergeRightData = parsed;
+                mergeRightPreviewArea.style.display = 'block';
+                mergeRightEmptyPreview.style.display = 'none';
+                renderMatrixTable(mergeRightPreviewTable, parsed.headers, parsed.rowNames, parsed.data, { highlightDiag: true });
+                showMsg(mergeRightMsg, `✅ Matrix B loaded (${parsed.data.length}×${parsed.data.length})`, 'success');
+                clearResults();
+                checkMergeReady();
+            }
+
+            mergeRightFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    mergeRightTextInput.value = ev.target.result;
+                    loadMergeRightData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            mergeRightLoadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="mergeRightInputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!mergeRightFileInput.files || mergeRightFileInput.files.length === 0) {
+                        if (mergeRightTextInput.value.trim()) { loadMergeRightData(mergeRightTextInput.value); return; }
+                        showMsg(mergeRightMsg, 'Please select a file or paste data.', 'error');
+                        return;
+                    }
+                } else {
+                    const text = mergeRightTextInput.value.trim();
+                    if (!text) { showMsg(mergeRightMsg, 'Please paste data.', 'error'); return; }
+                    loadMergeRightData(text);
+                }
+            });
+
+            function checkMergeReady() {
+                if (mergeLeftData && mergeRightData) {
+                    showMsg(mergeMsg, '✅ Matrix A and Matrix B are loaded. You can now execute the merge.', 'success');
+                }
+            }
+
+            execMergeBtn.addEventListener('click', function() {
+                if (!mergeLeftData || !mergeRightData) { showMsg(mergeParamTip, 'Please import both Matrix A and Matrix B.', 'error'); return; }
+                const diagFill = mergeDiagFillValue.value.trim() !== '' ? mergeDiagFillValue.value.trim() : '';
+                const left = mergeLeftData;
+                const right = mergeRightData;
+                const n = left.data.length;
+
+                if (left.data.length !== right.data.length) { showMsg(mergeParamTip, 'Matrix A and B have different row counts.', 'error'); return; }
+                for (let i = 0; i < n; i++) {
+                    if (left.data[i].length !== n || right.data[i].length !== n) { showMsg(mergeParamTip, 'Matrix A and B have different column counts.',
+                            'error'); return; }
+                }
+                for (let i = 0; i < n; i++) {
+                    if (left.rowNames[i] !== right.rowNames[i]) { showMsg(mergeParamTip, `Row name mismatch: ${left.rowNames[i]} vs ${right.rowNames[i]}`,
+                            'error'); return; }
+                }
+                for (let j = 0; j < n; j++) {
+                    if (left.headers[j] !== right.headers[j]) { showMsg(mergeParamTip, `Column name mismatch: ${left.headers[j]} vs ${right.headers[j]}`,
+                            'error'); return; }
+                }
+
+                const resultData = [];
+                for (let i = 0; i < n; i++) {
+                    resultData.push([]);
+                    for (let j = 0; j < n; j++) {
+                        let val = null;
+                        if (i > j) {
+                            val = left.data[i][j];
+                        } else if (i < j) {
+                            val = right.data[j][i];
+                        } else {
+                            val = diagFill;
+                        }
+                        if (val === null || val === undefined || val === '') val = '';
+                        resultData[i].push(val);
+                    }
+                }
+
+                mergeResultData = { headers: left.headers.slice(), rowNames: left.rowNames.slice(), data: resultData };
+                renderMatrixTable(mergeResultTable, mergeResultData.headers, mergeResultData.rowNames, mergeResultData.data, { highlightDiag: true });
+                mergeResultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                showMsg(mergeParamTip, `✅ Merge complete (${n}×${n})`, 'success');
+                toast('Merge complete');
+            });
+
+            splitCopyLeftBtn.addEventListener('click', function() {
+                if (!splitResultLeft) { showMsg(splitResultTip, 'No result.', 'error'); return; }
+                const text = matrixToText(splitResultLeft.headers, splitResultLeft.rowNames, splitResultLeft.data, '\t');
+                copyText(text);
+                showMsg(splitResultTip, 'Copied Matrix A', 'success');
+            });
+
+            splitCopyRightBtn.addEventListener('click', function() {
+                if (!splitResultRight) { showMsg(splitResultTip, 'No result.', 'error'); return; }
+                const text = matrixToText(splitResultRight.headers, splitResultRight.rowNames, splitResultRight.data, '\t');
+                copyText(text);
+                showMsg(splitResultTip, 'Copied Matrix B', 'success');
+            });
+
+            splitCopyBothBtn.addEventListener('click', function() {
+                if (!splitResultLeft || !splitResultRight) { showMsg(splitResultTip, 'No result.', 'error'); return; }
+                const leftText = matrixToText(splitResultLeft.headers, splitResultLeft.rowNames, splitResultLeft.data, '\t');
+                const rightText = matrixToText(splitResultRight.headers, splitResultRight.rowNames, splitResultRight.data,
+                    '\t');
+                const full = '=== Matrix A (Lower‑Left) ===\n' + leftText + '\n\n=== Matrix B (Upper‑Right) ===\n' + rightText;
+                copyText(full);
+                showMsg(splitResultTip, 'Copied all', 'success');
+            });
+
+            splitExportBtn.addEventListener('click', function() {
+                if (!splitResultLeft || !splitResultRight) { showMsg(splitResultTip, 'No result.', 'error'); return; }
+                const leftText = matrixToText(splitResultLeft.headers, splitResultLeft.rowNames, splitResultLeft.data, ',');
+                const rightText = matrixToText(splitResultRight.headers, splitResultRight.rowNames, splitResultRight.data,
+                    ',');
+                const full = 'Matrix A (Lower‑Left)\n' + leftText + '\n\nMatrix B (Upper‑Right)\n' + rightText;
+                downloadFile(full, 'split_tri_matrices.csv');
+                showMsg(splitResultTip, 'Exported', 'success');
+                toast('Exported');
+            });
+
+            mergeCopyBtn.addEventListener('click', function() {
+                if (!mergeResultData) { showMsg(mergeResultTip, 'No result.', 'error'); return; }
+                const text = matrixToText(mergeResultData.headers, mergeResultData.rowNames, mergeResultData.data, '\t');
+                copyText(text);
+                showMsg(mergeResultTip, 'Copied', 'success');
+            });
+
+            mergeExportBtn.addEventListener('click', function() {
+                if (!mergeResultData) { showMsg(mergeResultTip, 'No result.', 'error'); return; }
+                const text = matrixToText(mergeResultData.headers, mergeResultData.rowNames, mergeResultData.data, ',');
+                downloadFile(text, 'merged_matrix.csv');
+                showMsg(mergeResultTip, 'Exported', 'success');
+                toast('Exported');
+            });
+
+            function clearResults() {
+                splitResultLeft = null;
+                splitResultRight = null;
+                mergeResultData = null;
+                splitResultArea.style.display = 'none';
+                mergeResultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                splitResultTip.innerHTML = '';
+                mergeResultTip.innerHTML = '';
+                splitParamTip.innerHTML = '';
+                mergeParamTip.innerHTML = '';
+            }
+
+            function init() {
+                window.switchSplitInput();
+                window.switchMergeLeftInput();
+                window.switchMergeRightInput();
+                window.onModeChange();
+                emptyResult.style.display = 'block';
+                splitResultArea.style.display = 'none';
+                mergeResultArea.style.display = 'none';
+            }
+
+            splitTextInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault();
+                    splitLoadBtn.click(); }
+            });
+            mergeLeftTextInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault();
+                    mergeLeftLoadBtn.click(); }
+            });
+            mergeRightTextInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault();
+                    mergeRightLoadBtn.click(); }
+            });
+
+            init();
+        })();
+    </script>
+</body>
+</html>

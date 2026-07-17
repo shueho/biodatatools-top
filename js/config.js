@@ -170,6 +170,12 @@ const toolConfig = [
     link: "en/022.Wide_long_table_reshaping.html"
 },
 
+{
+    toolName: "Triangular Matrix Merge & Split Tool",
+    toolDesc: "Split a full square matrix into lower‑left and upper‑right triangular matrices, or merge two triangular matrices into a full square matrix.",
+    link: "en/023.Triangular_matrix_tool.html"
+},
+
         ]
     },
     {

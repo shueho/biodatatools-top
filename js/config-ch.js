@@ -169,6 +169,12 @@ const toolConfig = [
     toolDesc: "在宽格式（多列变量）与长格式（变量-值对）之间灵活转换表格数据。",
     link: "ch/022.Wide_long_table_reshaping.html"
 },
+
+{
+    toolName: "三角形矩阵合并与拆分工具",
+    toolDesc: "将完整方阵拆分为左下三角和右上三角矩阵，或将两个三角矩阵合并为完整方阵。",
+    link: "ch/023.Triangular_matrix_tool.html"
+},
         ]
     },
 
