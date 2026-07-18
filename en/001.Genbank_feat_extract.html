@@ -1,11 +1,20 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GenBank Feature Extraction - BioDataTools</title>
+    <title>GenBank Feature Extractor - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .filter-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 15px 0 0 0;
+            align-items: center;
+        }
+    </style>
 </head>
 <body>
 
@@ -13,27 +22,30 @@
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>GenBank Feature Extraction</h2>
-            <p>Upload GenBank file or paste GenBank text to extract gene, CDS, mRNA, intron and other feature sequences.</p>
+            <h2>GenBank Feature Extractor</h2>
+            <p>Upload a GenBank file or paste GenBank text to extract sequences of genes, CDS, mRNA, introns, etc.</p>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 1: Import GenBank annotation file</div>
-            <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload GenBank File</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste GenBank Text</label>
+            <div class="step-title">Step 1: Import GenBank annotation</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload GenBank file</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste GenBank text</label>
             </div>
             <div class="file-input">
                 <input type="file" id="gbFile" accept=".gb,.gbk,.genbank">
             </div>
             <div class="text-input">
-                <textarea id="gbText" placeholder="Please paste the full GenBank annotation here..." disabled></textarea>
+                <textarea id="gbText" placeholder="Paste the complete GenBank format content here..." disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Instructions:</strong> After uploading or pasting a <strong>complete</strong> GenBank file/text, select the features you wish to extract in Step 2. If the feature you need is not listed, please contact the author.
             </div>
             <div id="msgTip" class="tip-text"></div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 2: Select and extract features</div>
+            <div class="step-title">Step 2: Select features to extract</div>
             <div class="filter-box">
                 <label><input type="checkbox" value="gene" checked> gene</label>
                 <label><input type="checkbox" value="CDS" checked> CDS</label>
@@ -51,15 +63,15 @@
                 <label><input type="checkbox" value="misc_feature"> misc_feature</label>
             </div>
             <div style="margin-top:15px;">
-                <button class="btn" onclick="parseGB()">Parse & Extract</button>
+                <button class="btn" onclick="parseGB()">Start extraction</button>
             </div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">View Extracted Results</div>
+            <div class="step-title">Step 3: Results</div>
             <div class="result-toolbar">
-                <button class="btn" id="copyAllBtn" onclick="copyAllFasta()" disabled>Copy All Sequences</button>
-                <button class="btn" id="downloadBtn" onclick="downloadFasta()" disabled>Download Fasta</button>
+                <button class="btn" id="copyAllBtn" onclick="copyAllFasta()" disabled>Copy all sequences</button>
+                <button class="btn" id="downloadBtn" onclick="downloadFasta()" disabled>Download all sequences</button>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div id="resultBox"></div>
@@ -72,7 +84,7 @@
 
     <script>
         window.headerConfig = {
-            author: 'Original author: Paul Stothard, University of Alberta, Canada. Modified by Di Shang Fei Zhu.',
+            author: 'Original script by Paul Stothard, University of Alberta, Canada (modified by 地上飞猪)',
         };
     </script>
     <script src="../COMMON/utils.js"></script>
@@ -117,8 +129,8 @@
             const reader = new FileReader();
             reader.onload = function (ev) {
                 rawGBContent = ev.target.result;
-                msgTip.innerHTML = `<span class="success">✅ File loaded successfully: ${file.name}</span>`;
-                window.showToast(`✅ File ${file.name} loaded successfully`);
+                msgTip.innerHTML = `<span class="success">✅ File read successfully: ${file.name}</span>`;
+                window.showToast(`✅ File ${file.name} loaded`);
                 resultBox.innerHTML = "";
                 fastaAll = "";
                 copyAllBtn.disabled = true;
@@ -143,11 +155,6 @@
             return "NA";
         }
 
-        function filterFastaTitle(str) {
-            if (!str) return "";
-            return str.replace(/[\f\n\r\t]+/g, "").trim();
-        }
-
         function removeNonDna(str) {
             if (!str) return "";
             return str.replace(/[^A-Za-z]/g, '').toUpperCase();
@@ -169,7 +176,6 @@
             return res;
         }
 
-        function addReturns(str) { return str; }
         function hasAmbiguousBase(seq) {
             return /[RYMKSWHBVDNrymkshbvd]/.test(seq);
         }
@@ -217,7 +223,7 @@
                 var dnaSequenceArray = mainArray[4].split (/\/{2}/);
                 var dnaSequence = removeNonDna(dnaSequenceArray[0]);
                 if(!dnaSequence){
-                    outputHtml += '<p class="error">❌ No valid nucleic acid sequence detected.</p>';
+                    outputHtml += '<p class="error">❌ No valid nucleotide sequence detected</p>';
                     continue;
                 }
                 var featureArray = mainArray[3].split(/[\f\n\r] {5,12}\b/);
@@ -243,34 +249,15 @@
                 if (qMatch) firstQualifier = qMatch[0];
                 let qualifierName = firstQualifier ? firstQualifier.split('=')[0].replace(/^\//, '') : "";
 
-                let transPos = null;
-                const transMatch = null //arrayOfFeatures[i].match(/\/transl_except\s*=\s*\(pos:(\d+),aa:[^)]+\)/i);
-                if (transMatch) {
-                    transPos = parseInt(transMatch[1], 10);
-                }
-
                 let posPart = arrayOfFeatures[i].replace(new RegExp("^\\s*"+featureTitle),"").split(/\//)[0];
 
                 let seq = printFeature(posPart, dnaSequence, outputType);
-
-                if (transPos !== null) {
-                    if (posPart.search(/complement/) != -1) {
-                        if (seq.length > 0) {
-                            seq = seq.substring(0, seq.length - 1);
-                        }
-                    } else {
-                        if (seq.length >= transPos) {
-                            seq = seq.substring(0, transPos - 1) + seq.substring(transPos);
-                        }
-                    }
-                }
-
                 let seqLen = seq.length;
                 let namePart = (geneName && geneName !== "NA") ? `${geneName} ` : "";
                 let qualPart = (qualifierName && qualifierName !== "") ? `${qualifierName} ` : "";
                 let cleanName = namePart.trim().replace(/ /g, '_');
                 let header = `>${cleanName} ${featureTitle} Lable=${qualPart} Len=${seqLen}`;
-                let warn = hasAmbiguousBase(seq) ? ' <span class="warn">⚠️ Contains degenerate bases.</span>' : '';
+                let warn = hasAmbiguousBase(seq) ? ' <span class="warn">⚠️ Contains ambiguous bases</span>' : '';
 
                 outHtml += `<div style="margin:12px 0;">
                     <p><strong>${header}</strong>${warn}</p>
@@ -295,12 +282,12 @@
             }
             const content = rawGBContent;
             if (!content.trim()) {
-                msgTip.innerHTML = `<span class="error">❌ Please upload a file or paste GenBank text first.</span>`;
+                msgTip.innerHTML = `<span class="error">❌ Please upload a file or paste GenBank text first</span>`;
                 return;
             }
             const checks = document.querySelectorAll('.filter-box input:checked');
             if (checks.length === 0) {
-                msgTip.innerHTML = `<span class="error">❌ Please select at least one feature.</span>`;
+                msgTip.innerHTML = `<span class="error">❌ Please select at least one feature</span>`;
                 return;
             }
             const targetKeys = Array.from(checks).map(cb => cb.value.toUpperCase());
@@ -316,14 +303,14 @@
 
         function copyAllFasta() {
             if (!fastaAll || fastaAll.trim() === "") {
-                window.showToast('❌ No sequences to copy.');
+                window.showToast('❌ No sequences to copy');
                 return;
             }
             copyAllBtn.disabled = true;
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(fastaAll)
                     .then(() => {
-                        window.showToast('✅ All sequences copied successfully!');
+                        window.showToast('✅ All sequences copied');
                     })
                     .catch(() => {
                         copyByTempArea();
@@ -344,12 +331,12 @@
             try {
                 const success = document.execCommand("copy");
                 if (success) {
-                    window.showToast('✅ All sequences copied successfully!');
+                    window.showToast('✅ All sequences copied');
                 } else {
-                    window.showToast('❌ Copy failed. Please copy manually.');
+                    window.showToast('❌ Copy failed, please copy manually');
                 }
             } catch (e) {
-                window.showToast('❌ Copy error.');
+                window.showToast('❌ Copy error');
             }
             tempCopyArea.value = "";
         }

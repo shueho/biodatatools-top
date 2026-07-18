@@ -26,9 +26,9 @@
 
         <div class="step-card">
             <div class="step-title">Step 1: Import FASTA Sequences</div>
-            <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">Upload File</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">Paste Text</label>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
             </div>
             <div class="file-input">
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">

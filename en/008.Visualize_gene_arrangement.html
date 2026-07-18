@@ -37,9 +37,9 @@
 
     <div class="step-card">
         <div class="step-title">Step 1: Import Gene Arrangement File</div>
-        <div class="radio-box">
-            <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">Upload File (.txt/.tab)</label>
-            <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">Paste Text</label>
+        <div class="mode-tabs">
+            <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()"> Upload File (.txt/.tab)</label>
+            <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()"> Paste Text</label>
         </div>
         <div class="file-input"><input type="file" id="geneFileInput" accept=".txt,.tab,.tsv,.gene"></div>
         <div class="text-input"><textarea id="geneTextArea" rows="4" placeholder="Paste tab‑separated gene arrangement content (supports - : ! symbols)" disabled></textarea></div>

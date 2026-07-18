@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -40,15 +40,15 @@
 
         <div class="step-card">
             <div class="step-title">Step 1: Import FASTA Sequences</div>
-            <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">Upload FASTA File</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">Paste FASTA Text</label>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload FASTA file</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste FASTA text</label>
             </div>
             <div class="file-input">
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
             </div>
             <div class="text-input">
-                <textarea id="fastaText" placeholder="Paste standard FASTA content (the part before the first space in the sequence ID will be used as gene name)" disabled></textarea>
+                <textarea id="fastaText" placeholder="Paste standard FASTA content (content before the first space in sequence ID will be used as gene name)" disabled></textarea>
             </div>
             <div id="msgTip" class="tip-text"></div>
             <div style="margin-top:15px;">
@@ -65,21 +65,21 @@
 
             <div class="mode-switch">
                 <label>
-                    <input type="radio" name="seqType" value="dna" checked> Protein‑coding nucleotide mode
+                    <input type="radio" name="seqType" value="dna" checked> Protein‑coding DNA mode
                 </label>
                 <label>
-                    <input type="radio" name="seqType" value="protein"> Non‑protein‑coding nucleotide / Protein mode (direct concatenation)
+                    <input type="radio" name="seqType" value="protein"> Non‑coding DNA/RNA / Protein mode (direct concatenation)
                 </label>
             </div>
 
             <div id="dnaParams">
                 <div class="three-inline">
                     <div class="form-group">
-                        <label>Reverse Complement Timing</label>
+                        <label>Reverse complement timing</label>
                         <select id="compTime">
                             <option value="none">Do not reverse complement</option>
-                            <option value="before">Reverse complement first, then process stop codons/remainders</option>
-                            <option value="after">Process stop codons/remainders first, then reverse complement</option>
+                            <option value="before">Reverse complement first, then handle stop codons/remainders</option>
+                            <option value="after">Handle stop codons/remainders first, then reverse complement</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -92,33 +92,33 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Stop Codon Treatment</label>
+                    <label>Stop codon handling</label>
                     <select id="stopAction">
                         <option value="keep">Keep stop codons</option>
-                        <option value="remove_codon">Remove terminal stop codons and non‑triplet remainders</option>
-                        <option value="remove_remain">Remove only terminal non‑triplet remainders</option>
+                        <option value="remove_codon">Remove trailing stop codons and non‑triplet residues</option>
+                        <option value="remove_remain">Remove only trailing non‑triplet residues</option>
                     </select>
                 </div>
 
                 <div id="codonConfigWrap" class="sub-group hide">
                     <div class="form-group">
-                        <label>Stop Codon Source</label>
+                        <label>Stop codon source</label>
                         <div class="radio-box" style="margin:0 0 10px 0;">
-                            <label><input type="radio" name="stopMode" value="table" checked>Use codon table</label>
-                            <label><input type="radio" name="stopMode" value="custom">Custom</label>
+                            <label><input type="radio" name="stopMode" value="table" checked> Use codon table</label>
+                            <label><input type="radio" name="stopMode" value="custom"> Custom</label>
                         </div>
-                        <label>	Select Codon Table</label>
+                        <label>Select codon table</label>
                         <select id="codonTableSel"></select>
                     </div>
                     <div class="form-group">
-                        <label>Recognized stop codons (comma‑separated)</label>
+                        <label>Stop codons to recognize (comma‑separated)</label>
                         <input type="text" id="stopCodonInput" placeholder="TAA,TAG,TGA">
                     </div>
                 </div>
             </div>
 
             <div id="proteinHint" class="tip-text success hide" style="margin-top:10px;">
-                ★ Protein mode: sequences are concatenated directly without any cleaning, complement, or codon processing.
+                ★ Protein mode: Directly concatenate raw sequences without any cleaning, complement, or codon processing.
             </div>
 
             <button id="concatBtn" class="btn">Run Sequence Concatenation</button>
@@ -131,14 +131,14 @@
             <div class="result-box" id="finalSeq"></div>
             <div style="margin:8px 0;">
                 <button id="copySeqBtn" class="btn" disabled>Copy Sequence</button>
-                <button id="exportSeqBtn" class="btn" disabled>Export FASTA File</button>
+                <button id="exportSeqBtn" class="btn" disabled>Export FASTA</button>
             </div>
 
             <div id="resultTip" class="tip-text hide"></div> 
-            <h4 style="margin-top:20px;">2. Position Table for Each Gene</h4>
+            <h4 style="margin-top:20px;">2. Gene Position Table</h4>
             <table id="posTable">
                 <thead>
-                    <tr><th>No.</th><th>Gene Name</th><th>Original Length</th><th>Processed Length</th><th>Start</th><th>End</th></tr>
+                    <tr><th>#</th><th>Gene Name</th><th>Original Length</th><th>Processed Length</th><th>Start</th><th>End</th></tr>
                 </thead>
                 <tbody id="posTableBody"></tbody>
             </table>
@@ -154,7 +154,7 @@
 
     <script>
         window.headerConfig = {
-            //author: '作者：地上飞猪',
+            //author: 'Author: 地上飞猪',
         };
     </script>
 
@@ -224,18 +224,18 @@
                 text = fastaText.value;
             }
             if (!text.trim()) {
-                msgTip.innerHTML = '<span class="error">❌ Please upload a file or paste FASTA content first.</span>';
+                msgTip.innerHTML = '<span class="error">❌ Please upload a file or paste FASTA content first</span>';
                 return;
             }
             parseFasta(text);
             if (sequences.length === 0) {
-                msgTip.innerHTML = '<span class="error">❌ No valid FASTA sequences parsed.</span>';
+                msgTip.innerHTML = '<span class="error">❌ No valid FASTA sequences parsed</span>';
                 return;
             }
             renderSeqList();
             seqListWrap.classList.remove('hide');
             disableAllResultBtn();
-            msgTip.innerHTML = `<span class="success">✅ Successfully loaded ${sequences.length} sequence(s).</span>`;
+            msgTip.innerHTML = `<span class="success">✅ Successfully loaded ${sequences.length} sequence(s)</span>`;
             window.showToast(`✅ Loaded ${sequences.length} sequence(s)`);
         }
 
@@ -315,7 +315,7 @@
             renderSeqList();
         };
         window.delSeq = function(idx) {
-            if (!confirm('Are you sure you want to delete this sequence?')) return;
+            if (!confirm('Delete this sequence?')) return;
             sequences.splice(idx, 1);
             renderSeqList();
             if (sequences.length === 0) {
@@ -341,7 +341,7 @@
 
         function initCodonTableSelect() {
             if (typeof TABLE_ID_NAME_MAP === 'undefined') {
-                codonTableSel.innerHTML = '<option value="1">Standard Codon Table</option>';
+                codonTableSel.innerHTML = '<option value="1">Standard codon table</option>';
                 return;
             }
             codonTableSel.innerHTML = '';
@@ -506,7 +506,7 @@
 
         function doConcat() {
             if (sequences.length === 0) {
-                showTip('Please load sequences first.', 'error');
+                showTip('Please load sequences first', 'error');
                 return;
             }
             let totalSeq = '';
@@ -539,7 +539,7 @@
             }
 
             if (totalSeq.length === 0) {
-                showTip('The concatenated sequence is empty. Please check your sequences or parameter settings.', 'warn');
+                showTip('Concatenated sequence is empty — please check your sequences or parameters', 'warn');
                 finalSeqDiv.textContent = '>Concatenated_sequence\n(empty sequence)';
                 enableAllResultBtn();
                 posTableBody.innerHTML = '<tr><td colspan="6">No valid sequences</td></tr>';
@@ -567,7 +567,7 @@
 
         function copyText(text) {
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(text).then(() => showResultTip('Copied successfully.', 'success'));
+                navigator.clipboard.writeText(text).then(() => showResultTip('Copied successfully', 'success'));
             } else {
                 fallbackCopy(text);
             }
@@ -579,7 +579,7 @@
             ta.select();
             document.execCommand('copy');
             document.body.removeChild(ta);
-            showResultTip('Copied successfully.', 'success');
+            showResultTip('Copied successfully', 'success');
         }
         function downloadFile(content, fileName, type) {
             const blob = new Blob([content], { type });
@@ -597,7 +597,7 @@
             if (txt) copyText(txt);
         }
         function copyTable() {
-            let txt = 'No.\tGene Name\tOriginal Length\tProcessed Length\tStart\tEnd\n';
+            let txt = '#\tGene Name\tOriginal Length\tProcessed Length\tStart\tEnd\n';
             positionData.forEach((d, i) => {
                 txt += `${i+1}\t${d.name}\t${d.originLen}\t${d.finalLen}\t${d.start}\t${d.end}\n`;
             });
@@ -608,7 +608,7 @@
             if (txt) downloadFile(txt, 'concatenated_seq.fasta', 'text/plain');
         }
         function exportTable() {
-            let txt = 'No.\tGene Name\tOriginal Length\tProcessed Length\tStart\tEnd\n';
+            let txt = '#\tGene Name\tOriginal Length\tProcessed Length\tStart\tEnd\n';
             positionData.forEach((d, i) => {
                 txt += `${i+1}\t${d.name}\t${d.originLen}\t${d.finalLen}\t${d.start}\t${d.end}\n`;
             });

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nucleotide to Amino Acid Translation - BioDataTools</title>
+    <title>Nucleotide to Protein Translation - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
     <style>
@@ -26,40 +26,40 @@
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>Nucleotide to Amino Acid Translation</h2>
-            <p>Translate protein-coding gene sequences into amino acid sequences (supports degenerate/mixed codon translation).</p>
+            <h2>Nucleotide to Protein Translation</h2>
+            <p>Translate protein-coding gene sequences into amino acid sequences (supports degenerate/ambiguous codon translation).</p>
         </div>
 
         <div class="step-card">
             <div class="step-title">Step 1: Import CDS Sequences (FASTA)</div>
-            <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()">Upload FASTA File</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()">Paste FASTA Text</label>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload FASTA file</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste FASTA text</label>
             </div>
             <div class="file-input"><input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt"></div>
-            <div class="text-input"><textarea id="fastaText" placeholder="Paste standard FASTA CDS sequences (IUPAC degenerate bases supported)" disabled></textarea></div>
+            <div class="text-input"><textarea id="fastaText" placeholder="Paste standard FASTA CDS sequences (supports IUPAC degenerate bases)" disabled></textarea></div>
             <div id="msgTip" class="tip-text"></div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 2: Translation Parameter Settings</div>
-            <div class="filter-box">
-                <label>Genetic Code Table:</label>
+            <div class="step-title">Step 2: Translation Parameters</div>
+            <div class="param-group">
+                <label>Codon table:</label>
                 <select id="codonTableSel"></select>
-                <label>On Stop Codon:</label>
+                <label>When stop codon encountered:</label>
                 <select id="stopCodonMode">
                     <option value="stop">Stop translation</option>
                     <option value="continue">Continue translation</option>
                 </select>
-                <button class="btn" id="gotoNcbiCodon">View NCBI Codon Table</button>
-                <button class="btn" onclick="runTranslate()">Start Translation</button>
+                <button class="btn" id="gotoNcbiCodon">View NCBI codon table</button>
+                <button class="btn" onclick="runTranslate()">Start translation</button>
             </div>
 
             <div class="custom-codon-box">
-                <button class="btn" style="margin-bottom:8px;" id="toggleCustomBtn">Expand Custom Codon</button>
+                <button class="btn" style="margin-bottom:8px;" id="toggleCustomBtn">Expand custom codon table</button>
                 <div id="customInner" class="hide">
-                    <p>Format: codon amino_acid (use TER for stop codons), one mapping per line.</p>
-                    <textarea id="customCodonText" placeholder="e.g., UUU F"></textarea>
+                    <p>Format: codon amino_acid, use TER for stop codons, one correspondence per line (exact codons only)</p>
+                    <textarea id="customCodonText" placeholder="Example: UUU F"></textarea>
                     <div style="margin-top:8px;display:flex;gap:10px;">
                         <button class="btn" id="loadCustomBtn">Load</button>
                         <button class="btn" id="clearCustomBtn">Clear</button>
@@ -70,7 +70,7 @@
             <div id="tableViewTip" class="tip-text"></div>
 
             <div class="preview-table-wrap">
-                <h4>Current Codon Table Preview</h4>
+                <h4>Current codon table preview</h4>
                 <div id="codonPreview"></div>
             </div>
         </div>
@@ -78,9 +78,9 @@
         <div class="step-card">
             <div class="step-title">Step 3: Translation Results</div>
             <div class="result-toolbar">
-                <button class="btn" id="copyProteinBtn" disabled>Copy Protein Sequences</button>
-                <button class="btn" id="exportFastaBtn" disabled>Export Protein (FASTA)</button>
-                <button class="btn" id="exportCsvBtn" disabled>Export Translation Details (CSV)</button>
+                <button class="btn" id="copyProteinBtn" disabled>Copy protein sequences</button>
+                <button class="btn" id="exportFastaBtn" disabled>Export protein FASTA</button>
+                <button class="btn" id="exportCsvBtn" disabled>Export translation details</button>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div id="resultBox"></div>
@@ -91,7 +91,7 @@
 
     <script>
         window.headerConfig = {
-            //author: '作者：地上飞猪',
+            //author: 'Author: 地上飞猪',
         };
     </script>
 
@@ -169,7 +169,7 @@
             const previewBox = document.getElementById("codonPreview");
             const codonList = Object.entries(codonMap);
             if (codonList.length === 0) {
-                previewBox.innerHTML = '<span class="error">No codon data available.</span>';
+                previewBox.innerHTML = '<span class="error">No codon data available</span>';
                 return;
             }
             const groupU = [], groupC = [], groupA = [], groupG = [];
@@ -184,7 +184,7 @@
             function buildColHtml(list, title) {
                 let html = `<div class="codon-col"><table class="preview-table">
                     <tr><th colspan="2">${title}</th></tr>
-                    <tr><th>Codon</th><th>Amino Acid</th></tr>`;
+                    <tr><th>Codon</th><th>Amino acid</th></tr>`;
                 list.forEach(item => {
                     html += `<td>${item.codon}</td><td>${item.aa}</td></tr>`;
                 });
@@ -192,10 +192,10 @@
                 return html;
             }
             let totalHtml = `<div class="codon-preview-row">`;
-            totalHtml += buildColHtml(groupU, "First position: U");
-            totalHtml += buildColHtml(groupC, "First position: C");
-            totalHtml += buildColHtml(groupA, "First position: A");
-            totalHtml += buildColHtml(groupG, "First position: G");
+            totalHtml += buildColHtml(groupU, "First: U");
+            totalHtml += buildColHtml(groupC, "First: C");
+            totalHtml += buildColHtml(groupA, "First: A");
+            totalHtml += buildColHtml(groupG, "First: G");
             totalHtml += `</div>`;
             previewBox.innerHTML = totalHtml;
         }
@@ -266,7 +266,7 @@
         loadCustomBtn.onclick = function() {
             const txt = customCodonText.value.trim();
             if (!txt) {
-                customTip.innerHTML = '<span class="error">Please enter something.</span>';
+                customTip.innerHTML = '<span class="error">Please enter content</span>';
                 return;
             }
             const lines = txt.split(/\r?\n/).filter(line => line.trim());
@@ -278,12 +278,12 @@
                 temp[p[0].toUpperCase()] = p[1];
             }
             if (!ok) {
-                customTip.innerHTML = '<span class="error">Format error.</span>';
+                customTip.innerHTML = '<span class="error">Format error</span>';
                 return;
             }
             currentCodonTable = temp;
             customTip.innerHTML = '<span class="success">Loaded successfully</span>';
-            tableViewTip.innerHTML = '<span class="success">Current: Custom Codon Table</span>';
+            tableViewTip.innerHTML = '<span class="success">Current: Custom codon table</span>';
             renderCodonPreview(currentCodonTable);
         };
 
@@ -319,7 +319,6 @@
                         geneSeqMap.set(name, cleanSeq);
                     }
                     name = line.replace(/^>\s*/, "").trim();
-                    //name = line.replace(/^>\s*/, "").trim().split(/\s+/)[0];
 
                     seq = "";
                 } else {
@@ -359,12 +358,12 @@
                 rawFasta = fastaText.value;
             }
             if (!rawFasta) {
-                resultBox.innerHTML = '<span class="error">❌ No valid CDS sequence found.</span>';
+                resultBox.innerHTML = '<span class="error">❌ No valid CDS sequences</span>';
                 return;
             }
             parseFasta(rawFasta);
             if (geneList.length === 0) {
-                resultBox.innerHTML = '<span class="error">❌ No valid gene sequences parsed.</span>';
+                resultBox.innerHTML = '<span class="error">❌ No valid gene sequences parsed</span>';
                 return;
             }
 
@@ -386,9 +385,9 @@
 
                 outHtml += `
                 <div class="result-item">
-                    <div class="gene-title">Gene Name: ${gene}</div>
-                    <p>RNA Length: ${rnaSeq.length} bp</p>
-                    <p><strong>Protein Sequence: </strong></p>
+                    <div class="gene-title">Gene name: ${gene}</div>
+                    <p>RNA length: ${rnaSeq.length} bp</p>
+                    <p><strong>Protein sequence:</strong></p>
                     <div class="align-seq">${rawProt}</div>
                 </div>`;
             }
@@ -397,12 +396,12 @@
             copyProteinBtn.disabled = false;
             exportFastaBtn.disabled = false;
             exportCsvBtn.disabled = false;
-            window.showToast('✅ Translation complete.');
+            window.showToast('✅ Translation complete');
         }
 
         function copyAllProtein() {
             if (translateResult.length === 0) {
-                window.showToast('❌ No protein sequences to copy.');
+                window.showToast('❌ No protein sequences to copy');
                 return;
             }
             let fastaStr = "";
@@ -411,7 +410,7 @@
             });
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(fastaStr).then(() => {
-                    window.showToast('✅ All protein sequences copied successfully!');
+                    window.showToast('✅ All protein sequences copied');
                 }).catch(() => {
                     fallbackCopy(fastaStr);
                 });
@@ -427,9 +426,9 @@
             textarea.select();
             try {
                 document.execCommand('copy');
-                window.showToast('✅ All protein sequences copied successfully!');
+                window.showToast('✅ All protein sequences copied');
             } catch (e) {
-                window.showToast('❌ Copy failed. Please copy manually.');
+                window.showToast('❌ Copy failed, please copy manually');
             }
             document.body.removeChild(textarea);
         }
@@ -448,12 +447,12 @@
             document.body.appendChild(a);
             a.click();
             URL.revokeObjectURL(url);
-            window.showToast('✅ FASTA exported successfully.');
+            window.showToast('✅ FASTA exported');
         }
 
         function exportToCSV() {
             if (translateResult.length === 0) return;
-            let csv = "\ufeffGene Name,RNA Length (bp),Stop Codon Mode,Protein Sequence\n";
+            let csv = "\ufeffGene name,RNA length (bp),Stop codon handling,Protein sequence\n";
             translateResult.forEach(item => {
                 csv += `${item.geneName},${item.rnaLength},${item.stopMode},${item.protein}\n`;
             });
@@ -461,12 +460,12 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = "translate_log.csv";
+            a.download = "translation_details.csv";
             document.body.appendChild(a);
             a.click();
             URL.revokeObjectURL(url);
             document.body.removeChild(a);
-            window.showToast('✅ CSV exported successfully.');
+            window.showToast('✅ Table exported');
         }
 
         copyProteinBtn.addEventListener("click", copyAllProtein);

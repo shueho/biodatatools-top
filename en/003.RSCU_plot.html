@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,17 +7,6 @@
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
     <style>
-        .config-group {
-            margin: 15px 0;
-            padding: 12px;
-            border: 1px solid #e8edf2;
-            border-radius: 6px;
-        }
-        .group-title {
-            font-weight: 500;
-            margin-bottom: 10px;
-            display: inline-block;
-        }
         .chart-wrap {
             max-width: 100%;
             overflow: auto;
@@ -29,11 +18,6 @@
         select#groupCol:disabled {
             background-color: #e9ecef;
             cursor: not-allowed;
-        }
-        .mode-tip {
-            margin-left: 10px;
-            font-size: 0.85rem;
-            color: #6c757d;
         }
     </style>
 </head>
@@ -49,8 +33,13 @@
 
         <div class="step-card">
             <div class="step-title">Step 1: Import Table Data</div>
+            <div class="info-box">
+                <strong>Instructions:</strong> The input data must include at least: species/gene, amino acid, codon, and RSCU value. It must contain a header row and be separated by tabs or commas.<br>
+                <strong>Recommendation:</strong> Paste results directly from the RSCU calculation tool on this site!<br>
+                In single‑sequence mode, the species/gene column must be filled with any identical value. Refer to the tutorial video for usage.
+            </div>
             <div class="text-input">
-                <textarea id="tableInput" placeholder="Input data must include at least: species/gene, amino acid, codon, RSCU value. Must contain a header row, separated by tabs or commas.&#10;It is recommended to paste results from the RSCU calculation tool on this website.&#10;In single‑sequence mode, fill the species/gene column with any identical value."></textarea>
+                <textarea id="tableInput" placeholder="Paste your RSCU result table here..."></textarea>
             </div>
             <div style="margin-top:15px;">
                 <button class="btn" id="importBtn">Import & Preview Raw Data</button>
@@ -68,24 +57,26 @@
 
         <div class="step-card">
             <div class="step-title">Step 2: Plot Data Settings</div>
-            <div class="filter-box">
+            <div class="param-group">
                 <label>Plot Mode:</label>
                 <select id="chartMode">
-                    <option value="stack">Single-Sequence Mode</option>
-                    <option value="group">Multi-Gene/Species Mode</option>
+                    <option value="stack">Single‑Sequence Mode</option>
+                    <option value="group">Multi‑Gene/Species Mode</option>
                 </select>
+            </div>
+            <div class="param-group" style="margin-top:12px;">
                 <label>Group Identifier Column (Species/Gene):</label>
                 <select id="groupCol"></select>
-                <span id="modeTip" class="mode-tip"></span>
+                <span id="modeTip"></span>
                 <label>Amino Acid Column:</label>
                 <select id="colAA"></select>
                 <label>Codon Column:</label>
                 <select id="colCodon"></select>
-                <label>	RSCU Value Column:</label>
+                <label>RSCU Value Column:</label>
                 <select id="colRscu"></select>
             </div>
-            <div class="filter-box" style="margin-top:8px;">
-                <label>Stop Amino Acid(s) (space-separated):</label>
+            <div class="param-group" style="margin-top:12px;">
+                <label>Stop Amino Acid(s) (space‑separated):</label>
                 <input type="text" id="stopAminoInput" value="TER" style="width:220px;">
                 <label>Group amino acids by first two codon positions:</label>
                 <input type="checkbox" id="enableGroup" checked>
@@ -95,7 +86,7 @@
             </div>
             <div id="msgTip2" class="tip-text"></div>
             <div id="plotTableWrap" style="display:none;">
-                <p><strong>Data Table for Plotting (Stop Codons Filtered):</strong></p>
+                <p><strong>Plot Data Table (Stop Codons Filtered):</strong></p>
                 <div class="result-item">
                     <div class="table-scroll">
                         <table id="plotTable"></table>
@@ -109,7 +100,7 @@
 
             <div class="config-group">
                 <div class="group-title">Font Settings</div>
-                <div class="filter-box">
+                <div class="param-group">
                     <label>Global Font:</label>
                     <select id="fontFamily" style="width:160px;">
                         <option value="Times New Roman" selected>Times New Roman</option>
@@ -129,7 +120,7 @@
 
             <div class="config-group">
                 <div class="group-title">Canvas Settings</div>
-                <div class="filter-box">
+                <div class="param-group">
                     <label>Chart Width (px):</label>
                     <input type="number" id="chartWidth" value="1500" min="800" style="width:80px;">
                     <label>Chart Height (px):</label>
@@ -141,11 +132,11 @@
                     <label>Inner Bar Spacing:</label>
                     <input type="number" id="innerPadding" value="0.1" step="0.05" min="0" max="0.4" style="width:70px;">
                 </div>
-                <div class="filter-box" style="margin-top:8px;">
+                <div class="param-group" style="margin-top:8px;">
                     <label>Y‑Axis Label:</label>
                     <input type="text" id="yAxisLabel" value="RSCU" style="width:120px;">
                     <label>Y‑Axis Maximum:</label>
-                    <input type="number" id="yMaxValue" value="8" style="width:100px;" placeholder="如：2.0">
+                    <input type="number" id="yMaxValue" value="8" style="width:100px;" placeholder="e.g. 2.0">
                     <label style="color:red; font-weight:bold;">Gene/Species Order (auto‑filled, editable):</label>
                     <input type="text" id="speciesOrder" style="width:320px;">
                 </div>
@@ -153,7 +144,7 @@
 
             <div class="config-group">
                 <div class="group-title">Codon Box Style</div>
-                <div class="filter-box">
+                <div class="param-group">
                     <label>Box Width (px):</label>
                     <input type="number" id="boxWidth" value="50" min="40" style="width:70px;">
                     <label>Box Height (px):</label>
@@ -165,7 +156,7 @@
 
             <div class="config-group">
                 <div class="group-title">Color Settings</div>
-                <div class="filter-box">
+                <div class="param-group">
                     <label>Codon Text Color:</label>
                     <input type="text" id="codonTextColor" value="#000000" style="width:100px;">
                     <label>Bar Stroke Color:</label>
@@ -195,8 +186,11 @@
 
     <script>
         window.headerConfig = {
+            author: 'Author: 地上飞猪',
             bilibiliUrl: 'https://www.bilibili.com/video/BV1kYJL6eEnF',
-            bilibiliText: 'Tutorial Video for This Tool',
+            bilibiliText: 'Tutorial video for this tool',
+            githubText: 'GitHub Project',
+            returnHomeUrl: '../index.html'
         };
     </script>
     <script src="../COMMON/utils.js"></script>
@@ -306,7 +300,7 @@
         function renderTable(tableEl, headers, data) {
             tableEl.innerHTML = "";
             if (!headers || headers.length === 0 || !data || data.length === 0) {
-                tableEl.innerHTML = "</table><td colspan='100%'>No data available.</td></tr>";
+                tableEl.innerHTML = "</table><td colspan='100%'>No data available</td></tr>";
                 return;
             }
             const thead = document.createElement("thead");
@@ -405,10 +399,10 @@
         }
 
         function autoFillSpeciesOrder() {
-		if (chartMode.value === "stack") {
-        		speciesOrder.value = "Sample";
-        		return;
-   		 }
+            if (chartMode.value === "stack") {
+                speciesOrder.value = "Sample";
+                return;
+            }
             const order = [];
             const seen = new Set();
             plotReadyData.forEach(d => {
@@ -422,7 +416,7 @@
 
         function makePlotTable() {
             if (rawData.length === 0) {
-                msgTip2.innerHTML = '<span class="error">❌ Please import the raw data first.</span>';
+                msgTip2.innerHTML = '<span class="error">❌ Please import raw data first</span>';
                 plotTableWrap.style.display = "none";
                 plotReadyData = [];
                 return;
@@ -461,7 +455,7 @@
             }));
             renderTable(plotTable, showHeaders, showData);
             plotTableWrap.style.display = "block";
-            msgTip2.innerHTML = '<span class="success">✅ Plot table generated successfully.</span>';
+            msgTip2.innerHTML = '<span class="success">✅ Plot table generated successfully</span>';
             chartBox.innerHTML = "";
             msgTip3.innerHTML = "";
             toolbarTip.innerHTML = "";
@@ -471,7 +465,7 @@
 
         function drawChart() {
             if (plotReadyData.length === 0) {
-                msgTip3.innerHTML = '<span class="error">❌ Please generate the plot table first.</span>';
+                msgTip3.innerHTML = '<span class="error">❌ Please generate the plot table first</span>';
                 chartBox.innerHTML = "";
                 exportSvgBtn.disabled = true;
                 return;
@@ -656,8 +650,8 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            toolbarTip.innerHTML = '<span class="success">✅ SVG file exported successfully.</span>';
-            window.showToast('✅ SVG file exported.');
+            toolbarTip.innerHTML = '<span class="success">✅ SVG file exported successfully</span>';
+            window.showToast('✅ SVG file exported');
         }
 
         importBtn.addEventListener("click", function () {
@@ -673,8 +667,8 @@
             renderTable(originTable, res.headers, res.data);
             originTableWrap.style.display = "block";
             fillSelect(res.headers);
-            msgTip1.innerHTML = '<span class="success">✅ Raw data imported successfully.</span>';
-            window.showToast('✅ Data imported successfully.');
+            msgTip1.innerHTML = '<span class="success">✅ Raw data imported successfully</span>';
+            window.showToast('✅ Data imported successfully');
             plotTableWrap.style.display = "none";
             chartBox.innerHTML = "";
             msgTip2.innerHTML = "";

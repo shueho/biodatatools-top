@@ -13,32 +13,37 @@
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>RSCU计算工具（相对同义密码子使用度）。</h2>
-            <p>相对同义密码子使用度计算（RSCU）</p>
+            <h2>RSCU计算工具（相对同义密码子使用度）</h2>
+            <p>相对同义密码子使用度计算（RSCU）。</p>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第一步：导入Fasta序列</div>
-            <div class="radio-box">
+            <div class="step-title">第一步：导入FASTA序列</div>
+            <div class="mode-tabs">
                 <label>
-                    <input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传Fasta文件
+                    <input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件
                 </label>
                 <label>
-                    <input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴Fasta文本
+                    <input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本
                 </label>
             </div>
             <div class="file-input">
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt">
             </div>
             <div class="text-input">
-                <textarea id="fastaText" placeholder="粘贴标准Fasta内容（注意：序列标识第一个空格前的内容将作为基因名称，如有重名请提前修改！）" disabled></textarea>
+                <textarea id="fastaText" placeholder="粘贴标准FASTA内容（注意：序列标识第一个空格前的内容将作为基因名称，如有重名请提前修改！）" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>使用说明：</strong> 粘贴需要分析的蛋白编码基因的CDS序列（可以使用本网页的GenBank特征序列提取工具完成），随后选择正确的密码子表。<strong>密码子使用错误本网页不会进行提醒</strong>。<br>
+                <strong>注意：</strong> 为了更好的展示数据序列标识第一个空格前的内容将作为基因名称，如有重名请提前修改！<br>
+                可以选择合并所有序列进行RSCU计算或对每一个序列进行分别计算。
             </div>
             <div id="msgTip" class="tip-text"></div>
         </div>
 
         <div class="step-card">
             <div class="step-title">第二步：参数设置</div>
-            <div class="filter-box">
+            <div class="param-group">
                 <label>密码子表：</label>
                 <select id="codonTableSel"></select>
 
@@ -86,7 +91,10 @@
 
     <script>
         window.headerConfig = {
-            author: '作者：地上飞猪',
+            //author: '作者：地上飞猪',
+            bilibiliUrl: 'https://www.bilibili.com/video/BV1kYJL6eEnF',
+            bilibiliText: '当前工具使用教程视频',
+
         };
     </script>
 
@@ -162,7 +170,7 @@
         const calcMode = document.getElementById("calcMode");
         const resultBox = document.getElementById("resultBox");
         const exportCsvBtn = document.getElementById("exportCsvBtn");
-
+        const copyResultBtn = document.getElementById("copyResultBtn");
         gotoNcbiCodon.onclick = function(){
             window.open("https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi", "_blank");
         };

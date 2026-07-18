@@ -116,8 +116,8 @@
 
             <div class="mode-bar">
                 <label style="font-weight:500;">Mode:</label>
-                <label><input type="radio" name="mode" value="split" checked onchange="onModeChange()">Split Square Matrix</label>
-                <label><input type="radio" name="mode" value="merge" onchange="onModeChange()">Merge Triangular Matrices</label>
+                <label><input type="radio" name="mode" value="split" checked onchange="onModeChange()"> Split Square Matrix</label>
+                <label><input type="radio" name="mode" value="merge" onchange="onModeChange()"> Merge Triangular Matrices</label>
                 <button class="btn" id="exampleBtn">Load Example</button>
             </div>
 
@@ -126,9 +126,9 @@
                     <strong>Split Square Matrix Mode</strong>: Split a full square matrix into <strong>lower‑left</strong> and <strong>upper‑right</strong> triangular matrices.<br>
                     <strong>The first cell of the first row must contain a row label (e.g., "ID" or "#"), and cannot be left empty; otherwise, the column names will be misaligned upon import.</strong> The different row and column names in the examples are for demonstration purposes only; in actual use, they are often identical.
                 </div>
-                <div class="radio-box">
-                    <label><input type="radio" name="splitInputMode" value="file" checked onchange="switchSplitInput()">Upload File</label>
-                    <label><input type="radio" name="splitInputMode" value="text" onchange="switchSplitInput()">Paste Text</label>
+                <div class="mode-tabs">
+                    <label><input type="radio" name="splitInputMode" value="file" checked onchange="switchSplitInput()"> Upload File</label>
+                    <label><input type="radio" name="splitInputMode" value="text" onchange="switchSplitInput()"> Paste Text</label>
                 </div>
                 <div class="file-input" id="splitFileWrap">
                     <input type="file" id="splitFileInput" accept=".csv,.tsv,.txt,.tab">
@@ -163,9 +163,9 @@
 
                 <div style="border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
                     <div style="font-weight:600; color:#1f4068; margin-bottom:4px;">Triangular Matrix A</div>
-                    <div class="radio-box">
-                        <label><input type="radio" name="mergeLeftInputMode" value="file" checked onchange="switchMergeLeftInput()">Upload File</label>
-                        <label><input type="radio" name="mergeLeftInputMode" value="text" onchange="switchMergeLeftInput()">Paste Text</label>
+                    <div class="mode-tabs">
+                        <label><input type="radio" name="mergeLeftInputMode" value="file" checked onchange="switchMergeLeftInput()"> Upload File</label>
+                        <label><input type="radio" name="mergeLeftInputMode" value="text" onchange="switchMergeLeftInput()"> Paste Text</label>
                     </div>
                     <div class="file-input" id="mergeLeftFileWrap">
                         <input type="file" id="mergeLeftFileInput" accept=".csv,.tsv,.txt,.tab">
@@ -183,9 +183,9 @@
 
                 <div>
                     <div style="font-weight:600; color:#1f4068; margin-bottom:4px;">Triangular Matrix B</div>
-                    <div class="radio-box">
-                        <label><input type="radio" name="mergeRightInputMode" value="file" checked onchange="switchMergeRightInput()">Upload File</label>
-                        <label><input type="radio" name="mergeRightInputMode" value="text" onchange="switchMergeRightInput()">Paste Text</label>
+                    <div class="mode-tabs">
+                        <label><input type="radio" name="mergeRightInputMode" value="file" checked onchange="switchMergeRightInput()"> Upload File</label>
+                        <label><input type="radio" name="mergeRightInputMode" value="text" onchange="switchMergeRightInput()"> Paste Text</label>
                     </div>
                     <div class="file-input" id="mergeRightFileWrap">
                         <input type="file" id="mergeRightFileInput" accept=".csv,.tsv,.txt,.tab">

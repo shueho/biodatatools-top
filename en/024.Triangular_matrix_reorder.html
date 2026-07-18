@@ -16,9 +16,9 @@
         </div>
         <div class="step-card">
             <div class="step-title">Step 1: Import Triangular Matrix</div>
-            <div class="radio-box">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()">Upload File</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()">Paste Text</label>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()"> Paste Text</label>
             </div>
             <div class="file-input" id="fileInputWrap">
                 <input type="file" id="fileInput" accept=".csv,.tsv,.txt,.tab">

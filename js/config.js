@@ -5,9 +5,8 @@ const toolConfig = [
         categoryIcon: "🧬",
         tools: [
 {
-    toolName: "GenBank Feature Extraction",
-    toolDesc: "Upload GenBank file or paste GenBank text to extract gene, CDS, mRNA, intron and other feature sequences.",
-    toolIcon: "images/001.png",
+    toolName: "GenBank Feature Extractor",
+    toolDesc: "Upload a GenBank file or paste GenBank text to extract sequences of genes, CDS, mRNA, introns, etc.",
     link: "en/001.Genbank_feat_extract.html"
 },
 
@@ -66,9 +65,8 @@ const toolConfig = [
         categoryIcon: "📐",
         tools: [
 {
-    toolName: "RSCU Calculation Tool",
-    toolDesc: "Calculate Relative Synonymous Codon Usage (RSCU).",
-    toolIcon: "images/002.png",
+    toolName: "RSCU Calculator (Relative Synonymous Codon Usage)",
+    toolDesc: "Relative Synonymous Codon Usage (RSCU) calculation.",
     link: "en/002.RSCU.html"
 },
 
@@ -115,7 +113,6 @@ const toolConfig = [
 {
     toolName: "RSCU Bar Plot Generator",
     toolDesc: "Generate RSCU bar plots for single sequence, multiple genes, or multiple species.",
-    toolIcon: "images/003.png",
     link: "en/003.RSCU_plot.html"
 },
 

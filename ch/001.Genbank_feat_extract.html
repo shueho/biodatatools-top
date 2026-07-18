@@ -6,6 +6,15 @@
     <title>GenBank特征提取 - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+.filter-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 15px 0 0 0;
+    align-items: center;
+}
+    </style>
 </head>
 <body>
 
@@ -19,7 +28,7 @@
 
         <div class="step-card">
             <div class="step-title">第一步：导入GenBank注释文件</div>
-            <div class="radio-box">
+            <div class="mode-tabs">
                 <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传GenBank文件</label>
                 <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴GenBank文本</label>
             </div>
@@ -28,6 +37,9 @@
             </div>
             <div class="text-input">
                 <textarea id="gbText" placeholder="请粘贴完整GenBank格式内容..." disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>使用说明：</strong> 在上传或者粘贴<strong>完整的</strong>GenBank文本/文件之后，在第二步勾选需要提取的特征，如果没有想要的特征可以联系作者。
             </div>
             <div id="msgTip" class="tip-text"></div>
         </div>
@@ -59,7 +71,7 @@
             <div class="step-title">第三步：提取结果</div>
             <div class="result-toolbar">
                 <button class="btn" id="copyAllBtn" onclick="copyAllFasta()" disabled>复制全部序列</button>
-                <button class="btn" id="downloadBtn" onclick="downloadFasta()" disabled>下载Fasta</button>
+                <button class="btn" id="downloadBtn" onclick="downloadFasta()" disabled>下载全部序列</button>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div id="resultBox"></div>
@@ -143,11 +155,6 @@
             return "NA";
         }
 
-        function filterFastaTitle(str) {
-            if (!str) return "";
-            return str.replace(/[\f\n\r\t]+/g, "").trim();
-        }
-
         function removeNonDna(str) {
             if (!str) return "";
             return str.replace(/[^A-Za-z]/g, '').toUpperCase();
@@ -169,7 +176,6 @@
             return res;
         }
 
-        function addReturns(str) { return str; }
         function hasAmbiguousBase(seq) {
             return /[RYMKSWHBVDNrymkshbvd]/.test(seq);
         }
@@ -243,28 +249,9 @@
                 if (qMatch) firstQualifier = qMatch[0];
                 let qualifierName = firstQualifier ? firstQualifier.split('=')[0].replace(/^\//, '') : "";
 
-                let transPos = null;
-                const transMatch = null //arrayOfFeatures[i].match(/\/transl_except\s*=\s*\(pos:(\d+),aa:[^)]+\)/i);
-                if (transMatch) {
-                    transPos = parseInt(transMatch[1], 10);
-                }
-
                 let posPart = arrayOfFeatures[i].replace(new RegExp("^\\s*"+featureTitle),"").split(/\//)[0];
 
                 let seq = printFeature(posPart, dnaSequence, outputType);
-
-                if (transPos !== null) {
-                    if (posPart.search(/complement/) != -1) {
-                        if (seq.length > 0) {
-                            seq = seq.substring(0, seq.length - 1);
-                        }
-                    } else {
-                        if (seq.length >= transPos) {
-                            seq = seq.substring(0, transPos - 1) + seq.substring(transPos);
-                        }
-                    }
-                }
-
                 let seqLen = seq.length;
                 let namePart = (geneName && geneName !== "NA") ? `${geneName} ` : "";
                 let qualPart = (qualifierName && qualifierName !== "") ? `${qualifierName} ` : "";

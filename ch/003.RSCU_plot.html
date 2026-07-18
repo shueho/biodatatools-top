@@ -7,17 +7,6 @@
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
     <style>
-        .config-group {
-            margin: 15px 0;
-            padding: 12px;
-            border: 1px solid #e8edf2;
-            border-radius: 6px;
-        }
-        .group-title {
-            font-weight: 500;
-            margin-bottom: 10px;
-            display: inline-block;
-        }
         .chart-wrap {
             max-width: 100%;
             overflow: auto;
@@ -30,11 +19,7 @@
             background-color: #e9ecef;
             cursor: not-allowed;
         }
-        .mode-tip {
-            margin-left: 10px;
-            font-size: 0.85rem;
-            color: #6c757d;
-        }
+
     </style>
 </head>
 <body>
@@ -49,8 +34,13 @@
 
         <div class="step-card">
             <div class="step-title">第一步：导入表格数据</div>
+            <div class="info-box">
+                <strong>使用说明：</strong> 输入数据至少包含：物种/基因、氨基酸、密码子、RSCU值，需包含表头，制表符或逗号分隔。<br>
+                <strong>建议：</strong> 直接粘贴由本网页RSCU计算工具得到的结果！<br>
+                单序列模式的物种/基因列需要填充为任意相同值，可以参考教学视频中的使用方法。
+            </div>
             <div class="text-input">
-                <textarea id="tableInput" placeholder="输入数据至少包含：物种/基因、氨基酸、密码子、RSCU值，需包含表头，制表符或逗号分隔&#10;建议直接粘贴由本网页RSCU计算工具得到的结果&#10;单序列模式的物种/基因列填充为任意相同值"></textarea>
+                <textarea id="tableInput" placeholder="请粘贴RSCU计算结果表格..."></textarea>
             </div>
             <div style="margin-top:15px;">
                 <button class="btn" id="importBtn">导入并预览原始数据</button>
@@ -68,23 +58,25 @@
 
         <div class="step-card">
             <div class="step-title">第二步：绘图数据设置</div>
-            <div class="filter-box">
+            <div class="param-group">
                 <label>绘图模式：</label>
                 <select id="chartMode">
                     <option value="stack">单序列模式</option>
                     <option value="group">多基因/物种模式</option>
                 </select>
+            </div>
+            <div class="param-group style="margin-top:12px;">
                 <label>分组标识列(物种/基因)：</label>
                 <select id="groupCol"></select>
-                <span id="modeTip" class="mode-tip"></span>
+                <span id="modeTip"></span>
                 <label>氨基酸列：</label>
                 <select id="colAA"></select>
                 <label>密码子列：</label>
                 <select id="colCodon"></select>
-                <label>RSCU 值列：</label>
+                <label>RSCU值列：</label>
                 <select id="colRscu"></select>
             </div>
-            <div class="filter-box" style="margin-top:8px;">
+            <div class="param-group" style="margin-top:12px;">
                 <label>终止氨基酸(多个空格分隔)：</label>
                 <input type="text" id="stopAminoInput" value="TER" style="width:220px;">
                 <label>启用氨基酸由前两位密码子分组：</label>
@@ -109,7 +101,7 @@
 
             <div class="config-group">
                 <div class="group-title">字体设置</div>
-                <div class="filter-box">
+                <div class="param-group">
                     <label>全局字体：</label>
                     <select id="fontFamily" style="width:160px;">
                         <option value="Times New Roman" selected>Times New Roman</option>
@@ -129,7 +121,7 @@
 
             <div class="config-group">
                 <div class="group-title">图形画布设置</div>
-                <div class="filter-box">
+                <div class="param-group">
                     <label>图表宽度(px)：</label>
                     <input type="number" id="chartWidth" value="1500" min="800" style="width:80px;">
                     <label>图表高度(px)：</label>
@@ -141,7 +133,7 @@
                     <label>簇内柱间距：</label>
                     <input type="number" id="innerPadding" value="0.1" step="0.05" min="0" max="0.4" style="width:70px;">
                 </div>
-                <div class="filter-box" style="margin-top:8px;">
+                <div class="param-group" style="margin-top:8px;">
                     <label>纵轴标题：</label>
                     <input type="text" id="yAxisLabel" value="RSCU" style="width:120px;">
                     <label>纵坐标最大值：</label>
@@ -153,7 +145,7 @@
 
             <div class="config-group">
                 <div class="group-title">密码子方框样式</div>
-                <div class="filter-box">
+                <div class="param-group">
                     <label>方框宽度(px)：</label>
                     <input type="number" id="boxWidth" value="50" min="40" style="width:70px;">
                     <label>方框高度(px)：</label>
@@ -165,7 +157,7 @@
 
             <div class="config-group">
                 <div class="group-title">颜色设置</div>
-                <div class="filter-box">
+                <div class="param-group">
                     <label>密码子文字颜色：</label>
                     <input type="text" id="codonTextColor" value="#000000" style="width:100px;">
                     <label>柱形分隔线颜色：</label>

@@ -4,7 +4,7 @@
    特殊样式请在各页面单独定义
 ============================================ */
 
-/* 全局重置 */
+/* 全局 */
 * {
     margin: 0;
     padding: 0;
@@ -18,7 +18,7 @@ body {
     line-height: 1.6;
 }
 
-/* ========== 页眉（配合 header.js） ========== */
+/* 页眉 */
 header {
     background: #1f4068;
     color: #fff;
@@ -36,16 +36,14 @@ header {
     align-items: center;
 }
 
-/* ----- 新增：左侧 Logo + 标题容器 ----- */
 .header-left {
     display: flex;
     align-items: center;
     gap: 16px;
 }
 
-/* ----- 新增：大尺寸 Logo ----- */
 .header-logo {
-    height: 80px;          /* 大尺寸，醒目 */
+    height: 80px;          
     width: auto;
     border-radius: 6px;
     flex-shrink: 0;
@@ -61,7 +59,6 @@ header {
     opacity: 0.85;
 }
 
-/* 右侧按钮组（B站、GitHub、返回首页） */
 .bilibili-link, .github-link, .back-home {
     background: #fb7299;
     color: #fff;
@@ -84,7 +81,7 @@ header {
     opacity: 0.9;
 }
 
-/* ========== 页脚（配合 footer.js） ========== */
+/* 页脚 */
 footer {
     text-align: center;
     padding: 2rem;
@@ -130,7 +127,7 @@ footer .email {
     opacity: 1;
 }
 
-/* ========== 主内容容器 ========== */
+/* 主容器 */
 .main {
     max-width: 1500px;
     margin: 4rem auto;
@@ -150,7 +147,7 @@ footer .email {
     font-size: 1.05rem;
 }
 
-/* ========== 卡片样式 ========== */
+/* 步骤卡片 */
 .step-card {
     background: #fff;
     border-radius: 12px;
@@ -168,14 +165,42 @@ footer .email {
     border-bottom: 2px solid #e8edf2;
 }
 
+
 /* ========== 表单组件（通用） ========== */
-.radio-box {
-    margin: 10px 0 15px;
+/* 导入方式切换 */
+.mode-tabs {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0 16px;
+    flex-wrap: wrap;
 }
-.radio-box label {
-    margin-right: 25px;
+.mode-tabs label {
     cursor: pointer;
+    padding: 6px 18px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: #f8f9fa;
+    font-weight: 400;
+    transition: 0.2s;
 }
+.mode-tabs label:hover {
+    border-color: #1f4068;
+    background: #eef2f7;
+}
+.mode-tabs label:has(input:checked) {
+    background: #1f4068;
+    color: #fff;
+    border-color: #1f4068;
+}
+.mode-tabs label:has(input:checked) .hint {
+    color: #b8d4f0;
+}
+.mode-tabs .hint {
+    font-size: 0.8rem;
+    color: #888;
+    font-weight: 400;
+}
+
 .file-input, .text-input {
     margin: 10px 0;
 }
@@ -187,22 +212,8 @@ textarea {
     border-radius: 6px;
     resize: vertical;
 }
-.filter-box {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin: 15px 0 0 0;
-    align-items: center;
-}
-.tip-text {
-    margin: 10px 0;
-    font-weight: 500;
-}
-.warn { color: #e67700; }
-.error { color: #dc3545; }
-.success { color: #28a745; }
 
-/* ========== 通用按钮 ========== */
+/* 通用按钮 */
 .btn {
     padding: 8px 20px;
     background: #1f4068;
@@ -235,6 +246,56 @@ textarea {
     background: #bb2d3b;
 }
 
+/* 参数样式 */
+.param-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 15px 0 0 0;
+    align-items: center;
+}
+/* 参数群 */
+.config-group {
+    margin: 15px 0;
+    padding: 12px;
+    border: 1px solid #e8edf2;
+    border-radius: 6px;
+}
+.group-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #1f4068;
+    display: inline-block;
+}
+
+
+/* 旧的导入方式切换改成mode-tabs，后续删除 */
+.radio-box {
+    margin: 10px 0 15px;
+}
+.radio-box label {
+    margin-right: 25px;
+    cursor: pointer;
+}
+/* 旧的参数展示样式改成param-group，后续删除 */
+.filter-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 15px 0 0 0;
+    align-items: center;
+}
+
+
+.tip-text {
+    margin: 10px 0;
+    font-weight: 500;
+}
+.warn { color: #e67700; }
+.error { color: #dc3545; }
+.success { color: #28a745; }
+
+
 /* ========== 结果展示区（通用） ========== */
 .result-item {
     border: 1px solid #e8edf2;
@@ -254,6 +315,7 @@ textarea {
     margin-top: 8px;
     line-height: 1.8;
 }
+
 
 /* ========== 通用表格 ========== */
 table {
@@ -289,7 +351,7 @@ th {
     z-index: 10;
 }
 
-/* ========== 密码子表预览（四列并排，用于 RSCU 等） ========== */
+/* 密码子表预览（四列并排） */
 .preview-table-wrap {
     margin-top: 15px;
     padding: 10px;
@@ -589,38 +651,6 @@ svg text {
     border-top: 2px solid #1f4068;
 }
 
-.mode-tabs {
-    display: flex;
-    gap: 12px;
-    margin: 10px 0 16px;
-    flex-wrap: wrap;
-}
-.mode-tabs label {
-    cursor: pointer;
-    padding: 6px 18px;
-    border-radius: 20px;
-    border: 1px solid #ddd;
-    background: #f8f9fa;
-    font-weight: 400;
-    transition: 0.2s;
-}
-.mode-tabs label:hover {
-    border-color: #1f4068;
-    background: #eef2f7;
-}
-.mode-tabs label:has(input:checked) {
-    background: #1f4068;
-    color: #fff;
-    border-color: #1f4068;
-}
-.mode-tabs label:has(input:checked) .hint {
-    color: #b8d4f0;
-}
-.mode-tabs .hint {
-    font-size: 0.8rem;
-    color: #888;
-    font-weight: 400;
-}
 
 .file-list {
     border: 1px solid #e8edf2;

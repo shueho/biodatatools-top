@@ -130,8 +130,8 @@
 
             <div class="mode-bar">
                 <label style="font-weight:500;">模式：</label>
-                <label><input type="radio" name="mode" value="split" checked onchange="onModeChange()">拆分方形矩阵</label>
-                <label><input type="radio" name="mode" value="merge" onchange="onModeChange()">合并三角矩阵</label>
+                <label><input type="radio" name="mode" value="split" checked onchange="onModeChange()"> 拆分方形矩阵</label>
+                <label><input type="radio" name="mode" value="merge" onchange="onModeChange()"> 合并三角矩阵</label>
                 <button class="btn" id="exampleBtn">加载示例</button>
             </div>
 
@@ -140,9 +140,9 @@
                     <strong>拆分方形矩阵模式</strong>：将完整方阵拆分为 <strong>左下三角</strong> 和 <strong>右上三角</strong> 两个矩阵。<br>
                     <strong>第一行第一列必须填写行名标签（如“ID”或“#”），不可留空，否则导入时列名会错位。</strong> 示例中行列名不同仅为演示，实际使用的方阵中二者往往一致。
                 </div>
-                <div class="radio-box">
-                    <label><input type="radio" name="splitInputMode" value="file" checked onchange="switchSplitInput()">上传文件</label>
-                    <label><input type="radio" name="splitInputMode" value="text" onchange="switchSplitInput()">粘贴文本</label>
+                <div class="mode-tabs">
+                    <label><input type="radio" name="splitInputMode" value="file" checked onchange="switchSplitInput()"> 上传文件</label>
+                    <label><input type="radio" name="splitInputMode" value="text" onchange="switchSplitInput()"> 粘贴文本</label>
                 </div>
                 <div class="file-input" id="splitFileWrap">
                     <input type="file" id="splitFileInput" accept=".csv,.tsv,.txt,.tab">
@@ -177,9 +177,9 @@
 
                 <div style="border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
                     <div style="font-weight:600; color:#1f4068; margin-bottom:4px;">三角矩阵A</div>
-                    <div class="radio-box">
-                        <label><input type="radio" name="mergeLeftInputMode" value="file" checked onchange="switchMergeLeftInput()">上传文件</label>
-                        <label><input type="radio" name="mergeLeftInputMode" value="text" onchange="switchMergeLeftInput()">粘贴文本</label>
+                    <div class="mode-tabs">
+                        <label><input type="radio" name="mergeLeftInputMode" value="file" checked onchange="switchMergeLeftInput()"> 上传文件</label>
+                        <label><input type="radio" name="mergeLeftInputMode" value="text" onchange="switchMergeLeftInput()"> 粘贴文本</label>
                     </div>
                     <div class="file-input" id="mergeLeftFileWrap">
                         <input type="file" id="mergeLeftFileInput" accept=".csv,.tsv,.txt,.tab">
@@ -197,9 +197,9 @@
 
                 <div>
                     <div style="font-weight:600; color:#1f4068; margin-bottom:4px;">三角矩阵B</div>
-                    <div class="radio-box">
-                        <label><input type="radio" name="mergeRightInputMode" value="file" checked onchange="switchMergeRightInput()">上传文件</label>
-                        <label><input type="radio" name="mergeRightInputMode" value="text" onchange="switchMergeRightInput()">粘贴文本</label>
+                    <div class="mode-tabs">
+                        <label><input type="radio" name="mergeRightInputMode" value="file" checked onchange="switchMergeRightInput()"> 上传文件</label>
+                        <label><input type="radio" name="mergeRightInputMode" value="text" onchange="switchMergeRightInput()"> 粘贴文本</label>
                     </div>
                     <div class="file-input" id="mergeRightFileWrap">
                         <input type="file" id="mergeRightFileInput" accept=".csv,.tsv,.txt,.tab">

@@ -31,8 +31,8 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">第一步：导入 CDS 序列(FASTA)</div>
-            <div class="radio-box">
+            <div class="step-title">第一步：导入CDS序列（FASTA）</div>
+            <div class="mode-tabs">
                 <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件</label>
                 <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本</label>
             </div>
@@ -43,7 +43,7 @@
 
         <div class="step-card">
             <div class="step-title">第二步：翻译参数设置</div>
-            <div class="filter-box">
+            <div class="param-group">
                 <label>密码子表：</label>
                 <select id="codonTableSel"></select>
                 <label>遇到终止密码子：</label>
@@ -79,8 +79,8 @@
             <div class="step-title">第三步：翻译结果</div>
             <div class="result-toolbar">
                 <button class="btn" id="copyProteinBtn" disabled>复制蛋白序列</button>
-                <button class="btn" id="exportFastaBtn" disabled>导出蛋白序列(FASTA)</button>
-                <button class="btn" id="exportCsvBtn" disabled>导出翻译详情(CSV)</button>
+                <button class="btn" id="exportFastaBtn" disabled>导出蛋白序列</button>
+                <button class="btn" id="exportCsvBtn" disabled>导出翻译详情</button>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div id="resultBox"></div>
@@ -466,7 +466,7 @@
             a.click();
             URL.revokeObjectURL(url);
             document.body.removeChild(a);
-            window.showToast('✅ CSV已导出');
+            window.showToast('✅ 表格已导出');
         }
 
         copyProteinBtn.addEventListener("click", copyAllProtein);
