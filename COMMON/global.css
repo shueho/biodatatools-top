@@ -204,6 +204,8 @@ footer .email {
 .file-input, .text-input {
     margin: 10px 0;
 }
+
+
 textarea {
     width: 100%;
     min-height: 180px;
@@ -269,7 +271,7 @@ textarea {
 }
 
 
-/* 旧的导入方式切换改成mode-tabs，后续删除 */
+/* 需要与mode-tabs区别，后续删除 */
 .radio-box {
     margin: 10px 0 15px;
 }
@@ -522,7 +524,7 @@ input[type="color"] {
     border: 1px solid #d8e2ec;
     border-radius: 6px;
     padding: 12px;
-    margin-top: 8px;
+    margin-toinfop: 8px;
 }
 .batch-head {
     display: flex;
@@ -575,7 +577,7 @@ input[type="color"] {
     min-width: 220px;
 }
 
-/* 子分组（带左边框的嵌套区域） */
+/* 子分组 */
 .sub-group {
     margin-left: 1rem;
     padding-left: 1rem;
@@ -822,6 +824,8 @@ svg text {
     box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
 }
 
+
+/* 说明 */
 .info-box {
             background: #f0f7ff;
             border-left: 4px solid #1f4068;
@@ -831,3 +835,18 @@ svg text {
             color: #1f4068;
             margin: 6px 0 12px;
         }
+
+/* 小字说明 */
+.ref-card {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 12px;
+            border-left: 4px solid #1f4068;
+}
+.ref-card h4 {
+            margin-bottom: 6px;
+            color: #1f4068;
+            font-size: 14px;
+}

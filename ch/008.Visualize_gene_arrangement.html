@@ -15,14 +15,12 @@
         .gene-assign-row { display: grid; grid-template-columns: 1.5fr 1.2fr 0.5fr; gap: 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #edf2f7; }
         .gene-assign-header { background: #f1f5f9; font-weight: 600; position: sticky; top: 0; }
         .gene-list-scroll { max-height: 320px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; margin-top: 16px; }
-        .param-group { display: flex; flex-wrap: wrap; gap: 16px; background: #f9fafb; padding: 12px 20px; border-radius: 40px; margin-bottom: 16px; }
         .preview-svg { background: #fff; border-radius: 12px; padding: 16px; overflow-x: auto; border: 1px solid #e2e8f0; min-height: 300px; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .badge { background: #eef2ff; border-radius: 20px; padding: 2px 8px; font-size: 11px; }
         .desc { font-size: 12px; color: #4b5563; margin-top: 4px; }
         .result-toolbar { margin-top: 16px; text-align: center; }
         .empty-tip { color: #999; text-align: center; padding: 20px; font-style: italic; }
-        .format-hint { background: #f8f9fa; padding: 10px 12px; border-radius: 8px; margin-top: 12px; font-size: 0.85rem; color: #4a5568; border-left: 3px solid #1f4068;margin-bottom: 15px;  }
     </style>
 </head>
 <body>
@@ -44,8 +42,8 @@
         <div class="file-input"><input type="file" id="geneFileInput" accept=".txt,.tab,.tsv,.gene"></div>
         <div class="text-input"><textarea id="geneTextArea" rows="4" placeholder="粘贴制表符分隔的基因排列内容（支持 - : ! 符号）" disabled></textarea></div>
         <div id="msgTip" class="tip-text"></div>
-        <div class="format-hint">
-            <strong>📌 文件格式说明</strong><br>
+        <div class="ref-card">
+            <h4><strong>文件格式说明</strong><br></h4>
             • "#" 开头的行为注释行，只显示文字不定义排布，可以用于物种分类注释<br>
             • 除了注释行，第一列是拉丁名，其余各列为基因名称，不同列之间以制表符（TAB）隔开，在EXCEL中直接复制出来的就是这个格式<br>
             • 在基因名称前可以标注“-”代表编码于负链；标注“:”标识该基因缺失，多个符号可以混合标注<br>

@@ -15,14 +15,12 @@
         .gene-assign-row { display: grid; grid-template-columns: 1.5fr 1.2fr 0.5fr; gap: 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #edf2f7; }
         .gene-assign-header { background: #f1f5f9; font-weight: 600; position: sticky; top: 0; }
         .gene-list-scroll { max-height: 320px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; margin-top: 16px; }
-        .param-group { display: flex; flex-wrap: wrap; gap: 16px; background: #f9fafb; padding: 12px 20px; border-radius: 40px; margin-bottom: 16px; }
         .preview-svg { background: #fff; border-radius: 12px; padding: 16px; overflow-x: auto; border: 1px solid #e2e8f0; min-height: 300px; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .badge { background: #eef2ff; border-radius: 20px; padding: 2px 8px; font-size: 11px; }
         .desc { font-size: 12px; color: #4b5563; margin-top: 4px; }
         .result-toolbar { margin-top: 16px; text-align: center; }
         .empty-tip { color: #999; text-align: center; padding: 20px; font-style: italic; }
-        .format-hint { background: #f8f9fa; padding: 10px 12px; border-radius: 8px; margin-top: 12px; font-size: 0.85rem; color: #4a5568; border-left: 3px solid #1f4068;margin-bottom: 15px;  }
     </style>
 </head>
 <body>
@@ -44,8 +42,8 @@
         <div class="file-input"><input type="file" id="geneFileInput" accept=".txt,.tab,.tsv,.gene"></div>
         <div class="text-input"><textarea id="geneTextArea" rows="4" placeholder="Paste tab‑separated gene arrangement content (supports - : ! symbols)" disabled></textarea></div>
         <div id="msgTip" class="tip-text"></div>
-        <div class="format-hint">
-            <strong>📌 Format Instructions</strong><br>
+        <div class="ref-card">
+            <h4><strong>Format Instructions</strong></h4>
             • Lines starting with "#" are treated as comments/headers and will be displayed as section titles (e.g., taxonomic group names).<br>
             • For data rows: first column = species name (Latin name), remaining columns = gene names, separated by TAB (Excel copy‑paste format).<br>
             • Prefix a gene name with "-" to indicate it is encoded on the negative strand.<br>
