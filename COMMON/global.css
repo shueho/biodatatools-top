@@ -166,6 +166,8 @@ footer .email {
 }
 
 
+
+
 /* ========== 表单组件（通用） ========== */
 /* 导入方式切换 */
 .mode-tabs {
@@ -317,6 +319,7 @@ textarea {
     margin-top: 8px;
     line-height: 1.8;
 }
+.empty-tip { color: #999; text-align: center; padding: 30px 0; font-style: italic; }
 
 
 /* ========== 通用表格 ========== */
@@ -464,7 +467,7 @@ input[type="color"] {
     gap: 6px;
 }
 
-/* 文件列表 */
+/* 输入文件列表 */
 .file-list {
     display: flex;
     flex-direction: column;
@@ -719,38 +722,6 @@ svg text {
     margin-top: 4px;
 }
 
-.mode-tabs {
-    display: flex;
-    gap: 12px;
-    margin: 10px 0 16px;
-    flex-wrap: wrap;
-}
-.mode-tabs label {
-    cursor: pointer;
-    padding: 6px 18px;
-    border-radius: 20px;
-    border: 1px solid #ddd;
-    background: #f8f9fa;
-    font-weight: 400;
-    transition: 0.2s;
-}
-.mode-tabs label:hover {
-    border-color: #1f4068;
-    background: #eef2f7;
-}
-.mode-tabs label:has(input:checked) {
-    background: #1f4068;
-    color: #fff;
-    border-color: #1f4068;
-}
-.mode-tabs label:has(input:checked) .hint {
-    color: #b8d4f0;
-}
-.mode-tabs .hint {
-    font-size: 0.8rem;
-    color: #888;
-    font-weight: 400;
-}
 
 @media (max-width: 768px) {
     .header-wrap {
