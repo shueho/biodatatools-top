@@ -58,6 +58,12 @@ const toolConfig = [
     link: "en/018.Fasta_extract_rename.html"
 },
 
+{
+    toolName: "FASTA Sequence Group Extraction",
+    toolDesc: "Split a FASTA file into multiple smaller files based on a grouping table.",
+    link: "en/027.Fasta_group_extract.html"
+},
+
         ]
     },
     {
@@ -185,6 +191,11 @@ const toolConfig = [
     link: "en/025.Geo_coordinate_converter.html"
 },
 
+{
+    toolName: "Long List to Lower Triangular Matrix",
+    toolDesc: "Convert three-column data (Item1-Item2-Value) into a lower triangular matrix with order adjustment and subset selection.",
+    link: "en/026.Long_to_triangular.html"
+},
         ]
     },
     {

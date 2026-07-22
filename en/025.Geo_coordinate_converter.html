@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -43,14 +43,15 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 1: Select Mode & Import Data</div>
+            <div class="step-title">Step 1: Select Mode &amp; Import Data</div>
             <div class="inline-controls">
                 <label><input type="radio" name="direction" value="dms2dec" checked onchange="updateExampleHint()">DMS → Decimal</label>
                 <label><input type="radio" name="direction" value="dec2dms" onchange="updateExampleHint()">Decimal → DMS</label>
                 <button class="btn" id="loadExampleBtn">Load Example</button>
             </div>
             <div class="info-box" id="modeHint">
-                <strong>Current mode:</strong> DMS to Decimal.
+                <strong>Current mode:</strong> DMS to Decimal.<br>
+                <span style="color:#c0392b;">⚠️ DMS format should not contain a negative sign (e.g., -116°24′26.64″E is invalid). Please use direction markers E/W/N/S.</span>
             </div>
 
             <div class="mode-tabs">
@@ -63,7 +64,7 @@
             </div>
 
             <div class="text-input" id="textInputWrap">
-                <div class="table-input-hint">Two columns per row: <strong>Longitude</strong> (1st) <strong>Latitude</strong> (2nd), tab or comma separated.</div>
+                <div class="table-input-hint">Two columns per line: <strong>Longitude</strong> (first) <strong>Latitude</strong> (second), tab or comma separated.</div>
                 <textarea id="inputText" placeholder="116.4074	39.9042
 -74.0060	40.7128
 139.6917	35.6895
@@ -77,7 +78,7 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 2: Results</div>
+            <div class="step-title">Step 2: Conversion Results</div>
             <div id="resultArea" style="display:none;">
                 <div class="result-toolbar">
                     <button class="btn" id="copyResultBtn">Copy Results</button>
@@ -87,7 +88,7 @@
                 <div class="result-table-wrap" id="resultTableWrap">
                     <table id="resultTable">
                         <thead>
-                            <tr><th>#</th><th>Original Longitude</th><th>Original Latitude</th><th>→</th><th>Converted Longitude</th><th>Converted Latitude</th></tr>
+                            <tr><th>#</th><th>Original Lon</th><th>Original Lat</th><th>→</th><th>Converted Lon</th><th>Converted Lat</th></tr>
                         </thead>
                         <tbody id="resultBody"></tbody>
                     </table>
@@ -96,7 +97,7 @@
                     Total <span id="rowCount">0</span> records.
                 </div>
             </div>
-            <div id="emptyResult" class="empty-tip">Please enter data and click "Convert".</div>
+            <div id="emptyResult" class="empty-tip">Enter data and click "Convert".</div>
         </div>
     </div>
     <div id="common-footer"></div>
@@ -106,7 +107,7 @@
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/footer.js"></script>
 
     <script>
         (function() {
@@ -133,7 +134,7 @@
                 el.innerHTML = `<span class="${type}">${msg}</span>`;
                 setTimeout(() => {
                     if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = '';
-                }, 5000);
+                }, 8000);
             }
 
             function toast(msg) {
@@ -153,15 +154,16 @@
 139.6917	35.6895
 151.2093	-33.8688
 0.0	0.0
--90.5678	-45.1234`;
+-90.5678	-45.1234
+-116.4074E	39.9042N`;
 
             const DMS_EXAMPLE =
 `116°24'26.64"E	39°54'15.12"N
-74°00'21.6"W	40°42'46.08"N
+74°0'21.6"W	40°42'46.08"N
 139°41'30.0"E	35°41'22.2"N
 151°12'33.5"E	33°52'07.7"S
 0°0'0"E	0°0'0"N
-90°00'00"W	45°30'00"N`;
+90°0'0"W	45°30'00"N`;
 
             function getSelectedDirection() {
                 for (let radio of directionRadios) {
@@ -173,9 +175,9 @@
             function updateExampleHint() {
                 let dir = getSelectedDirection();
                 if (dir === 'dec2dms') {
-                    modeHint.innerHTML = '<strong>Current mode:</strong> Decimal → DMS. Direction markers (E/W, N/S) will be automatically added.';
+                    modeHint.innerHTML = '<strong>Current mode:</strong> Decimal → DMS. Direction markers (E/W for longitude, N/S for latitude) are automatically added.<br><span style="color:#c0392b;">⚠️ If the numeric sign conflicts with the direction marker (e.g., -116.4074E), a "Sign/direction conflict" error will be shown.</span>';
                 } else {
-                    modeHint.innerHTML = '<strong>Current mode:</strong> DMS → Decimal. Output signed decimal numbers (negative = S/W).';
+                    modeHint.innerHTML = '<strong>Current mode:</strong> DMS → Decimal. Output is signed decimal (negative = South/West).<br><span style="color:#c0392b;">⚠️ DMS format should not contain a negative sign (e.g., -116°24\'26.64"E is invalid). Please use direction markers.</span>';
                 }
             }
 
@@ -188,10 +190,10 @@
                 let dir = getSelectedDirection();
                 if (dir === 'dec2dms') {
                     inputText.value = DECIMAL_EXAMPLE;
-                    showMsg(msgTip, 'Decimal format example loaded.', 'success');
+                    showMsg(msgTip, 'Loaded decimal example (includes conflict test: -116.4074E).', 'info');
                 } else {
                     inputText.value = DMS_EXAMPLE;
-                    showMsg(msgTip, 'DMS format example loaded.', 'success');
+                    showMsg(msgTip, 'Loaded DMS example.', 'info');
                 }
                 toast('Example loaded');
             }
@@ -215,6 +217,13 @@
             function parseDMS(str) {
                 let s = str.trim();
                 let dir = null;
+
+                const hasMinus = s.includes('-');
+                const hasDmsMark = /[°′"']/.test(s);
+                if (hasMinus && hasDmsMark) {
+                    return { error: 'DMS format should not contain a negative sign' };
+                }
+
                 const dirMatch = s.match(/^([NSEWnsew])\s*|([NSEWnsew])\s*$/);
                 if (dirMatch) {
                     dir = (dirMatch[1] || dirMatch[2]).toUpperCase();
@@ -279,33 +288,51 @@
                 if (!val) return null;
                 let dmsObj = parseDMS(val);
                 if (!dmsObj) return null;
+
+                if (dmsObj.error) {
+                    return dmsObj.error;
+                }
+
                 if (dmsObj.decimal !== undefined) {
                     if (direction === 'dms2dec') return null;
-                    let dmsStr = decimalToDMS(dmsObj.decimal, coordType);
+
+                    let sign = dmsObj.decimal > 0 ? 1 : (dmsObj.decimal < 0 ? -1 : 0);
+                    let dirSign = 0;
                     if (dmsObj.direction) {
-                        let useDir = dmsObj.direction;
-                        if ((coordType === 'lon' && (useDir === 'E' || useDir === 'W')) ||
-                            (coordType === 'lat' && (useDir === 'N' || useDir === 'S'))) {
-                            dmsStr = dmsStr.slice(0, -1) + useDir;
-                        }
+                        dirSign = (dmsObj.direction === 'N' || dmsObj.direction === 'E') ? 1 :
+                                  (dmsObj.direction === 'S' || dmsObj.direction === 'W') ? -1 : 0;
+                    }
+
+                    if (sign !== 0 && dirSign !== 0 && sign !== dirSign) {
+                        return 'Sign/direction conflict';
+                    }
+
+                    let finalDir = dmsObj.direction || null;
+                    let dmsStr = decimalToDMS(dmsObj.decimal, coordType);
+                    if (finalDir) {
+                        dmsStr = dmsStr.slice(0, -1) + finalDir;
                     }
                     return dmsStr;
-                } else {
-                    if (direction === 'dec2dms') return null;
-                    let dec = dmsToDecimal(dmsObj);
-                    if (dmsObj.direction) {
-                        if (dmsObj.direction === 'S' || dmsObj.direction === 'W') dec = -Math.abs(dec);
-                        else dec = Math.abs(dec);
-                    }
-                    return dec.toFixed(6);
                 }
+
+                if (direction === 'dec2dms') return null;
+
+                let dec = dmsToDecimal(dmsObj);
+                if (dmsObj.direction) {
+                    if (dmsObj.direction === 'S' || dmsObj.direction === 'W') {
+                        dec = -Math.abs(dec);
+                    } else {
+                        dec = Math.abs(dec);
+                    }
+                }
+                return dec.toFixed(6);
             }
 
             function performConversion() {
                 const text = inputText.value;
-                if (!text.trim()) { showMsg(msgTip, 'Please enter or paste data.', 'error'); return; }
+                if (!text.trim()) { showMsg(msgTip, 'Please enter or paste data', 'error'); return; }
                 const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
-                if (lines.length === 0) { showMsg(msgTip, 'No valid data rows.', 'error'); return; }
+                if (lines.length === 0) { showMsg(msgTip, 'No valid data rows', 'error'); return; }
 
                 let direction = getSelectedDirection();
                 let results = [];
@@ -329,14 +356,14 @@
                     let latOut = convertValue(lat, direction, 'lat');
                     if (lonOut === null) lonOut = 'Direction mismatch';
                     if (latOut === null) latOut = 'Direction mismatch';
-                    if (lonOut !== 'Direction mismatch' && lonOut !== 'Insufficient columns' &&
-                        latOut !== 'Direction mismatch' && latOut !== 'Insufficient columns') validCount++;
+                    if (lonOut !== 'Direction mismatch' && lonOut !== 'Sign/direction conflict' && lonOut !== 'DMS format should not contain a negative sign' &&
+                        latOut !== 'Direction mismatch' && latOut !== 'Sign/direction conflict' && latOut !== 'DMS format should not contain a negative sign') validCount++;
                     results.push({ index: i+1, lon, lat, lonOut, latOut });
                 }
 
                 renderResults(results);
-                showMsg(msgTip, `Conversion complete: ${results.length} rows, ${validCount} successful.`, 'success');
-                toast('Conversion complete');
+                showMsg(msgTip, `Conversion completed: ${results.length} rows, ${validCount} successful`, 'success');
+                toast('Conversion completed');
             }
 
             function renderResults(results) {
@@ -350,15 +377,17 @@
 
                 let html = '';
                 results.forEach(r => {
-                    const lonClass = (r.lonOut === 'Direction mismatch' || r.lonOut === 'Insufficient columns') ? '' : 'converted';
-                    const latClass = (r.latOut === 'Direction mismatch' || r.latOut === 'Insufficient columns') ? '' : 'converted';
-                    html += `<tr>
+                    const isError = (r.lonOut === 'Insufficient columns' || r.lonOut === 'Direction mismatch' || 
+                                     r.lonOut === 'Sign/direction conflict' || r.lonOut === 'DMS format should not contain a negative sign' ||
+                                     r.latOut === 'Insufficient columns' || r.latOut === 'Direction mismatch' ||
+                                     r.latOut === 'Sign/direction conflict' || r.latOut === 'DMS format should not contain a negative sign');
+                    html += `<tr${isError ? ' style="background-color:#ffe6e6;"' : ''}>
                         <td>${r.index}</td>
                         <td>${escapeHtml(r.lon)}</td>
                         <td>${escapeHtml(r.lat)}</td>
                         <td>→</td>
-                        <td class="${lonClass}">${escapeHtml(r.lonOut)}</td>
-                        <td class="${latClass}">${escapeHtml(r.latOut)}</td>
+                        <td>${escapeHtml(r.lonOut)}</td>
+                        <td>${escapeHtml(r.latOut)}</td>
                     </tr>`;
                 });
                 resultBody.innerHTML = html;
@@ -368,17 +397,17 @@
 
             function copyResult() {
                 if (!window._resultData || window._resultData.length === 0) {
-                    showMsg(resultMsg, 'No results to copy.', 'error');
+                    showMsg(resultMsg, 'No results to copy', 'error');
                     return;
                 }
-                let lines = ['#\tOriginal Longitude\tOriginal Latitude\tConverted Longitude\tConverted Latitude'];
+                let lines = ['#\tOriginal Lon\tOriginal Lat\tConverted Lon\tConverted Lat'];
                 window._resultData.forEach(r => {
                     lines.push(`${r.index}\t${r.lon}\t${r.lat}\t${r.lonOut}\t${r.latOut}`);
                 });
                 const text = lines.join('\n');
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(text).then(() => {
-                        showMsg(resultMsg, 'Copied.', 'success');
+                        showMsg(resultMsg, 'Copied', 'success');
                         toast('Copied');
                     }).catch(() => fallbackCopy(text));
                 } else {
@@ -399,10 +428,10 @@
 
             function exportCsv() {
                 if (!window._resultData || window._resultData.length === 0) {
-                    showMsg(resultMsg, 'No results to export.', 'error');
+                    showMsg(resultMsg, 'No results to export', 'error');
                     return;
                 }
-                let lines = ['Index,Original Longitude,Original Latitude,Converted Longitude,Converted Latitude'];
+                let lines = ['Index,Original Lon,Original Lat,Converted Lon,Converted Lat'];
                 window._resultData.forEach(r => {
                     lines.push(`"${r.index}","${r.lon}","${r.lat}","${r.lonOut}","${r.latOut}"`);
                 });
@@ -416,7 +445,7 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showMsg(resultMsg, 'CSV exported.', 'success');
+                showMsg(resultMsg, 'CSV exported', 'success');
                 toast('CSV exported');
             }
 
@@ -426,8 +455,8 @@
                 const reader = new FileReader();
                 reader.onload = function(ev) {
                     inputText.value = ev.target.result;
-                    showMsg(msgTip, `Loaded: ${file.name}`, 'success');
-                    toast('File loaded successfully');
+                    showMsg(msgTip, `File loaded: ${file.name}`, 'success');
+                    toast('File loaded');
                 };
                 reader.readAsText(file);
                 this.value = '';

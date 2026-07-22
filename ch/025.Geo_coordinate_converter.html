@@ -28,7 +28,6 @@
             color: #6c757d;
             margin-bottom: 6px;
         }
-
         textarea:disabled {
             background-color: #f5f7fa;
             cursor: not-allowed;
@@ -51,7 +50,8 @@
                 <button class="btn" id="loadExampleBtn">加载示例</button>
             </div>
             <div class="info-box" id="modeHint">
-                <strong>当前模式：</strong>度分秒转十进制。
+                <strong>当前模式：</strong>度分秒转十进制。<br>
+                <span style="color:#c0392b;">⚠️ 度分秒格式不应包含负号（如 -116°24′26.64″E 是错误的），请使用方向标记 E/W/N/S。</span>
             </div>
 
             <div class="mode-tabs">
@@ -97,7 +97,7 @@
                     共 <span id="rowCount">0</span> 条记录。
                 </div>
             </div>
-            <div id="emptyResult" class="empty-tip">请先输入数据并点击“格式转换”。</div>
+            <div id="emptyResult" class="empty-tip">请先输入数据并点击"格式转换"。</div>
         </div>
     </div>
     <div id="common-footer"></div>
@@ -107,7 +107,7 @@
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
 
     <script>
         (function() {
@@ -134,7 +134,7 @@
                 el.innerHTML = `<span class="${type}">${msg}</span>`;
                 setTimeout(() => {
                     if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = '';
-                }, 5000);
+                }, 8000);
             }
 
             function toast(msg) {
@@ -154,15 +154,16 @@
 139.6917	35.6895
 151.2093	-33.8688
 0.0	0.0
--90.5678	-45.1234`;
+-90.5678	-45.1234
+-116.4074E	39.9042N`;
 
             const DMS_EXAMPLE =
 `116°24'26.64"E	39°54'15.12"N
-74°00'21.6"W	40°42'46.08"N
+74°0'21.6"W	40°42'46.08"N
 139°41'30.0"E	35°41'22.2"N
 151°12'33.5"E	33°52'07.7"S
 0°0'0"E	0°0'0"N
-90°00'00"W	45°30'00"N`;
+90°0'0"W	45°30'00"N`;
 
             function getSelectedDirection() {
                 for (let radio of directionRadios) {
@@ -174,28 +175,28 @@
             function updateExampleHint() {
                 let dir = getSelectedDirection();
                 if (dir === 'dec2dms') {
-                    modeHint.innerHTML = '<strong>当前模式：</strong>十进制转度分秒。转换后自动添加方向标记（经度 E/W，纬度 N/S）。';
+                    modeHint.innerHTML = '<strong>当前模式：</strong>十进制转度分秒。转换后自动添加方向标记（经度 E/W，纬度 N/S）。<br><span style="color:#c0392b;">⚠️ 若十进制数值符号与方向标记矛盾（如 -116.4074E），将显示"符号/方向矛盾"错误。</span>';
                 } else {
-                    modeHint.innerHTML = '<strong>当前模式：</strong>度分秒转十进制。输出带符号的十进制数（负数表示南/西）。';
+                    modeHint.innerHTML = '<strong>当前模式：</strong>度分秒转十进制。输出带符号的十进制数（负数表示南/西）。<br><span style="color:#c0392b;">⚠️ 度分秒格式不应包含负号（如 -116°24\'26.64"E 是错误的），请使用方向标记。</span>';
                 }
             }
 
-function loadExample() {
-    const textRadio = document.querySelector('input[name="inputMode"][value="text"]');
-    if (textRadio) {
-        textRadio.checked = true;
-        switchInputMode(); // 更新界面状态（启用文本框，禁用文件输入）
-    }
-    let dir = getSelectedDirection();
-    if (dir === 'dec2dms') {
-        inputText.value = DECIMAL_EXAMPLE;
-        showMsg(msgTip, '已加载十进制格式示例。', 'info');
-    } else {
-        inputText.value = DMS_EXAMPLE;
-        showMsg(msgTip, '已加载度分秒格式示例。', 'info');
-    }
-    toast('示例已加载');
-}
+            function loadExample() {
+                const textRadio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (textRadio) {
+                    textRadio.checked = true;
+                    switchInputMode();
+                }
+                let dir = getSelectedDirection();
+                if (dir === 'dec2dms') {
+                    inputText.value = DECIMAL_EXAMPLE;
+                    showMsg(msgTip, '已加载十进制格式示例（含矛盾测试数据 -116.4074E）。', 'info');
+                } else {
+                    inputText.value = DMS_EXAMPLE;
+                    showMsg(msgTip, '已加载度分秒格式示例。', 'info');
+                }
+                toast('示例已加载');
+            }
 
             window.switchInputMode = function() {
                 const mode = document.querySelector('input[name="inputMode"]:checked').value;
@@ -216,6 +217,13 @@ function loadExample() {
             function parseDMS(str) {
                 let s = str.trim();
                 let dir = null;
+
+                const hasMinus = s.includes('-');
+                const hasDmsMark = /[°′"']/.test(s);
+                if (hasMinus && hasDmsMark) {
+                    return { error: '度分秒格式不应包含负号' };
+                }
+
                 const dirMatch = s.match(/^([NSEWnsew])\s*|([NSEWnsew])\s*$/);
                 if (dirMatch) {
                     dir = (dirMatch[1] || dirMatch[2]).toUpperCase();
@@ -280,26 +288,44 @@ function loadExample() {
                 if (!val) return null;
                 let dmsObj = parseDMS(val);
                 if (!dmsObj) return null;
+
+                if (dmsObj.error) {
+                    return dmsObj.error;
+                }
+
                 if (dmsObj.decimal !== undefined) {
                     if (direction === 'dms2dec') return null;
-                    let dmsStr = decimalToDMS(dmsObj.decimal, coordType);
+
+                    let sign = dmsObj.decimal > 0 ? 1 : (dmsObj.decimal < 0 ? -1 : 0);
+                    let dirSign = 0;
                     if (dmsObj.direction) {
-                        let useDir = dmsObj.direction;
-                        if ((coordType === 'lon' && (useDir === 'E' || useDir === 'W')) ||
-                            (coordType === 'lat' && (useDir === 'N' || useDir === 'S'))) {
-                            dmsStr = dmsStr.slice(0, -1) + useDir;
-                        }
+                        dirSign = (dmsObj.direction === 'N' || dmsObj.direction === 'E') ? 1 :
+                                  (dmsObj.direction === 'S' || dmsObj.direction === 'W') ? -1 : 0;
+                    }
+
+                    if (sign !== 0 && dirSign !== 0 && sign !== dirSign) {
+                        return '符号/方向矛盾';
+                    }
+
+                    let finalDir = dmsObj.direction || null;
+                    let dmsStr = decimalToDMS(dmsObj.decimal, coordType);
+                    if (finalDir) {
+                        dmsStr = dmsStr.slice(0, -1) + finalDir;
                     }
                     return dmsStr;
-                } else {
-                    if (direction === 'dec2dms') return null;
-                    let dec = dmsToDecimal(dmsObj);
-                    if (dmsObj.direction) {
-                        if (dmsObj.direction === 'S' || dmsObj.direction === 'W') dec = -Math.abs(dec);
-                        else dec = Math.abs(dec);
-                    }
-                    return dec.toFixed(6);
                 }
+
+                if (direction === 'dec2dms') return null;
+
+                let dec = dmsToDecimal(dmsObj);
+                if (dmsObj.direction) {
+                    if (dmsObj.direction === 'S' || dmsObj.direction === 'W') {
+                        dec = -Math.abs(dec);
+                    } else {
+                        dec = Math.abs(dec);
+                    }
+                }
+                return dec.toFixed(6);
             }
 
             function performConversion() {
@@ -330,8 +356,8 @@ function loadExample() {
                     let latOut = convertValue(lat, direction, 'lat');
                     if (lonOut === null) lonOut = '不匹配方向';
                     if (latOut === null) latOut = '不匹配方向';
-                    if (lonOut !== '不匹配方向' && lonOut !== '列数不足' &&
-                        latOut !== '不匹配方向' && latOut !== '列数不足') validCount++;
+                    if (lonOut !== '不匹配方向' && lonOut !== '符号/方向矛盾' && lonOut !== '度分秒格式不应包含负号' &&
+                        latOut !== '不匹配方向' && latOut !== '符号/方向矛盾' && latOut !== '度分秒格式不应包含负号') validCount++;
                     results.push({ index: i+1, lon, lat, lonOut, latOut });
                 }
 
@@ -351,15 +377,17 @@ function loadExample() {
 
                 let html = '';
                 results.forEach(r => {
-                    const lonClass = (r.lonOut === '不匹配方向' || r.lonOut === '列数不足') ? '' : 'converted';
-                    const latClass = (r.latOut === '不匹配方向' || r.latOut === '列数不足') ? '' : 'converted';
-                    html += `<tr>
+                    const isError = (r.lonOut === '列数不足' || r.lonOut === '不匹配方向' || 
+                                     r.lonOut === '符号/方向矛盾' || r.lonOut === '度分秒格式不应包含负号' ||
+                                     r.latOut === '列数不足' || r.latOut === '不匹配方向' ||
+                                     r.latOut === '符号/方向矛盾' || r.latOut === '度分秒格式不应包含负号');
+                    html += `<tr${isError ? ' style="background-color:#ffe6e6;"' : ''}>
                         <td>${r.index}</td>
                         <td>${escapeHtml(r.lon)}</td>
                         <td>${escapeHtml(r.lat)}</td>
                         <td>→</td>
-                        <td class="${lonClass}">${escapeHtml(r.lonOut)}</td>
-                        <td class="${latClass}">${escapeHtml(r.latOut)}</td>
+                        <td>${escapeHtml(r.lonOut)}</td>
+                        <td>${escapeHtml(r.latOut)}</td>
                     </tr>`;
                 });
                 resultBody.innerHTML = html;

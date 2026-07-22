@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FASTA Sequence Group Extraction - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>FASTA Sequence Group Extraction</h2>
+            <p>Split a FASTA file into multiple smaller files based on a grouping table.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Sequences</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
+            </div>
+            <div class="file-input"><input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt"></div>
+            <div class="text-input"><textarea id="fastaText" placeholder="Paste FASTA content" disabled></textarea></div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">Import Sequences</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="seqStats" style="font-size:0.9rem; color:#6c757d;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Define Groups</div>
+            <div class="info-box">
+                <strong>Note:</strong> One sequence per line, tab-separated: "sequence ID\tgroup name". Default group is "default".<br>
+                Only sequences listed in the table will be extracted; others are ignored. You can edit the table in Excel and paste it here.
+            </div>
+            <div class="text-input">
+                <textarea id="ruleText" rows="8" placeholder="sequence ID\tgroup name"></textarea>
+            </div>
+            <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <button class="btn" id="classifyBtn" disabled>Group Sequences</button>
+                <button class="btn" id="resetDefaultBtn">Reset to Default</button>
+                <span id="ruleStats" style="color:#6c757d; font-size:0.85rem;"></span>
+            </div>
+            <div id="classifyTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Results & Export</div>
+            <div id="resultArea" style="display:none;">
+                <div id="resultSummary" style="margin-bottom:10px; padding:8px 12px; background:#f8f9fa; border-radius:6px;"></div>
+                <div class="result-toolbar" style="flex-wrap:wrap; gap:8px;">
+                    <label style="font-weight:400; display:flex; align-items:center; gap:4px;">
+                        <input type="checkbox" id="checkAll" onchange="toggleAll()"> Select All
+                    </label>
+                    <button class="btn" id="downloadSelectedBtn" disabled>Download Selected Groups</button>
+                    <button class="btn" id="downloadMergedBtn" disabled>Download Merged (All Extracted)</button>
+                    <span id="resultTip" class="tip-text"></span>
+                </div>
+                <div id="fileList" class="file-list" style="max-height:350px; overflow-y:auto; border:1px solid #e8edf2; border-radius:6px;"></div>
+                <details style="margin-top:12px;">
+                    <summary style="cursor:pointer; font-weight:500; color:#1f4068;">Preview Group Contents</summary>
+                    <div id="previewArea" style="margin-top:8px; max-height:250px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:6px; font-family:monospace; font-size:13px; white-space:pre-wrap;"></div>
+                </details>
+            </div>
+            <div id="emptyResult" class="empty-tip">Results will appear after grouping.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+            const seqStats = document.getElementById('seqStats');
+
+            const ruleText = document.getElementById('ruleText');
+            const resetDefaultBtn = document.getElementById('resetDefaultBtn');
+            const classifyBtn = document.getElementById('classifyBtn');
+            const classifyTip = document.getElementById('classifyTip');
+            const ruleStats = document.getElementById('ruleStats');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultSummary = document.getElementById('resultSummary');
+            const fileList = document.getElementById('fileList');
+            const previewArea = document.getElementById('previewArea');
+            const checkAll = document.getElementById('checkAll');
+            const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+            const downloadMergedBtn = document.getElementById('downloadMergedBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let sequences = [];
+            let categoryFileMap = {};
+            let categorySeqCount = {};
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if ([msgTip, classifyTip, resultTip].includes(el)) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) { if (window.showToast) window.showToast(msg); }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '',
+                    seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ id: name, seq: seq });
+                        name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ id: name, seq: seq });
+                return seqs;
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } [m] || m));
+            }
+
+            function loadSequences(text) {
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, 'No valid FASTA sequences found', 'error');
+                    return false;
+                }
+                sequences = parsed;
+                seqStats.textContent = `Loaded ${sequences.length} sequences`;
+                const defaultMapping = sequences.map(s => s.id + '\tdefault').join('\n');
+                ruleText.value = defaultMapping;
+                updateRuleStats();
+                classifyBtn.disabled = false;
+                clearResults();
+                showMsg(msgTip, `Successfully loaded ${sequences.length} sequences, default grouping generated`, 'success');
+                toast(`Loaded ${sequences.length} sequences`);
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = fastaFile.files[0];
+                if (!file) { showMsg(msgTip, 'Please select a file', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = e => {
+                    fastaText.value = e.target.result;
+                    loadSequences(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = fastaText.value.trim();
+                if (!text) { showMsg(msgTip, 'Please paste FASTA content', 'error'); return; }
+                loadSequences(text);
+            }
+
+            function loadExample() {
+                const exampleFasta = `>seq1_geneA
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq2_geneB
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq3_rRNA
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq4_tRNA
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq5_geneA
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                radio.checked = true;
+                fastaFile.disabled = true;
+                fastaText.disabled = false;
+                fastaText.value = exampleFasta;
+                loadSequences(exampleFasta);
+            }
+
+            function resetDefaultMapping() {
+                if (sequences.length === 0) {
+                    showMsg(classifyTip, 'Please import sequences first', 'error');
+                    return;
+                }
+                const defaultMapping = sequences.map(s => s.id + '\tdefault').join('\n');
+                ruleText.value = defaultMapping;
+                updateRuleStats();
+                clearResults();
+                showMsg(classifyTip, 'Reset to default grouping (all in "default")', 'success');
+            }
+
+            function updateRuleStats() {
+                const lines = ruleText.value.split(/\r?\n/).filter(l => l.trim() !== '');
+                ruleStats.textContent = lines.length ? `${lines.length} rules` : '';
+            }
+
+            function doClassify() {
+                if (sequences.length === 0) {
+                    showMsg(classifyTip, 'Please import FASTA sequences first', 'error');
+                    return;
+                }
+                const text = ruleText.value.trim();
+                if (!text) {
+                    showMsg(classifyTip, 'Please enter grouping rules', 'error');
+                    return;
+                }
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length === 0) {
+                    showMsg(classifyTip, 'Rules are empty', 'error');
+                    return;
+                }
+
+                const map = {};
+                for (const line of lines) {
+                    const parts = line.split(/\t/);
+                    if (parts.length < 2) continue;
+                    const id = parts[0].trim();
+                    const cat = parts.slice(1).join('\t').trim();
+                    if (id && cat) map[id] = cat;
+                }
+                if (Object.keys(map).length === 0) {
+                    showMsg(classifyTip, 'No valid mappings found, check format', 'error');
+                    return;
+                }
+
+                const result = {};
+                for (const seq of sequences) {
+                    if (map[seq.id] !== undefined) {
+                        const cat = map[seq.id];
+                        if (!result[cat]) result[cat] = [];
+                        result[cat].push(seq);
+                    }
+                }
+
+                if (Object.keys(result).length === 0) {
+                    showMsg(classifyTip, '⚠️ No sequences matched the rules, check IDs', 'warn');
+                    clearResults();
+                    return;
+                }
+
+                categoryFileMap = {};
+                categorySeqCount = {};
+                let totalMatched = 0;
+                for (const [cat, seqs] of Object.entries(result)) {
+                    let fasta = '';
+                    for (const s of seqs) {
+                        fasta += '>' + s.id + '\n' + s.seq + '\n';
+                    }
+                    categoryFileMap[cat] = fasta;
+                    categorySeqCount[cat] = seqs.length;
+                    totalMatched += seqs.length;
+                }
+
+                renderResults(result, totalMatched);
+                showMsg(classifyTip, `✅ Grouping complete, ${Object.keys(result).length} groups, ${totalMatched} sequences extracted`, 'success');
+                toast(`Grouping complete, ${Object.keys(result).length} groups`);
+            }
+
+            function renderResults(result, totalMatched) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                let summaryHtml =
+                    `<div style="display:flex; flex-wrap:wrap; gap:12px 24px;">
+                        <span><strong>Total sequences:</strong> ${sequences.length}</span>
+                        <span><strong>Extracted:</strong> ${totalMatched}</span>
+                        <span><strong>Groups:</strong> ${Object.keys(result).length}</span>
+                        <span style="color:#6c757d;">(Unlisted sequences ignored)</span>
+                    </div>
+                    <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:8px;">`;
+                for (const [cat, seqs] of Object.entries(result)) {
+                    summaryHtml +=
+                        `<span style="background:#e8edf2; padding:2px 12px; border-radius:12px;">${escapeHtml(cat)}: ${seqs.length}</span>`;
+                }
+                summaryHtml += `</div>`;
+                resultSummary.innerHTML = summaryHtml;
+
+                let listHtml = '';
+                const categories = Object.keys(result).sort();
+                for (const cat of categories) {
+                    listHtml += `
+                        <div class="file-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid #f0f4f8;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" class="file-check" data-cat="${escapeHtml(cat)}">
+                                <span style="font-weight:500;">${escapeHtml(cat)}</span>
+                                <span style="color:#6c757d; font-size:0.85rem;">(${categorySeqCount[cat]} seqs)</span>
+                            </label>
+                            <div>
+                                <button class="btn-sm" data-cat="${escapeHtml(cat)}" onclick="downloadSingle('${escapeHtml(cat)}')">Download</button>
+                                <button class="btn-sm" data-cat="${escapeHtml(cat)}" onclick="previewSingle('${escapeHtml(cat)}')">Preview</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                fileList.innerHTML = listHtml;
+
+                downloadSelectedBtn.disabled = false;
+                downloadMergedBtn.disabled = false;
+                updateCheckAllState();
+                previewArea.textContent = 'Click "Preview" to view content';
+            }
+
+            function clearResults() {
+                categoryFileMap = {};
+                categorySeqCount = {};
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                fileList.innerHTML = '';
+                resultSummary.innerHTML = '';
+                previewArea.textContent = '';
+                downloadSelectedBtn.disabled = true;
+                downloadMergedBtn.disabled = true;
+                checkAll.checked = false;
+                resultTip.innerHTML = '';
+            }
+
+            function updateCheckAllState() {
+                const checks = document.querySelectorAll('.file-check');
+                const checked = document.querySelectorAll('.file-check:checked');
+                if (checks.length === 0) { checkAll.checked = false;
+                    checkAll.indeterminate = false; return; }
+                if (checked.length === checks.length) { checkAll.checked = true;
+                    checkAll.indeterminate = false; } else if (checked.length === 0) { checkAll.checked = false;
+                    checkAll.indeterminate = false; } else { checkAll.checked = false;
+                    checkAll.indeterminate = true; }
+            }
+
+            function toggleAll() {
+                const checked = checkAll.checked;
+                document.querySelectorAll('.file-check').forEach(cb => cb.checked = checked);
+                updateCheckAllState();
+            }
+
+            function downloadFile(content, filename) {
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            window.downloadSingle = function(cat) {
+                const content = categoryFileMap[cat];
+                if (!content) { showMsg(resultTip, 'No data', 'error'); return; }
+                downloadFile(content, cat + '.fasta');
+                showMsg(resultTip, `Downloaded ${cat}.fasta`, 'success');
+            };
+
+            window.previewSingle = function(cat) {
+                const content = categoryFileMap[cat];
+                if (!content) { previewArea.textContent = `Group "${cat}" has no data`; return; }
+                let preview = content;
+                if (preview.length > 800) preview = preview.slice(0, 800) + '\n... (truncated)';
+                previewArea.textContent = `>>> ${cat} <<<\n${preview}`;
+            };
+
+            function downloadSelected() {
+                const checks = document.querySelectorAll('.file-check:checked');
+                if (checks.length === 0) { showMsg(resultTip, 'Please select at least one group', 'error'); return; }
+                let count = 0;
+                for (const cb of checks) {
+                    const cat = cb.dataset.cat;
+                    const content = categoryFileMap[cat];
+                    if (content) { downloadFile(content, cat + '.fasta');
+                        count++; }
+                }
+                showMsg(resultTip, `Downloaded ${count} files`, 'success');
+                toast(`Downloaded ${count} files`);
+            }
+
+            function downloadMerged() {
+                let merged = '',
+                    count = 0;
+                for (const [cat, content] of Object.entries(categoryFileMap)) {
+                    merged += content;
+                    count += categorySeqCount[cat] || 0;
+                }
+                if (merged) {
+                    downloadFile(merged, 'all_matched_sequences.fasta');
+                    showMsg(resultTip, `Downloaded merged file (${count} sequences)`, 'success');
+                    toast(`Downloaded merged file (${count} sequences)`);
+                } else {
+                    showMsg(resultTip, 'No sequences to merge', 'error');
+                }
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                classifyBtn.disabled = true;
+                seqStats.textContent = '';
+                clearResults();
+                msgTip.innerHTML = '';
+                classifyTip.innerHTML = '';
+                ruleText.value = '';
+                updateRuleStats();
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    loadSequences(ev.target.result);
+                };
+                reader.readAsText(file);
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault();
+                    loadFromText(); }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') loadFromFile();
+                else loadFromText();
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+            resetDefaultBtn.addEventListener('click', resetDefaultMapping);
+            classifyBtn.addEventListener('click', doClassify);
+            ruleText.addEventListener('input', updateRuleStats);
+            downloadSelectedBtn.addEventListener('click', downloadSelected);
+            downloadMergedBtn.addEventListener('click', downloadMerged);
+
+            document.addEventListener('change', function(e) {
+                if (e.target.classList.contains('file-check')) updateCheckAllState();
+            });
+            window.toggleAll = toggleAll;
+
+            sequences = [];
+            classifyBtn.disabled = true;
+            clearResults();
+            document.querySelector('input[name="inputMode"][value="file"]').checked = true;
+            switchInput();
+            ruleText.value = '';
+            updateRuleStats();
+        })();
+    </script>
+
+</body>
+</html>

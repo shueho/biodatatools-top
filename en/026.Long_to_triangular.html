@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Long List to Lower Triangular Matrix - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Long List to Lower Triangular Matrix</h2>
+            <p>Convert three-column data (Item1-Item2-Value) into a lower triangular matrix with order adjustment and subset selection.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Long-Format Data</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()"> Paste Text</label>
+            </div>
+
+            <div class="file-input" id="fileInputWrap">
+                <input type="file" id="fileInput" accept=".csv,.tsv,.txt,.tab">
+            </div>
+
+            <div class="text-input" id="textInputWrap">
+                <textarea id="inputText" placeholder="Three columns per line: Item1 Item2 Value (tab/comma/space separated)"></textarea>
+            </div>
+
+            <div id="msgTip" class="tip-text"></div>
+
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">Import Data</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+
+            <div id="previewArea" style="display:none; margin-top:16px;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+                    <span><strong>Data Preview</strong> <span id="previewInfo" class="tip-text" style="display:inline;"></span></span>
+                </div>
+                <div class="table-container">
+                    <table id="previewTable"><tbody></tbody></table>
+                </div>
+            </div>
+            <div id="emptyPreview" class="empty-tip">Please import data</div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Parameters & Order Adjustment</div>
+
+            <div class="param-group" style="gap:16px; margin-bottom:16px;">
+                <label>
+                    Missing value fill: <input type="text" id="fillMissing" value="NA" style="width:60px; padding:4px;">
+                </label>
+                <label>
+                    <input type="checkbox" id="symmetricFill"> Symmetric fill (copy lower triangle to upper triangle)
+                </label>
+            </div>
+
+            <div>
+                <p><strong>Adjust order or select subset:</strong> One item name per line. Click "Generate Matrix" after modification.</p>
+                <textarea id="orderEditor" style="width:100%; font-family:Consolas,monospace; min-height:120px; padding:8px; border:1px solid #ccc; border-radius:6px; resize:vertical;"></textarea>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; align-items:center;">
+                    <button class="btn" id="generateBtn">Generate Matrix</button>
+                    <button class="btn" id="resetOrderBtn">Reset to Original Order</button>
+                </div>
+                <div id="statusMsg" class="tip-text" style="margin-top:4px;"></div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Export Results</div>
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyMatrixBtn">Copy Matrix</button>
+                    <button class="btn" id="copyLongBtn">Copy Three-Column List</button>
+                    <button class="btn" id="exportBtn">Export All</button>
+                    <span id="resultMsg" class="tip-text"></span>
+                </div>
+                <div style="margin-top:8px;">
+                    <span id="matrixDimInfo" class="tip-text" style="display:inline-block; font-weight:500; color:#1f4068;"></span>
+                </div>
+                <div class="table-container">
+                    <table id="resultMatrixTable"><tbody></tbody></table>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Configure parameters and click "Generate Matrix"</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('fileInput');
+            const inputText = document.getElementById('inputText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const previewArea = document.getElementById('previewArea');
+            const emptyPreview = document.getElementById('emptyPreview');
+            const previewTable = document.getElementById('previewTable');
+            const previewInfo = document.getElementById('previewInfo');
+
+            const symmetricFill = document.getElementById('symmetricFill');
+            const fillMissing = document.getElementById('fillMissing');
+            const generateBtn = document.getElementById('generateBtn');
+            const statusMsg = document.getElementById('statusMsg');
+
+            const orderEditor = document.getElementById('orderEditor');
+            const resetOrderBtn = document.getElementById('resetOrderBtn');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultMatrixTable = document.getElementById('resultMatrixTable');
+            const matrixDimInfo = document.getElementById('matrixDimInfo');
+            const copyMatrixBtn = document.getElementById('copyMatrixBtn');
+            const copyLongBtn = document.getElementById('copyLongBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let rawPairs = [];
+            let uniqueItems = [];
+            let currentOrder = [];
+            let matrixData = null;
+            let longData = null;
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+            }
+
+            function toast(msg) { if (window.showToast) window.showToast(msg); }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m));
+            }
+
+            function getDelimiter(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                if (lines.length === 0) return '\t';
+                const first = lines[0];
+                if (first.includes('\t')) return '\t';
+                if (first.includes(',')) return ',';
+                if (first.includes(' ')) return ' ';
+                return '\t';
+            }
+
+            function parsePairs(text) {
+                const delim = getDelimiter(text);
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                const pairs = [];
+                for (let line of lines) {
+                    const parts = line.split(delim).map(s => s.trim());
+                    if (parts.length < 3) continue;
+                    const item1 = parts[0];
+                    const item2 = parts[1];
+                    const val = parts[2];
+                    if (item1 && item2 && val !== '') {
+                        pairs.push({ item1, item2, value: val });
+                    }
+                }
+                return pairs;
+            }
+
+            function extractUnique(pairs) {
+                const seen = new Set();
+                const order = [];
+                for (let p of pairs) {
+                    if (!seen.has(p.item1)) { seen.add(p.item1); order.push(p.item1); }
+                    if (!seen.has(p.item2)) { seen.add(p.item2); order.push(p.item2); }
+                }
+                return order;
+            }
+
+            function buildMatrix(pairs, order, symmetric, fillVal) {
+                const n = order.length;
+                const pairMap = new Map();
+                for (let p of pairs) {
+                    const key = [p.item1, p.item2].sort().join('|||');
+                    if (!pairMap.has(key)) {
+                        pairMap.set(key, p.value);
+                    }
+                }
+
+                const data = Array.from({ length: n }, (_, i) => 
+                    Array.from({ length: n }, (_, j) => i >= j ? fillVal : '')
+                );
+
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j <= i; j++) {
+                        const key = [order[i], order[j]].sort().join('|||');
+                        if (pairMap.has(key)) {
+                            data[i][j] = pairMap.get(key);
+                        }
+                    }
+                }
+
+                if (symmetric) {
+                    for (let i = 0; i < n; i++) {
+                        for (let j = i + 1; j < n; j++) {
+                            data[i][j] = data[j][i];
+                        }
+                    }
+                }
+
+                return { headers: order.slice(), rowNames: order.slice(), data };
+            }
+
+            function matrixToLong(matrixData, fillVal) {
+                const { headers, rowNames, data } = matrixData;
+                const rows = [];
+                for (let i = 0; i < data.length; i++) {
+                    for (let j = 0; j <= i; j++) {
+                        const val = data[i][j];
+                        if (val !== fillVal && val !== '') {
+                            rows.push({ row: rowNames[i], col: headers[j], value: val });
+                        }
+                    }
+                }
+                return rows;
+            }
+
+            function renderMatrixTable(tableEl, headers, rowNames, data) {
+                let html = '<thead><tr><th>#</th>';
+                headers.forEach(h => html += `<th>${escapeHtml(h)}</th>`);
+                html += '</tr></thead><tbody>';
+                for (let i = 0; i < data.length; i++) {
+                    html += `<tr><td><strong>${escapeHtml(rowNames[i])}</strong></td>`;
+                    for (let j = 0; j < data[i].length; j++) {
+                        const val = data[i][j];
+                        const isLower = i >= j;
+                        const isDiag = i === j;
+                        let bg = isDiag ? '#fff3e0' : (isLower ? '#e3f2fd' : '#f5f5f5');
+                        const display = (val !== undefined && val !== null && val !== '') ? val : '';
+                        html += `<td style="background-color:${bg};">${escapeHtml(display)}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody>';
+                tableEl.innerHTML = html;
+            }
+
+            function copyText(text, msgEl) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        toast('Copied');
+                        if (msgEl) showMsg(msgEl, 'Copied', 'success');
+                    }).catch(() => fallbackCopy(text, msgEl));
+                } else {
+                    fallbackCopy(text, msgEl);
+                }
+            }
+
+            function fallbackCopy(text, msgEl) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    toast('Copied');
+                    if (msgEl) showMsg(msgEl, 'Copied', 'success');
+                } catch (e) {
+                    toast('Copy failed');
+                    if (msgEl) showMsg(msgEl, 'Copy failed', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadFile(content, filename) {
+                const blob = new Blob(['\uFEFF' + content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            function matrixToText(matrixData, delim) {
+                delim = delim || '\t';
+                const { headers, rowNames, data } = matrixData;
+                const lines = [];
+                lines.push(['#', ...headers].join(delim));
+                for (let i = 0; i < data.length; i++) {
+                    const row = [rowNames[i], ...data[i].map(v => v || '')];
+                    lines.push(row.join(delim));
+                }
+                return lines.join('\n');
+            }
+
+            function longToText(longRows, delim) {
+                delim = delim || '\t';
+                const lines = [['Row', 'Column', 'Value'].join(delim)];
+                longRows.forEach(item => {
+                    lines.push([item.row, item.col, item.value].join(delim));
+                });
+                return lines.join('\n');
+            }
+
+            function loadData(text) {
+                const pairs = parsePairs(text);
+                if (pairs.length === 0) {
+                    showMsg(msgTip, 'No valid three-column data parsed', 'error');
+                    return false;
+                }
+                rawPairs = pairs;
+                uniqueItems = extractUnique(pairs);
+                currentOrder = uniqueItems.slice();
+                orderEditor.value = currentOrder.join('\n');
+
+                previewArea.style.display = 'block';
+                emptyPreview.style.display = 'none';
+                previewInfo.textContent = `${pairs.length} pairs, ${uniqueItems.length} unique items`;
+                let html = '<thead><tr><th>#</th><th>Item1</th><th>Item2</th><th>Value</th></tr></thead><tbody>';
+                pairs.slice(0, 100).forEach((p, idx) => {
+                    html += `<tr><td>${idx+1}</td><td>${escapeHtml(p.item1)}</td><td>${escapeHtml(p.item2)}</td><td>${escapeHtml(p.value)}</td></tr>`;
+                });
+                if (pairs.length > 100) html += `<tr><td colspan="4">... ${pairs.length - 100} more rows</td></tr>`;
+                html += '</tbody>';
+                previewTable.innerHTML = html;
+
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                matrixData = null;
+                longData = null;
+
+                showMsg(msgTip, `✅ Successfully loaded ${pairs.length} pairs`, 'success');
+                toast('Data loaded');
+                return true;
+            }
+
+            function generateMatrix() {
+                if (rawPairs.length === 0) {
+                    showMsg(statusMsg, 'Please import data first', 'error');
+                    return;
+                }
+
+                const lines = orderEditor.value.split(/\r?\n/).filter(s => s.trim() !== '');
+                const order = lines.map(s => s.trim());
+                const originalSet = new Set(uniqueItems);
+                const orderSet = new Set(order);
+
+                if (orderSet.size !== order.length) {
+                    showMsg(statusMsg, 'Duplicate items in list', 'error');
+                    return;
+                }
+                for (let name of order) {
+                    if (!originalSet.has(name)) {
+                        showMsg(statusMsg, `Item "${name}" not found in data`, 'error');
+                        return;
+                    }
+                }
+                if (order.length === 0) {
+                    showMsg(statusMsg, 'Order list cannot be empty', 'error');
+                    return;
+                }
+
+                currentOrder = order;
+
+                const sym = symmetricFill.checked;
+                const fillVal = fillMissing.value.trim() || 'NA';
+                const matrix = buildMatrix(rawPairs, currentOrder, sym, fillVal);
+                matrixData = matrix;
+                longData = matrixToLong(matrix, fillVal);
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                matrixDimInfo.textContent = `Matrix size: ${matrix.data.length} × ${matrix.data.length}`;
+                renderMatrixTable(resultMatrixTable, matrix.headers, matrix.rowNames, matrix.data);
+
+                showMsg(statusMsg, `✅ Matrix generated (${matrix.data.length}×${matrix.data.length})`, 'success');
+                toast('Matrix generated');
+            }
+
+            function resetOrder() {
+                if (uniqueItems.length === 0) {
+                    showMsg(statusMsg, 'No data', 'error');
+                    return;
+                }
+                currentOrder = uniqueItems.slice();
+                orderEditor.value = currentOrder.join('\n');
+                showMsg(statusMsg, 'Reset to original order', 'success');
+                generateMatrix();
+            }
+
+            function copyMatrix() {
+                if (!matrixData) { showMsg(resultMsg, 'No matrix to copy', 'error'); return; }
+                const text = matrixToText(matrixData, '\t');
+                copyText(text, resultMsg);
+            }
+
+            function copyLong() {
+                if (!longData || longData.length === 0) { showMsg(resultMsg, 'No long-format data to copy', 'error'); return; }
+                const text = longToText(longData, '\t');
+                copyText(text, resultMsg);
+            }
+
+            function exportAll() {
+                if (!matrixData || !longData) { showMsg(resultMsg, 'No data to export', 'error'); return; }
+                const matrixText = matrixToText(matrixData, ',');
+                const longText = longToText(longData, ',');
+                const content = `=== Matrix ===\n${matrixText}\n\n=== Long Format ===\n${longText}`;
+                downloadFile(content, 'matrix_and_long.csv');
+                showMsg(resultMsg, 'Export successful', 'success');
+                toast('Export successful');
+            }
+
+            window.switchInputMode = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fileInput.disabled = false;
+                    inputText.disabled = true;
+                    inputText.style.backgroundColor = '#f5f7fa';
+                } else {
+                    fileInput.disabled = true;
+                    fileInput.value = '';
+                    inputText.disabled = false;
+                    inputText.style.backgroundColor = '';
+                }
+                rawPairs = [];
+                uniqueItems = [];
+                currentOrder = [];
+                matrixData = null;
+                longData = null;
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                previewArea.style.display = 'none';
+                emptyPreview.style.display = 'block';
+                msgTip.innerHTML = '';
+                statusMsg.innerHTML = '';
+                resultMsg.innerHTML = '';
+            };
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    inputText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fileInput.files || fileInput.files.length === 0) {
+                        if (inputText.value.trim()) { loadData(inputText.value); return; }
+                        showMsg(msgTip, 'Please select a file or paste data', 'error');
+                        return;
+                    }
+                } else {
+                    const text = inputText.value.trim();
+                    if (!text) { showMsg(msgTip, 'Please paste data', 'error'); return; }
+                    loadData(text);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function() {
+                const example = 
+    `A	B	1.2
+A	C	2.3
+B	C	0.8
+A	D	4.5
+B	D	3.1
+C	D	2.7
+D	E	1.0
+A	E	0.5`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInputMode();
+                inputText.value = example;
+                loadData(example);
+                setTimeout(generateMatrix, 300);
+            });
+
+            generateBtn.addEventListener('click', generateMatrix);
+            resetOrderBtn.addEventListener('click', resetOrder);
+
+            copyMatrixBtn.addEventListener('click', copyMatrix);
+            copyLongBtn.addEventListener('click', copyLong);
+            exportBtn.addEventListener('click', exportAll);
+
+            orderEditor.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    generateBtn.click();
+                }
+            });
+
+            inputText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadBtn.click();
+                }
+            });
+
+            window.switchInputMode();
+            emptyPreview.style.display = 'block';
+            previewArea.style.display = 'none';
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+        })();
+    </script>
+</body>
+</html>

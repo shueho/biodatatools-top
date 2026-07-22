@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FASTA序列分组提取 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>FASTA序列分组提取</h2>
+            <p>根据序列分组表格将FASTA序列文件拆分为若干小文件。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入序列</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input"><input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt"></div>
+            <div class="text-input"><textarea id="fastaText" placeholder="粘贴FASTA内容" disabled></textarea></div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">导入序列</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="seqStats" style="font-size:0.9rem; color:#6c757d;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：设置分组</div>
+            <div class="info-box">
+                <strong>说明：</strong> 每行一个序列，制表符分隔，格式为“序列ID\t组名”。默认分组为“default”。<br>
+                仅分组表中列出的序列会被提取，未列出的序列将被忽略。你可以在EXCEL中编辑分组表格后粘贴到此处。
+            </div>
+            <div class="text-input">
+                <textarea id="ruleText" rows="8" placeholder="序列ID\t组名"></textarea>
+            </div>
+            <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <button class="btn" id="classifyBtn" disabled>执行分组</button>
+                <button class="btn" id="resetDefaultBtn">重置分组</button>
+                <span id="ruleStats" style="color:#6c757d; font-size:0.85rem;"></span>
+            </div>
+            <div id="classifyTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：结果与导出</div>
+            <div id="resultArea" style="display:none;">
+                <div id="resultSummary" style="margin-bottom:10px; padding:8px 12px; background:#f8f9fa; border-radius:6px;"></div>
+                <div class="result-toolbar" style="flex-wrap:wrap; gap:8px;">
+                    <label style="font-weight:400; display:flex; align-items:center; gap:4px;">
+                        <input type="checkbox" id="checkAll" onchange="toggleAll()"> 全选
+                    </label>
+                    <button class="btn" id="downloadSelectedBtn" disabled>下载选中分组</button>
+                    <button class="btn" id="downloadMergedBtn" disabled>下载总集合（合并）</button>
+                    <span id="resultTip" class="tip-text"></span>
+                </div>
+                <div id="fileList" class="file-list" style="max-height:350px; overflow-y:auto; border:1px solid #e8edf2; border-radius:6px;"></div>
+                <details style="margin-top:12px;">
+                    <summary style="cursor:pointer; font-weight:500; color:#1f4068;">预览分组内容</summary>
+                    <div id="previewArea" style="margin-top:8px; max-height:250px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:6px; font-family:monospace; font-size:13px; white-space:pre-wrap;"></div>
+                </details>
+            </div>
+            <div id="emptyResult" class="empty-tip">执行分组后显示结果</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+            const seqStats = document.getElementById('seqStats');
+
+            const ruleText = document.getElementById('ruleText');
+            const resetDefaultBtn = document.getElementById('resetDefaultBtn');
+            const classifyBtn = document.getElementById('classifyBtn');
+            const classifyTip = document.getElementById('classifyTip');
+            const ruleStats = document.getElementById('ruleStats');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultSummary = document.getElementById('resultSummary');
+            const fileList = document.getElementById('fileList');
+            const previewArea = document.getElementById('previewArea');
+            const checkAll = document.getElementById('checkAll');
+            const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+            const downloadMergedBtn = document.getElementById('downloadMergedBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let sequences = [];
+            let categoryFileMap = {};
+            let categorySeqCount = {};
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if ([msgTip, classifyTip, resultTip].includes(el)) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) { if (window.showToast) window.showToast(msg); }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '',
+                    seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ id: name, seq: seq });
+                        name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ id: name, seq: seq });
+                return seqs;
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } [m] || m));
+            }
+
+            function loadSequences(text) {
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, '未解析到有效FASTA序列', 'error');
+                    return false;
+                }
+                sequences = parsed;
+                seqStats.textContent = `已加载 ${sequences.length} 条序列`;
+                const defaultMapping = sequences.map(s => s.id + '\tdefault').join('\n');
+                ruleText.value = defaultMapping;
+                updateRuleStats();
+                classifyBtn.disabled = false;
+                clearResults();
+                showMsg(msgTip, `成功加载 ${sequences.length} 条序列，已生成默认分组`, 'success');
+                toast(`已加载 ${sequences.length} 条序列`);
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = fastaFile.files[0];
+                if (!file) { showMsg(msgTip, '请选择文件', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = e => {
+                    fastaText.value = e.target.result;
+                    loadSequences(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = fastaText.value.trim();
+                if (!text) { showMsg(msgTip, '请粘贴FASTA内容', 'error'); return; }
+                loadSequences(text);
+            }
+
+            function loadExample() {
+                const exampleFasta = `>seq1_geneA
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq2_geneB
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq3_rRNA
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq4_tRNA
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq5_geneA
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                radio.checked = true;
+                fastaFile.disabled = true;
+                fastaText.disabled = false;
+                fastaText.value = exampleFasta;
+                loadSequences(exampleFasta);
+            }
+
+            function resetDefaultMapping() {
+                if (sequences.length === 0) {
+                    showMsg(classifyTip, '请先导入序列', 'error');
+                    return;
+                }
+                const defaultMapping = sequences.map(s => s.id + '\tdefault').join('\n');
+                ruleText.value = defaultMapping;
+                updateRuleStats();
+                clearResults();
+                showMsg(classifyTip, '已重置为默认分组（全部归入 default）', 'success');
+            }
+
+            function updateRuleStats() {
+                const lines = ruleText.value.split(/\r?\n/).filter(l => l.trim() !== '');
+                ruleStats.textContent = lines.length ? `共 ${lines.length} 行规则` : '';
+            }
+
+            function doClassify() {
+                if (sequences.length === 0) {
+                    showMsg(classifyTip, '请先导入FASTA序列', 'error');
+                    return;
+                }
+                const text = ruleText.value.trim();
+                if (!text) {
+                    showMsg(classifyTip, '请输入分组规则', 'error');
+                    return;
+                }
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length === 0) {
+                    showMsg(classifyTip, '规则为空', 'error');
+                    return;
+                }
+
+                const map = {};
+                for (const line of lines) {
+                    const parts = line.split(/\t/);
+                    if (parts.length < 2) continue;
+                    const id = parts[0].trim();
+                    const cat = parts.slice(1).join('\t').trim();
+                    if (id && cat) map[id] = cat;
+                }
+                if (Object.keys(map).length === 0) {
+                    showMsg(classifyTip, '未解析到有效分组，请检查格式', 'error');
+                    return;
+                }
+
+                const result = {};
+                for (const seq of sequences) {
+                    if (map[seq.id] !== undefined) {
+                        const cat = map[seq.id];
+                        if (!result[cat]) result[cat] = [];
+                        result[cat].push(seq);
+                    }
+                }
+
+                if (Object.keys(result).length === 0) {
+                    showMsg(classifyTip, '⚠️ 没有序列匹配分组规则，请检查ID是否一致', 'warn');
+                    clearResults();
+                    return;
+                }
+
+                categoryFileMap = {};
+                categorySeqCount = {};
+                let totalMatched = 0;
+                for (const [cat, seqs] of Object.entries(result)) {
+                    let fasta = '';
+                    for (const s of seqs) {
+                        fasta += '>' + s.id + '\n' + s.seq + '\n';
+                    }
+                    categoryFileMap[cat] = fasta;
+                    categorySeqCount[cat] = seqs.length;
+                    totalMatched += seqs.length;
+                }
+
+                renderResults(result, totalMatched);
+                showMsg(classifyTip, `✅ 分组完成，${Object.keys(result).length} 个分组，共提取 ${totalMatched} 条序列`, 'success');
+                toast(`分组完成，${Object.keys(result).length} 个分组`);
+            }
+
+            function renderResults(result, totalMatched) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                let summaryHtml =
+                    `<div style="display:flex; flex-wrap:wrap; gap:12px 24px;">
+                        <span><strong>总序列：</strong>${sequences.length}</span>
+                        <span><strong>已提取：</strong>${totalMatched}</span>
+                        <span><strong>分组数：</strong>${Object.keys(result).length}</span>
+                        <span style="color:#6c757d;">（未列出的序列已忽略）</span>
+                    </div>
+                    <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:8px;">`;
+                for (const [cat, seqs] of Object.entries(result)) {
+                    summaryHtml +=
+                        `<span style="background:#e8edf2; padding:2px 12px; border-radius:12px;">${escapeHtml(cat)}: ${seqs.length}</span>`;
+                }
+                summaryHtml += `</div>`;
+                resultSummary.innerHTML = summaryHtml;
+
+                let listHtml = '';
+                const categories = Object.keys(result).sort();
+                for (const cat of categories) {
+                    listHtml += `
+                        <div class="file-item" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid #f0f4f8;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" class="file-check" data-cat="${escapeHtml(cat)}">
+                                <span style="font-weight:500;">${escapeHtml(cat)}</span>
+                                <span style="color:#6c757d; font-size:0.85rem;">(${categorySeqCount[cat]} 条)</span>
+                            </label>
+                            <div>
+                                <button class="btn-sm" data-cat="${escapeHtml(cat)}" onclick="downloadSingle('${escapeHtml(cat)}')">下载</button>
+                                <button class="btn-sm" data-cat="${escapeHtml(cat)}" onclick="previewSingle('${escapeHtml(cat)}')">预览</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                fileList.innerHTML = listHtml;
+
+                downloadSelectedBtn.disabled = false;
+                downloadMergedBtn.disabled = false;
+                updateCheckAllState();
+                previewArea.textContent = '点击「预览」查看内容';
+            }
+
+            function clearResults() {
+                categoryFileMap = {};
+                categorySeqCount = {};
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                fileList.innerHTML = '';
+                resultSummary.innerHTML = '';
+                previewArea.textContent = '';
+                downloadSelectedBtn.disabled = true;
+                downloadMergedBtn.disabled = true;
+                checkAll.checked = false;
+                resultTip.innerHTML = '';
+            }
+
+            function updateCheckAllState() {
+                const checks = document.querySelectorAll('.file-check');
+                const checked = document.querySelectorAll('.file-check:checked');
+                if (checks.length === 0) { checkAll.checked = false;
+                    checkAll.indeterminate = false; return; }
+                if (checked.length === checks.length) { checkAll.checked = true;
+                    checkAll.indeterminate = false; } else if (checked.length === 0) { checkAll.checked = false;
+                    checkAll.indeterminate = false; } else { checkAll.checked = false;
+                    checkAll.indeterminate = true; }
+            }
+
+            function toggleAll() {
+                const checked = checkAll.checked;
+                document.querySelectorAll('.file-check').forEach(cb => cb.checked = checked);
+                updateCheckAllState();
+            }
+
+            function downloadFile(content, filename) {
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            window.downloadSingle = function(cat) {
+                const content = categoryFileMap[cat];
+                if (!content) { showMsg(resultTip, '无数据', 'error'); return; }
+                downloadFile(content, cat + '.fasta');
+                showMsg(resultTip, `已下载 ${cat}.fasta`, 'success');
+            };
+
+            window.previewSingle = function(cat) {
+                const content = categoryFileMap[cat];
+                if (!content) { previewArea.textContent = `分组 "${cat}" 无数据`; return; }
+                let preview = content;
+                if (preview.length > 800) preview = preview.slice(0, 800) + '\n... (截断)';
+                previewArea.textContent = `>>> ${cat} <<<\n${preview}`;
+            };
+
+            function downloadSelected() {
+                const checks = document.querySelectorAll('.file-check:checked');
+                if (checks.length === 0) { showMsg(resultTip, '请至少选择一个分组', 'error'); return; }
+                let count = 0;
+                for (const cb of checks) {
+                    const cat = cb.dataset.cat;
+                    const content = categoryFileMap[cat];
+                    if (content) { downloadFile(content, cat + '.fasta');
+                        count++; }
+                }
+                showMsg(resultTip, `已下载 ${count} 个文件`, 'success');
+                toast(`已下载 ${count} 个文件`);
+            }
+
+            function downloadMerged() {
+                let merged = '',
+                    count = 0;
+                for (const [cat, content] of Object.entries(categoryFileMap)) {
+                    merged += content;
+                    count += categorySeqCount[cat] || 0;
+                }
+                if (merged) {
+                    downloadFile(merged, 'all_matched_sequences.fasta');
+                    showMsg(resultTip, `已下载总集合 (${count} 条序列)`, 'success');
+                    toast(`已下载总集合 (${count} 条序列)`);
+                } else {
+                    showMsg(resultTip, '无匹配序列', 'error');
+                }
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                classifyBtn.disabled = true;
+                seqStats.textContent = '';
+                clearResults();
+                msgTip.innerHTML = '';
+                classifyTip.innerHTML = '';
+                ruleText.value = '';
+                updateRuleStats();
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    loadSequences(ev.target.result);
+                };
+                reader.readAsText(file);
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault();
+                    loadFromText(); }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') loadFromFile();
+                else loadFromText();
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+            resetDefaultBtn.addEventListener('click', resetDefaultMapping);
+            classifyBtn.addEventListener('click', doClassify);
+            ruleText.addEventListener('input', updateRuleStats);
+            downloadSelectedBtn.addEventListener('click', downloadSelected);
+            downloadMergedBtn.addEventListener('click', downloadMerged);
+
+            document.addEventListener('change', function(e) {
+                if (e.target.classList.contains('file-check')) updateCheckAllState();
+            });
+            window.toggleAll = toggleAll;
+
+            sequences = [];
+            classifyBtn.disabled = true;
+            clearResults();
+            document.querySelector('input[name="inputMode"][value="file"]').checked = true;
+            switchInput();
+            ruleText.value = '';
+            updateRuleStats();
+        })();
+    </script>
+
+</body>
+</html>

@@ -59,6 +59,12 @@ const toolConfig = [
     link: "ch/018.Fasta_extract_rename.html"
 },
 
+{
+    toolName: "FASTA序列分组提取",
+    toolDesc: "根据序列分组表格将FASTA序列文件拆分为若干小文件。",
+    link: "ch/027.Fasta_group_extract.html"
+},
+
         ]
     },
     {
@@ -186,6 +192,12 @@ const toolConfig = [
     toolName: "经纬度格式互转工具",
     toolDesc: "经纬度格式转换工具，支持度分秒(DMS)与十进制之间的相互转换。",
     link: "ch/025.Geo_coordinate_converter.html"
+},
+
+{
+    toolName: "长列表转下三角矩阵",
+    toolDesc: "将三列数据（项目1-项目2-值）转换为下三角矩阵，支持顺序调整与子集选取。",
+    link: "ch/026.Long_to_triangular.html"
 },
         ]
     },
