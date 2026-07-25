@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haversine距离矩阵生成器 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Haversine距离矩阵生成器</h2>
+            <p>根据坐标点的经纬度，计算两两点位之间的大圆距离（单位：km）。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入坐标</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="coordFile" accept=".csv,.tsv,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="coordText" placeholder="每行一个坐标：坐标名\t经度\t纬度（制表符或逗号分隔）" disabled></textarea>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">导入数据</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="dataPreview" style="margin-top:10px; display:none;">
+                <p><strong>数据预览：</strong></p>
+                <div class="table-scroll" style="max-height:200px; overflow-y:auto;">
+                    <table id="previewTable">
+                        <thead><tr><th>坐标名</th><th>经度</th><th>纬度</th></tr></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+                <div style="font-size:0.9rem; color:#6c757d; margin-top:4px;" id="dataStats"></div>
+            </div>
+
+<div class="ref-card">
+    <span style="font-size:0.92rem; color:#ff0000;">第一列为地点名称，第二列为经度、第三列为纬度，请检查表格顺序没有问题再进行下一步！</span><br>
+    <strong>距离计算方法：</strong> 采用 <strong>Haversine 公式</strong> 计算球面大圆距离，假设地球为完美球体（平均半径R = 6371.0088km）。<br>
+    <strong>计算公式（lat和lon为弧度制数值）：</strong><br>
+    <code style="background:#eef2f7; padding:6px 12px; display:inline-block; border-radius:4px; font-size:0.95rem;">
+        a = sin²(Δlat/2) + cos(lat1)*cos(lat2)*sin²(Δlon/2)<br>
+        d = 2 * R * arcsin(√a)
+    </code>
+    <br>
+    <strong>如果你在研究中用到本工具，你可以写：</strong><br>
+    <span style="font-size:0.92rem; color:#ff0000;">
+        地理距离矩阵通过Haversine公式计算得到。<br>
+        The geographic distance matrix was calculated using the Haversine equation.
+    </span>
+    <br>
+    <strong>注意事项：</strong> Haversine公式适用于大多数地理分析场景（如种群遗传学、生态学中的距离隔离分析）。对于需要 <strong>高精度要求</strong> 的专业测量（如工程测绘、精密导航），建议改用考虑地球椭球体形状的 <strong>Vincenty 公式</strong> 或使用专业GIS软件（如 QGIS、ArcGIS等）计算。
+</div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：参数设置</div>
+            <div class="info-box">
+                <strong>说明：</strong> 在下方文本框中列出需要计算的坐标名（每行一个），<strong>可以自由删除或添加</strong>，计算时只使用列出的坐标。<br>
+                点击“恢复默认顺序”可将全部坐标加入列表。
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:10px;">
+                <label>
+                    矩阵类型：
+                    <select id="matrixType">
+                        <option value="full">全矩阵</option>
+                        <option value="lower">下三角矩阵</option>
+                    </select>
+                </label>
+                <button class="btn" id="resetOrderBtn">恢复默认顺序</button>
+            </div>
+            <div>
+                <label><strong>参与计算的坐标名（每行一个坐标名）：</strong></label>
+                <textarea id="orderText" rows="6" style="width:100%; font-family:monospace;"></textarea>
+            </div>
+            <div id="orderTip" class="tip-text"></div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="calcBtn">计算距离矩阵</button>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：距离矩阵</div>
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar" style="flex-wrap:wrap; gap:8px;">
+                    <button class="btn" id="copyMatrixBtn">复制矩阵</button>
+                    <button class="btn" id="exportMatrixBtn">导出矩阵</button>
+                    <span id="resultTip" class="tip-text"></span>
+                </div>
+                <div class="table-scroll" style="max-height:500px; overflow:auto;">
+                    <table id="matrixTable">
+                        <thead id="matrixHead"></thead>
+                        <tbody id="matrixBody"></tbody>
+                    </table>
+                </div>
+                <div style="font-size:0.9rem; color:#6c757d; margin-top:6px;" id="matrixStats"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">计算后显示距离矩阵</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const coordFile = document.getElementById('coordFile');
+            const coordText = document.getElementById('coordText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+            const dataPreview = document.getElementById('dataPreview');
+            const previewBody = document.getElementById('previewBody');
+            const dataStats = document.getElementById('dataStats');
+
+            const matrixType = document.getElementById('matrixType');
+            const orderText = document.getElementById('orderText');
+            const resetOrderBtn = document.getElementById('resetOrderBtn');
+            const orderTip = document.getElementById('orderTip');
+            const calcBtn = document.getElementById('calcBtn');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const matrixHead = document.getElementById('matrixHead');
+            const matrixBody = document.getElementById('matrixBody');
+            const matrixStats = document.getElementById('matrixStats');
+            const copyMatrixBtn = document.getElementById('copyMatrixBtn');
+            const exportMatrixBtn = document.getElementById('exportMatrixBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let samples = [];
+            let currentOrder = [];
+            let distanceMatrix = [];
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if ([msgTip, orderTip, resultTip].includes(el)) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) { if (window.showToast) window.showToast(msg); }
+
+            function parseCoordinates(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                const result = [];
+                for (const line of lines) {
+                    let parts = line.split(/\t/);
+                    if (parts.length < 3) parts = line.split(/,/);
+                    if (parts.length < 3) continue;
+                    const name = parts[0].trim();
+                    const lng = parseFloat(parts[1].trim());
+                    const lat = parseFloat(parts[2].trim());
+                    if (isNaN(lng) || isNaN(lat) || !name) continue;
+                    result.push({ name, lng, lat });
+                }
+                return result;
+            }
+
+            function haversineDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371.0088; 
+                const toRad = deg => deg * Math.PI / 180;
+                const dLat = toRad(lat2 - lat1);
+                const dLon = toRad(lon2 - lon1);
+                const a = Math.sin(dLat/2) ** 2 +
+                          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                          Math.sin(dLon/2) ** 2;
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            function loadData(text) {
+                const parsed = parseCoordinates(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, '未解析到有效坐标数据，请检查格式（坐标名\\t经度\\t纬度）', 'error');
+                    return false;
+                }
+                samples = parsed;
+                previewBody.innerHTML = '';
+                for (const s of samples) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${escapeHtml(s.name)}</td><td>${s.lng}</td><td>${s.lat}</td>`;
+                    previewBody.appendChild(tr);
+                }
+                dataPreview.style.display = 'block';
+                dataStats.textContent = `共 ${samples.length} 个坐标点`;
+
+                currentOrder = samples.map(s => s.name);
+                updateOrderText();
+                clearResults();
+                showMsg(msgTip, `成功加载 ${samples.length} 个坐标点`, 'success');
+                toast(`已加载 ${samples.length} 个坐标点`);
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = coordFile.files[0];
+                if (!file) { showMsg(msgTip, '请选择文件', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = e => {
+                    coordText.value = e.target.result;
+                    loadData(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = coordText.value.trim();
+                if (!text) { showMsg(msgTip, '请粘贴坐标数据', 'error'); return; }
+                loadData(text);
+            }
+
+            function loadExample() {
+                const example = `SampleA\t120.5\t30.2
+SampleB\t121.3\t31.5
+SampleC\t-119.8\t29.6
+SampleD\t122.1\t-32.0
+SampleE\t118.9\t28.5`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                radio.checked = true;
+                coordFile.disabled = true;
+                coordText.disabled = false;
+                coordText.value = example;
+                loadData(example);
+            }
+
+            function updateOrderText() {
+                orderText.value = currentOrder.join('\n');
+            }
+
+            function resetOrder() {
+                currentOrder = samples.map(s => s.name);
+                updateOrderText();
+                clearResults();
+                showMsg(orderTip, `已恢复全部 ${samples.length} 个坐标`, 'success');
+            }
+
+            function getSelectedSamples() {
+                const lines = orderText.value.split(/\r?\n/).filter(l => l.trim() !== '');
+                const orderList = lines.map(l => l.trim());
+                const unique = [...new Set(orderList)];
+                if (unique.length !== orderList.length) {
+                    showMsg(orderTip, '存在重复的坐标名，已自动去重', 'warn');
+                }
+                const nameSet = new Set(samples.map(s => s.name));
+                const valid = [];
+                const invalid = [];
+                for (const name of unique) {
+                    if (nameSet.has(name)) {
+                        valid.push(name);
+                    } else {
+                        invalid.push(name);
+                    }
+                }
+                if (invalid.length > 0) {
+                    showMsg(orderTip, `以下坐标名不存在，已忽略：${invalid.join(', ')}`, 'warn');
+                }
+                if (valid.length === 0) {
+                    showMsg(orderTip, '没有有效的坐标名，请检查', 'error');
+                    return null;
+                }
+                return valid;
+            }
+
+            function computeMatrix() {
+                if (samples.length === 0) {
+                    showMsg(orderTip, '请先导入数据', 'error');
+                    return;
+                }
+
+                const selectedNames = getSelectedSamples();
+                if (selectedNames === null) return;
+
+                currentOrder = selectedNames;
+
+                const orderedSamples = currentOrder.map(name => {
+                    return samples.find(s => s.name === name);
+                }).filter(s => s !== undefined);
+
+                const n = orderedSamples.length;
+                if (n < 2) {
+                    showMsg(orderTip, '至少需要2个坐标才能计算距离矩阵', 'warn');
+                    return;
+                }
+
+                const mat = [];
+                for (let i = 0; i < n; i++) {
+                    mat[i] = [];
+                    for (let j = 0; j < n; j++) {
+                        if (i === j) {
+                            mat[i][j] = 0;
+                        } else {
+                            const d = haversineDistance(
+                                orderedSamples[i].lat, orderedSamples[i].lng,
+                                orderedSamples[j].lat, orderedSamples[j].lng
+                            );
+                            mat[i][j] = d;
+                        }
+                    }
+                }
+                distanceMatrix = mat;
+                renderMatrix(orderedSamples);
+                showMsg(orderTip, `已计算 ${n} 个坐标的距离矩阵`, 'success');
+            }
+
+            function renderMatrix(orderedSamples) {
+                const type = matrixType.value;
+                const n = orderedSamples.length;
+                const names = orderedSamples.map(s => s.name);
+
+                let thead = '<tr><th></th>';
+                for (const name of names) {
+                    thead += `<th>${escapeHtml(name)}</th>`;
+                }
+                thead += '</tr>';
+                matrixHead.innerHTML = thead;
+
+                let tbody = '';
+                for (let i = 0; i < n; i++) {
+                    let row = `<tr><th>${escapeHtml(names[i])}</th>`;
+                    for (let j = 0; j < n; j++) {
+                        let value = distanceMatrix[i][j];
+                        let display = '';
+                        if (type === 'full') {
+                            display = value.toFixed(5);   // 5位小数
+                        } else {
+                            if (j <= i) {
+                                display = value.toFixed(5);
+                            } else {
+                                display = '';
+                            }
+                        }
+                        row += `<td>${display}</td>`;
+                    }
+                    row += '</tr>';
+                    tbody += row;
+                }
+                matrixBody.innerHTML = tbody;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                matrixStats.textContent = `坐标数：${n}，矩阵大小：${n} × ${n}，单位：km`;
+                showMsg(resultTip, `计算完成，共 ${n} 个坐标`, 'success');
+                toast(`矩阵计算完成，${n} 个坐标`);
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                matrixHead.innerHTML = '';
+                matrixBody.innerHTML = '';
+                matrixStats.textContent = '';
+                resultTip.innerHTML = '';
+            }
+
+            function getMatrixTSV() {
+                const type = matrixType.value;
+                const n = distanceMatrix.length;
+                const names = currentOrder;
+                let lines = [];
+                let header = '\t' + names.join('\t');
+                lines.push(header);
+                for (let i = 0; i < n; i++) {
+                    let row = [names[i]];
+                    for (let j = 0; j < n; j++) {
+                        if (type === 'full' || j <= i) {
+                            row.push(distanceMatrix[i][j].toFixed(5));  // 5位小数
+                        } else {
+                            row.push('');
+                        }
+                    }
+                    lines.push(row.join('\t'));
+                }
+                return lines.join('\n');
+            }
+
+            function copyMatrix() {
+                if (distanceMatrix.length === 0) {
+                    showMsg(resultTip, '请先计算矩阵', 'error');
+                    return;
+                }
+                const tsv = getMatrixTSV();
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(tsv).then(() => {
+                        showMsg(resultTip, '矩阵已复制', 'success');
+                        toast('已复制');
+                    }).catch(() => fallbackCopy(tsv));
+                } else {
+                    fallbackCopy(tsv);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultTip, '矩阵已复制', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(resultTip, '复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportMatrix() {
+                if (distanceMatrix.length === 0) {
+                    showMsg(resultTip, '请先计算矩阵', 'error');
+                    return;
+                }
+                const tsv = getMatrixTSV();
+                const blob = new Blob([tsv], { type: 'text/tab-separated-values;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'distance_matrix.tsv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultTip, '矩阵已导出', 'success');
+                toast('矩阵已导出');
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    coordFile.disabled = false;
+                    coordText.disabled = true;
+                    coordText.value = '';
+                } else {
+                    coordFile.disabled = true;
+                    coordFile.value = '';
+                    coordText.disabled = false;
+                }
+                samples = [];
+                currentOrder = [];
+                dataPreview.style.display = 'none';
+                previewBody.innerHTML = '';
+                dataStats.textContent = '';
+                clearResults();
+                msgTip.innerHTML = '';
+                orderTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                orderText.value = '';
+            };
+
+            coordFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    coordText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+            });
+
+            coordText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') loadFromFile();
+                else loadFromText();
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            resetOrderBtn.addEventListener('click', resetOrder);
+
+            calcBtn.addEventListener('click', computeMatrix);
+
+            copyMatrixBtn.addEventListener('click', copyMatrix);
+            exportMatrixBtn.addEventListener('click', exportMatrix);
+
+            samples = [];
+            currentOrder = [];
+            clearResults();
+            dataPreview.style.display = 'none';
+            document.querySelector('input[name="inputMode"][value="file"]').checked = true;
+            coordFile.disabled = false;
+            coordText.disabled = true;
+            orderText.value = '';
+            msgTip.innerHTML = '';
+            orderTip.innerHTML = '';
+            resultTip.innerHTML = '';
+        })();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haversine Distance Matrix Generator - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Haversine Distance Matrix Generator</h2>
+            <p>Calculate great-circle distances (km) between geographic coordinates.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Coordinates</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="coordFile" accept=".csv,.tsv,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="coordText" placeholder="One coordinate per line: name\tlongitude\tlatitude (tab or comma separated)" disabled></textarea>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">Import Data</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="dataPreview" style="margin-top:10px; display:none;">
+                <p><strong>Data Preview:</strong></p>
+                <div class="table-scroll" style="max-height:200px; overflow-y:auto;">
+                    <table id="previewTable">
+                        <thead><tr><th>Name</th><th>Longitude</th><th>Latitude</th></tr></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+                <div style="font-size:0.9rem; color:#6c757d; margin-top:4px;" id="dataStats"></div>
+            </div>
+
+<div class="ref-card">
+    <span style="font-size:0.92rem; color:#ff0000;">The first column is the location name, the second is longitude, and the third is latitude. Please verify the column order before proceeding!</span><br>
+    <strong>Distance Calculation:</strong> Uses the <strong>Haversine formula</strong> to compute great-circle distances assuming a perfect sphere (mean radius R = 6371.0088 km).<br>
+    <strong>Formula (lat and lon in radians):</strong><br>
+    <code style="background:#eef2f7; padding:6px 12px; display:inline-block; border-radius:4px; font-size:0.95rem;">
+        a = sin²(Δlat/2) + cos(lat1)*cos(lat2)*sin²(Δlon/2)<br>
+        d = 2 * R * arcsin(√a)
+    </code>
+    <br>
+    <strong>If you use this tool in your research, please cite:</strong><br>
+    <span style="font-size:0.92rem; color:#ff0000;">
+        The geographic distance matrix was calculated using the Haversine equation.
+    </span>
+    <br>
+    <strong>Note:</strong> The Haversine formula is suitable for most geographic analysis scenarios (e.g., population genetics, ecological isolation-by-distance analyses). For <strong>high-precision</strong> applications (e.g., engineering surveying, precision navigation), consider using the <strong>Vincenty formula</strong> (which accounts for Earth's ellipsoidal shape) or professional GIS software (e.g., QGIS, ArcGIS).
+</div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Settings</div>
+            <div class="info-box">
+                <strong>Note:</strong> List the coordinate names you want to include in the calculation below (one per line). <strong>You can freely add or remove</strong> entries; only listed coordinates will be used.<br>
+                Click "Reset to Default" to include all coordinates.
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:10px;">
+                <label>
+                    Matrix Type:
+                    <select id="matrixType">
+                        <option value="full">Full Matrix</option>
+                        <option value="lower">Lower Triangular</option>
+                    </select>
+                </label>
+                <button class="btn" id="resetOrderBtn">Reset to Default</button>
+            </div>
+            <div>
+                <label><strong>Coordinate Names to Include (one per line):</strong></label>
+                <textarea id="orderText" rows="6" style="width:100%; font-family:monospace;"></textarea>
+            </div>
+            <div id="orderTip" class="tip-text"></div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="calcBtn">Compute Distance Matrix</button>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Distance Matrix</div>
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar" style="flex-wrap:wrap; gap:8px;">
+                    <button class="btn" id="copyMatrixBtn">Copy Matrix</button>
+                    <button class="btn" id="exportMatrixBtn">Export Matrix</button>
+                    <span id="resultTip" class="tip-text"></span>
+                </div>
+                <div class="table-scroll" style="max-height:500px; overflow:auto;">
+                    <table id="matrixTable">
+                        <thead id="matrixHead"></thead>
+                        <tbody id="matrixBody"></tbody>
+                    </table>
+                </div>
+                <div style="font-size:0.9rem; color:#6c757d; margin-top:6px;" id="matrixStats"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Results will appear after computation.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const coordFile = document.getElementById('coordFile');
+            const coordText = document.getElementById('coordText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+            const dataPreview = document.getElementById('dataPreview');
+            const previewBody = document.getElementById('previewBody');
+            const dataStats = document.getElementById('dataStats');
+
+            const matrixType = document.getElementById('matrixType');
+            const orderText = document.getElementById('orderText');
+            const resetOrderBtn = document.getElementById('resetOrderBtn');
+            const orderTip = document.getElementById('orderTip');
+            const calcBtn = document.getElementById('calcBtn');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const matrixHead = document.getElementById('matrixHead');
+            const matrixBody = document.getElementById('matrixBody');
+            const matrixStats = document.getElementById('matrixStats');
+            const copyMatrixBtn = document.getElementById('copyMatrixBtn');
+            const exportMatrixBtn = document.getElementById('exportMatrixBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let samples = [];
+            let currentOrder = [];
+            let distanceMatrix = [];
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if ([msgTip, orderTip, resultTip].includes(el)) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) { if (window.showToast) window.showToast(msg); }
+
+            function parseCoordinates(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                const result = [];
+                for (const line of lines) {
+                    let parts = line.split(/\t/);
+                    if (parts.length < 3) parts = line.split(/,/);
+                    if (parts.length < 3) continue;
+                    const name = parts[0].trim();
+                    const lng = parseFloat(parts[1].trim());
+                    const lat = parseFloat(parts[2].trim());
+                    if (isNaN(lng) || isNaN(lat) || !name) continue;
+                    result.push({ name, lng, lat });
+                }
+                return result;
+            }
+
+            function haversineDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371.0088;
+                const toRad = deg => deg * Math.PI / 180;
+                const dLat = toRad(lat2 - lat1);
+                const dLon = toRad(lon2 - lon1);
+                const a = Math.sin(dLat/2) ** 2 +
+                          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                          Math.sin(dLon/2) ** 2;
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            function loadData(text) {
+                const parsed = parseCoordinates(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, 'No valid coordinate data found. Check format: name\\tlongitude\\tlatitude', 'error');
+                    return false;
+                }
+                samples = parsed;
+                previewBody.innerHTML = '';
+                for (const s of samples) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${escapeHtml(s.name)}</td><td>${s.lng}</td><td>${s.lat}</td>`;
+                    previewBody.appendChild(tr);
+                }
+                dataPreview.style.display = 'block';
+                dataStats.textContent = `${samples.length} coordinate(s) loaded`;
+
+                currentOrder = samples.map(s => s.name);
+                updateOrderText();
+                clearResults();
+                showMsg(msgTip, `Successfully loaded ${samples.length} coordinate(s)`, 'success');
+                toast(`Loaded ${samples.length} coordinate(s)`);
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = coordFile.files[0];
+                if (!file) { showMsg(msgTip, 'Please select a file', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = e => {
+                    coordText.value = e.target.result;
+                    loadData(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = coordText.value.trim();
+                if (!text) { showMsg(msgTip, 'Please paste coordinate data', 'error'); return; }
+                loadData(text);
+            }
+
+            function loadExample() {
+                const example = `SampleA\t120.5\t30.2
+SampleB\t121.3\t31.5
+SampleC\t-119.8\t29.6
+SampleD\t122.1\t-32.0
+SampleE\t118.9\t28.5`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                radio.checked = true;
+                coordFile.disabled = true;
+                coordText.disabled = false;
+                coordText.value = example;
+                loadData(example);
+            }
+
+            function updateOrderText() {
+                orderText.value = currentOrder.join('\n');
+            }
+
+            function resetOrder() {
+                currentOrder = samples.map(s => s.name);
+                updateOrderText();
+                clearResults();
+                showMsg(orderTip, `Reset to all ${samples.length} coordinates`, 'success');
+            }
+
+            function getSelectedSamples() {
+                const lines = orderText.value.split(/\r?\n/).filter(l => l.trim() !== '');
+                const orderList = lines.map(l => l.trim());
+                const unique = [...new Set(orderList)];
+                if (unique.length !== orderList.length) {
+                    showMsg(orderTip, 'Duplicate names detected and removed', 'warn');
+                }
+                const nameSet = new Set(samples.map(s => s.name));
+                const valid = [];
+                const invalid = [];
+                for (const name of unique) {
+                    if (nameSet.has(name)) {
+                        valid.push(name);
+                    } else {
+                        invalid.push(name);
+                    }
+                }
+                if (invalid.length > 0) {
+                    showMsg(orderTip, `Ignored invalid names: ${invalid.join(', ')}`, 'warn');
+                }
+                if (valid.length === 0) {
+                    showMsg(orderTip, 'No valid names found', 'error');
+                    return null;
+                }
+                return valid;
+            }
+
+            function computeMatrix() {
+                if (samples.length === 0) {
+                    showMsg(orderTip, 'Please import data first', 'error');
+                    return;
+                }
+
+                const selectedNames = getSelectedSamples();
+                if (selectedNames === null) return;
+
+                currentOrder = selectedNames;
+
+                const orderedSamples = currentOrder.map(name => {
+                    return samples.find(s => s.name === name);
+                }).filter(s => s !== undefined);
+
+                const n = orderedSamples.length;
+                if (n < 2) {
+                    showMsg(orderTip, 'At least 2 coordinates are required', 'warn');
+                    return;
+                }
+
+                const mat = [];
+                for (let i = 0; i < n; i++) {
+                    mat[i] = [];
+                    for (let j = 0; j < n; j++) {
+                        if (i === j) {
+                            mat[i][j] = 0;
+                        } else {
+                            const d = haversineDistance(
+                                orderedSamples[i].lat, orderedSamples[i].lng,
+                                orderedSamples[j].lat, orderedSamples[j].lng
+                            );
+                            mat[i][j] = d;
+                        }
+                    }
+                }
+                distanceMatrix = mat;
+                renderMatrix(orderedSamples);
+                showMsg(orderTip, `Computed distance matrix for ${n} coordinates`, 'success');
+            }
+
+            function renderMatrix(orderedSamples) {
+                const type = matrixType.value;
+                const n = orderedSamples.length;
+                const names = orderedSamples.map(s => s.name);
+
+                let thead = '<tr><th></th>';
+                for (const name of names) {
+                    thead += `<th>${escapeHtml(name)}</th>`;
+                }
+                thead += '</tr>';
+                matrixHead.innerHTML = thead;
+
+                let tbody = '';
+                for (let i = 0; i < n; i++) {
+                    let row = `<tr><th>${escapeHtml(names[i])}</th>`;
+                    for (let j = 0; j < n; j++) {
+                        let value = distanceMatrix[i][j];
+                        let display = '';
+                        if (type === 'full') {
+                            display = value.toFixed(5);
+                        } else {
+                            if (j <= i) {
+                                display = value.toFixed(5);
+                            } else {
+                                display = '';
+                            }
+                        }
+                        row += `<td>${display}</td>`;
+                    }
+                    row += '</tr>';
+                    tbody += row;
+                }
+                matrixBody.innerHTML = tbody;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                matrixStats.textContent = `Coordinates: ${n}, Matrix size: ${n} × ${n}, Unit: km`;
+                showMsg(resultTip, `Computation complete (${n} coordinates)`, 'success');
+                toast(`Matrix computed (${n} coordinates)`);
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                matrixHead.innerHTML = '';
+                matrixBody.innerHTML = '';
+                matrixStats.textContent = '';
+                resultTip.innerHTML = '';
+            }
+
+            function getMatrixTSV() {
+                const type = matrixType.value;
+                const n = distanceMatrix.length;
+                const names = currentOrder;
+                let lines = [];
+                let header = '\t' + names.join('\t');
+                lines.push(header);
+                for (let i = 0; i < n; i++) {
+                    let row = [names[i]];
+                    for (let j = 0; j < n; j++) {
+                        if (type === 'full' || j <= i) {
+                            row.push(distanceMatrix[i][j].toFixed(5));
+                        } else {
+                            row.push('');
+                        }
+                    }
+                    lines.push(row.join('\t'));
+                }
+                return lines.join('\n');
+            }
+
+            function copyMatrix() {
+                if (distanceMatrix.length === 0) {
+                    showMsg(resultTip, 'Please compute the matrix first', 'error');
+                    return;
+                }
+                const tsv = getMatrixTSV();
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(tsv).then(() => {
+                        showMsg(resultTip, 'Matrix copied', 'success');
+                        toast('Copied');
+                    }).catch(() => fallbackCopy(tsv));
+                } else {
+                    fallbackCopy(tsv);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultTip, 'Matrix copied', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(resultTip, 'Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportMatrix() {
+                if (distanceMatrix.length === 0) {
+                    showMsg(resultTip, 'Please compute the matrix first', 'error');
+                    return;
+                }
+                const tsv = getMatrixTSV();
+                const blob = new Blob([tsv], { type: 'text/tab-separated-values;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'distance_matrix.tsv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultTip, 'Matrix exported', 'success');
+                toast('Matrix exported');
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    coordFile.disabled = false;
+                    coordText.disabled = true;
+                    coordText.value = '';
+                } else {
+                    coordFile.disabled = true;
+                    coordFile.value = '';
+                    coordText.disabled = false;
+                }
+                samples = [];
+                currentOrder = [];
+                dataPreview.style.display = 'none';
+                previewBody.innerHTML = '';
+                dataStats.textContent = '';
+                clearResults();
+                msgTip.innerHTML = '';
+                orderTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                orderText.value = '';
+            };
+
+            coordFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    coordText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+            });
+
+            coordText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') loadFromFile();
+                else loadFromText();
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            resetOrderBtn.addEventListener('click', resetOrder);
+
+            calcBtn.addEventListener('click', computeMatrix);
+
+            copyMatrixBtn.addEventListener('click', copyMatrix);
+            exportMatrixBtn.addEventListener('click', exportMatrix);
+
+            samples = [];
+            currentOrder = [];
+            clearResults();
+            dataPreview.style.display = 'none';
+            document.querySelector('input[name="inputMode"][value="file"]').checked = true;
+            coordFile.disabled = false;
+            coordText.disabled = true;
+            orderText.value = '';
+            msgTip.innerHTML = '';
+            orderTip.innerHTML = '';
+            resultTip.innerHTML = '';
+        })();
+    </script>
+
+</body>
+</html>

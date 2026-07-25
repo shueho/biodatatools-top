@@ -196,6 +196,12 @@ const toolConfig = [
     toolDesc: "Convert three-column data (Item1-Item2-Value) into a lower triangular matrix with order adjustment and subset selection.",
     link: "en/026.Long_to_triangular.html"
 },
+
+{
+    toolName: "Haversine Distance Matrix Generator",
+    toolDesc: "Calculate great-circle distances (km) between geographic coordinates.",
+    link: "en/028.Haversine_distance_matrix.html"
+},
         ]
     },
     {

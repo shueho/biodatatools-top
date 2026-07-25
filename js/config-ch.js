@@ -199,6 +199,12 @@ const toolConfig = [
     toolDesc: "将三列数据（项目1-项目2-值）转换为下三角矩阵，支持顺序调整与子集选取。",
     link: "ch/026.Long_to_triangular.html"
 },
+
+{
+    toolName: "Haversine距离矩阵生成器",
+    toolDesc: "根据坐标点的经纬度，计算两两点位之间的大圆距离（单位：km）。",
+    link: "ch/028.Haversine_distance_matrix.html"
+},
         ]
     },
 
