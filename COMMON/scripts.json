@@ -3,12 +3,16 @@
     { "url": "https://shueho.github.io/script/codon_usage_plot.R", "desc": "ENC-Plot、中性分析及PR2分析简单绘图脚本" },
     { "url": "https://shueho.github.io/script/MDSplot.zip", "desc": "MDS绘图脚本" },
     { "url": "https://shueho.github.io/script/mismatch_plot.zip", "desc": "错配分布图绘图脚本" },
-    { "url": "https://shueho.github.io/script/mismatch_plot2.zip", "desc": "错配分布图绘图脚本2" }
+    { "url": "https://shueho.github.io/script/mismatch_plot2.zip", "desc": "错配分布图绘图脚本2" },
+    { "url": "https://shueho.github.io/script/IBD.zip", "desc": "IBD绘图脚本" },
+    { "url": "https://shueho.github.io/script/IBE.zip", "desc": "IBE绘图脚本" }
   ],
   "en": [
     { "url": "https://shueho.github.io/script/codon_usage_plot.R", "desc": "Simple plotting scripts for ENC-Plot, neutrality analysis, and PR2 analysis" },
     { "url": "https://shueho.github.io/script/MDSplot.zip", "desc": "MDS plotting script" },
     { "url": "https://shueho.github.io/script/mismatch_plot.zip", "desc": "Mismatch distribution plotting script" },
-    { "url": "https://shueho.github.io/script/mismatch_plot2.zip", "desc": "Mismatch distribution plotting script 2" }
+    { "url": "https://shueho.github.io/script/mismatch_plot2.zip", "desc": "Mismatch distribution plotting script 2" },
+    { "url": "https://shueho.github.io/script/IBD.zip", "desc": "IBD plotting script" },
+    { "url": "https://shueho.github.io/script/IBE.zip", "desc": "IBE plotting script" }
   ]
 }

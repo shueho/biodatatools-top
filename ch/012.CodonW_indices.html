@@ -406,7 +406,17 @@
                 }
 
                 if (error_t) {
-                    return { error: 'Nc计算失败：某些氨基酸家族的密码子频率无法计算homozygosity' };
+                    return {
+                        T3s,
+                        C3s,
+                        A3s,
+                        G3s,
+                        GC3s,
+                        GC,
+                        Nc: null,
+                        ncError: true,
+                        error: null
+                    };
                 }
 
                 if (enc_tot > 61) enc_tot = 61;
@@ -419,6 +429,7 @@
                     GC3s,
                     GC,
                     Nc: enc_tot,
+                    ncError: false,
                     error: null
                 };
             }
@@ -451,6 +462,7 @@
                         results.push({
                             name: seqItem.name,
                             error: result.error,
+                            ncError: false,
                             T3s: null,
                             C3s: null,
                             A3s: null,
@@ -463,13 +475,14 @@
                         results.push({
                             name: seqItem.name,
                             error: null,
+                            ncError: result.ncError || false,
                             T3s: result.T3s,
                             C3s: result.C3s,
                             A3s: result.A3s,
                             G3s: result.G3s,
                             GC3s: result.GC3s,
                             GC: result.GC,
-                            Nc: result.Nc
+                            Nc: result.Nc  
                         });
                     }
                 }
@@ -477,9 +490,9 @@
                 renderResults();
                 runBtn.disabled = false;
                 if (errorCount > 0) {
-                    showMsg(msgTip, `⚠️ 计算完成，${errorCount} 个基因存在终止密码子错误或Nc无法计算`, 'warn');
+                    showMsg(msgTip, `⚠️ 计算完成，${errorCount} 个基因存在终止密码子错误`, 'warn');
                 } else {
-                    showMsg(msgTip, `✅ 计算完成，${results.length} 个基因全部成功`, 'success');
+                    showMsg(msgTip, `✅ 计算完成，${results.length} 个基因全部处理`, 'success');
                     toast('✅ 计算完成');
                 }
                 copyResultBtn.disabled = false;
@@ -519,7 +532,7 @@
                     tbody += `<td class="num">${r.C3s.toFixed(4)}</td>`;
                     tbody += `<td class="num">${r.A3s.toFixed(4)}</td>`;
                     tbody += `<td class="num">${r.G3s.toFixed(4)}</td>`;
-                    tbody += `<td class="num">${r.Nc.toFixed(2)}</td>`;
+                    tbody += `<td class="num">${r.Nc !== null ? r.Nc.toFixed(2) : '-'}</td>`;
                     tbody += `<td class="num">${r.GC3s.toFixed(4)}</td>`;
                     tbody += `<td class="num">${(r.GC * 100).toFixed(2)}%</td>`;
                     tbody += '</tr>';
@@ -556,8 +569,9 @@
                     if (r.error) {
                         row.push('错误', '错误', '错误', '错误', '错误', '错误', '错误');
                     } else {
-                        row.push(r.T3s.toFixed(4), r.C3s.toFixed(4), r.A3s.toFixed(4), r.G3s.toFixed(4),
-                            r.Nc.toFixed(2), r.GC3s.toFixed(4), (r.GC * 100).toFixed(2) + '%');
+                        row.push(r.T3s.toFixed(4), r.C3s.toFixed(4), r.A3s.toFixed(4), r.G3s.toFixed(4));
+                        row.push(r.Nc !== null ? r.Nc.toFixed(2) : 'NA');
+                        row.push(r.GC3s.toFixed(4), (r.GC * 100).toFixed(2) + '%');
                     }
                     rows.push(row);
                 }
