@@ -1,147 +1,86 @@
-/**
- * BioPlot 工具配置 - 三级分类，仅图标+名称
+﻿/**
+ * BioPlot Tool Configuration - Three-level classification
+ * Now with real chart links
  */
 const toolCategories = [
     {
-        name: "Basic Plotting",
-        icon: "",
+        name: "Basic Plots",
+        icon: "📊",
         subcategories: [
             {
                 name: "Pie Chart",
-                icon: "",
+                icon: "🥧",
                 tools: [
-                    { name: "Pie / Donut Chart", icon: "1.svg", link: "plots/pie.html" },
-                    { name: "待开发", icon: "", link: "#" }
+                    { name: "Pie / Donut Chart", icon: "1.svg", link: "plots/pie.html" }
                 ]
             },
             {
-                name: "柱形图",
-                icon: "",
+                name: "Bar Chart",
+                icon: "📊",
                 tools: [
-                    { name: "待开发", icon: "", link: "#" },
-                    { name: "待开发", icon: "", link: "#" },
-                    { name: "待开发", icon: "", link: "#" }
+                    { name: "Grouped Bar Chart", icon: "📊", link: "plots/bar.html" },
+                    { name: "Stacked Bar Chart", icon: "📊", link: "plots/bar.html" }
                 ]
             },
             {
-                name: "条形图",
-                icon: "",
+                name: "Box Plot",
+                icon: "📦",
                 tools: [
-                    { name: "待开发", icon: "", link: "#" },
-                    { name: "待开发", icon: "", link: "#" }
+                    { name: "Box Plot", icon: "📦", link: "plots/box.html" }
                 ]
             },
             {
-                name: "箱线图",
-                icon: "",
+                name: "Violin Plot",
+                icon: "🎻",
                 tools: [
-                    { name: "待开发", icon: "", link: "#" }
+                    { name: "Violin Plot", icon: "🎻", link: "plots/violin.html" }
                 ]
             },
             {
-                name: "散点图",
-                icon: "",
+                name: "Scatter Plot",
+                icon: "🔵",
                 tools: [
-                    { name: "待开发", icon: "", link: "#" },
-                    { name: "待开发", icon: "", link: "#" }
+                    { name: "Scatter Plot", icon: "🔵", link: "plots/scatter.html" }
                 ]
             },
             {
-                name: "折线图",
-                icon: "",
+                name: "Line Chart",
+                icon: "📈",
                 tools: [
-                    { name: "待开发", icon: "", link: "#" },
-                    { name: "待开发", icon: "", link: "#" }
+                    { name: "Line Chart", icon: "📈", link: "plots/line.html" }
                 ]
             }
         ]
     },
     {
-        name: "转录组绘图",
-        icon: "",
+        name: "Transcriptome",
+        icon: "🧬",
         subcategories: [
             {
-                name: "差异表达",
-                icon: "",
+                name: "Differential Expression",
+                icon: "🌋",
                 tools: [
-                    { name: "火山图", icon: "", link: "#" },
-                    { name: "MA图", icon: "", link: "#" }
+                    { name: "Volcano Plot", icon: "🌋", link: "plots/volcano.html" }
                 ]
             },
             {
-                name: "表达矩阵",
-                icon: "",
+                name: "Expression Matrix",
+                icon: "🔥",
                 tools: [
-                    { name: "热图", icon: "", link: "#" },
-                    { name: "PCA图", icon: "", link: "#" }
-                ]
-            },
-            {
-                name: "富集分析",
-                icon: "",
-                tools: [
-                    { name: "气泡图", icon: "", link: "#" },
-                    { name: "富集条形图", icon: "", link: "#" }
+                    { name: "Heatmap", icon: "🔥", link: "plots/heatmap.html" }
                 ]
             }
         ]
     },
     {
-        name: "基础数据分析",
-        icon: "",
+        name: "Set Operations",
+        icon: "🔄",
         subcategories: [
             {
-                name: "统计检验",
-                icon: "",
+                name: "Venn Diagram",
+                icon: "🔴",
                 tools: [
-                    { name: "t检验", icon: "", link: "#" },
-                    { name: "方差分析", icon: "", link: "#" }
-                ]
-            },
-            {
-                name: "序列分析",
-                icon: "",
-                tools: [
-                    { name: "序列Logo", icon: "", link: "#" },
-                    { name: "密码子使用图", icon: "", link: "#" }
-                ]
-            },
-            {
-                name: "集合运算",
-                icon: "",
-                tools: [
-                    { name: "韦恩图", icon: "", link: "#" },
-                    { name: "UpSet图", icon: "", link: "#" }
-                ]
-            }
-        ]
-    },
-    {
-        name: "高级分析（待定）",
-        icon: "",
-        subcategories: [
-            {
-                name: "??",
-                icon: "",
-                tools: [
-                    { name: "矩形树", icon: "", link: "#" },
-                    { name: "圆形树", icon: "", link: "#" }
-                ]
-            },
-            {
-                name: "??",
-                icon: "",
-                tools: [
-                    { name: "PPI网络", icon: "", link: "#" },
-                    { name: "调控网络", icon: "", link: "#" }
-                ]
-            },
-            {
-                name: "基因组可视化",
-                icon: "",
-                tools: [
-                    { name: "基因结构图", icon: "", link: "#" },
-                    { name: "基因组圈图", icon: "", link: "#" }
+                    { name: "Venn Diagram", icon: "🔴", link: "plots/venn.html" }
                 ]
             }
         ]

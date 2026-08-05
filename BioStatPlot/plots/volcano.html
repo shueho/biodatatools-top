@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Volcano Plot - BioStatPlot</title>
+<link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon"/>
+<link rel="stylesheet" href="../COMMON/common.css">
+<style>
+#chartDiv{width:100%;min-height:440px;position:relative;cursor:grab;overflow:hidden;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
+#chartDiv:active{cursor:grabbing}
+#chartDiv svg{display:block;margin:0 auto;background:white;border-radius:12px;width:100%;height:100%}
+.plot-sidebar{height:calc(100vh - 140px);overflow-y:auto}
+.plot-sidebar .collapsible-body{padding:12px 16px}
+.lang-switch-wrap{display:flex;justify-content:flex-end;margin-bottom:10px}
+.plot-main{height:calc(100vh - 140px);overflow:hidden;display:flex;flex-direction:column}
+#chartDiv{flex:1;min-height:0}
+</style>
+<script src="../COMMON/colors.js"></script>
+<script src="../COMMON/lang.js"></script>
+<script src="../COMMON/common.js"></script>
+<script src="../COMMON/defaults.js"></script>
+<script src="../COMMON/header.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div id="common-header"></div>
+<script>window.headerConfig={author:"Author: Di Shang Fei Zhu (Hao Xue)"};</script>
+<div id="app"><div class="plot-layout">
+<div class="plot-sidebar" style="width:340px">
+<div class="collapsible-panel" style="margin-bottom:0">
+<div class="collapsible-header" style="cursor:default"><span>Volcano Plot Config</span></div>
+<div class="collapsible-body">
+<div class="lang-switch-wrap"><button id="langSwitchBtn" class="lang-switch-btn">中文</button></div>
+<div class="param-group"><h4>Import Data</h4><div class="data-import-area">
+<textarea v-model="csvText" rows="3" placeholder="Gene	log2FC	pvalue&#10;GeneA	2.3	0.001&#10;GeneB	-1.8	0.0001&#10;GeneC	0.5	0.5"></textarea>
+<div class="btn-group"><button class="btn btn-sm" @click="applyCSV">Apply</button><button class="btn btn-sm btn-outline" @click="loadDemo">Demo</button><label class="btn btn-sm btn-outline" style="cursor:pointer">File <input type="file" accept=".txt,.csv,.tsv" style="display:none" @change="loadFile"></label></div>
+</div></div>
+<div class="param-group"><h4>Thresholds</h4>
+<div class="param-row"><label>log2FC cutoff</label><input type="number" v-model.number="config.fcCutoff" @change="onConfigChange" step="any"></div>
+<div class="param-row"><label>p-value cutoff</label><input type="number" v-model.number="config.pCutoff" @change="onConfigChange" step="any"></div></div>
+<div class="param-group"><h4>Options</h4>
+<div class="param-row"><label>Show Title</label><select v-model="config.showTitle" @change="onConfigChange"><option :value="true">Yes</option><option :value="false">No</option></select></div>
+<div class="param-row" v-if="config.showTitle"><label>Title</label><input type="text" v-model="config.title" @change="onConfigChange"></div></div>
+<div class="param-group"><h4>Export</h4><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+<button class="btn btn-sm" @click="exportAsSVG">SVG</button><button class="btn btn-sm" @click="exportAsPNG">PNG</button><button class="btn btn-sm" @click="exportAsPDF">PDF</button></div>
+<button class="btn btn-sm btn-outline" @click="resetAll">Reset</button></div>
+</div></div></div>
+<div class="plot-main">
+<div style="background:#fff;border-radius:16px;padding:8px;flex:1;display:flex;flex-direction:column;min-height:0;position:relative">
+<div id="chartDiv"></div>
+</div>
+<div class="plot-toolbar" style="text-align:center;padding:6px;font-size:.8rem;color:#888">Scroll to zoom | Drag to pan | Red=Up | Blue=Down | Gray=NS</div>
+<div class="data-collapse-wrap"><div class="collapse-header" @click="tableOpen=!tableOpen"><span>Data Preview <span style="font-weight:400;font-size:.8rem;color:#64748b">(click to expand)</span></span><span class="arrow-icon" :class="{open:tableOpen}">&#x25BC;</span></div>
+<div class="collapse-body" v-show="tableOpen"><table><thead><tr><th>Label</th><th>log2FC</th><th>p-value</th><th>Significance</th><th></th></tr></thead><tbody>
+<tr v-for="(row,ri) in chartData" :key="ri"><td><input type="text" v-model="row.name" @change="onConfigChange"></td><td><input type="number" v-model.number="row.logFC" @change="onConfigChange" step="any"></td><td><input type="number" v-model.number="row.pvalue" @change="onConfigChange" step="any"></td><td :style="{color:getSigColor(row)}">{{getSigLabel(row)}}</td><td><button class="btn btn-sm btn-danger" @click="removeRow(ri)">Del</button></td></tr>
+</tbody></table><div style="margin-top:8px"><button class="btn btn-sm" @click="addRow">+ Add Gene</button></div></div></div>
+</div></div></div>
+<script>
+(function(){
+var DEFAULT_CONFIG={width:700,height:500,margin:{top:70,right:40,bottom:70,left:80},fontFamily:"Times New Roman",showTitle:true,title:"Volcano Plot",titleFontSize:22,xLabel:"log2(Fold Change)",yLabel:"-log10(p-value)",fcCutoff:1,pCutoff:0.05};
+var DEFAULT_DATA=[{name:"GeneA",logFC:2.3,pvalue:0.001},{name:"GeneB",logFC:-1.8,pvalue:0.0001},{name:"GeneC",logFC:0.5,pvalue:0.5},{name:"GeneD",logFC:3.1,pvalue:0.00001},{name:"GeneE",logFC:-2.5,pvalue:0.003},{name:"GeneF",logFC:0.3,pvalue:0.8},{name:"GeneG",logFC:1.6,pvalue:0.04},{name:"GeneH",logFC:-0.8,pvalue:0.1},{name:"GeneI",logFC:4.2,pvalue:0.000001},{name:"GeneJ",logFC:-3.0,pvalue:0.0005},{name:"GeneK",logFC:-0.2,pvalue:0.9},{name:"GeneL",logFC:1.1,pvalue:0.02},{name:"GeneM",logFC:2.8,pvalue:0.0008},{name:"GeneN",logFC:-1.2,pvalue:0.15},{name:"GeneO",logFC:0.1,pvalue:0.6}];
+var COLORS={up:"#e74c3c",down:"#3498db",ns:"#95a5a6"};
+var storageKey="volcano_chart_v2";
+var app=Vue.createApp({data:function(){
+var saved=null;try{saved=JSON.parse(localStorage.getItem(storageKey))}catch(e){}
+var ic=JSON.parse(JSON.stringify(DEFAULT_CONFIG)),id=JSON.parse(JSON.stringify(DEFAULT_DATA));
+if(saved&&saved.data){if(saved.config)ic=Object.assign({},DEFAULT_CONFIG,saved.config);if(saved.config&&saved.config.margin)ic.margin=Object.assign({},DEFAULT_CONFIG.margin,saved.config.margin);id=saved.data}
+return{config:ic,chartData:id,chartDiv:null,csvText:"",tableOpen:false,transform:{k:1,x:0,y:0},_rafId:null,_wheelHandler:null,_mouseDownHandler:null,_mouseMoveHandler:null,_mouseUpHandler:null};
+},mounted:function(){
+var self=this;this.chartDiv=document.getElementById("chartDiv");LangManager.initPage("en",this);
+var lb=document.getElementById("langSwitchBtn");if(lb)lb.addEventListener("click",function(){var nl=LangManager.getLang()==="en"?"zh":"en";LangManager.switchLanguage(nl,self);self.drawChart()});
+this.$nextTick(function(){this.drawChart()}.bind(this));window.addEventListener("resize",function(){self.drawChart()})
+},methods:{
+onConfigChange:function(){this.saveState();this.$nextTick(function(){this.drawChart()}.bind(this))},
+getSigColor:function(d){var fc=Math.abs(d.logFC||0)>=this.config.fcCutoff;var pv=(d.pvalue||1)<=this.config.pCutoff;if(fc&&pv)return d.logFC>0?COLORS.up:COLORS.down;return COLORS.ns},
+getSigLabel:function(d){var fc=Math.abs(d.logFC||0)>=this.config.fcCutoff;var pv=(d.pvalue||1)<=this.config.pCutoff;if(fc&&pv)return d.logFC>0?"Up":"Down";return"NS"},
+applyCSV:function(){var t=this.csvText.trim();if(!t){alert("Enter data");return}var ls=t.split("\n").filter(function(l){return l.trim()});if(ls.length<2){alert("Need header+data");return}this.chartData=ls.slice(1).map(function(l){var c=l.split("\t");return{name:c[0].trim(),logFC:parseFloat(c[1]),pvalue:parseFloat(c[2])}});this.onConfigChange()},
+loadDemo:function(){this.chartData=JSON.parse(JSON.stringify(DEFAULT_DATA));this.transform={k:1,x:0,y:0};this.drawChart();this.saveState()},
+loadFile:function(e){var f=e.target.files[0];if(!f)return;var self=this;var r=new FileReader();r.onload=function(ev){self.csvText=ev.target.result;self.applyCSV()};r.readAsText(f);e.target.value=""},
+addRow:function(){this.chartData.push({name:"Gene"+(this.chartData.length+1),logFC:(Math.random()-0.5)*6,pvalue:Math.random()});this.onConfigChange()},
+removeRow:function(i){if(this.chartData.length<=1)return;this.chartData.splice(i,1);this.onConfigChange()},
+drawChart:function(){
+if(!this.chartDiv)return;var self=this,c=this.chartDiv;c.innerHTML="";if(!this.chartData.length)return;this.transform={k:1,x:0,y:0};
+var w=this.config.width,h=this.config.height,m=this.config.margin,iW=w-m.left-m.right,iH=h-m.top-m.bottom;
+var svg=d3.select(c).append("svg").attr("viewBox","0 0 "+w+" "+h).attr("width",w).attr("height",h).style("width","100%").style("height","100%").style("background","#fff");
+svg.append("rect").attr("width",w).attr("height",h).attr("fill","#fff");
+var g=svg.append("g").attr("transform","translate("+m.left+","+m.top+")");
+var allFC=this.chartData.map(function(d){return d.logFC});
+var xS=d3.scaleLinear().domain([d3.min(allFC)*1.2,d3.max(allFC)*1.2]).range([0,iW]);
+var allP=this.chartData.map(function(d){return -Math.log10(d.pvalue||1e-10)});
+var yS=d3.scaleLinear().domain([0,d3.max(allP)*1.1]).range([iH,0]);
+g.append("g").attr("transform","translate(0,"+iH+")").call(d3.axisBottom(xS));
+g.append("g").call(d3.axisLeft(yS));
+g.append("text").attr("x",iW/2).attr("y",iH+42).style("text-anchor","middle").style("font-family",this.config.fontFamily).style("font-size","13px").text(this.config.xLabel);
+g.append("text").attr("transform","rotate(-90)").attr("x",-iH/2).attr("y",-55).style("text-anchor","middle").style("font-family",this.config.fontFamily).style("font-size","13px").text(this.config.yLabel);
+var pvThreshold=-Math.log10(this.config.pCutoff);
+g.append("line").attr("x1",0).attr("x2",iW).attr("y1",yS(pvThreshold)).attr("y2",yS(pvThreshold)).attr("stroke","#333").attr("stroke-dasharray","6,4").attr("stroke-width",1);
+g.append("line").attr("x1",xS(this.config.fcCutoff)).attr("x2",xS(this.config.fcCutoff)).attr("y1",0).attr("y2",iH).attr("stroke","#333").attr("stroke-dasharray","6,4").attr("stroke-width",1);
+g.append("line").attr("x1",xS(-this.config.fcCutoff)).attr("x2",xS(-this.config.fcCutoff)).attr("y1",0).attr("y2",iH).attr("stroke","#333").attr("stroke-dasharray","6,4").attr("stroke-width",1);
+this.chartData.forEach(function(d){var fc=d.logFC||0,pv=d.pvalue||1;var sig=self.getSigColor({logFC:fc,pvalue:pv});var isSig=Math.abs(fc)>=self.config.fcCutoff&&pv<=self.config.pCutoff;var r=isSig?5:3.5,op=isSig?0.9:0.5;
+g.append("circle").attr("cx",xS(fc)).attr("cy",yS(-Math.log10(pv||1e-10))).attr("r",r).attr("fill",sig).attr("opacity",op).attr("stroke","#333").attr("stroke-width",0.3);
+if(isSig){g.append("text").attr("x",xS(fc)+6).attr("y",yS(-Math.log10(pv||1e-10))+3).style("font-size","9px").style("font-family",self.config.fontFamily).style("fill","#333").text(d.name)}});
+if(this.config.showTitle){g.append("text").attr("x",iW/2).attr("y",-25).style("text-anchor","middle").style("font-size",this.config.titleFontSize+"px").style("font-family",this.config.fontFamily).style("font-weight","bold").text(this.config.title)}
+var lg=g.append("g").attr("class","chart-legend draggable").attr("transform","translate("+(iW-80)+",0)");
+[{l:"Up",c:COLORS.up},{l:"Down",c:COLORS.down},{l:"NS",c:COLORS.ns}].forEach(function(item,j){var it=lg.append("g").attr("transform","translate(0,"+(j*22)+")");it.append("circle").attr("cx",7).attr("cy",7).attr("r",5).attr("fill",item.c);it.append("text").attr("x",18).attr("y",11).style("font-size","11px").style("font-family",self.config.fontFamily).text(item.l)});
+ChartInteraction.makeDraggable(lg.node());
+this.setupInteraction()
+},
+setupInteraction:function(){
+var container=this.chartDiv;if(!container)return;var svg=container.querySelector("svg");if(!svg)return;
+if(this._wheelHandler){container.removeEventListener("wheel",this._wheelHandler);container.removeEventListener("mousedown",this._mouseDownHandler);window.removeEventListener("mousemove",this._mouseMoveHandler);window.removeEventListener("mouseup",this._mouseUpHandler)}
+if(this._rafId){cancelAnimationFrame(this._rafId);this._rafId=null}
+var self=this,transform=this.transform;
+function upd(){var w=svg.clientWidth||600,h=svg.clientHeight||600;svg.setAttribute("viewBox",(-transform.x/transform.k)+" "+(-transform.y/transform.k)+" "+(w/transform.k)+" "+(h/transform.k))}
+this._wheelHandler=function(e){e.preventDefault();var d=e.deltaY>0?-0.015:0.015;var nk=Math.min(3,Math.max(0.3,transform.k+d));var vx=-transform.x/transform.k,vy=-transform.y/transform.k;transform.k=nk;transform.x=-vx*nk;transform.y=-vy*nk;if(self._rafId)cancelAnimationFrame(self._rafId);self._rafId=requestAnimationFrame(function(){upd();self._rafId=null})};
+container.addEventListener("wheel",this._wheelHandler,{passive:false});
+var dragging=false,sx,sy,stx,sty;
+this._mouseDownHandler=function(e){if(e.button!==0)return;var t=e.target;if(t.closest("circle")||t.closest("text")||t.closest("input")||t.closest(".draggable")||t.closest(".chart-legend"))return;dragging=true;sx=e.clientX;sy=e.clientY;stx=transform.x;sty=transform.y;container.style.cursor="grabbing";e.preventDefault()};
+container.addEventListener("mousedown",this._mouseDownHandler);
+this._mouseMoveHandler=function(e){if(!dragging)return;var r=container.getBoundingClientRect();var w=svg.clientWidth||600,h=svg.clientHeight||600;transform.x=stx+(e.clientX-sx)/r.width*w;transform.y=sty+(e.clientY-sy)/r.height*h;upd()};
+window.addEventListener("mousemove",this._mouseMoveHandler);
+this._mouseUpHandler=function(){dragging=false;container.style.cursor="grab"};
+window.addEventListener("mouseup",this._mouseUpHandler);
+container.style.cursor="grab";upd()
+},
+exportAsSVG:function(){ChartExportHelper.exportChart(this.chartDiv,"svg","volcano_plot")},
+exportAsPNG:function(){ChartExportHelper.exportChart(this.chartDiv,"png","volcano_plot")},
+exportAsPDF:function(){ChartExportHelper.exportChart(this.chartDiv,"pdf","volcano_plot")},
+resetAll:function(){this.config=JSON.parse(JSON.stringify(DEFAULT_CONFIG));this.chartData=JSON.parse(JSON.stringify(DEFAULT_DATA));this.showColorPicker=false;this.transform={k:1,x:0,y:0};this.drawChart();this.saveState()},
+saveState:function(){localStorage.setItem(storageKey,JSON.stringify({data:this.chartData,config:this.config}))}
+}});app.mount("#app")})();
+</script></body></html>

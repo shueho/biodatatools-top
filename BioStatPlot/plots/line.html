@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Line Chart - BioStatPlot</title>
+<link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon"/>
+<link rel="stylesheet" href="../COMMON/common.css">
+<style>
+#chartDiv{width:100%;min-height:440px;position:relative;cursor:grab;overflow:hidden;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
+#chartDiv:active{cursor:grabbing}
+#chartDiv svg{display:block;margin:0 auto;background:white;border-radius:12px;width:100%;height:100%}
+.plot-sidebar{height:calc(100vh - 140px);overflow-y:auto}
+.plot-sidebar .collapsible-body{padding:12px 16px}
+.lang-switch-wrap{display:flex;justify-content:flex-end;margin-bottom:10px}
+.plot-main{height:calc(100vh - 140px);overflow:hidden;display:flex;flex-direction:column}
+#chartDiv{flex:1;min-height:0}
+</style>
+<script src="../COMMON/colors.js"></script>
+<script src="../COMMON/lang.js"></script>
+<script src="../COMMON/common.js"></script>
+<script src="../COMMON/defaults.js"></script>
+<script src="../COMMON/header.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div id="common-header"></div>
+<script>window.headerConfig={author:"Author: Di Shang Fei Zhu (Hao Xue)"};</script>
+<div id="app"><div class="plot-layout">
+<div class="plot-sidebar" style="width:340px">
+<div class="collapsible-panel" style="margin-bottom:0">
+<div class="collapsible-header" style="cursor:default"><span>Line Chart Config</span></div>
+<div class="collapsible-body">
+<div class="lang-switch-wrap"><button id="langSwitchBtn" class="lang-switch-btn">中文</button></div>
+<div class="param-group"><h4>Import Data</h4><div class="data-import-area">
+<textarea v-model="csvText" rows="3" placeholder="X	Control	TreatmentA&#10;0	1.2	3.5&#10;1	2.3	4.2&#10;2	1.8	3.8"></textarea>
+<div class="btn-group"><button class="btn btn-sm" @click="applyCSV">Apply</button><button class="btn btn-sm btn-outline" @click="loadDemo">Demo</button><label class="btn btn-sm btn-outline" style="cursor:pointer">File <input type="file" accept=".txt,.csv,.tsv" style="display:none" @change="loadFile"></label></div>
+</div></div>
+<div class="param-group"><h4>Palette</h4>
+<select v-model="currentPalette" @change="onConfigChange" class="form-select"><option v-for="po in paletteOptionsComputed" :value="po.value">{{po.label}}</option></select>
+<div class="palette-swatch-wrap" style="margin-top:6px"><div v-for="(c,i) in swatches" :key="i" class="palette-swatch" :style="{background:c}" @click="onSwatchClick(i)"></div></div></div>
+<div class="param-group"><h4>Options</h4>
+<div class="param-row"><label>Show Points</label><select v-model="config.showPoints" @change="onConfigChange"><option :value="true">Yes</option><option :value="false">No</option></select></div>
+<div class="param-row"><label>Smooth</label><select v-model="config.smooth" @change="onConfigChange"><option :value="true">Yes</option><option :value="false">No</option></select></div>
+<div class="param-row"><label>Show Title</label><select v-model="config.showTitle" @change="onConfigChange"><option :value="true">Yes</option><option :value="false">No</option></select></div>
+<div class="param-row" v-if="config.showTitle"><label>Title</label><input type="text" v-model="config.title" @change="onConfigChange"></div></div>
+<div class="param-group"><h4>Export</h4><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+<button class="btn btn-sm" @click="exportAsSVG">SVG</button><button class="btn btn-sm" @click="exportAsPNG">PNG</button><button class="btn btn-sm" @click="exportAsPDF">PDF</button></div>
+<button class="btn btn-sm btn-outline" @click="resetAll">Reset</button></div>
+</div></div></div>
+<div class="plot-main">
+<div style="background:#fff;border-radius:16px;padding:8px;flex:1;display:flex;flex-direction:column;min-height:0;position:relative">
+<div id="chartDiv"></div>
+<div class="color-picker-panel visible" v-if="showColorPicker" style="position:absolute;top:12px;right:12px;z-index:10">
+<div class="picker-title"><span>Edit Color</span><span class="close-btn" @click="showColorPicker=false">&times;</span></div>
+<div class="color-input-row"><input type="color" v-model="selectedColor" @input="applyColorEdit"><input type="text" v-model="selectedColor" @change="applyColorEdit"></div>
+</div></div>
+<div class="plot-toolbar" style="text-align:center;padding:6px;font-size:.8rem;color:#888">Scroll to zoom | Drag to pan | Click line/edit color</div>
+<div class="data-collapse-wrap"><div class="collapse-header" @click="tableOpen=!tableOpen"><span>Data Preview <span style="font-weight:400;font-size:.8rem;color:#64748b">(click to expand)</span></span><span class="arrow-icon" :class="{open:tableOpen}">&#x25BC;</span></div>
+<div class="collapse-body" v-show="tableOpen"><table><thead><tr><th>X</th><th v-for="s in seriesNames">{{s}}</th><th></th></tr></thead><tbody>
+<tr v-for="(row,ri) in chartData" :key="ri"><td><input type="number" v-model.number="row.x" @change="onConfigChange" step="any"></td><td v-for="(v,vi) in row.values"><input type="number" v-model.number="row.values[vi]" @change="onConfigChange" step="any"></td><td><button class="btn btn-sm btn-danger" @click="removeRow(ri)">Del</button></td></tr>
+</tbody></table><div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-sm" @click="addRow">+ Row</button><button class="btn btn-sm" @click="addSeries">+ Series</button></div></div></div>
+</div></div></div>
+<script>
+(function(){
+var PALETTE_NAMES=["academic","vibrant","warm","cool","earth"];
+var DEFAULT_CONFIG={width:700,height:500,margin:{top:70,right:80,bottom:70,left:80},fontFamily:"Times New Roman",showTitle:true,title:"Line Chart",titleFontSize:22,xLabel:"X Axis",yLabel:"Y Axis",showPoints:true,smooth:false};
+var DEFAULT_DATA=[{x:0,values:[1.2,3.5,5.6,2.8]},{x:1,values:[2.3,4.2,6.1,3.2]},{x:2,values:[1.8,3.8,5.9,2.9]},{x:3,values:[2.1,4.1,5.8,3.5]},{x:4,values:[1.9,3.9,6.3,3.1]},{x:5,values:[2.5,3.3,5.2,2.6]},{x:6,values:[1.7,4.5,6.8,3.8]}];
+var DEFAULT_SERIES=["Control","TreatmentA","TreatmentB","TreatmentC"];
+var storageKey="line_chart_v2";
+var app=Vue.createApp({data:function(){
+var saved=null;try{saved=JSON.parse(localStorage.getItem(storageKey))}catch(e){}
+var ic=JSON.parse(JSON.stringify(DEFAULT_CONFIG)),id=JSON.parse(JSON.stringify(DEFAULT_DATA)),ids=JSON.parse(JSON.stringify(DEFAULT_SERIES)),ip="academic";
+if(saved&&saved.data){if(saved.config)ic=Object.assign({},DEFAULT_CONFIG,saved.config);if(saved.config&&saved.config.margin)ic.margin=Object.assign({},DEFAULT_CONFIG.margin,saved.config.margin);id=saved.data;if(saved.series)ids=saved.series;if(saved.palette)ip=saved.palette}
+return{config:ic,chartData:id,seriesNames:ids,chartDiv:null,csvText:"",currentPalette:ip,tableOpen:false,transform:{k:1,x:0,y:0},showColorPicker:false,editingIdx:-1,selectedColor:"#e74c3c",_rafId:null,_wheelHandler:null,_mouseDownHandler:null,_mouseMoveHandler:null,_mouseUpHandler:null};
+},computed:{swatches:function(){return ColorUtils.getPalette(this.currentPalette,8)},paletteOptionsComputed:function(){var lang=LangManager.getLang();var o=[];for(var i=0;i<PALETTE_NAMES.length;i++)o.push({value:PALETTE_NAMES[i],label:ColorUtils.getPaletteDisplayName(PALETTE_NAMES[i],lang)});return o}},mounted:function(){
+var self=this;this.chartDiv=document.getElementById("chartDiv");LangManager.initPage("en",this);
+var lb=document.getElementById("langSwitchBtn");if(lb)lb.addEventListener("click",function(){var nl=LangManager.getLang()==="en"?"zh":"en";LangManager.switchLanguage(nl,self);self.drawChart()});
+this.$nextTick(function(){this.drawChart()}.bind(this));window.addEventListener("resize",function(){self.drawChart()})
+},methods:{
+onConfigChange:function(){this.saveState();this.$nextTick(function(){this.drawChart()}.bind(this))},
+onSwatchClick:function(i){this.editingIdx=i;var cs=ColorUtils.getPalette(this.currentPalette,8);this.selectedColor=cs[i]||"#e74c3c";this.showColorPicker=true},
+applyColorEdit:function(){if(this.editingIdx>=0){var cs=ColorUtils.getPalette(this.currentPalette,8);if(this.editingIdx<cs.length)COLOR_PALETTES[this.currentPalette][this.editingIdx]=this.selectedColor}this.drawChart()},
+applyCSV:function(){var t=this.csvText.trim();if(!t){alert("Enter data");return}var ls=t.split("\n").filter(function(l){return l.trim()});if(ls.length<2){alert("Need header+data");return}var h=ls[0].split("\t");this.seriesNames=h.slice(1);this.chartData=ls.slice(1).map(function(l){var c=l.split("\t");return{x:parseFloat(c[0]),values:c.slice(1).map(Number)}});this.onConfigChange()},
+loadDemo:function(){this.chartData=JSON.parse(JSON.stringify(DEFAULT_DATA));this.seriesNames=JSON.parse(JSON.stringify(DEFAULT_SERIES));this.currentPalette="academic";this.transform={k:1,x:0,y:0};this.drawChart();this.saveState()},
+loadFile:function(e){var f=e.target.files[0];if(!f)return;var self=this;var r=new FileReader();r.onload=function(ev){self.csvText=ev.target.result;self.applyCSV()};r.readAsText(f);e.target.value=""},
+addRow:function(){var maxX=0;this.chartData.forEach(function(d){if(d.x>maxX)maxX=d.x});this.chartData.push({x:maxX+1,values:this.seriesNames.map(function(){return Math.random()*10})});this.chartData.sort(function(a,b){return a.x-b.x});this.onConfigChange()},
+addSeries:function(){this.seriesNames.push("S"+(this.seriesNames.length+1));this.chartData.forEach(function(r){r.values.push(Math.random()*10)});this.onConfigChange()},
+removeRow:function(i){if(this.chartData.length<=2)return;this.chartData.splice(i,1);this.onConfigChange()},
+drawChart:function(){
+if(!this.chartDiv)return;var self=this,c=this.chartDiv;c.innerHTML="";if(!this.chartData.length)return;this.transform={k:1,x:0,y:0};
+var w=this.config.width,h=this.config.height,m=this.config.margin,iW=w-m.left-m.right,iH=h-m.top-m.bottom;
+var ns=this.seriesNames.length;
+var allX=this.chartData.map(function(d){return d.x});
+var allY=this.chartData.flatMap(function(d){return d.values});
+var cols=ColorUtils.getPalette(this.currentPalette,ns);
+var svg=d3.select(c).append("svg").attr("viewBox","0 0 "+w+" "+h).attr("width",w).attr("height",h).style("width","100%").style("height","100%").style("background","#fff");
+svg.append("rect").attr("width",w).attr("height",h).attr("fill","#fff");
+var g=svg.append("g").attr("transform","translate("+m.left+","+m.top+")");
+var xS=d3.scaleLinear().domain([d3.min(allX)-0.5,d3.max(allX)+0.5]).range([0,iW]);
+var yS=d3.scaleLinear().domain([d3.min(allY)*0.9,d3.max(allY)*1.1]).range([iH,0]);
+g.append("g").attr("transform","translate(0,"+iH+")").call(d3.axisBottom(xS));
+g.append("g").call(d3.axisLeft(yS));
+g.append("text").attr("x",iW/2).attr("y",iH+42).style("text-anchor","middle").style("font-family",this.config.fontFamily).style("font-size","13px").text(this.config.xLabel);
+g.append("text").attr("transform","rotate(-90)").attr("x",-iH/2).attr("y",-55).style("text-anchor","middle").style("font-family",this.config.fontFamily).style("font-size","13px").text(this.config.yLabel);
+var lineFn=d3.line().x(function(d){return xS(d.x)}).y(function(d){return yS(d.y)});
+if(this.config.smooth)lineFn=lineFn.curve(d3.curveCardinal);
+for(var si=0;si<ns;si++){(function(si){var pts=self.chartData.map(function(d){return{x:d.x,y:d.values[si]}});
+g.append("path").datum(pts).attr("fill","none").attr("stroke",cols[si]).attr("stroke-width",2.5).attr("d",lineFn).style("cursor","pointer").on("click",function(ev){ev.stopPropagation();self.showColorPicker=true;self.editingIdx=si;self.selectedColor=cols[si]});
+if(self.config.showPoints){g.selectAll(".pt-"+si).data(pts).enter().append("circle").attr("cx",function(d){return xS(d.x)}).attr("cy",function(d){return yS(d.y)}).attr("r",5).attr("fill",cols[si]).attr("stroke","#fff").attr("stroke-width",1.5).style("cursor","pointer").on("click",function(ev){ev.stopPropagation();self.showColorPicker=true;self.editingIdx=si;self.selectedColor=cols[si]})}})(si)}
+if(this.config.showTitle){g.append("text").attr("x",iW/2).attr("y",-25).style("text-anchor","middle").style("font-size",this.config.titleFontSize+"px").style("font-family",this.config.fontFamily).style("font-weight","bold").text(this.config.title)}
+if(ns>1){var lg=g.append("g").attr("class","chart-legend draggable").attr("transform","translate("+(iW-100)+",0)");this.seriesNames.forEach(function(sn,j){var it=lg.append("g").attr("transform","translate(0,"+(j*22)+")");it.append("line").attr("x1",0).attr("y1",7).attr("x2",14).attr("y2",7).attr("stroke",cols[j]).attr("stroke-width",2.5).style("cursor","pointer").on("click",function(ev){ev.stopPropagation();self.showColorPicker=true;self.editingIdx=j;self.selectedColor=cols[j]});it.append("text").attr("x",20).attr("y",11).style("font-size","11px").style("font-family",self.config.fontFamily).text(sn)});ChartInteraction.makeDraggable(lg.node())}
+this.setupInteraction()
+},
+setupInteraction:function(){
+var container=this.chartDiv;if(!container)return;var svg=container.querySelector("svg");if(!svg)return;
+if(this._wheelHandler){container.removeEventListener("wheel",this._wheelHandler);container.removeEventListener("mousedown",this._mouseDownHandler);window.removeEventListener("mousemove",this._mouseMoveHandler);window.removeEventListener("mouseup",this._mouseUpHandler)}
+if(this._rafId){cancelAnimationFrame(this._rafId);this._rafId=null}
+var self=this,transform=this.transform;
+function upd(){var w=svg.clientWidth||600,h=svg.clientHeight||600;svg.setAttribute("viewBox",(-transform.x/transform.k)+" "+(-transform.y/transform.k)+" "+(w/transform.k)+" "+(h/transform.k))}
+this._wheelHandler=function(e){e.preventDefault();var d=e.deltaY>0?-0.015:0.015;var nk=Math.min(3,Math.max(0.3,transform.k+d));var vx=-transform.x/transform.k,vy=-transform.y/transform.k;transform.k=nk;transform.x=-vx*nk;transform.y=-vy*nk;if(self._rafId)cancelAnimationFrame(self._rafId);self._rafId=requestAnimationFrame(function(){upd();self._rafId=null})};
+container.addEventListener("wheel",this._wheelHandler,{passive:false});
+var dragging=false,sx,sy,stx,sty;
+this._mouseDownHandler=function(e){if(e.button!==0)return;var t=e.target;if(t.closest("circle")||t.closest("path")||t.closest("rect")||t.closest("text")||t.closest("input")||t.closest(".draggable")||t.closest(".chart-legend"))return;dragging=true;sx=e.clientX;sy=e.clientY;stx=transform.x;sty=transform.y;container.style.cursor="grabbing";e.preventDefault()};
+container.addEventListener("mousedown",this._mouseDownHandler);
+this._mouseMoveHandler=function(e){if(!dragging)return;var r=container.getBoundingClientRect();var w=svg.clientWidth||600,h=svg.clientHeight||600;transform.x=stx+(e.clientX-sx)/r.width*w;transform.y=sty+(e.clientY-sy)/r.height*h;upd()};
+window.addEventListener("mousemove",this._mouseMoveHandler);
+this._mouseUpHandler=function(){dragging=false;container.style.cursor="grab"};
+window.addEventListener("mouseup",this._mouseUpHandler);
+container.style.cursor="grab";upd()
+},
+exportAsSVG:function(){ChartExportHelper.exportChart(this.chartDiv,"svg","line_chart")},
+exportAsPNG:function(){ChartExportHelper.exportChart(this.chartDiv,"png","line_chart")},
+exportAsPDF:function(){ChartExportHelper.exportChart(this.chartDiv,"pdf","line_chart")},
+resetAll:function(){this.config=JSON.parse(JSON.stringify(DEFAULT_CONFIG));this.chartData=JSON.parse(JSON.stringify(DEFAULT_DATA));this.seriesNames=JSON.parse(JSON.stringify(DEFAULT_SERIES));this.currentPalette="academic";this.showColorPicker=false;this.transform={k:1,x:0,y:0};this.drawChart();this.saveState()},
+saveState:function(){localStorage.setItem(storageKey,JSON.stringify({data:this.chartData,config:this.config,palette:this.currentPalette,series:this.seriesNames}))}
+}});app.mount("#app")})();
+</script></body></html>

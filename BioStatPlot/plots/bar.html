@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Bar Chart - BioStatPlot</title>
+<link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon"/>
+<link rel="stylesheet" href="../COMMON/common.css">
+<style>
+#chartDiv {
+    width: 100%;
+    min-height: 440px;
+    position: relative;
+    cursor: grab;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+}
+#chartDiv:active { cursor: grabbing; }
+#chartDiv svg {
+    display: block;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    height: 100%;
+}
+.plot-sidebar { height: calc(100vh - 140px); overflow-y: auto; }
+.plot-sidebar .collapsible-body { padding: 12px 16px; }
+.lang-switch-wrap { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.plot-main { height: calc(100vh - 140px); overflow: hidden; display: flex; flex-direction: column; }
+#chartDiv { flex: 1; min-height: 0; }
+</style>
+<script src="../COMMON/colors.js"></script>
+<script src="../COMMON/lang.js"></script>
+<script src="../COMMON/common.js"></script>
+<script src="../COMMON/defaults.js"></script>
+<script src="../COMMON/header.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div id="common-header"></div>
+<script>window.headerConfig={author:'Author: Di Shang Fei Zhu (Hao Xue)'};</script>
+
+<div id="app">
+<div class="plot-layout">
+<div class="plot-sidebar" style="width:340px">
+<div class="collapsible-panel" style="margin-bottom:0">
+<div class="collapsible-header" style="cursor:default"><span>&#x2699;&#xFE0F; Bar Chart Config</span></div>
+<div class="collapsible-body">
+
+<div class="lang-switch-wrap">
+  <button id="langSwitchBtn" class="lang-switch-btn">&#x4E2D;&#x6587;</button>
+</div>
+
+<div class="param-group">
+  <h4>&#x1F4E5; Import Data</h4>
+  <div class="data-import-area">
+    <textarea v-model="csvText" rows="3" placeholder="Category&#x9;GroupA&#x9;GroupB&#10;GeneA&#x9;23&#x9;45&#10;GeneB&#x9;56&#x9;32"></textarea>
+    <div class="btn-group">
+      <button class="btn btn-sm" @click="applyCSV">Apply</button>
+      <button class="btn btn-sm btn-outline" @click="loadDemo">Demo</button>
+      <label class="btn btn-sm btn-outline" style="cursor:pointer">&#x1F4C1; File <input type="file" accept=".txt,.csv,.tsv" style="display:none" @change="loadFile"></label>
+    </div>
+  </div>
+</div>
+
+<div class="param-group">
+  <h4>&#x1F4CA; Mode</h4>
+  <div class="param-row"><label>Bar Mode</label>
+    <select v-model="config.barMode" @change="onConfigChange">
+      <option value="grouped">Grouped</option>
+      <option value="stacked">Stacked</option>
+    </select></div>
+  <div class="param-row"><label>Horizontal</label>
+    <select v-model="config.horizontal" @change="onConfigChange">
+      <option :value="false">No</option>
+      <option :value="true">Yes</option>
+    </select></div>
+</div>
+
+<div class="param-group">
+  <h4>&#x1F3A8; Palette</h4>
+  <select v-model="currentPalette" @change="onConfigChange" class="form-select">
+    <option v-for="po in paletteOptionsComputed" :value="po.value">{{po.label}}</option>
+  </select>
+  <div class="palette-swatch-wrap" style="margin-top:6px">
+    <div v-for="(c,i) in swatches" :key="i" class="palette-swatch" :style="{background:c}" @click="onSwatchClick(i)"></div>
+  </div>
+</div>
+
+<div class="param-group">
+  <h4>&#x1F4DD; Title</h4>
+  <div class="param-row"><label>Show</label>
+    <select v-model="config.showTitle" @change="onConfigChange">
+      <option :value="true">Yes</option>
+      <option :value="false">No</option>
+    </select></div>
+  <div class="param-row" v-if="config.showTitle"><label>Text</label>
+    <input type="text" v-model="config.title" @change="onConfigChange"></div>
+</div>
+
+<div class="param-group">
+  <h4>&#x1F4CD; Legend</h4>
+  <div class="param-row"><label>Show</label>
+    <select v-model="config.showLegend" @change="onConfigChange">
+      <option :value="true">Yes</option>
+      <option :value="false">No</option>
+    </select></div>
+</div>
+
+<div class="param-group">
+  <h4>&#x1F4CE; Export</h4>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <button class="btn btn-sm" @click="exportAsSVG">SVG</button>
+    <button class="btn btn-sm" @click="exportAsPNG">PNG</button>
+    <button class="btn btn-sm" @click="exportAsPDF">PDF</button>
+  </div>
+  <button class="btn btn-sm btn-outline" @click="resetAll">Reset</button>
+</div>
+
+</div></div>
+</div>
+
+<div class="plot-main">
+  <div style="background:#fff;border-radius:16px;padding:8px;flex:1;display:flex;flex-direction:column;min-height:0;position:relative">
+    <div id="chartDiv"></div>
+    <div class="color-picker-panel visible" v-if="showColorPicker" style="position:absolute;top:12px;right:12px;z-index:10">
+      <div class="picker-title">
+        <span>&#x1F3A8; Edit Color</span>
+        <span class="close-btn" @click="showColorPicker=false">&#x2715;</span>
+      </div>
+      <div class="color-input-row">
+        <input type="color" v-model="selectedColor" @input="applyColorEdit">
+        <input type="text" v-model="selectedColor" @change="applyColorEdit">
+      </div>
+    </div>
+  </div>
+
+  <div class="plot-toolbar" style="text-align:center;padding:6px;font-size:.8rem;color:#888">
+    &#x1F5B1;&#xFE0F; Scroll to zoom | Drag to pan | Click element &#x2192; edit color
+  </div>
+
+  <div class="data-collapse-wrap">
+    <div class="collapse-header" @click="tableOpen=!tableOpen">
+      <span>&#x1F4CA; Data Preview <span style="font-weight:400;font-size:.8rem;color:#64748b">(click to expand)</span></span>
+      <span class="arrow-icon" :class="{open:tableOpen}">&#x25BC;</span>
+    </div>
+    <div class="collapse-body" v-show="tableOpen">
+      <table><thead><tr>
+        <th>Category</th>
+        <th v-for="g in groupNames">{{g}}</th>
+        <th></th>
+      </tr></thead><tbody>
+        <tr v-for="(row,ri) in chartData" :key="ri">
+          <td><input type="text" v-model="row.name" @change="onConfigChange"></td>
+          <td v-for="(v,vi) in row.values">
+            <input type="number" v-model.number="row.values[vi]" @change="onConfigChange">
+          </td>
+          <td><button class="btn btn-sm btn-danger" @click="removeRow(ri)">Del</button></td>
+        </tr>
+      </tbody></table>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="btn btn-sm" @click="addRow">+ Row</button>
+        <button class="btn btn-sm" @click="addGroup">+ Group</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<script>
+(function(){
+    var PALETTE_NAMES = ["academic","vibrant","warm","cool","earth"];
+    var PALETTE_OPTIONS = {};
+    for (var i=0; i<PALETTE_NAMES.length; i++) {
+        PALETTE_OPTIONS[PALETTE_NAMES[i]] = ColorUtils.getPalette(PALETTE_NAMES[i], 8);
+    }
+    var DEFAULT_CONFIG = {
+        width:700, height:500,
+        margin:{top:70, right:80, bottom:70, left:80},
+        fontFamily:"Times New Roman",
+        showTitle:true, title:"Bar Chart", titleFontSize:22, titleBold:true,
+        xLabel:"Category", yLabel:"Value",
+        showLegend:true,
+        barMode:"grouped", horizontal:false, barGap:0.2
+    };
+    var DEFAULT_DATA = [
+        {name:"GeneA", values:[23,45,12]},
+        {name:"GeneB", values:[56,32,67]},
+        {name:"GeneC", values:[34,54,23]},
+        {name:"GeneD", values:[45,23,78]},
+        {name:"GeneE", values:[67,56,34]}
+    ];
+    var DEFAULT_GROUPS = ["Control","TreatmentA","TreatmentB"];
+    var storageKey = "bar_chart_v2";
+
+    var app = Vue.createApp({
+        data: function(){
+            var saved = null;
+            try { saved = JSON.parse(localStorage.getItem(storageKey)); } catch(e) {}
+            var initConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+            var initData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+            var initGroups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+            var initPalette = "academic";
+            if (saved && saved.data) {
+                if (saved.config) initConfig = Object.assign({}, DEFAULT_CONFIG, saved.config);
+                if (saved.config && saved.config.margin) {
+                    initConfig.margin = Object.assign({}, DEFAULT_CONFIG.margin, saved.config.margin);
+                }
+                initData = saved.data;
+                if (saved.groups) initGroups = saved.groups;
+                if (saved.palette) initPalette = saved.palette;
+            }
+            return {
+                config: initConfig,
+                chartData: initData,
+                groupNames: initGroups,
+                chartDiv: null,
+                csvText: "",
+                currentPalette: initPalette,
+                tableOpen: false,
+                transform: {k:1, x:0, y:0},
+                showColorPicker: false,
+                editingIdx: -1,
+                selectedColor: "#e74c3c",
+                _rafId: null,
+                _wheelHandler: null,
+                _mouseDownHandler: null,
+                _mouseMoveHandler: null,
+                _mouseUpHandler: null
+            };
+        },
+        computed: {
+            swatches: function(){
+                return ColorUtils.getPalette(this.currentPalette, 8);
+            },
+            paletteOptionsComputed: function(){
+                var lang = LangManager.getLang();
+                var opts = [];
+                for (var i=0; i<PALETTE_NAMES.length; i++) {
+                    opts.push({
+                        value: PALETTE_NAMES[i],
+                        label: ColorUtils.getPaletteDisplayName(PALETTE_NAMES[i], lang)
+                    });
+                }
+                return opts;
+            }
+        },
+        mounted: function(){
+            var self = this;
+            this.chartDiv = document.getElementById("chartDiv");
+            LangManager.initPage("en", this);
+            var langBtn = document.getElementById("langSwitchBtn");
+            if (langBtn) {
+                langBtn.addEventListener("click", function(){
+                    var newLang = LangManager.getLang() === "en" ? "zh" : "en";
+                    LangManager.switchLanguage(newLang, self);
+                    self.drawChart();
+                });
+            }
+            this.$nextTick(function(){
+                this.drawChart();
+            }.bind(this));
+            window.addEventListener("resize", function(){
+                self.drawChart();
+            });
+        },
+        methods: {
+            onConfigChange: function(){
+                this.saveState();
+                this.$nextTick(function(){ this.drawChart(); }.bind(this));
+            },
+            onSwatchClick: function(i){
+                this.editingIdx = i;
+                var cs = ColorUtils.getPalette(this.currentPalette, 8);
+                this.selectedColor = cs[i] || "#e74c3c";
+                this.showColorPicker = true;
+            },
+            applyColorEdit: function(){
+                if (this.editingIdx >= 0) {
+                    var cs = ColorUtils.getPalette(this.currentPalette, 8);
+                    if (this.editingIdx < cs.length) {
+                        COLOR_PALETTES[this.currentPalette][this.editingIdx] = this.selectedColor;
+                    }
+                }
+                this.drawChart();
+            },
+            applyCSV: function(){
+                var t = this.csvText.trim();
+                if (!t) { alert("Please enter data"); return; }
+                var lines = t.split("\n").filter(function(l){ return l.trim(); });
+                if (lines.length < 2) { alert("Need header + at least 1 data row"); return; }
+                var header = lines[0].split("\t");
+                this.groupNames = header.slice(1);
+                this.chartData = lines.slice(1).map(function(l){
+                    var cols = l.split("\t");
+                    return { name: cols[0], values: cols.slice(1).map(Number) };
+                });
+                this.onConfigChange();
+            },
+            loadDemo: function(){
+                this.chartData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+                this.groupNames = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+                this.currentPalette = "academic";
+                this.transform = {k:1, x:0, y:0};
+                this.drawChart();
+                this.saveState();
+            },
+            loadFile: function(e){
+                var f = e.target.files[0];
+                if (!f) return;
+                var self = this;
+                var reader = new FileReader();
+                reader.onload = function(ev){ self.csvText = ev.target.result; self.applyCSV(); };
+                reader.readAsText(f);
+                e.target.value = "";
+            },
+            addRow: function(){
+                this.chartData.push({
+                    name: "New",
+                    values: this.groupNames.map(function(){ return Math.floor(Math.random()*50+10); })
+                });
+                this.onConfigChange();
+            },
+            addGroup: function(){
+                this.groupNames.push("G" + (this.groupNames.length + 1));
+                this.chartData.forEach(function(r){
+                    r.values.push(Math.floor(Math.random()*50+10));
+                });
+                this.onConfigChange();
+            },
+            removeRow: function(i){
+                if (this.chartData.length <= 1) return;
+                this.chartData.splice(i, 1);
+                this.onConfigChange();
+            },
+
+            // ===== DRAW CHART =====
+            drawChart: function(){
+                if (!this.chartDiv) return;
+                var self = this;
+                var c = this.chartDiv;
+                c.innerHTML = "";
+                if (!this.chartData || !this.chartData.length) return;
+
+                this.transform = {k:1, x:0, y:0};
+
+                var w = this.config.width;
+                var h = this.config.height;
+                var m = this.config.margin;
+                var iW = w - m.left - m.right;
+                var iH = h - m.top - m.bottom;
+                var n = this.chartData.length;
+                var ng = this.groupNames.length;
+                var gap = this.config.barGap;
+                var colors = ColorUtils.getPalette(this.currentPalette, ng);
+
+                var svg = d3.select(c)
+                    .append("svg")
+                    .attr("viewBox", "0 0 " + w + " " + h)
+                    .attr("width", w)
+                    .attr("height", h)
+                    .style("width", "100%")
+                    .style("height", "100%")
+                    .style("background", "#fff");
+
+                svg.append("rect")
+                    .attr("width", w)
+                    .attr("height", h)
+                    .attr("fill", "#fff");
+
+                var g = svg.append("g")
+                    .attr("transform", "translate(" + m.left + "," + m.top + ")");
+
+                if (!this.config.horizontal) {
+                    var xS = d3.scaleBand()
+                        .domain(this.chartData.map(function(d){ return d.name; }))
+                        .range([0, iW])
+                        .padding(gap);
+                    var allV = this.chartData.flatMap(function(d){ return d.values; });
+                    var yMax = this.config.barMode === "stacked"
+                        ? d3.max(this.chartData, function(d){ return d3.sum(d.values); })
+                        : d3.max(allV);
+                    var yS = d3.scaleLinear().domain([0, yMax*1.1]).range([iH, 0]);
+
+                    g.append("g").attr("transform", "translate(0," + iH + ")").call(d3.axisBottom(xS));
+                    g.append("g").call(d3.axisLeft(yS));
+
+                    g.append("text").attr("x", iW/2).attr("y", iH+42)
+                        .style("text-anchor","middle").style("font-family", this.config.fontFamily)
+                        .style("font-size","13px").text(this.config.xLabel);
+                    g.append("text").attr("transform","rotate(-90)").attr("x", -iH/2).attr("y", -55)
+                        .style("text-anchor","middle").style("font-family", this.config.fontFamily)
+                        .style("font-size","13px").text(this.config.yLabel);
+
+                    var bandW = iW / n;
+                    var barW = bandW * (1-gap) / ng;
+
+                    this.chartData.forEach(function(row, i){
+                        var cat = self.chartData.map(function(d){ return d.name; });
+                        if (self.config.barMode === "stacked") {
+                            var yA = 0;
+                            row.values.forEach(function(v, j){
+                                var bh = Math.max(1, yS(yA) - yS(yA+v));
+                                var bar = g.append("rect")
+                                    .attr("x", xS(cat[i]) + (bandW-barW)/2)
+                                    .attr("y", yS(yA+v))
+                                    .attr("width", barW).attr("height", bh)
+                                    .attr("fill", colors[j]).attr("rx", 2)
+                                    .style("cursor","pointer");
+                                bar.on("click", function(ev){
+                                    ev.stopPropagation();
+                                    self.showColorPicker = true;
+                                    self.editingIdx = j;
+                                    self.selectedColor = colors[j];
+                                });
+                                yA += v;
+                            });
+                        } else {
+                            row.values.forEach(function(v, j){
+                                var bar = g.append("rect")
+                                    .attr("x", xS(cat[i]) + j*barW + (bandW - ng*barW)/2)
+                                    .attr("y", yS(v))
+                                    .attr("width", barW)
+                                    .attr("height", Math.max(1, iH - yS(v)))
+                                    .attr("fill", colors[j]).attr("rx", 2)
+                                    .style("cursor","pointer");
+                                bar.on("click", function(ev){
+                                    ev.stopPropagation();
+                                    self.showColorPicker = true;
+                                    self.editingIdx = j;
+                                    self.selectedColor = colors[j];
+                                });
+                            });
+                        }
+                    });
+                } else {
+                    var allVh = this.chartData.flatMap(function(d){ return d.values; });
+                    var xMax = this.config.barMode === "stacked"
+                        ? d3.max(this.chartData, function(d){ return d3.sum(d.values); })
+                        : d3.max(allVh);
+                    var yS2 = d3.scaleBand()
+                        .domain(this.chartData.map(function(d){ return d.name; }))
+                        .range([0, iH]).padding(gap);
+                    var xS2 = d3.scaleLinear().domain([0, xMax*1.1]).range([0, iW]);
+
+                    g.append("g").call(d3.axisLeft(yS2));
+                    g.append("g").attr("transform","translate(0," + iH + ")").call(d3.axisBottom(xS2));
+
+                    g.append("text").attr("x", iW/2).attr("y", iH+42)
+                        .style("text-anchor","middle").style("font-family", this.config.fontFamily)
+                        .style("font-size","13px").text(this.config.xLabel);
+                    g.append("text").attr("transform","rotate(-90)").attr("x", -iH/2).attr("y", -55)
+                        .style("text-anchor","middle").style("font-family", this.config.fontFamily)
+                        .style("font-size","13px").text(this.config.yLabel);
+
+                    var bh2 = Math.max(1, yS2.bandwidth() / ng);
+                    this.chartData.forEach(function(row, i){
+                        if (self.config.barMode === "stacked") {
+                            var xA = 0;
+                            row.values.forEach(function(v, j){
+                                var bw = Math.max(1, xS2(v));
+                                var bar = g.append("rect")
+                                    .attr("y", yS2(row.name) + (yS2.bandwidth()-bh2)/2)
+                                    .attr("x", xS2(xA))
+                                    .attr("width", bw).attr("height", bh2)
+                                    .attr("fill", colors[j]).attr("rx", 2)
+                                    .style("cursor","pointer");
+                                bar.on("click", function(ev){
+                                    ev.stopPropagation();
+                                    self.showColorPicker = true;
+                                    self.editingIdx = j;
+                                    self.selectedColor = colors[j];
+                                });
+                                xA += v;
+                            });
+                        } else {
+                            row.values.forEach(function(v, j){
+                                var bar = g.append("rect")
+                                    .attr("y", yS2(row.name) + j*bh2)
+                                    .attr("x", 0)
+                                    .attr("width", xS2(v)).attr("height", bh2)
+                                    .attr("fill", colors[j]).attr("rx", 2)
+                                    .style("cursor","pointer");
+                                bar.on("click", function(ev){
+                                    ev.stopPropagation();
+                                    self.showColorPicker = true;
+                                    self.editingIdx = j;
+                                    self.selectedColor = colors[j];
+                                });
+                            });
+                        }
+                    });
+                }
+
+                if (this.config.showTitle) {
+                    g.append("text")
+                        .attr("x", iW/2).attr("y", -25)
+                        .style("text-anchor","middle")
+                        .style("font-size", this.config.titleFontSize + "px")
+                        .style("font-family", this.config.fontFamily)
+                        .style("font-weight","bold")
+                        .text(this.config.title);
+                }
+
+                if (this.config.showLegend && this.groupNames.length > 1) {
+                    var lg = g.append("g")
+                        .attr("class","chart-legend draggable")
+                        .attr("transform","translate(" + (iW-100) + ",0)");
+                    this.groupNames.forEach(function(gp, j){
+                        var it = lg.append("g")
+                            .attr("transform","translate(0," + (j*22) + ")");
+                        it.append("rect")
+                            .attr("width",14).attr("height",14)
+                            .attr("fill", colors[j]).attr("rx",2)
+                            .style("cursor","pointer")
+                            .on("click", function(ev){
+                                ev.stopPropagation();
+                                self.showColorPicker = true;
+                                self.editingIdx = j;
+                                self.selectedColor = colors[j];
+                            });
+                        it.append("text")
+                            .attr("x",20).attr("y",11)
+                            .style("font-size","11px")
+                            .style("font-family", self.config.fontFamily)
+                            .text(gp);
+                    });
+                    ChartInteraction.makeDraggable(lg.node());
+                }
+
+                this.setupInteraction();
+            },
+
+            // ===== INTERACTION (exactly matching pie.html) =====
+            setupInteraction: function(){
+                var container = this.chartDiv;
+                if (!container) return;
+                var svg = container.querySelector("svg");
+                if (!svg) return;
+
+                if (this._wheelHandler) {
+                    container.removeEventListener("wheel", this._wheelHandler);
+                    container.removeEventListener("mousedown", this._mouseDownHandler);
+                    window.removeEventListener("mousemove", this._mouseMoveHandler);
+                    window.removeEventListener("mouseup", this._mouseUpHandler);
+                }
+                if (this._rafId) {
+                    cancelAnimationFrame(this._rafId);
+                    this._rafId = null;
+                }
+
+                var self = this;
+                var transform = this.transform;
+
+                function updateViewBox(){
+                    var w = svg.clientWidth || 600;
+                    var h = svg.clientHeight || 600;
+                    var viewW = w / transform.k;
+                    var viewH = h / transform.k;
+                    var viewX = -transform.x / transform.k;
+                    var viewY = -transform.y / transform.k;
+                    svg.setAttribute("viewBox", viewX + " " + viewY + " " + viewW + " " + viewH);
+                }
+
+                this._wheelHandler = function(e){
+                    e.preventDefault();
+                    var delta = e.deltaY > 0 ? -0.015 : 0.015;
+                    var newK = Math.min(3, Math.max(0.3, transform.k + delta));
+                    var viewX = -transform.x / transform.k;
+                    var viewY = -transform.y / transform.k;
+                    transform.k = newK;
+                    transform.x = -viewX * newK;
+                    transform.y = -viewY * newK;
+                    if (self._rafId) cancelAnimationFrame(self._rafId);
+                    self._rafId = requestAnimationFrame(function(){
+                        updateViewBox();
+                        self._rafId = null;
+                    });
+                };
+                container.addEventListener("wheel", this._wheelHandler, {passive: false});
+
+                var isDragging = false;
+                var startX, startY, startTx, startTy;
+                this._mouseDownHandler = function(e){
+                    if (e.button !== 0) return;
+                    var target = e.target;
+                    if (target.closest("rect") || target.closest("circle") || target.closest("path")
+                        || target.closest("text") || target.closest("input")
+                        || target.closest(".draggable") || target.closest(".chart-legend")) {
+                        return;
+                    }
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startTx = transform.x;
+                    startTy = transform.y;
+                    container.style.cursor = "grabbing";
+                    e.preventDefault();
+                };
+                this._mouseMoveHandler = function(e){
+                    if (!isDragging) return;
+                    var rect = container.getBoundingClientRect();
+                    var w = svg.clientWidth || 600;
+                    var h = svg.clientHeight || 600;
+                    var dx = (e.clientX - startX) / rect.width * w;
+                    var dy = (e.clientY - startY) / rect.height * h;
+                    transform.x = startTx + dx;
+                    transform.y = startTy + dy;
+                    updateViewBox();
+                };
+                this._mouseUpHandler = function(){
+                    if (isDragging) {
+                        isDragging = false;
+                        container.style.cursor = "grab";
+                    }
+                };
+                container.addEventListener("mousedown", this._mouseDownHandler);
+                window.addEventListener("mousemove", this._mouseMoveHandler);
+                window.addEventListener("mouseup", this._mouseUpHandler);
+
+                updateViewBox();
+                container.style.cursor = "grab";
+            },
+
+            // ===== EXPORT =====
+            exportAsSVG: function(){
+                ChartExportHelper.exportChart(this.chartDiv, "svg", "bar_chart");
+            },
+            exportAsPNG: function(){
+                ChartExportHelper.exportChart(this.chartDiv, "png", "bar_chart");
+            },
+            exportAsPDF: function(){
+                ChartExportHelper.exportChart(this.chartDiv, "pdf", "bar_chart");
+            },
+
+            resetAll: function(){
+                this.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+                this.chartData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+                this.groupNames = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+                this.currentPalette = "academic";
+                this.showColorPicker = false;
+                this.transform = {k:1, x:0, y:0};
+                this.drawChart();
+                this.saveState();
+            },
+
+            saveState: function(){
+                var state = {
+                    data: this.chartData,
+                    config: this.config,
+                    palette: this.currentPalette,
+                    groups: this.groupNames
+                };
+                localStorage.setItem(storageKey, JSON.stringify(state));
+            }
+        }
+    });
+    app.mount("#app");
+})();
+</script>
+</body>
+</html>
