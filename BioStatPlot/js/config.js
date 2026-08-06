@@ -5,82 +5,82 @@
 const toolCategories = [
     {
         name: "Basic Plots",
-        icon: "📊",
+        icon: "",
         subcategories: [
             {
                 name: "Pie Chart",
-                icon: "🥧",
+                icon: "",
                 tools: [
                     { name: "Pie / Donut Chart", icon: "1.svg", link: "plots/pie.html" }
                 ]
             },
             {
                 name: "Bar Chart",
-                icon: "📊",
+                icon: "",
                 tools: [
-                    { name: "Grouped Bar Chart", icon: "📊", link: "plots/bar.html" },
-                    { name: "Stacked Bar Chart", icon: "📊", link: "plots/bar.html" }
+                    { name: "Grouped Bar Chart", icon: "", link: "plots/bar.html" },
+                    { name: "Stacked Bar Chart", icon: "", link: "plots/bar.html" }
                 ]
             },
             {
                 name: "Box Plot",
-                icon: "📦",
+                icon: "",
                 tools: [
-                    { name: "Box Plot", icon: "📦", link: "plots/box.html" }
+                    { name: "Box Plot", icon: "", link: "plots/box.html" }
                 ]
             },
             {
                 name: "Violin Plot",
-                icon: "🎻",
+                icon: "",
                 tools: [
-                    { name: "Violin Plot", icon: "🎻", link: "plots/violin.html" }
+                    { name: "Violin Plot", icon: "", link: "plots/violin.html" }
                 ]
             },
             {
                 name: "Scatter Plot",
-                icon: "🔵",
+                icon: "",
                 tools: [
-                    { name: "Scatter Plot", icon: "🔵", link: "plots/scatter.html" }
+                    { name: "Scatter Plot", icon: "", link: "plots/scatter.html" }
                 ]
             },
             {
                 name: "Line Chart",
-                icon: "📈",
+                icon: "",
                 tools: [
-                    { name: "Line Chart", icon: "📈", link: "plots/line.html" }
+                    { name: "Line Chart", icon: "", link: "plots/line.html" }
                 ]
             }
         ]
     },
     {
         name: "Transcriptome",
-        icon: "🧬",
+        icon: "",
         subcategories: [
             {
                 name: "Differential Expression",
-                icon: "🌋",
+                icon: "",
                 tools: [
-                    { name: "Volcano Plot", icon: "🌋", link: "plots/volcano.html" }
+                    { name: "Volcano Plot", icon: "", link: "plots/volcano.html" }
                 ]
             },
             {
                 name: "Expression Matrix",
-                icon: "🔥",
+                icon: "",
                 tools: [
-                    { name: "Heatmap", icon: "🔥", link: "plots/heatmap.html" }
+                    { name: "Heatmap", icon: "", link: "plots/heatmap.html" }
                 ]
             }
         ]
     },
     {
         name: "Set Operations",
-        icon: "🔄",
+        icon: "",
         subcategories: [
             {
                 name: "Venn Diagram",
-                icon: "🔴",
+                icon: "",
                 tools: [
-                    { name: "Venn Diagram", icon: "🔴", link: "plots/venn.html" }
+                    { name: "Venn Diagram", icon: "", link: "plots/venn.html" }
                 ]
             }
         ]

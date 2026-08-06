@@ -102,7 +102,7 @@
         <div class="plot-sidebar" style="width:340px;">
             <div class="collapsible-panel" style="margin-bottom:0;">
                 <div class="collapsible-header" style="cursor:default;">
-                    <span>⚙️ 数据 & 图表配置</span>
+                    <span data-lang-key="dataPanelTitle">⚙️ 数据 & 图表配置</span>
                 </div>
                 <div class="collapsible-body">
                     <div class="lang-switch-wrap">
@@ -136,7 +136,6 @@
                         </div>
                     </div>
 
-                    <!-- 画布与边距 -->
                     <div class="param-group">
                         <h4 data-lang-key="secCanvas">📐 画布 & 边距</h4>
                         <div class="param-row"><label data-lang-key="lblWidth">宽度</label><input type="number" v-model.number="config.width" min="400" max="1200" step="10" @change="drawChart"></div>
@@ -309,11 +308,21 @@
             var initialData = JSON.parse(JSON.stringify(DEFAULT_DATA));
             var initialPalette = 'academic';
             var initialOpacity = 0.85;
+            var initialTitleX = null;
+            var initialTitleY = null;
             if (saved && saved.config && saved.data) {
                 initialConfig = { ...DEFAULT_CONFIG, ...saved.config, margin: { ...DEFAULT_CONFIG.margin, ...saved.config.margin } };
                 initialData = saved.data;
                 if (saved.palette) initialPalette = saved.palette;
                 if (saved.opacity !== undefined) initialOpacity = saved.opacity;
+            }
+            var titleState = localStorage.getItem(storageKey + '_title');
+            if (titleState) {
+                try {
+                    var parsed = JSON.parse(titleState);
+                    initialTitleX = parsed.titleX;
+                    initialTitleY = parsed.titleY;
+                } catch(e) {}
             }
             return {
                 config: initialConfig,
@@ -334,7 +343,9 @@
                 _wheelHandler: null,
                 _mouseDownHandler: null,
                 _mouseMoveHandler: null,
-                _mouseUpHandler: null
+                _mouseUpHandler: null,
+                titleX: initialTitleX,
+                titleY: initialTitleY
             };
         },
         computed: {
@@ -383,7 +394,6 @@
                 langBtn.addEventListener('click', function() {
                     var newLang = LangManager.getLang() === 'en' ? 'zh' : 'en';
                     LangManager.switchLanguage(newLang, self);
-                    self.config.legendTitle = newLang === 'en' ? 'Legend' : '图例';
                     self.drawChart();
                 });
             }
@@ -481,7 +491,7 @@
                 if (!this.chartDiv) return;
                 try {
                     var self = this;
-                    ChartRenderer.drawPie(
+                    var result = ChartRenderer.drawPie(
                         this.chartDiv,
                         this.chartData,
                         this.config,
@@ -496,6 +506,40 @@
                             self.saveState();
                         }
                     );
+
+                    // --- 修复标题位置在重绘后被重置的问题 ---
+                    if (result.titleEl) {
+                        var titleEl = result.titleEl;
+                        // 移除 ChartRenderer 默认添加的拖拽事件
+                        titleEl.on(".drag", null);
+
+                        // 恢复保存的标题位置
+                        if (this.titleX !== null && this.titleX !== undefined) {
+                            titleEl.attr("x", this.titleX);
+                        }
+                        if (this.titleY !== null && this.titleY !== undefined) {
+                            titleEl.attr("y", this.titleY);
+                        }
+
+                        // 添加自定义拖拽事件，保存标题位置
+                        var drag = d3.drag()
+                            .on("drag", function(event) {
+                                var currentX = parseFloat(d3.select(this).attr("x")) || 0;
+                                var currentY = parseFloat(d3.select(this).attr("y")) || 0;
+                                d3.select(this).attr("x", currentX + event.dx).attr("y", currentY + event.dy);
+                            })
+                            .on("end", function(event) {
+                                var x = parseFloat(d3.select(this).attr("x"));
+                                var y = parseFloat(d3.select(this).attr("y"));
+                                self.titleX = x;
+                                self.titleY = y;
+                                self.saveState();
+                            });
+                        titleEl.call(drag);
+                        titleEl.style("cursor", "move");
+                    }
+                    // --------------------------------------------
+
                     this.setupInteraction();
                 } catch (err) {
                     console.error(err);
@@ -533,15 +577,12 @@
                     svg.setAttribute('viewBox', viewX + ' ' + viewY + ' ' + viewW + ' ' + viewH);
                 }
 
-                // 滚轮缩放：固定左上角（viewX, viewY 不变）
                 this._wheelHandler = function(e) {
                     e.preventDefault();
                     var delta = e.deltaY > 0 ? -0.015 : 0.015;
                     var newK = Math.min(3, Math.max(0.3, transform.k + delta));
-                    // 计算当前 viewBox 的偏移
                     var viewX = -transform.x / transform.k;
                     var viewY = -transform.y / transform.k;
-                    // 更新 k，并调整 x,y 保持 viewX, viewY 不变
                     transform.k = newK;
                     transform.x = -viewX * newK;
                     transform.y = -viewY * newK;
@@ -553,7 +594,6 @@
                 };
                 container.addEventListener('wheel', this._wheelHandler, { passive: false });
 
-                // 拖拽平移
                 var isDragging = false;
                 var startX, startY, startTx, startTy;
                 this._mouseDownHandler = function(e) {
@@ -606,6 +646,9 @@
                 this.currentPalette = result.palette;
                 this.currentOpacity = 0.85;
                 this.transform = { k: 1, x: 0, y: 0 };
+                this.titleX = null;
+                this.titleY = null;
+                localStorage.removeItem(storageKey + '_title');
                 this.drawChart();
             },
             exportConfig: function() { ConfigHelper.exportJSON(this.config); },
@@ -621,6 +664,8 @@
             },
             saveState: function() {
                 stateManager.saveState(this.chartData, this.config, this.currentPalette, this.currentOpacity);
+                var titleState = { titleX: this.titleX, titleY: this.titleY };
+                localStorage.setItem(storageKey + '_title', JSON.stringify(titleState));
             }
         }
     });
