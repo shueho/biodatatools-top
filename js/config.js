@@ -202,6 +202,12 @@ const toolConfig = [
     toolDesc: "Calculate great-circle distances (km) between geographic coordinates.",
     link: "en/028.Haversine_distance_matrix.html"
 },
+
+{
+    toolName: "ARWEN tRNA Secondary Structure Extraction",
+    toolDesc: "Extract tRNA secondary structures from ARWEN output to facilitate downstream plotting.",
+    link: "en/029.ARWEN_trna_extract.html"
+},
         ]
     },
     {

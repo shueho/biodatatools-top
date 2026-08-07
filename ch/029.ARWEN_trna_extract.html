@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARWEN tRNA二级结构提取 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .tRNA-id {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .struct-cleaned {
+            background: #f0f7ff;
+            border-radius: 4px;
+            padding: 2px 8px;
+        }
+        .badge-clean {
+            background: #d4edda;
+            color: #155724;
+            border-radius: 12px;
+            padding: 1px 10px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .table-container td {
+            text-align: left;
+            vertical-align: middle;
+        }
+        .table-container th {
+            white-space: nowrap;
+        }
+        .seq-area-small {
+            font-size: 13px;
+            line-height: 1.6;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>ARWEN tRNA二级结构提取</h2>
+            <p>从ARWEN输出结果中提取tRNA二级结构式，方便后续绘图。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入ARWEN输出文本</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="arwenFile" accept=".txt,.log,.out">
+            </div>
+            <div class="text-input">
+                <textarea id="arwenText" placeholder="请粘贴ARWEN输出的完整文本内容..." disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>使用说明：</strong> 上传或粘贴ARWEN程序的完整输出文本，若不知如何下载/编译/使用ARWEN软件，可参考视频教程。
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="parseBtn">解析提取</button>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：提取结果</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyTableBtn" disabled>复制结果</button>
+                <button class="btn" id="downloadCsvBtn" disabled>下载结果</button>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div class="table-container" style="max-height:500px;">
+                    <table id="resultTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>序列ID</th>
+                                <th>预测结果</th>
+                                <th>原始序列</th>
+                                <th>原始结构</th>
+                                <th>标准结构</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px;font-size:0.85rem;color:#6c757d;">
+                    <span id="rowCount"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">解析完成后，结果将在此处展示</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            author: '作者：地上飞猪',
+            bilibiliUrl: 'https://www.bilibili.com/video/BV11bub6EEMf',
+            bilibiliText: '当前工具使用教程视频',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('arwenFile');
+            const textInput = document.getElementById('arwenText');
+            const msgTip = document.getElementById('msgTip');
+            const parseBtn = document.getElementById('parseBtn');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+            const copyTableBtn = document.getElementById('copyTableBtn');
+            const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+            const toolbarTip = document.getElementById('toolbarTip');
+
+            let parsedData = [];
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === toolbarTip) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function parseArwenOutput(text) {
+                const lines = text.split(/\r?\n/);
+                const rawItems = [];
+                let i = 0;
+                const n = lines.length;
+
+                while (i < n) {
+                    const line = lines[i].trim();
+                    if (line.startsWith('Primary sequence for')) {
+                        let displayName = line.replace('Primary sequence for', '');
+                        displayName = displayName.replace(/^\s+/, '');
+
+                        let blockTitle = '';
+                        for (let j = i - 1; j >= 0; j--) {
+                            let raw = lines[j].trim();
+                            if (raw === '') continue;
+                            if (/^trn[A-Za-z0-9]+$/.test(raw)) {
+                                blockTitle = lines[j].replace(/^\s+/, ''); 
+                                break;
+                            }
+                        }
+                        if (!blockTitle) {
+                            blockTitle = displayName;
+                        }
+
+                        let seqLine = '';
+                        let k = i + 1;
+                        while (k < n && lines[k].trim() === '') k++;
+                        if (k < n) seqLine = lines[k].trim();
+
+                        let structLine = '';
+                        let m = k + 1;
+                        while (m < n && lines[m].trim() === '') m++;
+                        if (m < n) structLine = lines[m].trim();
+
+                        if (seqLine && structLine) {
+                            seqLine = seqLine.toUpperCase().replace(/T/g, 'U');
+
+                            const maxLen = Math.max(seqLine.length, structLine.length);
+                            seqLine = seqLine.padEnd(maxLen, '.');
+                            structLine = structLine.padEnd(maxLen, '.');
+
+                            rawItems.push({
+                                blockTitle: blockTitle,
+                                displayName: displayName,
+                                rawSeq: seqLine,
+                                rawStruct: structLine
+                            });
+                        }
+                        i = m + 1;
+                    } else {
+                        i++;
+                    }
+                }
+
+                const countMap = {};
+                const results = [];
+                for (const item of rawItems) {
+                    const base = item.blockTitle;
+                    if (!countMap[base]) countMap[base] = 0;
+                    countMap[base]++;
+                    const suffix = countMap[base] > 1 ? `_${countMap[base]}` : '';
+                    const uniqueName = base + suffix;
+                    const cleanStruct = item.rawStruct.replace(/[^()]/g, '.');
+                    results.push({
+                        name: uniqueName,
+                        displayName: item.displayName,
+                        rawSeq: item.rawSeq,
+                        rawStruct: item.rawStruct,
+                        cleanStruct: cleanStruct
+                    });
+                }
+                return results;
+            }
+
+            function renderResults(data) {
+                if (!data || data.length === 0) {
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    return;
+                }
+                emptyResult.style.display = 'none';
+                resultArea.style.display = 'block';
+
+                let tbody = '';
+                data.forEach((item, idx) => {
+                    tbody += `<tr>
+                        <td>${idx + 1}</td>
+                        <td class="tRNA-id">${escapeHtml(item.name)}</td>
+                        <td>${escapeHtml(item.displayName)}</td>
+                        <td><span class="seq-area-small">${escapeHtml(item.rawSeq)}</span></td>
+                        <td><span class="seq-area-small">${escapeHtml(item.rawStruct)}</span></td>
+                        <td><span class="seq-area-small struct-cleaned">${escapeHtml(item.cleanStruct)}</span></td>
+                    </tr>`;
+                });
+                resultBody.innerHTML = tbody;
+                rowCount.textContent = `共提取 ${data.length} 条tRNA记录`;
+                copyTableBtn.disabled = false;
+                downloadCsvBtn.disabled = false;
+            }
+
+            function getTsvRows(data) {
+                const header = ['序列ID', '预测结果', '原始序列', '原始结构', '标准结构'];
+                const rows = [header];
+                data.forEach(item => {
+                    rows.push([item.name, item.displayName, item.rawSeq, item.rawStruct, item.cleanStruct]);
+                });
+                return rows;
+            }
+
+            function getCsvContent(rows) {
+                return rows.map(row => row.map(cell => {
+                    if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"'))) {
+                        return '"' + cell.replace(/"/g, '""') + '"';
+                    }
+                    return cell;
+                }).join(',')).join('\n');
+            }
+
+            function copyTable() {
+                if (parsedData.length === 0) {
+                    showMsg(toolbarTip, '❌ 无数据可复制', 'error');
+                    return;
+                }
+                const rows = getTsvRows(parsedData);
+                const tsv = rows.map(row => row.join('\t')).join('\n');
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + tsv).then(() => {
+                        showMsg(toolbarTip, '✅ 已复制结果到剪贴板', 'success');
+                        toast('✅ 已复制');
+                    }).catch(() => fallbackCopy(tsv));
+                } else {
+                    fallbackCopy(tsv);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(toolbarTip, '✅ 已复制结果到剪贴板', 'success');
+                    toast('✅ 已复制');
+                } catch (e) {
+                    showMsg(toolbarTip, '❌ 复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadCsv() {
+                if (parsedData.length === 0) {
+                    showMsg(toolbarTip, '❌ 无数据可下载', 'error');
+                    return;
+                }
+                const rows = getTsvRows(parsedData);
+                const csv = '\uFEFF' + getCsvContent(rows);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'arwen_trna_extract.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(toolbarTip, '✅ 表格已导出', 'success');
+                toast('✅ 表格已导出');
+            }
+
+            function doParse() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                let content = '';
+                if (mode === 'file') {
+                    const file = fileInput.files[0];
+                    if (!file) {
+                        showMsg(msgTip, '❌ 请先选择ARWEN输出文件', 'error');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        content = e.target.result;
+                        processContent(content);
+                    };
+                    reader.readAsText(file);
+                } else {
+                    content = textInput.value.trim();
+                    if (!content) {
+                        showMsg(msgTip, '❌ 请粘贴ARWEN输出文本', 'error');
+                        return;
+                    }
+                    processContent(content);
+                }
+            }
+
+            function processContent(content) {
+                parsedData = parseArwenOutput(content);
+                renderResults(parsedData);
+                if (parsedData.length > 0) {
+                    showMsg(msgTip, `✅ 成功解析 ${parsedData.length} 条tRNA记录`, 'success');
+                    toast(`✅ 解析完成，共 ${parsedData.length} 条`);
+                } else {
+                    showMsg(msgTip, '⚠️ 未提取到有效记录，请检查文本是否包含 "Primary sequence for" 行', 'warn');
+                }
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fileInput.disabled = false;
+                    textInput.disabled = true;
+                    textInput.value = '';
+                } else {
+                    fileInput.disabled = true;
+                    fileInput.value = '';
+                    textInput.disabled = false;
+                }
+                parsedData = [];
+                renderResults([]);
+                copyTableBtn.disabled = true;
+                downloadCsvBtn.disabled = true;
+                msgTip.innerHTML = '';
+                toolbarTip.innerHTML = '';
+            };
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    textInput.value = ev.target.result;
+                    showMsg(msgTip, `✅ 已读取：${file.name}`, 'success');
+                    toast(`✅ 文件 ${file.name} 加载成功`);
+                };
+                reader.readAsText(file);
+            });
+
+            parseBtn.addEventListener('click', doParse);
+            copyTableBtn.addEventListener('click', copyTable);
+            downloadCsvBtn.addEventListener('click', downloadCsv);
+
+            textInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    doParse();
+                }
+            });
+
+            switchInput();
+            renderResults([]);
+        })();
+    </script>
+</body>
+</html>

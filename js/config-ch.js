@@ -205,6 +205,12 @@ const toolConfig = [
     toolDesc: "根据坐标点的经纬度，计算两两点位之间的大圆距离（单位：km）。",
     link: "ch/028.Haversine_distance_matrix.html"
 },
+
+{
+    toolName: "ARWEN tRNA二级结构提取",
+    toolDesc: "从ARWEN输出结果中提取tRNA二级结构式，方便后续绘图。",
+    link: "ch/029.ARWEN_trna_extract.html"
+},
         ]
     },
 
