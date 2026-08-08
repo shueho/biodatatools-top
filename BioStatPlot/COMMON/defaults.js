@@ -31,6 +31,24 @@ var COMMON_DEFAULTS = {
 var PIE_DEFAULTS = { ...COMMON_DEFAULTS, innerRadiusRatio: 0.6, direction: 'clockwise' };
 
 // ============================================================
+// 3. Line chart defaults
+// ============================================================
+var LINE_DEFAULTS = {
+    ...COMMON_DEFAULTS,
+    width: 700, height: 500,
+    margin: { top: 70, right: 80, bottom: 70, left: 80 },
+    xLabel: 'X Axis', yLabel: 'Y Axis',
+    axisLabelSize: 14,
+    lineWidth: 2.5,
+    showPoints: true,
+    pointSize: 6,
+    pointShape: 'circle',      // circle, square, diamond, triangle, cross
+    lineStyle: 'solid',        // solid, dashed, dotted, dashdot
+    smooth: false
+};
+
+
+// ============================================================
 // 3. Bar chart defaults
 // ============================================================
 var BAR_DEFAULTS = {
@@ -66,17 +84,6 @@ var SCATTER_DEFAULTS = {
     pointSize: 7, showTrend: true
 };
 
-// ============================================================
-// 6. Line chart defaults
-// ============================================================
-var LINE_DEFAULTS = {
-    ...COMMON_DEFAULTS,
-    width: 700, height: 500,
-    margin: { top: 70, right: 60, bottom: 70, left: 80 },
-    xLabel: 'X Axis', yLabel: 'Y Axis',
-    axisLabelSize: 14,
-    lineWidth: 2.5, showDots: true
-};
 
 // ============================================================
 // 7. Volcano plot defaults

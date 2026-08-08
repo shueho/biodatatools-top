@@ -3,18 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>Line Chart - BioStatPlot</title>
+<title id="pageTitle">Line Chart - BioStatPlot</title>
 <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon"/>
 <link rel="stylesheet" href="../COMMON/common.css">
 <style>
 #chartDiv{width:100%;min-height:440px;position:relative;cursor:grab;overflow:hidden;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
 #chartDiv:active{cursor:grabbing}
 #chartDiv svg{display:block;margin:0 auto;background:white;border-radius:12px;width:100%;height:100%}
+/* ★ 让线条和点可点击：使用 all 使整个路径区域都可点击 ★ */
+#chartDiv path{pointer-events:all;cursor:pointer}
+#chartDiv circle{pointer-events:all;cursor:pointer}
 .plot-sidebar{height:calc(100vh - 140px);overflow-y:auto}
 .plot-sidebar .collapsible-body{padding:12px 16px}
 .lang-switch-wrap{display:flex;justify-content:flex-end;margin-bottom:10px}
 .plot-main{height:calc(100vh - 140px);overflow:hidden;display:flex;flex-direction:column}
 #chartDiv{flex:1;min-height:0}
+.color-picker-panel{position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.95);border:1px solid #d1d9e6;border-radius:12px;padding:12px 16px;box-shadow:0 8px 30px rgba(0,0,0,0.15);z-index:10;min-width:180px}
+.color-picker-panel .picker-title{font-size:.85rem;font-weight:600;color:#1e293b;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.color-picker-panel .picker-title .close-btn{cursor:pointer;font-size:1.2rem;opacity:.6}
+.color-picker-panel .picker-title .close-btn:hover{opacity:1}
+.color-picker-panel .color-input-row{display:flex;align-items:center;gap:8px}
+.color-picker-panel .color-input-row input[type="color"]{width:40px;height:40px;border:2px solid #e2e8f0;border-radius:8px;padding:2px;cursor:pointer}
+.color-picker-panel .color-input-row input[type="text"]{flex:1;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:.85rem;font-family:monospace}
+.palette-swatch-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.palette-swatch{width:32px;height:32px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:all .2s}
+.palette-swatch:hover{transform:scale(1.1);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+.palette-swatch.active{border-color:#1f4068;box-shadow:0 0 0 2px rgba(31,64,104,0.25)}
 </style>
 <script src="../COMMON/colors.js"></script>
 <script src="../COMMON/lang.js"></script>
@@ -28,113 +42,840 @@
 <body>
 <div id="common-header"></div>
 <script>window.headerConfig={author:"Author: Di Shang Fei Zhu (Hao Xue)"};</script>
-<div id="app"><div class="plot-layout">
-<div class="plot-sidebar" style="width:340px">
-<div class="collapsible-panel" style="margin-bottom:0">
-<div class="collapsible-header" style="cursor:default"><span>Line Chart Config</span></div>
-<div class="collapsible-body">
-<div class="lang-switch-wrap"><button id="langSwitchBtn" class="lang-switch-btn">中文</button></div>
-<div class="param-group"><h4>Import Data</h4><div class="data-import-area">
-<textarea v-model="csvText" rows="3" placeholder="X	Control	TreatmentA&#10;0	1.2	3.5&#10;1	2.3	4.2&#10;2	1.8	3.8"></textarea>
-<div class="btn-group"><button class="btn btn-sm" @click="applyCSV">Apply</button><button class="btn btn-sm btn-outline" @click="loadDemo">Demo</button><label class="btn btn-sm btn-outline" style="cursor:pointer">File <input type="file" accept=".txt,.csv,.tsv" style="display:none" @change="loadFile"></label></div>
-</div></div>
-<div class="param-group"><h4>Palette</h4>
-<select v-model="currentPalette" @change="onConfigChange" class="form-select"><option v-for="po in paletteOptionsComputed" :value="po.value">{{po.label}}</option></select>
-<div class="palette-swatch-wrap" style="margin-top:6px"><div v-for="(c,i) in swatches" :key="i" class="palette-swatch" :style="{background:c}" @click="onSwatchClick(i)"></div></div></div>
-<div class="param-group"><h4>Options</h4>
-<div class="param-row"><label>Show Points</label><select v-model="config.showPoints" @change="onConfigChange"><option :value="true">Yes</option><option :value="false">No</option></select></div>
-<div class="param-row"><label>Smooth</label><select v-model="config.smooth" @change="onConfigChange"><option :value="true">Yes</option><option :value="false">No</option></select></div>
-<div class="param-row"><label>Show Title</label><select v-model="config.showTitle" @change="onConfigChange"><option :value="true">Yes</option><option :value="false">No</option></select></div>
-<div class="param-row" v-if="config.showTitle"><label>Title</label><input type="text" v-model="config.title" @change="onConfigChange"></div></div>
-<div class="param-group"><h4>Export</h4><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-<button class="btn btn-sm" @click="exportAsSVG">SVG</button><button class="btn btn-sm" @click="exportAsPNG">PNG</button><button class="btn btn-sm" @click="exportAsPDF">PDF</button></div>
-<button class="btn btn-sm btn-outline" @click="resetAll">Reset</button></div>
-</div></div></div>
-<div class="plot-main">
-<div style="background:#fff;border-radius:16px;padding:8px;flex:1;display:flex;flex-direction:column;min-height:0;position:relative">
-<div id="chartDiv"></div>
-<div class="color-picker-panel visible" v-if="showColorPicker" style="position:absolute;top:12px;right:12px;z-index:10">
-<div class="picker-title"><span>Edit Color</span><span class="close-btn" @click="showColorPicker=false">&times;</span></div>
-<div class="color-input-row"><input type="color" v-model="selectedColor" @input="applyColorEdit"><input type="text" v-model="selectedColor" @change="applyColorEdit"></div>
-</div></div>
-<div class="plot-toolbar" style="text-align:center;padding:6px;font-size:.8rem;color:#888">Scroll to zoom | Drag to pan | Click line/edit color</div>
-<div class="data-collapse-wrap"><div class="collapse-header" @click="tableOpen=!tableOpen"><span>Data Preview <span style="font-weight:400;font-size:.8rem;color:#64748b">(click to expand)</span></span><span class="arrow-icon" :class="{open:tableOpen}">&#x25BC;</span></div>
-<div class="collapse-body" v-show="tableOpen"><table><thead><tr><th>X</th><th v-for="s in seriesNames">{{s}}</th><th></th></tr></thead><tbody>
-<tr v-for="(row,ri) in chartData" :key="ri"><td><input type="number" v-model.number="row.x" @change="onConfigChange" step="any"></td><td v-for="(v,vi) in row.values"><input type="number" v-model.number="row.values[vi]" @change="onConfigChange" step="any"></td><td><button class="btn btn-sm btn-danger" @click="removeRow(ri)">Del</button></td></tr>
-</tbody></table><div style="margin-top:8px;display:flex;gap:8px"><button class="btn btn-sm" @click="addRow">+ Row</button><button class="btn btn-sm" @click="addSeries">+ Series</button></div></div></div>
-</div></div></div>
+
+<div id="app">
+  <div class="plot-layout">
+    <!-- 左侧面板（与之前一致，省略详细内容以节省篇幅） -->
+    <div class="plot-sidebar" style="width:340px">
+      <div class="collapsible-panel" style="margin-bottom:0">
+        <div class="collapsible-header" style="cursor:default">
+          <span>{{ t('lineChartTitle') }}</span>
+        </div>
+        <div class="collapsible-body">
+          <!-- 语言切换 -->
+          <div class="lang-switch-wrap">
+            <button class="lang-switch-btn" @click="switchLang">{{ currentLang === 'en' ? '中文' : 'English' }}</button>
+          </div>
+
+          <!-- 数据导入 -->
+          <div class="param-group">
+            <h4>{{ t('importData') }}</h4>
+            <div class="data-import-area">
+              <textarea v-model="csvText" rows="3" :placeholder="t('csvPlaceholderLine')"></textarea>
+              <div class="btn-group">
+                <button class="btn btn-sm" @click="applyCSV">{{ t('applyBtn') }}</button>
+                <button class="btn btn-sm btn-outline" @click="loadDemo">{{ t('loadDemo') }}</button>
+                <label class="btn btn-sm btn-outline" style="cursor:pointer">
+                  {{ t('uploadFile') }}
+                  <input type="file" accept=".txt,.csv,.tsv" style="display:none" @change="loadFile">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 配色 -->
+          <div class="param-group">
+            <h4>{{ t('secPalette') }}</h4>
+            <select v-model="currentPalette" @change="onConfigChange" class="form-select">
+              <option v-for="po in paletteOptionsComputed" :value="po.value">{{ po.label }}</option>
+            </select>
+            <div class="palette-swatch-wrap">
+              <div v-for="(c,i) in swatches" :key="i" class="palette-swatch" 
+                   :style="{background:c}" 
+                   :class="{active: i===activeSwatch}" 
+                   @click="onSwatchClick(i)"></div>
+            </div>
+          </div>
+
+          <!-- 画布与边距 -->
+          <div class="param-group">
+            <h4>{{ t('secCanvas') }}</h4>
+            <div class="param-row"><label>{{ t('lblWidth') }}</label><input type="number" v-model.number="config.width" min="400" max="1200" step="10" @change="onConfigChange"></div>
+            <div class="param-row"><label>{{ t('lblHeight') }}</label><input type="number" v-model.number="config.height" min="400" max="1200" step="10" @change="onConfigChange"></div>
+            <div class="param-row"><label>{{ t('lblTop') }}</label><input type="number" v-model.number="config.margin.top" min="20" max="150" step="5" @change="onConfigChange"></div>
+            <div class="param-row"><label>{{ t('lblBottom') }}</label><input type="number" v-model.number="config.margin.bottom" min="20" max="150" step="5" @change="onConfigChange"></div>
+            <div class="param-row"><label>{{ t('lblLeft') }}</label><input type="number" v-model.number="config.margin.left" min="20" max="150" step="5" @change="onConfigChange"></div>
+            <div class="param-row"><label>{{ t('lblRight') }}</label><input type="number" v-model.number="config.margin.right" min="20" max="150" step="5" @change="onConfigChange"></div>
+          </div>
+
+          <!-- 标题 -->
+          <div class="param-group">
+            <h4>{{ t('secTitle') }}</h4>
+            <div class="param-row"><label>{{ t('lblShowTitle') }}</label><select v-model="config.showTitle" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+            <div class="param-row" v-if="config.showTitle"><label>{{ t('lblTitleText') }}</label><input type="text" v-model="config.title" @change="onConfigChange"></div>
+            <div class="param-row" v-if="config.showTitle"><label>{{ t('lblTitleSize') }}</label><input type="number" v-model.number="config.titleFontSize" min="12" max="42" step="1" @change="onConfigChange"></div>
+            <div class="param-row" v-if="config.showTitle"><label>{{ t('lblTitleBold') }}</label><select v-model="config.titleBold" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+            <div class="param-row" v-if="config.showTitle"><label>{{ t('lblTitleItalic') }}</label><select v-model="config.titleItalic" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+          </div>
+
+          <!-- 图例 -->
+          <div class="param-group">
+            <h4>{{ t('secLegend') }}</h4>
+            <div class="param-row"><label>{{ t('lblShowLegend') }}</label><select v-model="config.showLegend" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+            <div class="param-row" v-if="config.showLegend"><label>{{ t('lblShowLegendTitle') }}</label><select v-model="config.showLegendTitle" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+            <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitle') }}</label><input type="text" v-model="config.legendTitle" @change="onConfigChange"></div>
+            <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitleSize') }}</label><input type="number" v-model.number="config.legendTitleFontSize" min="10" max="20" step="1" @change="onConfigChange"></div>
+            <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitleBold') }}</label><select v-model="config.legendTitleBold" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+            <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitleItalic') }}</label><select v-model="config.legendTitleItalic" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+            <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitleSpacing') }}</label><input type="number" v-model.number="config.legendTitleSpacing" min="0" max="30" step="1" @change="onConfigChange"></div>
+            <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendMarkerSize') }}</label><input type="number" v-model.number="config.legendMarkerSize" min="8" max="28" step="1" @change="onConfigChange"></div>
+            <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendItemSpacing') }}</label><input type="number" v-model.number="config.legendItemSpacing" min="16" max="40" step="1" @change="onConfigChange"></div>
+            <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendFontSize') }}</label><input type="number" v-model.number="config.legendFontSize" min="10" max="20" step="1" @change="onConfigChange"></div>
+            <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendBold') }}</label><select v-model="config.legendBold" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+            <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendItalic') }}</label><select v-model="config.legendItalic" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+          </div>
+
+          <!-- 坐标轴 -->
+          <div class="param-group">
+            <h4>{{ t('secAxis') }}</h4>
+            <div class="param-row"><label>{{ t('lblXLabel') }}</label><input type="text" v-model="config.xLabel" @change="onConfigChange"></div>
+            <div class="param-row"><label>{{ t('lblYLabel') }}</label><input type="text" v-model="config.yLabel" @change="onConfigChange"></div>
+            <div class="param-row"><label>{{ t('lblAxisLabelSize') }}</label><input type="number" v-model.number="config.axisLabelSize" min="10" max="20" step="1" @change="onConfigChange"></div>
+          </div>
+
+          <!-- 线条与点样式 -->
+          <div class="param-group">
+            <h4>{{ t('secOptions') }}</h4>
+            <div class="param-row"><label>{{ t('lblShowPoints') }}</label><select v-model="config.showPoints" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+            <div class="param-row"><label>{{ t('lblSmooth') }}</label><select v-model="config.smooth" @change="onConfigChange"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+            <div class="param-row"><label>{{ t('lblLineWidth') }}</label><input type="number" v-model.number="config.lineWidth" min="1" max="6" step="0.5" @change="onConfigChange"></div>
+            <div class="param-row"><label>{{ t('lblLineStyle') }}</label>
+              <select v-model="config.lineStyle" @change="onConfigChange">
+                <option v-for="ls in lineStyleOptions" :value="ls.value">{{ ls.label }}</option>
+              </select>
+            </div>
+            <div class="param-row"><label>{{ t('lblPointShape') }}</label>
+              <select v-model="config.pointShape" @change="onConfigChange">
+                <option v-for="ps in pointShapeOptions" :value="ps.value">{{ ps.label }}</option>
+              </select>
+            </div>
+            <div class="param-row"><label>{{ t('lblPointSize') }}</label><input type="number" v-model.number="config.pointSize" min="2" max="15" step="1" @change="onConfigChange"></div>
+            <div class="param-row"><label>{{ t('lblFontFamily') }}</label>
+              <select v-model="config.fontFamily" @change="onConfigChange">
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Arial">Arial</option>
+                <option value="Segoe UI">Segoe UI</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Courier New">Courier New</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 导出 -->
+          <div class="param-group">
+            <h4>{{ t('secExport') }}</h4>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+              <button class="btn btn-sm" @click="exportAsSVG">{{ t('btnSVG') }}</button>
+              <button class="btn btn-sm" @click="exportAsPNG">{{ t('btnPNG') }}</button>
+              <button class="btn btn-sm" @click="exportAsPDF">{{ t('btnPDF') }}</button>
+            </div>
+            <button class="btn btn-sm btn-outline" @click="resetAll">{{ t('btnReset') }}</button>
+            <div class="control-tip">{{ t('configTip') }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 绘图区 -->
+    <div class="plot-main">
+      <div style="background:#fff;border-radius:16px;padding:8px;flex:1;display:flex;flex-direction:column;min-height:0;position:relative">
+        <div id="chartDiv" ref="chartDiv"></div>
+        <div class="color-picker-panel" v-if="showColorPicker" style="position:absolute;top:12px;right:12px;z-index:10">
+          <div class="picker-title">
+            <span>{{ t('modifyColor') }}</span>
+            <span class="close-btn" @click="closeColorPicker">&times;</span>
+          </div>
+          <div class="color-input-row">
+            <input type="color" v-model="selectedColor" @input="applyColorEdit">
+            <input type="text" v-model="selectedColor" @change="applyColorEdit">
+          </div>
+        </div>
+      </div>
+      <div class="plot-toolbar">{{ t('toolbarTip') }}</div>
+
+      <!-- 数据表格 -->
+      <div class="data-collapse-wrap">
+        <div class="collapse-header" @click="tableOpen=!tableOpen">
+          <span>{{ t('dataPreview') }} <span style="font-weight:400;font-size:.8rem;color:#64748b">{{ t('clickToExpand') }}</span></span>
+          <span class="arrow-icon" :class="{open:tableOpen}">&#x25BC;</span>
+        </div>
+        <div class="collapse-body" v-show="tableOpen">
+          <table>
+            <thead><tr><th>X</th><th v-for="s in seriesNames">{{s}}</th><th></th></tr></thead>
+            <tbody>
+              <tr v-for="(row,ri) in chartData" :key="ri">
+                <td><input type="number" v-model.number="row.x" @change="onConfigChange" step="any"></td>
+                <td v-for="(v,vi) in row.values"><input type="number" v-model.number="row.values[vi]" @change="onConfigChange" step="any"></td>
+                <td><button class="btn btn-sm btn-danger" @click="removeRow(ri)">{{ t('delBtn') }}</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn btn-sm" @click="addRow">{{ t('addBtn') }}</button>
+            <button class="btn btn-sm" @click="addSeries">+ {{ t('series') }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
 var PALETTE_NAMES=["academic","vibrant","warm","cool","earth"];
-var DEFAULT_CONFIG={width:700,height:500,margin:{top:70,right:80,bottom:70,left:80},fontFamily:"Times New Roman",showTitle:true,title:"Line Chart",titleFontSize:22,xLabel:"X Axis",yLabel:"Y Axis",showPoints:true,smooth:false};
-var DEFAULT_DATA=[{x:0,values:[1.2,3.5,5.6,2.8]},{x:1,values:[2.3,4.2,6.1,3.2]},{x:2,values:[1.8,3.8,5.9,2.9]},{x:3,values:[2.1,4.1,5.8,3.5]},{x:4,values:[1.9,3.9,6.3,3.1]},{x:5,values:[2.5,3.3,5.2,2.6]},{x:6,values:[1.7,4.5,6.8,3.8]}];
-var DEFAULT_SERIES=["Control","TreatmentA","TreatmentB","TreatmentC"];
-var storageKey="line_chart_v2";
-var app=Vue.createApp({data:function(){
-var saved=null;try{saved=JSON.parse(localStorage.getItem(storageKey))}catch(e){}
-var ic=JSON.parse(JSON.stringify(DEFAULT_CONFIG)),id=JSON.parse(JSON.stringify(DEFAULT_DATA)),ids=JSON.parse(JSON.stringify(DEFAULT_SERIES)),ip="academic";
-if(saved&&saved.data){if(saved.config)ic=Object.assign({},DEFAULT_CONFIG,saved.config);if(saved.config&&saved.config.margin)ic.margin=Object.assign({},DEFAULT_CONFIG.margin,saved.config.margin);id=saved.data;if(saved.series)ids=saved.series;if(saved.palette)ip=saved.palette}
-return{config:ic,chartData:id,seriesNames:ids,chartDiv:null,csvText:"",currentPalette:ip,tableOpen:false,transform:{k:1,x:0,y:0},showColorPicker:false,editingIdx:-1,selectedColor:"#e74c3c",_rafId:null,_wheelHandler:null,_mouseDownHandler:null,_mouseMoveHandler:null,_mouseUpHandler:null};
-},computed:{swatches:function(){return ColorUtils.getPalette(this.currentPalette,8)},paletteOptionsComputed:function(){var lang=LangManager.getLang();var o=[];for(var i=0;i<PALETTE_NAMES.length;i++)o.push({value:PALETTE_NAMES[i],label:ColorUtils.getPaletteDisplayName(PALETTE_NAMES[i],lang)});return o}},mounted:function(){
-var self=this;this.chartDiv=document.getElementById("chartDiv");LangManager.initPage("en",this);
-var lb=document.getElementById("langSwitchBtn");if(lb)lb.addEventListener("click",function(){var nl=LangManager.getLang()==="en"?"zh":"en";LangManager.switchLanguage(nl,self);self.drawChart()});
-this.$nextTick(function(){this.drawChart()}.bind(this));window.addEventListener("resize",function(){self.drawChart()})
-},methods:{
-onConfigChange:function(){this.saveState();this.$nextTick(function(){this.drawChart()}.bind(this))},
-onSwatchClick:function(i){this.editingIdx=i;var cs=ColorUtils.getPalette(this.currentPalette,8);this.selectedColor=cs[i]||"#e74c3c";this.showColorPicker=true},
-applyColorEdit:function(){if(this.editingIdx>=0){var cs=ColorUtils.getPalette(this.currentPalette,8);if(this.editingIdx<cs.length)COLOR_PALETTES[this.currentPalette][this.editingIdx]=this.selectedColor}this.drawChart()},
-applyCSV:function(){var t=this.csvText.trim();if(!t){alert("Enter data");return}var ls=t.split("\n").filter(function(l){return l.trim()});if(ls.length<2){alert("Need header+data");return}var h=ls[0].split("\t");this.seriesNames=h.slice(1);this.chartData=ls.slice(1).map(function(l){var c=l.split("\t");return{x:parseFloat(c[0]),values:c.slice(1).map(Number)}});this.onConfigChange()},
-loadDemo:function(){this.chartData=JSON.parse(JSON.stringify(DEFAULT_DATA));this.seriesNames=JSON.parse(JSON.stringify(DEFAULT_SERIES));this.currentPalette="academic";this.transform={k:1,x:0,y:0};this.drawChart();this.saveState()},
-loadFile:function(e){var f=e.target.files[0];if(!f)return;var self=this;var r=new FileReader();r.onload=function(ev){self.csvText=ev.target.result;self.applyCSV()};r.readAsText(f);e.target.value=""},
-addRow:function(){var maxX=0;this.chartData.forEach(function(d){if(d.x>maxX)maxX=d.x});this.chartData.push({x:maxX+1,values:this.seriesNames.map(function(){return Math.random()*10})});this.chartData.sort(function(a,b){return a.x-b.x});this.onConfigChange()},
-addSeries:function(){this.seriesNames.push("S"+(this.seriesNames.length+1));this.chartData.forEach(function(r){r.values.push(Math.random()*10)});this.onConfigChange()},
-removeRow:function(i){if(this.chartData.length<=2)return;this.chartData.splice(i,1);this.onConfigChange()},
-drawChart:function(){
-if(!this.chartDiv)return;var self=this,c=this.chartDiv;c.innerHTML="";if(!this.chartData.length)return;this.transform={k:1,x:0,y:0};
-var w=this.config.width,h=this.config.height,m=this.config.margin,iW=w-m.left-m.right,iH=h-m.top-m.bottom;
-var ns=this.seriesNames.length;
-var allX=this.chartData.map(function(d){return d.x});
-var allY=this.chartData.flatMap(function(d){return d.values});
-var cols=ColorUtils.getPalette(this.currentPalette,ns);
-var svg=d3.select(c).append("svg").attr("viewBox","0 0 "+w+" "+h).attr("width",w).attr("height",h).style("width","100%").style("height","100%").style("background","#fff");
-svg.append("rect").attr("width",w).attr("height",h).attr("fill","#fff");
-var g=svg.append("g").attr("transform","translate("+m.left+","+m.top+")");
-var xS=d3.scaleLinear().domain([d3.min(allX)-0.5,d3.max(allX)+0.5]).range([0,iW]);
-var yS=d3.scaleLinear().domain([d3.min(allY)*0.9,d3.max(allY)*1.1]).range([iH,0]);
-g.append("g").attr("transform","translate(0,"+iH+")").call(d3.axisBottom(xS));
-g.append("g").call(d3.axisLeft(yS));
-g.append("text").attr("x",iW/2).attr("y",iH+42).style("text-anchor","middle").style("font-family",this.config.fontFamily).style("font-size","13px").text(this.config.xLabel);
-g.append("text").attr("transform","rotate(-90)").attr("x",-iH/2).attr("y",-55).style("text-anchor","middle").style("font-family",this.config.fontFamily).style("font-size","13px").text(this.config.yLabel);
-var lineFn=d3.line().x(function(d){return xS(d.x)}).y(function(d){return yS(d.y)});
-if(this.config.smooth)lineFn=lineFn.curve(d3.curveCardinal);
-for(var si=0;si<ns;si++){(function(si){var pts=self.chartData.map(function(d){return{x:d.x,y:d.values[si]}});
-g.append("path").datum(pts).attr("fill","none").attr("stroke",cols[si]).attr("stroke-width",2.5).attr("d",lineFn).style("cursor","pointer").on("click",function(ev){ev.stopPropagation();self.showColorPicker=true;self.editingIdx=si;self.selectedColor=cols[si]});
-if(self.config.showPoints){g.selectAll(".pt-"+si).data(pts).enter().append("circle").attr("cx",function(d){return xS(d.x)}).attr("cy",function(d){return yS(d.y)}).attr("r",5).attr("fill",cols[si]).attr("stroke","#fff").attr("stroke-width",1.5).style("cursor","pointer").on("click",function(ev){ev.stopPropagation();self.showColorPicker=true;self.editingIdx=si;self.selectedColor=cols[si]})}})(si)}
-if(this.config.showTitle){g.append("text").attr("x",iW/2).attr("y",-25).style("text-anchor","middle").style("font-size",this.config.titleFontSize+"px").style("font-family",this.config.fontFamily).style("font-weight","bold").text(this.config.title)}
-if(ns>1){var lg=g.append("g").attr("class","chart-legend draggable").attr("transform","translate("+(iW-100)+",0)");this.seriesNames.forEach(function(sn,j){var it=lg.append("g").attr("transform","translate(0,"+(j*22)+")");it.append("line").attr("x1",0).attr("y1",7).attr("x2",14).attr("y2",7).attr("stroke",cols[j]).attr("stroke-width",2.5).style("cursor","pointer").on("click",function(ev){ev.stopPropagation();self.showColorPicker=true;self.editingIdx=j;self.selectedColor=cols[j]});it.append("text").attr("x",20).attr("y",11).style("font-size","11px").style("font-family",self.config.fontFamily).text(sn)});ChartInteraction.makeDraggable(lg.node())}
-this.setupInteraction()
-},
-setupInteraction:function(){
-var container=this.chartDiv;if(!container)return;var svg=container.querySelector("svg");if(!svg)return;
-if(this._wheelHandler){container.removeEventListener("wheel",this._wheelHandler);container.removeEventListener("mousedown",this._mouseDownHandler);window.removeEventListener("mousemove",this._mouseMoveHandler);window.removeEventListener("mouseup",this._mouseUpHandler)}
-if(this._rafId){cancelAnimationFrame(this._rafId);this._rafId=null}
-var self=this,transform=this.transform;
-function upd(){var w=svg.clientWidth||600,h=svg.clientHeight||600;svg.setAttribute("viewBox",(-transform.x/transform.k)+" "+(-transform.y/transform.k)+" "+(w/transform.k)+" "+(h/transform.k))}
-this._wheelHandler=function(e){e.preventDefault();var d=e.deltaY>0?-0.015:0.015;var nk=Math.min(3,Math.max(0.3,transform.k+d));var vx=-transform.x/transform.k,vy=-transform.y/transform.k;transform.k=nk;transform.x=-vx*nk;transform.y=-vy*nk;if(self._rafId)cancelAnimationFrame(self._rafId);self._rafId=requestAnimationFrame(function(){upd();self._rafId=null})};
-container.addEventListener("wheel",this._wheelHandler,{passive:false});
-var dragging=false,sx,sy,stx,sty;
-this._mouseDownHandler=function(e){if(e.button!==0)return;var t=e.target;if(t.closest("circle")||t.closest("path")||t.closest("rect")||t.closest("text")||t.closest("input")||t.closest(".draggable")||t.closest(".chart-legend"))return;dragging=true;sx=e.clientX;sy=e.clientY;stx=transform.x;sty=transform.y;container.style.cursor="grabbing";e.preventDefault()};
-container.addEventListener("mousedown",this._mouseDownHandler);
-this._mouseMoveHandler=function(e){if(!dragging)return;var r=container.getBoundingClientRect();var w=svg.clientWidth||600,h=svg.clientHeight||600;transform.x=stx+(e.clientX-sx)/r.width*w;transform.y=sty+(e.clientY-sy)/r.height*h;upd()};
-window.addEventListener("mousemove",this._mouseMoveHandler);
-this._mouseUpHandler=function(){dragging=false;container.style.cursor="grab"};
-window.addEventListener("mouseup",this._mouseUpHandler);
-container.style.cursor="grab";upd()
-},
-exportAsSVG:function(){ChartExportHelper.exportChart(this.chartDiv,"svg","line_chart")},
-exportAsPNG:function(){ChartExportHelper.exportChart(this.chartDiv,"png","line_chart")},
-exportAsPDF:function(){ChartExportHelper.exportChart(this.chartDiv,"pdf","line_chart")},
-resetAll:function(){this.config=JSON.parse(JSON.stringify(DEFAULT_CONFIG));this.chartData=JSON.parse(JSON.stringify(DEFAULT_DATA));this.seriesNames=JSON.parse(JSON.stringify(DEFAULT_SERIES));this.currentPalette="academic";this.showColorPicker=false;this.transform={k:1,x:0,y:0};this.drawChart();this.saveState()},
-saveState:function(){localStorage.setItem(storageKey,JSON.stringify({data:this.chartData,config:this.config,palette:this.currentPalette,series:this.seriesNames}))}
-}});app.mount("#app")})();
-</script></body></html>
+var DEFAULT_CONFIG = {
+    width:700, height:500,
+    margin:{top:70,right:80,bottom:70,left:80},
+    fontFamily:"Times New Roman",
+    showTitle:true, title:"Line Chart", titleFontSize:22,
+    titleBold:true, titleItalic:false,
+    showLegend:true, showLegendTitle:true, legendTitle:"Legend",
+    legendTitleFontSize:16, legendTitleBold:true, legendTitleItalic:false,
+    legendTitleSpacing:0, legendMarkerSize:18, legendItemSpacing:22,
+    legendX:0.85, legendY:0.05,
+    legendFontSize:12, legendBold:false, legendItalic:false,
+    xLabel:"X Axis", yLabel:"Y Axis", axisLabelSize:14,
+    showPoints:true, smooth:false, lineWidth:2.5,
+    lineStyle:"solid", pointShape:"circle", pointSize:6
+};
+var DEFAULT_DATA = [
+    {x:0, values:[1.2,3.5,5.6,2.8]},
+    {x:1, values:[2.3,4.2,6.1,3.2]},
+    {x:2, values:[1.8,3.8,5.9,2.9]},
+    {x:3, values:[2.1,4.1,5.8,3.5]},
+    {x:4, values:[1.9,3.9,6.3,3.1]},
+    {x:5, values:[2.5,3.3,5.2,2.6]},
+    {x:6, values:[1.7,4.5,6.8,3.8]}
+];
+var DEFAULT_SERIES = ["Control","TreatmentA","TreatmentB","TreatmentC"];
+var storageKey = "line_chart_v2";
+var stateManager = new StateManager(storageKey);
+var saved = stateManager.loadState();
+
+var app = Vue.createApp({
+  data: function() {
+    var ic = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    var id = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    var ids = JSON.parse(JSON.stringify(DEFAULT_SERIES));
+    var ip = "academic";
+    if (saved && saved.data) {
+      if (saved.config) ic = Object.assign({}, DEFAULT_CONFIG, saved.config);
+      if (saved.config && saved.config.margin) ic.margin = Object.assign({}, DEFAULT_CONFIG.margin, saved.config.margin);
+      id = saved.data;
+      if (saved.series) ids = saved.series;
+      if (saved.palette) ip = saved.palette;
+    }
+    var savedLang = localStorage.getItem('biodatatools_lang') || 'en';
+    LangManager.setLang(savedLang);
+    return {
+      config: ic,
+      chartData: id,
+      seriesNames: ids,
+      chartDiv: null,
+      csvText: '',
+      currentPalette: ip,
+      tableOpen: false,
+      transform: {k:1,x:0,y:0},
+      showColorPicker: false,
+      editingIdx: -1,
+      selectedColor: "#e74c3c",
+      currentLang: savedLang,
+      activeSwatch: -1,
+      titleX: null,
+      titleY: null,
+      _rafId: null,
+      _wheelHandler: null,
+      _mouseDownHandler: null,
+      _mouseMoveHandler: null,
+      _mouseUpHandler: null
+    };
+  },
+  computed: {
+    swatches: function() {
+      return ColorUtils.getPalette(this.currentPalette, 8);
+    },
+    paletteOptionsComputed: function() {
+      var lang = this.currentLang;
+      var o = [];
+      for (var i=0; i<PALETTE_NAMES.length; i++) {
+        o.push({ value: PALETTE_NAMES[i], label: ColorUtils.getPaletteDisplayName(PALETTE_NAMES[i], lang) });
+      }
+      return o;
+    },
+    lineStyleOptions: function() {
+      return ShapeUtils ? ShapeUtils.getLineStyleOptions(this.currentLang) : [];
+    },
+    pointShapeOptions: function() {
+      return ShapeUtils ? ShapeUtils.getPointShapeOptions(this.currentLang) : [];
+    }
+  },
+  watch: {
+    chartData: { handler: function() { this.saveState(); this.$nextTick(this.drawChart); }, deep: true },
+    config: { handler: function() { this.saveState(); this.$nextTick(this.drawChart); }, deep: true },
+    currentPalette: function() { this.saveState(); this.$nextTick(this.drawChart); }
+  },
+  mounted: function() {
+    var self = this;
+    this.chartDiv = document.getElementById('chartDiv');
+    this.csvText = "X\tControl\tTreatmentA\tTreatmentB\tTreatmentC\n" +
+                   "0\t1.2\t3.5\t5.6\t2.8\n" +
+                   "1\t2.3\t4.2\t6.1\t3.2\n" +
+                   "2\t1.8\t3.8\t5.9\t2.9\n" +
+                   "3\t2.1\t4.1\t5.8\t3.5\n" +
+                   "4\t1.9\t3.9\t6.3\t3.1\n" +
+                   "5\t2.5\t3.3\t5.2\t2.6\n" +
+                   "6\t1.7\t4.5\t6.8\t3.8";
+    document.title = this.t('pageTitle');
+    var titleState = localStorage.getItem(storageKey + '_title');
+    if (titleState) {
+      try { var p = JSON.parse(titleState); this.titleX = p.titleX; this.titleY = p.titleY; } catch(e) {}
+    }
+    this.$nextTick(this.drawChart);
+    window.addEventListener('resize', function() { self.drawChart(); });
+  },
+  beforeUnmount: function() {
+    if (this._wheelHandler && this.chartDiv) {
+      this.chartDiv.removeEventListener('wheel', this._wheelHandler);
+      this.chartDiv.removeEventListener('mousedown', this._mouseDownHandler);
+      window.removeEventListener('mousemove', this._mouseMoveHandler);
+      window.removeEventListener('mouseup', this._mouseUpHandler);
+    }
+    if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
+  },
+  methods: {
+    t: function(key) { return LangManager.t(key); },
+
+    switchLang: function() {
+      var nl = this.currentLang === 'en' ? 'zh' : 'en';
+      this.currentLang = nl;
+      LangManager.setLang(nl);
+      localStorage.setItem('biodatatools_lang', nl);
+      document.title = this.t('pageTitle');
+      this.config.legendTitle = nl === 'en' ? 'Legend' : '图例';
+      this.drawChart();
+    },
+
+    onConfigChange: function() {
+      this.saveState();
+      this.$nextTick(this.drawChart);
+    },
+
+    onSwatchClick: function(i) {
+      this.activeSwatch = i;
+      var cs = ColorUtils.getPalette(this.currentPalette, 8);
+      this.editingIdx = i;
+      this.selectedColor = cs[i] || "#e74c3c";
+      this.showColorPicker = true;
+    },
+
+    applyColorEdit: function() {
+      if (this.editingIdx < 0) return;
+      var cs = ColorUtils.getPalette(this.currentPalette, 8);
+      if (this.editingIdx < cs.length) {
+        COLOR_PALETTES[this.currentPalette][this.editingIdx] = this.selectedColor;
+      }
+      this.drawChart();
+    },
+
+    closeColorPicker: function() {
+      this.showColorPicker = false;
+      this.editingIdx = -1;
+      this.activeSwatch = -1;
+    },
+
+    // ★ 点击线条/点/图例打开颜色面板 ★
+    openColorPickerForSeries: function(seriesIdx) {
+      var cols = ColorUtils.getPalette(this.currentPalette, this.seriesNames.length);
+      this.editingIdx = seriesIdx;
+      this.selectedColor = cols[seriesIdx] || "#e74c3c";
+      this.showColorPicker = true;
+    },
+
+    applyCSV: function() {
+      var t = this.csvText.trim();
+      if (!t) { alert(this.t('pasteData')); return; }
+      var lines = t.split('\n').filter(function(l) { return l.trim(); });
+      if (lines.length < 2) { alert(this.t('noValidData')); return; }
+      var headers = lines[0].split('\t');
+      this.seriesNames = headers.slice(1);
+      this.chartData = lines.slice(1).map(function(line) {
+        var parts = line.split('\t');
+        return { x: parseFloat(parts[0]), values: parts.slice(1).map(Number) };
+      });
+      this.chartData.sort(function(a,b) { return a.x - b.x; });
+      this.onConfigChange();
+    },
+
+    loadDemo: function() {
+      this.chartData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      this.seriesNames = JSON.parse(JSON.stringify(DEFAULT_SERIES));
+      this.currentPalette = "academic";
+      this.transform = {k:1,x:0,y:0};
+      this.drawChart();
+      this.saveState();
+    },
+
+    loadFile: function(e) {
+      var f = e.target.files[0];
+      if (!f) return;
+      var self = this;
+      var r = new FileReader();
+      r.onload = function(ev) { self.csvText = ev.target.result; self.applyCSV(); };
+      r.readAsText(f);
+      e.target.value = '';
+    },
+
+    addRow: function() {
+      var maxX = 0;
+      this.chartData.forEach(function(d) { if (d.x > maxX) maxX = d.x; });
+      this.chartData.push({ x: maxX + 1, values: this.seriesNames.map(function() { return Math.random()*10; }) });
+      this.chartData.sort(function(a,b) { return a.x - b.x; });
+      this.onConfigChange();
+    },
+
+    addSeries: function() {
+      this.seriesNames.push("S" + (this.seriesNames.length + 1));
+      this.chartData.forEach(function(r) { r.values.push(Math.random()*10); });
+      this.onConfigChange();
+    },
+
+    removeRow: function(i) {
+      if (this.chartData.length <= 2) return;
+      this.chartData.splice(i, 1);
+      this.onConfigChange();
+    },
+
+    drawChart: function() {
+      if (!this.chartDiv) return;
+      var self = this;
+      var container = this.chartDiv;
+      container.innerHTML = '';
+      if (!this.chartData.length || !this.seriesNames.length) return;
+
+      var w = this.config.width, h = this.config.height;
+      var m = this.config.margin;
+      var iW = w - m.left - m.right;
+      var iH = h - m.top - m.bottom;
+
+      var ns = this.seriesNames.length;
+      var allX = this.chartData.map(function(d) { return d.x; });
+      var allY = this.chartData.flatMap(function(d) { return d.values; });
+      var cols = ColorUtils.getPalette(this.currentPalette, ns);
+
+      var svg = d3.select(container).append('svg')
+        .attr('viewBox', '0 0 ' + w + ' ' + h)
+        .attr('width', w).attr('height', h)
+        .style('width', '100%').style('height', '100%')
+        .style('background', '#fff');
+
+      svg.append('rect').attr('width', w).attr('height', h).attr('fill', '#fff');
+
+      var g = svg.append('g').attr('transform', 'translate(' + m.left + ',' + m.top + ')');
+
+      var xScale = d3.scaleLinear()
+        .domain([d3.min(allX) - 0.5, d3.max(allX) + 0.5])
+        .range([0, iW]);
+      var yScale = d3.scaleLinear()
+        .domain([d3.min(allY) * 0.9, d3.max(allY) * 1.1])
+        .range([iH, 0]);
+
+      g.append('g').attr('transform', 'translate(0,' + iH + ')')
+        .call(d3.axisBottom(xScale).ticks(Math.min(10, allX.length)));
+      g.append('g').call(d3.axisLeft(yScale).ticks(6));
+
+      g.append('text').attr('x', iW/2).attr('y', iH + 42)
+        .style('text-anchor', 'middle')
+        .style('font-family', this.config.fontFamily)
+        .style('font-size', this.config.axisLabelSize + 'px')
+        .text(this.config.xLabel);
+      g.append('text').attr('transform', 'rotate(-90)')
+        .attr('x', -iH/2).attr('y', -55)
+        .style('text-anchor', 'middle')
+        .style('font-family', this.config.fontFamily)
+        .style('font-size', this.config.axisLabelSize + 'px')
+        .text(this.config.yLabel);
+
+      var lineFn = d3.line()
+        .x(function(d) { return xScale(d.x); })
+        .y(function(d) { return yScale(d.y); });
+      if (this.config.smooth) lineFn = lineFn.curve(d3.curveCardinal);
+
+      var dashMap = ShapeUtils ? ShapeUtils.dashStyles : {solid:null, dashed:[6,4], dotted:[2,3], dashdot:[8,4,2,4]};
+
+      for (var si = 0; si < ns; si++) {
+        (function(si) {
+          var pts = self.chartData.map(function(d) { return { x: d.x, y: d.values[si] }; });
+          var strokeDash = dashMap[self.config.lineStyle] || null;
+
+          // ★ 可见线条（事件绑定） ★
+          g.append('path')
+            .datum(pts)
+            .attr('fill', 'none')
+            .attr('stroke', cols[si])
+            .attr('stroke-width', self.config.lineWidth)
+            .attr('stroke-dasharray', strokeDash)
+            .attr('d', lineFn)
+            .style('cursor', 'pointer')
+            .on('click', function(ev) {
+              ev.stopPropagation();
+              self.openColorPickerForSeries(si);
+            });
+
+          // ★ 透明的宽路径用于增大点击区域（stroke-width=20，不可见） ★
+          g.append('path')
+            .datum(pts)
+            .attr('fill', 'none')
+            .attr('stroke', 'transparent')
+            .attr('stroke-width', 20)
+            .attr('stroke-dasharray', strokeDash)
+            .attr('d', lineFn)
+            .style('cursor', 'pointer')
+            .style('pointer-events', 'all')
+            .on('click', function(ev) {
+              ev.stopPropagation();
+              self.openColorPickerForSeries(si);
+            });
+
+          // 点
+          if (self.config.showPoints) {
+            var shapePath = ShapeUtils ? ShapeUtils.getPointPath(self.config.pointShape, self.config.pointSize) : d3.symbol().type(d3.symbolCircle).size(self.config.pointSize*self.config.pointSize)();
+            g.selectAll('.pt-' + si)
+              .data(pts)
+              .enter()
+              .append('path')
+              .attr('d', shapePath)
+              .attr('transform', function(d) { return 'translate(' + xScale(d.x) + ',' + yScale(d.y) + ')'; })
+              .attr('fill', cols[si])
+              .attr('stroke', '#fff')
+              .attr('stroke-width', 1.2)
+              .style('cursor', 'pointer')
+              .on('click', function(ev) {
+                ev.stopPropagation();
+                self.openColorPickerForSeries(si);
+              });
+          }
+        })(si);
+      }
+
+      // ---- 标题 ----
+      if (this.config.showTitle) {
+        var titleStyle = 'font-size:' + this.config.titleFontSize + 'px;font-family:' + this.config.fontFamily + ';';
+        if (this.config.titleBold) titleStyle += 'font-weight:bold;';
+        if (this.config.titleItalic) titleStyle += 'font-style:italic;';
+        var titleEl = g.append('text')
+          .attr('class', 'chart-title draggable')
+          .attr('x', iW/2)
+          .attr('y', -25)
+          .attr('text-anchor', 'middle')
+          .attr('style', titleStyle)
+          .style('fill', '#0f172a')
+          .text(this.config.title);
+
+        if (this.titleX !== null && this.titleX !== undefined) titleEl.attr('x', this.titleX);
+        if (this.titleY !== null && this.titleY !== undefined) titleEl.attr('y', this.titleY);
+
+        var dragTitle = d3.drag()
+          .on('drag', function(event) {
+            var cx = parseFloat(d3.select(this).attr('x')) || 0;
+            var cy = parseFloat(d3.select(this).attr('y')) || 0;
+            d3.select(this).attr('x', cx + event.dx).attr('y', cy + event.dy);
+          })
+          .on('end', function(event) {
+            self.titleX = parseFloat(d3.select(this).attr('x'));
+            self.titleY = parseFloat(d3.select(this).attr('y'));
+            self.saveState();
+          });
+        titleEl.call(dragTitle);
+        titleEl.style('cursor', 'move');
+      }
+
+      // ---- 图例 ----
+      if (this.config.showLegend && ns > 0) {
+        var lx = this.config.legendX || 0.85;
+        var ly = this.config.legendY || 0.05;
+        var legX = m.left + iW * lx;
+        var legY = m.top + iH * ly;
+        var legendG = svg.append('g')
+          .attr('class', 'chart-legend draggable')
+          .attr('transform', 'translate(' + legX + ',' + legY + ')');
+
+        var titleHeight = 0;
+        if (this.config.showLegendTitle && this.config.legendTitle) {
+          var titleStyle = 'font-size:' + this.config.legendTitleFontSize + 'px;font-family:' + this.config.fontFamily + ';';
+          if (this.config.legendTitleBold) titleStyle += 'font-weight:bold;';
+          if (this.config.legendTitleItalic) titleStyle += 'font-style:italic;';
+          legendG.append('text')
+            .attr('x', 0).attr('y', 0)
+            .attr('style', titleStyle)
+            .style('fill', '#1f4068')
+            .text(this.config.legendTitle);
+          titleHeight = this.config.legendTitleFontSize + 4 + (this.config.legendTitleSpacing || 0);
+        }
+
+        var markerSize = this.config.legendMarkerSize || 14;
+        var itemSpacing = this.config.legendItemSpacing || 22;
+        var fontSize = this.config.legendFontSize || 12;
+        var fontStyle = 'font-size:' + fontSize + 'px;font-family:' + this.config.fontFamily + ';';
+        if (this.config.legendBold) fontStyle += 'font-weight:bold;';
+        if (this.config.legendItalic) fontStyle += 'font-style:italic;';
+
+        this.seriesNames.forEach(function(sn, j) {
+          var item = legendG.append('g')
+            .attr('transform', 'translate(0,' + (titleHeight + j * itemSpacing) + ')');
+
+          var dash = dashMap[self.config.lineStyle] || null;
+          item.append('line')
+            .attr('x1', 0).attr('y1', markerSize/2)
+            .attr('x2', markerSize).attr('y2', markerSize/2)
+            .attr('stroke', cols[j])
+            .attr('stroke-width', self.config.lineWidth)
+            .attr('stroke-dasharray', dash)
+            .style('cursor', 'pointer')
+            .on('click', function(ev) {
+              ev.stopPropagation();
+              self.openColorPickerForSeries(j);
+            });
+
+          if (self.config.showPoints) {
+            var shape = ShapeUtils ? ShapeUtils.getPointPath(self.config.pointShape, self.config.pointSize * 0.8) : d3.symbol().type(d3.symbolCircle).size(self.config.pointSize*self.config.pointSize*0.8)();
+            item.append('path')
+              .attr('d', shape)
+              .attr('transform', 'translate(' + (markerSize/2) + ',' + (markerSize/2 - 1) + ')')
+              .attr('fill', cols[j])
+              .attr('stroke', '#fff')
+              .attr('stroke-width', 1)
+              .style('cursor', 'pointer')
+              .on('click', function(ev) {
+                ev.stopPropagation();
+                self.openColorPickerForSeries(j);
+              });
+          }
+
+          item.append('text')
+            .attr('x', markerSize + 6)
+            .attr('y', markerSize/2)
+            .attr('dy', '0.35em')
+            .attr('style', fontStyle)
+            .style('fill', '#334155')
+            .text(sn);
+        });
+
+        var legendNode = legendG.node();
+        if (legendNode) {
+          var dragLegend = d3.drag()
+            .on('drag', function(event) {
+              var currentTransform = d3.select(this).attr('transform') || '';
+              var match = currentTransform.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+              var x = match ? parseFloat(match[1]) : 0;
+              var y = match ? parseFloat(match[2]) : 0;
+              x += event.dx;
+              y += event.dy;
+              d3.select(this).attr('transform', 'translate(' + x + ',' + y + ')');
+            })
+            .on('end', function(event) {
+              var currentTransform = d3.select(this).attr('transform') || '';
+              var match = currentTransform.match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+              if (match) {
+                var x = parseFloat(match[1]);
+                var y = parseFloat(match[2]);
+                var relX = (x - m.left) / iW;
+                var relY = (y - m.top) / iH;
+                self.config.legendX = Math.min(1.1, Math.max(0, relX));
+                self.config.legendY = Math.min(1.1, Math.max(0, relY));
+                self.saveState();
+              }
+            });
+          d3.select(legendNode).call(dragLegend);
+          d3.select(legendNode).style('cursor', 'move');
+        }
+      }
+
+      this.transform = {k:1, x:0, y:0};
+      this.setupInteraction();
+    },
+
+    setupInteraction: function() {
+      var container = this.chartDiv;
+      if (!container) return;
+      var svg = container.querySelector('svg');
+      if (!svg) return;
+      if (this._wheelHandler) {
+        container.removeEventListener('wheel', this._wheelHandler);
+        container.removeEventListener('mousedown', this._mouseDownHandler);
+        window.removeEventListener('mousemove', this._mouseMoveHandler);
+        window.removeEventListener('mouseup', this._mouseUpHandler);
+      }
+      if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
+      var self = this;
+      var transform = this.transform;
+      function updateViewBox() {
+        var w = svg.clientWidth || 600;
+        var h = svg.clientHeight || 600;
+        svg.setAttribute('viewBox',
+          (-transform.x/transform.k) + ' ' +
+          (-transform.y/transform.k) + ' ' +
+          (w/transform.k) + ' ' +
+          (h/transform.k)
+        );
+      }
+      this._wheelHandler = function(e) {
+        e.preventDefault();
+        var delta = e.deltaY > 0 ? -0.015 : 0.015;
+        var newK = Math.min(3, Math.max(0.3, transform.k + delta));
+        var vx = -transform.x / transform.k;
+        var vy = -transform.y / transform.k;
+        transform.k = newK;
+        transform.x = -vx * newK;
+        transform.y = -vy * newK;
+        if (self._rafId) cancelAnimationFrame(self._rafId);
+        self._rafId = requestAnimationFrame(function() { updateViewBox(); self._rafId = null; });
+      };
+      container.addEventListener('wheel', this._wheelHandler, { passive: false });
+
+      var dragging = false, sx, sy, stx, sty;
+      this._mouseDownHandler = function(e) {
+        if (e.button !== 0) return;
+        var target = e.target;
+        if (target.closest('path') || target.closest('circle') || target.closest('.draggable') ||
+            target.closest('.chart-legend') || target.closest('input') || target.closest('textarea')) {
+          return;
+        }
+        dragging = true;
+        sx = e.clientX; sy = e.clientY;
+        stx = transform.x; sty = transform.y;
+        container.style.cursor = 'grabbing';
+        e.preventDefault();
+      };
+      container.addEventListener('mousedown', this._mouseDownHandler);
+      this._mouseMoveHandler = function(e) {
+        if (!dragging) return;
+        var rect = container.getBoundingClientRect();
+        var w = svg.clientWidth || 600;
+        var h = svg.clientHeight || 600;
+        transform.x = stx + (e.clientX - sx) / rect.width * w;
+        transform.y = sty + (e.clientY - sy) / rect.height * h;
+        updateViewBox();
+      };
+      window.addEventListener('mousemove', this._mouseMoveHandler);
+      this._mouseUpHandler = function() { dragging = false; container.style.cursor = 'grab'; };
+      window.addEventListener('mouseup', this._mouseUpHandler);
+      container.style.cursor = 'grab';
+      updateViewBox();
+    },
+
+    // ===== ★ 全新导出函数（基于克隆，确保完整） ★ =====
+    _cloneSvgForExport: function() {
+      var original = this.chartDiv.querySelector('svg');
+      if (!original) return null;
+      var w = this.config.width, h = this.config.height;
+      // 克隆整个 SVG
+      var clone = original.cloneNode(true);
+      // 强制设置 viewBox 和 width/height
+      clone.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      clone.setAttribute('width', w);
+      clone.setAttribute('height', h);
+      // 移除可能干扰的样式（保留基本样式）
+      return clone;
+    },
+
+    exportAsSVG: function() {
+      var clone = this._cloneSvgForExport();
+      if (!clone) return;
+      var serializer = new XMLSerializer();
+      var source = serializer.serializeToString(clone);
+      source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+      var blob = new Blob([source], { type: 'image/svg+xml' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'line_chart.svg';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    },
+
+    exportAsPNG: function() {
+      var clone = this._cloneSvgForExport();
+      if (!clone) return;
+      var w = this.config.width, h = this.config.height;
+      var svgString = new XMLSerializer().serializeToString(clone);
+      var img = new Image();
+      var blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var self = this;
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var scale = 2;
+        canvas.width = w * scale;
+        canvas.height = h * scale;
+        var ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        var link = document.createElement('a');
+        link.download = 'line_chart.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      };
+      img.onerror = function() { alert('PNG export failed'); };
+      img.src = url;
+    },
+
+    exportAsPDF: function() {
+      var clone = this._cloneSvgForExport();
+      if (!clone) return;
+      var w = this.config.width, h = this.config.height;
+      var svgString = new XMLSerializer().serializeToString(clone);
+      var img = new Image();
+      var blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var self = this;
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var scale = 2;
+        canvas.width = w * scale;
+        canvas.height = h * scale;
+        var ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        var dataURL = canvas.toDataURL('image/png');
+        var jsPDF = window.jspdf.jsPDF;
+        var orientation = w > h ? 'landscape' : 'portrait';
+        var pdf = new jsPDF({ orientation: orientation, unit: 'mm', format: 'a4' });
+        var imgWidth = pdf.internal.pageSize.getWidth();
+        var imgHeight = (h * imgWidth) / w;
+        pdf.addImage(dataURL, 'PNG', 0, 0, imgWidth, imgHeight);
+        pdf.save('line_chart.pdf');
+      };
+      img.onerror = function() { alert('PDF export failed'); };
+      img.src = url;
+    },
+
+    resetAll: function() {
+      this.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+      this.chartData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      this.seriesNames = JSON.parse(JSON.stringify(DEFAULT_SERIES));
+      this.currentPalette = 'academic';
+      this.showColorPicker = false;
+      this.editingIdx = -1;
+      this.transform = {k:1,x:0,y:0};
+      this.titleX = null;
+      this.titleY = null;
+      localStorage.removeItem(storageKey + '_title');
+      this.drawChart();
+      this.saveState();
+    },
+
+    saveState: function() {
+      stateManager.saveState(this.chartData, this.config, this.currentPalette);
+      if (this.titleX !== null && this.titleY !== null) {
+        localStorage.setItem(storageKey + '_title', JSON.stringify({ titleX: this.titleX, titleY: this.titleY }));
+      }
+    }
+  }
+});
+
+app.mount('#app');
+})();
+</script>
+</body>
+</html>

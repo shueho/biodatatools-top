@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>饼图 / 环形图 - BioStatPlot</title>
+    <title id="pageTitle">饼图 / 环形图 - BioStatPlot</title>
     <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/common.css">
     <script src="../COMMON/colors.js"></script>
@@ -88,13 +88,23 @@
             font-size: 0.85rem;
             font-family: monospace;
         }
+        /* 自定义页脚 */
+        .custom-footer {
+            text-align: center;
+            padding: 2rem;
+            color: #888;
+            font-size: 0.9rem;
+            background: #fff;
+            margin-top: 3rem;
+            border-top: 1px solid #e8edf2;
+        }
     </style>
 </head>
 <body>
 
 <div id="common-header"></div>
 <script>
-    window.headerConfig = { author: 'Author: Di Shang Fei Zhu (Hao Xue)' };
+    window.headerConfig = { author: 'Di Shang Fei Zhu (Hao Xue)' };
 </script>
 
 <div id="app">
@@ -102,103 +112,106 @@
         <div class="plot-sidebar" style="width:340px;">
             <div class="collapsible-panel" style="margin-bottom:0;">
                 <div class="collapsible-header" style="cursor:default;">
-                    <span data-lang-key="dataPanelTitle">⚙️ 数据 & 图表配置</span>
+                    <span>{{ t('dataPanelTitle') }}</span>
                 </div>
                 <div class="collapsible-body">
                     <div class="lang-switch-wrap">
-                        <button id="langSwitchBtn" class="lang-switch-btn">中文</button>
+                        <button id="langSwitchBtn" class="lang-switch-btn">{{ t('langBtn') }}</button>
                     </div>
 
+                    <!-- 数据导入 -->
                     <div class="param-group">
-                        <h4>📥 数据导入</h4>
+                        <h4>{{ t('secDataImport') }}</h4>
                         <div class="data-import-area">
-                            <label class="import-label" data-lang-key="importLabel">导入数据</label>
-                            <textarea v-model="csvText" rows="3" data-lang-key="csvPlaceholder" placeholder="示例：&#10;A	30&#10;B	25"></textarea>
+                            <label class="import-label">{{ t('importLabel') }}</label>
+                            <textarea v-model="csvText" rows="3" :placeholder="t('csvPlaceholder')"></textarea>
                             <div class="btn-group">
-                                <button class="btn btn-sm" data-lang-key="applyBtn" @click="applyCSV">应用</button>
-                                <button class="btn btn-sm btn-outline" @click="exportDataToCSV">导出(不含颜色)</button>
-                                <label class="btn btn-sm btn-outline" style="cursor:pointer;" data-lang-key="uploadLabel">
-                                    上传文件
+                                <button class="btn btn-sm" @click="applyCSV">{{ t('applyBtn') }}</button>
+                                <button class="btn btn-sm btn-outline" @click="exportDataToCSV">{{ t('exportData') }}</button>
+                                <label class="btn btn-sm btn-outline" style="cursor:pointer;">
+                                    {{ t('uploadLabel') }}
                                     <input type="file" accept=".csv,.tsv,.txt" style="display:none;" @change="uploadCSV">
                                 </label>
                             </div>
-                            <div class="control-tip">从Excel复制两列：分类、数值</div>
+                            <div class="control-tip">{{ t('importTip') }}</div>
                         </div>
                     </div>
 
+                    <!-- 配色方案 -->
                     <div class="param-group">
-                        <h4>🎨 配色方案</h4>
+                        <h4>{{ t('secPalette') }}</h4>
                         <div class="palette-selector-wrap">
                             <select class="form-select" v-model="currentPalette" @change="switchPalette(currentPalette)">
                                 <option v-for="opt in paletteOptionsComputed" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                             </select>
-                            <div class="control-tip">切换配色，颜色自动更新</div>
+                            <div class="control-tip">{{ t('paletteTip') }}</div>
                         </div>
                     </div>
 
+                    <!-- 画布与边距 -->
                     <div class="param-group">
-                        <h4 data-lang-key="secCanvas">📐 画布 & 边距</h4>
-                        <div class="param-row"><label data-lang-key="lblWidth">宽度</label><input type="number" v-model.number="config.width" min="400" max="1200" step="10" @change="drawChart"></div>
-                        <div class="param-row"><label data-lang-key="lblHeight">高度</label><input type="number" v-model.number="config.height" min="400" max="1200" step="10" @change="drawChart"></div>
-                        <div class="param-row"><label data-lang-key="lblTop">上边距</label><input type="number" v-model.number="config.margin.top" min="20" max="150" step="5" @change="drawChart"></div>
-                        <div class="param-row"><label data-lang-key="lblBottom">下边距</label><input type="number" v-model.number="config.margin.bottom" min="20" max="150" step="5" @change="drawChart"></div>
-                        <div class="param-row"><label data-lang-key="lblLeft">左边距</label><input type="number" v-model.number="config.margin.left" min="20" max="150" step="5" @change="drawChart"></div>
-                        <div class="param-row"><label data-lang-key="lblRight">右边距</label><input type="number" v-model.number="config.margin.right" min="20" max="150" step="5" @change="drawChart"></div>
+                        <h4>{{ t('secCanvas') }}</h4>
+                        <div class="param-row"><label>{{ t('lblWidth') }}</label><input type="number" v-model.number="config.width" min="400" max="1200" step="10" @change="drawChart"></div>
+                        <div class="param-row"><label>{{ t('lblHeight') }}</label><input type="number" v-model.number="config.height" min="400" max="1200" step="10" @change="drawChart"></div>
+                        <div class="param-row"><label>{{ t('lblTop') }}</label><input type="number" v-model.number="config.margin.top" min="20" max="150" step="5" @change="drawChart"></div>
+                        <div class="param-row"><label>{{ t('lblBottom') }}</label><input type="number" v-model.number="config.margin.bottom" min="20" max="150" step="5" @change="drawChart"></div>
+                        <div class="param-row"><label>{{ t('lblLeft') }}</label><input type="number" v-model.number="config.margin.left" min="20" max="150" step="5" @change="drawChart"></div>
+                        <div class="param-row"><label>{{ t('lblRight') }}</label><input type="number" v-model.number="config.margin.right" min="20" max="150" step="5" @change="drawChart"></div>
                     </div>
 
                     <!-- 标题 -->
                     <div class="param-group">
-                        <h4 data-lang-key="secTitle">📝 标题</h4>
-                        <div class="param-row"><label data-lang-key="lblShowTitle">显示标题</label><select v-model="config.showTitle" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showTitle"><label data-lang-key="lblTitleText">标题文字</label><input type="text" v-model="config.title" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showTitle"><label data-lang-key="lblTitleSize">字号</label><input type="number" v-model.number="config.titleFontSize" min="12" max="42" step="1" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showTitle"><label data-lang-key="lblTitleBold">加粗</label><select v-model="config.titleBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showTitle"><label data-lang-key="lblTitleItalic">斜体</label><select v-model="config.titleItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showTitle"><label data-lang-key="lblTitleYOffset">Y偏移</label><input type="number" v-model.number="config.titleYOffset" step="2" @change="drawChart"></div>
+                        <h4>{{ t('secTitle') }}</h4>
+                        <div class="param-row"><label>{{ t('lblShowTitle') }}</label><select v-model="config.showTitle" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showTitle"><label>{{ t('lblTitleText') }}</label><input type="text" v-model="config.title" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showTitle"><label>{{ t('lblTitleSize') }}</label><input type="number" v-model.number="config.titleFontSize" min="12" max="42" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showTitle"><label>{{ t('lblTitleBold') }}</label><select v-model="config.titleBold" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showTitle"><label>{{ t('lblTitleItalic') }}</label><select v-model="config.titleItalic" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showTitle"><label>{{ t('lblTitleYOffset') }}</label><input type="number" v-model.number="config.titleYOffset" step="2" @change="drawChart"></div>
                     </div>
 
                     <!-- 图例 -->
                     <div class="param-group">
-                        <h4 data-lang-key="secLegend">📍 图例</h4>
-                        <div class="param-row"><label data-lang-key="lblShowLegend">显示图例</label><select v-model="config.showLegend" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showLegend"><label data-lang-key="lblShowLegendTitle">显示图例标题</label><select v-model="config.showLegendTitle" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label data-lang-key="lblLegendTitle">图例标题</label><input type="text" v-model="config.legendTitle" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label data-lang-key="lblLegendTitleSize">标题字号</label><input type="number" v-model.number="config.legendTitleFontSize" min="10" max="20" step="1" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label data-lang-key="lblLegendTitleBold">标题加粗</label><select v-model="config.legendTitleBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label data-lang-key="lblLegendTitleItalic">标题斜体</label><select v-model="config.legendTitleItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label data-lang-key="lblLegendTitleSpacing">标题间距</label><input type="number" v-model.number="config.legendTitleSpacing" min="0" max="30" step="1" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showLegend"><label data-lang-key="lblLegendMarkerSize">标记大小</label><input type="number" v-model.number="config.legendMarkerSize" min="8" max="28" step="1" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showLegend"><label data-lang-key="lblLegendItemSpacing">项间距</label><input type="number" v-model.number="config.legendItemSpacing" min="16" max="40" step="1" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showLegend"><label data-lang-key="lblLegendX">X位置</label><input type="number" v-model.number="config.legendX" min="0" max="1.1" step="0.01" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showLegend"><label data-lang-key="lblLegendY">Y位置</label><input type="number" v-model.number="config.legendY" min="0" max="1.1" step="0.01" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showLegend"><label data-lang-key="lblLegendFontSize">字号</label><input type="number" v-model.number="config.legendFontSize" min="10" max="20" step="1" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showLegend"><label data-lang-key="lblLegendBold">加粗</label><select v-model="config.legendBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showLegend"><label data-lang-key="lblLegendItalic">斜体</label><select v-model="config.legendItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
+                        <h4>{{ t('secLegend') }}</h4>
+                        <div class="param-row"><label>{{ t('lblShowLegend') }}</label><select v-model="config.showLegend" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showLegend"><label>{{ t('lblShowLegendTitle') }}</label><select v-model="config.showLegendTitle" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitle') }}</label><input type="text" v-model="config.legendTitle" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitleSize') }}</label><input type="number" v-model.number="config.legendTitleFontSize" min="10" max="20" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitleBold') }}</label><select v-model="config.legendTitleBold" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitleItalic') }}</label><select v-model="config.legendTitleItalic" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showLegend && config.showLegendTitle"><label>{{ t('lblLegendTitleSpacing') }}</label><input type="number" v-model.number="config.legendTitleSpacing" min="0" max="30" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendMarkerSize') }}</label><input type="number" v-model.number="config.legendMarkerSize" min="8" max="28" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendItemSpacing') }}</label><input type="number" v-model.number="config.legendItemSpacing" min="16" max="40" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendX') }}</label><input type="number" v-model.number="config.legendX" min="0" max="1.1" step="0.01" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendY') }}</label><input type="number" v-model.number="config.legendY" min="0" max="1.1" step="0.01" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendFontSize') }}</label><input type="number" v-model.number="config.legendFontSize" min="10" max="20" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendBold') }}</label><select v-model="config.legendBold" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showLegend"><label>{{ t('lblLegendItalic') }}</label><select v-model="config.legendItalic" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
                     </div>
 
                     <!-- 标注与引导线 -->
                     <div class="param-group">
-                        <h4 data-lang-key="secLabel">🔤 标注与引导线</h4>
-                        <div class="param-row"><label data-lang-key="lblShowPercent">显示百分比</label><select v-model="config.showPercent" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showPercent"><label data-lang-key="lblPercentSize">百分比字号</label><input type="number" v-model.number="config.percentFontSize" min="10" max="28" step="1" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showPercent"><label data-lang-key="lblPercentBold">加粗</label><select v-model="config.percentBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showPercent"><label data-lang-key="lblPercentItalic">斜体</label><select v-model="config.percentItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row"><label data-lang-key="lblShowCategory">显示分类</label><select v-model="config.showCategory" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showCategory"><label data-lang-key="lblCategorySize">分类字号</label><input type="number" v-model.number="config.categoryFontSize" min="10" max="24" step="1" @change="drawChart"></div>
-                        <div class="param-row" v-if="config.showCategory"><label data-lang-key="lblCategoryBold">加粗</label><select v-model="config.categoryBold" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row" v-if="config.showCategory"><label data-lang-key="lblCategoryItalic">斜体</label><select v-model="config.categoryItalic" @change="drawChart"><option :value="true">是</option><option :value="false">否</option></select></div>
-                        <div class="param-row"><label data-lang-key="lblLabelRadius">文字半径比</label><input type="range" v-model.number="config.labelRadiusRatio" min="0.5" max="1.0" step="0.01" @input="drawChart"><span>{{ config.labelRadiusRatio.toFixed(2) }}</span></div>
-                        <div class="param-row"><label data-lang-key="lblLeaderLine">引导线(＜8%)</label><select v-model="config.enableLeaderLine" @change="drawChart"><option :value="true">启用</option><option :value="false">禁用</option></select></div>
+                        <h4>{{ t('secLabel') }}</h4>
+                        <div class="param-row"><label>{{ t('lblShowPercent') }}</label><select v-model="config.showPercent" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showPercent"><label>{{ t('lblPercentSize') }}</label><input type="number" v-model.number="config.percentFontSize" min="10" max="28" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showPercent"><label>{{ t('lblPercentBold') }}</label><select v-model="config.percentBold" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showPercent"><label>{{ t('lblPercentItalic') }}</label><select v-model="config.percentItalic" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row"><label>{{ t('lblShowCategory') }}</label><select v-model="config.showCategory" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showCategory"><label>{{ t('lblCategorySize') }}</label><input type="number" v-model.number="config.categoryFontSize" min="10" max="24" step="1" @change="drawChart"></div>
+                        <div class="param-row" v-if="config.showCategory"><label>{{ t('lblCategoryBold') }}</label><select v-model="config.categoryBold" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row" v-if="config.showCategory"><label>{{ t('lblCategoryItalic') }}</label><select v-model="config.categoryItalic" @change="drawChart"><option :value="true">{{ t('yes') }}</option><option :value="false">{{ t('no') }}</option></select></div>
+                        <div class="param-row"><label>{{ t('lblLabelRadius') }}</label><input type="range" v-model.number="config.labelRadiusRatio" min="0.5" max="1.0" step="0.01" @input="drawChart"><span>{{ config.labelRadiusRatio.toFixed(2) }}</span></div>
+                        <div class="param-row"><label>{{ t('lblLeaderLine') }}</label><select v-model="config.enableLeaderLine" @change="drawChart"><option :value="true">{{ t('enable') }}</option><option :value="false">{{ t('disable') }}</option></select></div>
                     </div>
 
                     <!-- 样式 -->
                     <div class="param-group">
-                        <h4 data-lang-key="secStyle">🎨 环形/饼图样式</h4>
-                        <div class="param-row"><label data-lang-key="lblInnerRadius">内径(0=饼图)</label><input type="range" v-model.number="config.innerRadiusRatio" min="0" max="0.9" step="0.01" @input="drawChart"><span>{{ config.innerRadiusRatio.toFixed(2) }}</span></div>
-                        <div class="param-row"><label data-lang-key="lblDirection">方向</label><select v-model="config.direction" @change="drawChart"><option value="clockwise">顺时针</option><option value="counterclockwise">逆时针</option></select></div>
-                        <div class="param-row"><label data-lang-key="lblFontFamily">字体</label><select v-model="config.fontFamily" @change="drawChart"><option value="Times New Roman">Times New Roman</option><option value="Arial">Arial</option><option value="Segoe UI">Segoe UI</option></select></div>
+                        <h4>{{ t('secStyle') }}</h4>
+                        <div class="param-row"><label>{{ t('lblInnerRadius') }}</label><input type="range" v-model.number="config.innerRadiusRatio" min="0" max="0.9" step="0.01" @input="drawChart"><span>{{ config.innerRadiusRatio.toFixed(2) }}</span></div>
+                        <div class="param-row"><label>{{ t('lblDirection') }}</label><select v-model="config.direction" @change="drawChart"><option value="clockwise">{{ t('clockwise') }}</option><option value="counterclockwise">{{ t('counterclockwise') }}</option></select></div>
+                        <div class="param-row"><label>{{ t('lblFontFamily') }}</label><select v-model="config.fontFamily" @change="drawChart"><option value="Times New Roman">Times New Roman</option><option value="Arial">Arial</option><option value="Segoe UI">Segoe UI</option></select></div>
                         <div class="param-row">
-                            <label data-lang-key="lblOpacity">透明度</label>
+                            <label>{{ t('lblOpacity') }}</label>
                             <input type="range" v-model.number="currentOpacity" min="0.1" max="1.0" step="0.01" @input="onOpacityChange">
                             <span>{{ (currentOpacity * 100).toFixed(0) }}%</span>
                         </div>
@@ -206,21 +219,21 @@
 
                     <!-- 导出配置 -->
                     <div class="param-group">
-                        <h4 data-lang-key="secExport">📎 导出 & 配置</h4>
+                        <h4>{{ t('secExport') }}</h4>
                         <div style="display: flex; gap: 8px; flex-wrap:wrap; margin-bottom:12px;">
-                            <button class="btn btn-sm" data-lang-key="btnSVG" @click="exportAsSVG">SVG</button>
-                            <button class="btn btn-sm" data-lang-key="btnPNG" @click="exportAsPNG">PNG</button>
-                            <button class="btn btn-sm" data-lang-key="btnPDF" @click="exportAsPDF">PDF</button>
+                            <button class="btn btn-sm" @click="exportAsSVG">{{ t('btnSVG') }}</button>
+                            <button class="btn btn-sm" @click="exportAsPNG">{{ t('btnPNG') }}</button>
+                            <button class="btn btn-sm" @click="exportAsPDF">{{ t('btnPDF') }}</button>
                         </div>
                         <div style="display: flex; gap: 6px; flex-wrap:wrap;">
-                            <button class="btn btn-sm btn-outline" data-lang-key="btnReset" @click="resetConfig">重置默认</button>
-                            <button class="btn btn-sm btn-outline" data-lang-key="btnExportConfig" @click="exportConfig">导出配置</button>
-                            <label class="btn btn-sm btn-outline" style="cursor:pointer;" data-lang-key="btnImportConfig">
-                                导入配置
+                            <button class="btn btn-sm btn-outline" @click="resetConfig">{{ t('btnReset') }}</button>
+                            <button class="btn btn-sm btn-outline" @click="exportConfig">{{ t('btnExportConfig') }}</button>
+                            <label class="btn btn-sm btn-outline" style="cursor:pointer;">
+                                {{ t('btnImportConfig') }}
                                 <input type="file" accept=".json" style="display:none;" @change="importConfig">
                             </label>
                         </div>
-                        <div class="control-tip" data-lang-key="configTip">配置自动保存至本地存储</div>
+                        <div class="control-tip">{{ t('configTip') }}</div>
                     </div>
                 </div>
             </div>
@@ -232,7 +245,7 @@
                 <div id="chartDiv" ref="chartDiv" style="flex:1; min-height:0; width:100%; position:relative;"></div>
                 <div class="color-picker-panel" v-if="showColorPicker" ref="colorPicker" style="position:absolute; top:12px; right:12px; z-index:10; display:block;">
                     <div class="picker-title">
-                        <span>🎨 修改颜色</span>
+                        <span>{{ t('modifyColor') }}</span>
                         <span class="close-btn" @click="closeColorPicker">✕</span>
                     </div>
                     <div class="color-input-row">
@@ -243,34 +256,34 @@
                 <div v-if="drawError" class="draw-error">{{ drawError }}</div>
             </div>
             <div class="plot-toolbar">
-                🖱️ 滚轮缩放（向上放大） · 拖拽平移 · 点击扇形修改颜色 · 图例可拖拽 · 右下角拖拽调整画布大小
+                {{ t('toolbarTip') }}
             </div>
 
             <div class="data-collapse-wrap">
                 <div class="collapse-header" @click="toggleTable">
-                    <span>📊 数据预览 <span style="font-weight:400;font-size:0.8rem;color:#64748b;">(点击展开/收起)</span></span>
+                    <span>{{ t('dataPreview') }} <span style="font-weight:400;font-size:0.8rem;color:#64748b;">{{ t('clickToExpand') }}</span></span>
                     <span class="arrow-icon" :class="{ open: tableOpen }">▲</span>
                 </div>
                 <div class="collapse-body" v-show="tableOpen">
                     <table>
                         <thead>
                             <tr>
-                                <th>分类</th>
-                                <th>数值</th>
-                                <th style="width:60px;">操作</th>
+                                <th>{{ t('thName') }}</th>
+                                <th>{{ t('thValue') }}</th>
+                                <th style="width:60px;">{{ t('actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="(item, idx) in chartData" :key="idx">
                                 <td><input type="text" v-model="item.name" @change="updateRow"></td>
                                 <td><input type="number" v-model.number="item.value" step="1" min="0" @change="updateRow"></td>
-                                <td><button class="btn btn-sm btn-danger" @click="removeRow(idx)">删</button></td>
+                                <td><button class="btn btn-sm btn-danger" @click="removeRow(idx)">{{ t('delBtn') }}</button></td>
                             </tr>
                         </tbody>
                     </table>
                     <div class="table-toolbar">
-                        <button class="btn btn-sm" @click="addRow">+ 添加分类</button>
-                        <span class="total-badge">总计: {{ totalValue }}</span>
+                        <button class="btn btn-sm" @click="addRow">{{ t('addBtn') }}</button>
+                        <span class="total-badge">{{ t('totalLabel') }} {{ totalValue }}</span>
                     </div>
                 </div>
             </div>
@@ -278,9 +291,8 @@
     </div>
 </div>
 
-<div id="common-footer"></div>
+
 <script src="../COMMON/header.js"></script>
-<script src="../COMMON/footer.js"></script>
 
 <script>
 (function(){
@@ -345,12 +357,13 @@
                 _mouseMoveHandler: null,
                 _mouseUpHandler: null,
                 titleX: initialTitleX,
-                titleY: initialTitleY
+                titleY: initialTitleY,
+                currentLang: 'en'
             };
         },
         computed: {
             paletteOptionsComputed: function() {
-                var lang = LangManager.getLang();
+                var lang = this.currentLang;
                 var options = [];
                 var names = ['academic', 'vibrant', 'warm', 'cool', 'earth'];
                 for (var i = 0; i < names.length; i++) {
@@ -388,15 +401,50 @@
                 }
             }
             this.updateTotal();
-            LangManager.initPage('en', this);
+
+            // 初始化语言
+            var savedLang = localStorage.getItem('biodatatools_lang') || 'en';
+            this.currentLang = savedLang;
+            LangManager.setLang(savedLang);
+            document.title = LangManager.t('pageTitle', savedLang);
+
             var langBtn = document.getElementById('langSwitchBtn');
             if (langBtn) {
+                langBtn.textContent = LangManager.t('langBtn', savedLang);
                 langBtn.addEventListener('click', function() {
-                    var newLang = LangManager.getLang() === 'en' ? 'zh' : 'en';
-                    LangManager.switchLanguage(newLang, self);
+                    var newLang = self.currentLang === 'en' ? 'zh' : 'en';
+                    self.currentLang = newLang;
+                    LangManager.setLang(newLang);
+                    localStorage.setItem('biodatatools_lang', newLang);
+                    document.title = LangManager.t('pageTitle', newLang);
+                    // 更新按钮文本
+                    langBtn.textContent = LangManager.t('langBtn', newLang);
+                    // 更新页眉
+                    if (typeof window.updateHeader === 'function') {
+                        window.updateHeader();
+                    }
+                    // 触发语言变更事件
+                    var event = new CustomEvent('languageChanged', { detail: { lang: newLang } });
+                    document.dispatchEvent(event);
+                    // 更新图例标题
+                    self.config.legendTitle = newLang === 'en' ? 'Legend' : '图例';
+                    // 重新绘制图表
                     self.drawChart();
+                    // 强制更新所有 data-lang-key 元素
+                    var elements = document.querySelectorAll('[data-lang-key]');
+                    for (var i = 0; i < elements.length; i++) {
+                        var el = elements[i];
+                        var key = el.getAttribute('data-lang-key');
+                        var text = LangManager.t(key, newLang);
+                        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                            el.placeholder = text;
+                        } else {
+                            el.textContent = text;
+                        }
+                    }
                 });
             }
+
             this.$nextTick(function() {
                 this.drawChart();
             }.bind(this));
@@ -418,6 +466,10 @@
             }
         },
         methods: {
+            t: function(key) {
+                return LangManager.t(key, this.currentLang);
+            },
+
             updateTotal: function() {
                 this.totalValue = ChartDataManager.updateTotal(this.chartData);
                 this.csvText = ChartDataManager.toCSVText(this.chartData);
@@ -442,7 +494,7 @@
                     this.updateTotal();
                     this.drawChart();
                 } else {
-                    alert(LangManager.t('noValidData'));
+                    alert(this.t('noValidData'));
                 }
             },
             exportDataToCSV: function() {
@@ -507,21 +559,15 @@
                         }
                     );
 
-                    // --- 修复标题位置在重绘后被重置的问题 ---
                     if (result.titleEl) {
                         var titleEl = result.titleEl;
-                        // 移除 ChartRenderer 默认添加的拖拽事件
                         titleEl.on(".drag", null);
-
-                        // 恢复保存的标题位置
                         if (this.titleX !== null && this.titleX !== undefined) {
                             titleEl.attr("x", this.titleX);
                         }
                         if (this.titleY !== null && this.titleY !== undefined) {
                             titleEl.attr("y", this.titleY);
                         }
-
-                        // 添加自定义拖拽事件，保存标题位置
                         var drag = d3.drag()
                             .on("drag", function(event) {
                                 var currentX = parseFloat(d3.select(this).attr("x")) || 0;
@@ -538,16 +584,14 @@
                         titleEl.call(drag);
                         titleEl.style("cursor", "move");
                     }
-                    // --------------------------------------------
 
                     this.setupInteraction();
                 } catch (err) {
                     console.error(err);
-                    this.drawError = LangManager.t('drawFailed') + ': ' + err.message;
+                    this.drawError = this.t('drawFailed') + ': ' + err.message;
                 }
             },
 
-            // ===== 自定义交互（固定左上角缩放） =====
             setupInteraction: function() {
                 var container = this.chartDiv;
                 var svg = container.querySelector('svg');
@@ -670,6 +714,19 @@
         }
     });
     app.mount('#app');
+
+    // 页面加载后初始化语言显示
+    document.addEventListener('DOMContentLoaded', function() {
+        var savedLang = localStorage.getItem('biodatatools_lang') || 'en';
+        var elements = document.querySelectorAll('[data-lang-key]');
+        for (var i = 0; i < elements.length; i++) {
+            var el = elements[i];
+            var key = el.getAttribute('data-lang-key');
+            var text = LangManager.t(key, savedLang);
+            el.textContent = text;
+        }
+        document.title = LangManager.t('pageTitle', savedLang);
+    });
 })();
 </script>
 </body>

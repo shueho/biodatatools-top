@@ -551,6 +551,59 @@ var ChartRenderer = {
     }
 };
 
+// ==================== Shape Utilities ====================
+var ShapeUtils = {
+    // 线条虚线模式
+    dashStyles: {
+        solid: null,
+        dashed: [6, 4],
+        dotted: [2, 3],
+        dashdot: [8, 4, 2, 4]
+    },
+
+    // 点形状生成函数 (返回 SVG 路径或标记)
+    getPointPath: function(shape, size) {
+        var s = size || 5;
+        var r = s / 2;
+        switch(shape) {
+            case 'circle': return d3.symbol().type(d3.symbolCircle).size(s * s)();
+            case 'square': return d3.symbol().type(d3.symbolSquare).size(s * s)();
+            case 'diamond': return d3.symbol().type(d3.symbolDiamond).size(s * s)();
+            case 'triangle': return d3.symbol().type(d3.symbolTriangle).size(s * s)();
+            case 'cross': return d3.symbol().type(d3.symbolCross).size(s * s)();
+            default: return d3.symbol().type(d3.symbolCircle).size(s * s)();
+        }
+    },
+
+    getPointShapeOptions: function(lang) {
+        lang = lang || 'en';
+        var labels = lang === 'en' ? 
+            {circle:'Circle', square:'Square', diamond:'Diamond', triangle:'Triangle', cross:'Cross'} :
+            {circle:'圆形', square:'方形', diamond:'菱形', triangle:'三角形', cross:'十字'};
+        return [
+            { value: 'circle', label: labels.circle },
+            { value: 'square', label: labels.square },
+            { value: 'diamond', label: labels.diamond },
+            { value: 'triangle', label: labels.triangle },
+            { value: 'cross', label: labels.cross }
+        ];
+    },
+
+    getLineStyleOptions: function(lang) {
+        lang = lang || 'en';
+        var labels = lang === 'en' ?
+            {solid:'Solid', dashed:'Dashed', dotted:'Dotted', dashdot:'Dash-Dot'} :
+            {solid:'实线', dashed:'虚线', dotted:'点线', dashdot:'点划线'};
+        return [
+            { value: 'solid', label: labels.solid },
+            { value: 'dashed', label: labels.dashed },
+            { value: 'dotted', label: labels.dotted },
+            { value: 'dashdot', label: labels.dashdot }
+        ];
+    }
+};
+
+
 // ==================== 导出到全局 ====================
 window.ConfigManager = ConfigManager;
 window.ExportHelper = ExportHelper;
@@ -562,5 +615,7 @@ window.ChartInteraction = ChartInteraction;
 window.ChartRenderer = ChartRenderer;
 window.downloadFile = downloadFile;
 window.showMessage = showMessage;
+window.ShapeUtils = ShapeUtils;
+
 
 console.log('✅ BioDataTools 公共模块 v5.0 已加载（无边框，缩放修正）');

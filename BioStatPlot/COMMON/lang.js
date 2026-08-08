@@ -8,12 +8,14 @@
 // ============================================================
 var LANG_CONFIG = {
     en: {
-        // ===== 通用 =====
         yes: 'Yes',
         no: 'No',
+        clockwise: 'Clockwise',
+        counterclockwise: 'Counterclockwise',
+        enable: 'Enable',
+        disable: 'Disable',
         
-        // ===== 数据面板 =====
-        dataPanelTitle: '📊 Data Management & Preview',
+        dataPanelTitle: '📊 Data & Chart Config',
         importLabel: 'Import Data',
         csvPlaceholder: 'Example:\nA\t30\nB\t25\nC\t20\nD\t15',
         applyBtn: 'Apply',
@@ -21,18 +23,16 @@ var LANG_CONFIG = {
         uploadLabel: 'Upload File',
         importTip: 'Copy two columns from Excel: Category, Value.',
         paletteLabel: '🎨 Color Palette',
-        paletteTip: 'Switch color scheme, colors will auto-update',
+        paletteTip: 'Switch palette, colors auto-update',
         thName: 'Category',
         thValue: 'Value',
         thColor: 'Color',
         delBtn: 'Del',
         addBtn: '+ Add Category',
-        totalLabel: 'Total',
+        totalLabel: 'Total:',
         
-        // ===== 配置面板 =====
         configPanelTitle: '⚙️ Chart Configuration',
         
-        // 画布与边距
         secCanvas: '📐 Canvas & Margins',
         lblWidth: 'Width (px)',
         lblHeight: 'Height (px)',
@@ -41,7 +41,6 @@ var LANG_CONFIG = {
         lblLeft: 'Left Margin',
         lblRight: 'Right Margin',
         
-        // 标题设置
         secTitle: '📝 Title Settings',
         lblShowTitle: 'Show Title',
         lblTitleText: 'Title Text',
@@ -50,7 +49,6 @@ var LANG_CONFIG = {
         lblTitleItalic: 'Italic',
         lblTitleYOffset: 'Y Offset (px)',
         
-        // 图例设置
         secLegend: '📍 Legend Settings',
         lblShowLegend: 'Show Legend',
         lblShowLegendTitle: 'Show Legend Title',
@@ -102,7 +100,7 @@ var LANG_CONFIG = {
         configTip: 'Config auto-saved to local storage',
         
         // ===== 绘图区 =====
-        toolbarTip: 'Small slices (＜8%) show external leader lines',
+        toolbarTip: '🖱️ Scroll to zoom · Drag to pan · Click slice to change color · Drag legend · Resize from corner',
         
         // ===== 语言切换 =====
         langBtn: '中文',
@@ -115,30 +113,69 @@ var LANG_CONFIG = {
         pngFailed: 'PNG export failed',
         pdfFailed: 'PDF export failed',
         invalidConfig: 'Invalid config file',
-        drawFailed: 'Draw failed'
+        drawFailed: 'Draw failed',
+        
+        // ===== 数据预览表格 =====
+        dataPreview: '📊 Data Preview',
+        clickToExpand: '(click to expand/collapse)',
+        actions: 'Actions',
+        exportData: 'Export',
+        modifyColor: '🎨 Modify Color',
+        
+        // ===== 页眉 =====
+        authorPrefix: 'Author: ',
+        returnHome: 'Home',
+        bilibiliText: 'Bilibili',
+        githubText: 'GitHub',
+        pageTitle: 'Pie / Donut Chart - BioStatPlot',
+        
+        // ===== 数据导入 =====
+        secDataImport: '📥 Data Import',
+        secPalette: '🎨 Color Palette',
+
+lineChartTitle: 'Line Chart',
+importData: 'Import Data',
+csvPlaceholderLine: 'X\tSeries1\tSeries2\t...',
+applyBtn: 'Apply',
+loadDemo: 'Load Demo',
+uploadFile: 'File',
+secOptions: 'Chart Options',
+lblShowPoints: 'Show Points',
+lblSmooth: 'Smooth Line',
+lblLineWidth: 'Line Width',
+lblLineStyle: 'Line Style',
+lblPointShape: 'Point Shape',
+lblPointSize: 'Point Size',
+lblXLabel: 'X Axis Label',
+lblYLabel: 'Y Axis Label',
+lblAxisLabelSize: 'Axis Label Size',
     },
     
     zh: {
         // ===== 通用 =====
         yes: '是',
         no: '否',
+        clockwise: '顺时针',
+        counterclockwise: '逆时针',
+        enable: '启用',
+        disable: '禁用',
         
         // ===== 数据面板 =====
-        dataPanelTitle: '📊 数据管理 & 预览',
+        dataPanelTitle: '📊 数据 & 图表配置',
         importLabel: '导入数据',
         csvPlaceholder: '示例：\nA\t30\nB\t25\nC\t20\nD\t15',
-        applyBtn: '应用数据',
+        applyBtn: '应用',
         exportBtn: '导出数据(含颜色)',
         uploadLabel: '上传文件',
-        importTip: '可以直接从EXCEL复制两列数据，第一列为分类，第二列为值。',
+        importTip: '从Excel复制两列：分类、数值',
         paletteLabel: '🎨 配色方案',
-        paletteTip: '切换配色，颜色将自动更新',
+        paletteTip: '切换配色，颜色自动更新',
         thName: '分类名称',
         thValue: '数值',
         thColor: '颜色',
         delBtn: '删',
         addBtn: '+ 添加分类',
-        totalLabel: '总计',
+        totalLabel: '总计:',
         
         // ===== 配置面板 =====
         configPanelTitle: '⚙️ 图表参数配置',
@@ -213,7 +250,7 @@ var LANG_CONFIG = {
         configTip: '配置自动保存至本地存储',
         
         // ===== 绘图区 =====
-        toolbarTip: '小份额扇形 (＜8%) 自动显示外部引导线',
+        toolbarTip: '🖱️ 滚轮缩放（向上放大） · 拖拽平移 · 点击扇形修改颜色 · 图例可拖拽 · 右下角拖拽调整画布大小',
         
         // ===== 语言切换 =====
         langBtn: 'English',
@@ -226,7 +263,42 @@ var LANG_CONFIG = {
         pngFailed: 'PNG导出失败',
         pdfFailed: 'PDF导出失败',
         invalidConfig: '配置文件无效',
-        drawFailed: '绘图失败'
+        drawFailed: '绘图失败',
+        
+        // ===== 数据预览表格 =====
+        dataPreview: '📊 数据预览',
+        clickToExpand: '(点击展开/收起)',
+        actions: '操作',
+        exportDataNoColor: '导出',
+        modifyColor: '🎨 修改颜色',
+        
+        // ===== 页眉 =====
+        authorPrefix: '作者：',
+        returnHome: '返回首页',
+        bilibiliText: '前往B站主页',
+        githubText: 'GitHub项目',
+        pageTitle: '饼图 / 环形图 - BioStatPlot',
+        
+        // ===== 数据导入 =====
+        secDataImport: '📥 数据导入',
+        secPalette: '🎨 配色方案',
+
+lineChartTitle: '折线图',
+importData: '导入数据',
+csvPlaceholderLine: 'X\t系列1\t系列2\t...',
+applyBtn: '应用',
+loadDemo: '加载示例',
+uploadFile: '文件',
+secOptions: '图表选项',
+lblShowPoints: '显示数据点',
+lblSmooth: '平滑曲线',
+lblLineWidth: '线宽',
+lblLineStyle: '线条样式',
+lblPointShape: '点形状',
+lblPointSize: '点大小',
+lblXLabel: 'X轴标签',
+lblYLabel: 'Y轴标签',
+lblAxisLabelSize: '轴标签字号',
     }
 };
 
@@ -319,7 +391,10 @@ var LangManager = {
             context.config.legendTitle = lang === 'en' ? 'Legend' : '图例';
         }
         
-        // 5. 触发自定义事件，通知其他组件
+        // 5. 更新页面标题
+        document.title = this.t('pageTitle', lang);
+        
+        // 6. 触发自定义事件，通知其他组件
         var event = new CustomEvent('languageChanged', {
             detail: { lang: lang }
         });
