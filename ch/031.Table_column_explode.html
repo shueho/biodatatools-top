@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表格列展开工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>表格列展开工具</h2>
+            <p>将指定列中的分隔值展开为多行，其余列自动填充。支持任意分隔符（分号、逗号、空格、斜杠等）。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入表格数据</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="tableFile" accept=".csv,.tsv,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="tableText" placeholder="粘贴表格数据（第一行为列名）" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 第一行为列名，支持制表符、逗号或空格分隔。
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">导入表格</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：展开设置</div>
+            <div class="filter-box" style="gap:20px; margin-bottom:10px;">
+                <label>需要展开的列：
+                    <select id="explodeColSelect" style="min-width:150px;">
+                        <option value="">请先导入数据</option>
+                    </select>
+                </label>
+                <label>分隔符：
+                    <input type="text" id="separatorInput" value=";" style="width:80px;" placeholder="如 ; 或 , 或 空格">
+                </label>
+                <label>去除空白：
+                    <input type="checkbox" id="trimSpaces" checked>
+                    <span class="tip-text" style="display:inline; margin-left:4px;">去除拆分后每个元素的首尾空格</span>
+                </label>
+            </div>
+            <div class="info-box" style="margin-bottom:10px;">
+                <strong>说明：</strong> 将所选列中的每个分隔值拆分为独立行，其他列的值保持不变。若勾选“去除空白”，则会自动清理拆分元素前后的空格。
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" id="explodeBtn" disabled>执行展开</button>
+            </div>
+            <div id="explodeMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：展开结果</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>复制结果</button>
+                <button class="btn" id="exportBtn" disabled>导出表格</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div class="table-container">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="rowCount"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">执行展开后，结果将在此处显示</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const tableFile = document.getElementById('tableFile');
+            const tableText = document.getElementById('tableText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const explodeColSelect = document.getElementById('explodeColSelect');
+            const separatorInput = document.getElementById('separatorInput');
+            const trimSpaces = document.getElementById('trimSpaces');
+            const explodeBtn = document.getElementById('explodeBtn');
+            const explodeMsg = document.getElementById('explodeMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let tableData = null;
+            let currentResultText = '';
+
+            const EXAMPLE = 'GeneID\tKO\tScore\tPathway\nGene1\tK00001;K00002;K00003\t10\tpath1 path2\nGene2\tK00004\t5\tpath3\nGene3\tK00005;K00006\t8\tpath4 path5 path6';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(() => { if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = ''; }, 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, function(m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+
+            function parseTable(text) {
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) return null;
+                let delim = '\t';
+                if (lines[0].includes('\t')) delim = '\t';
+                else if (lines[0].includes(',')) delim = ',';
+                else if (lines[0].includes(' ')) delim = ' ';
+                const rows = lines.map(line => line.split(delim).map(cell => cell.trim()));
+                const header = rows[0];
+                const dataRows = rows.slice(1).filter(row => row.length >= 1 && row[0] !== '');
+                if (header.length < 1) return null;
+                return { header, dataRows };
+            }
+
+            function updateExplodeSelect() {
+                if (!tableData) {
+                    explodeColSelect.innerHTML = '<option value="">请先导入数据</option>';
+                    return;
+                }
+                explodeColSelect.innerHTML = '';
+                tableData.header.forEach((col, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = col;
+                    opt.textContent = col;
+                    explodeColSelect.appendChild(opt);
+                });
+                if (tableData.header.length > 0) {
+                    // 默认选择第二列（KO列，分号分隔）
+                    if (tableData.header.length > 1) {
+                        explodeColSelect.value = tableData.header[1];
+                    } else {
+                        explodeColSelect.value = tableData.header[0];
+                    }
+                }
+                checkExplodeReady();
+            }
+
+            function checkExplodeReady() {
+                explodeBtn.disabled = !(tableData && explodeColSelect.value && separatorInput.value !== '');
+            }
+
+            function explodeData() {
+                if (!tableData) {
+                    showMsg(explodeMsg, '请先导入表格', 'error');
+                    return;
+                }
+                const colName = explodeColSelect.value;
+                const separator = separatorInput.value; // 不再 trim
+                const trimFlag = trimSpaces.checked;
+                if (!colName) {
+                    showMsg(explodeMsg, '请选择要展开的列', 'error');
+                    return;
+                }
+                const colIndex = tableData.header.indexOf(colName);
+                if (colIndex === -1) {
+                    showMsg(explodeMsg, '列不存在', 'error');
+                    return;
+                }
+
+                const newHeader = tableData.header.slice();
+                const newData = [];
+                tableData.dataRows.forEach(row => {
+                    const value = row[colIndex] || '';
+                    let parts = [];
+                    if (separator === ' ' || separator === '\\s' || separator === '\\s+') {
+                        parts = value.split(/\s+/);
+                    } else {
+                        parts = value.split(separator);
+                    }
+                    parts.forEach(part => {
+                        let cellVal = part;
+                        if (trimFlag) cellVal = cellVal.trim();
+                        // 构建新行，其他列不变
+                        const newRow = row.slice();
+                        newRow[colIndex] = cellVal;
+                        newData.push(newRow);
+                    });
+                });
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                renderTable(resultHead, resultBody, newHeader, newData);
+                rowCount.textContent = '共 ' + newData.length + ' 行 × ' + newHeader.length + ' 列';
+                currentResultText = newHeader.join('\t') + '\n' + newData.map(row => row.join('\t')).join('\n');
+                copyResultBtn.disabled = false;
+                exportBtn.disabled = false;
+                showMsg(explodeMsg, '展开完成，共 ' + newData.length + ' 行', 'success');
+                toast('展开完成');
+            }
+
+            function renderTable(headEl, bodyEl, header, dataRows) {
+                let thead = '<tr>';
+                for (const h of header) {
+                    thead += '<th>' + escapeHtml(h) + '</th>';
+                }
+                thead += '</tr>';
+                headEl.innerHTML = thead;
+
+                let tbody = '';
+                for (const row of dataRows) {
+                    tbody += '<tr>';
+                    for (const cell of row) {
+                        tbody += '<td>' + escapeHtml(cell) + '</td>';
+                    }
+                    tbody += '</tr>';
+                }
+                bodyEl.innerHTML = tbody;
+            }
+
+            function copyResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '无结果可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + currentResultText).then(() => {
+                        showMsg(resultMsg, '已复制结果', 'success');
+                        toast('已复制');
+                    }).catch(() => fallbackCopy(currentResultText));
+                } else {
+                    fallbackCopy(currentResultText);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '已复制结果', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(resultMsg, '复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '无结果可导出', 'error');
+                    return;
+                }
+                const csv = '\uFEFF' + currentResultText.split('\n').map(line => line.split('\t').join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'exploded_table.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, 'CSV已导出', 'success');
+                toast('已导出');
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    tableFile.disabled = false;
+                    tableText.disabled = true;
+                    tableText.value = '';
+                } else {
+                    tableFile.disabled = true;
+                    tableFile.value = '';
+                    tableText.disabled = false;
+                }
+                tableData = null;
+                msgTip.innerHTML = '';
+                updateExplodeSelect();
+                clearResults();
+            };
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentResultText = '';
+                copyResultBtn.disabled = true;
+                exportBtn.disabled = true;
+                rowCount.textContent = '';
+            }
+
+            tableFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    tableText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+            });
+
+            function loadData(text) {
+                const parsed = parseTable(text);
+                if (!parsed) {
+                    showMsg(msgTip, '表格解析失败，请检查格式', 'error');
+                    return;
+                }
+                tableData = parsed;
+                showMsg(msgTip, '表格加载成功：' + tableData.dataRows.length + '行 × ' + tableData.header.length + '列', 'success');
+                toast('表格加载成功');
+                updateExplodeSelect();
+                clearResults();
+            }
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (tableFile.files.length === 0) {
+                        if (tableText.value.trim()) {
+                            loadData(tableText.value);
+                        } else {
+                            showMsg(msgTip, '请选择文件或粘贴数据', 'error');
+                        }
+                    }
+                } else {
+                    const content = tableText.value.trim();
+                    if (!content) { showMsg(msgTip, '请粘贴数据', 'error'); return; }
+                    loadData(content);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                tableText.value = EXAMPLE;
+                loadData(EXAMPLE);
+            });
+
+            separatorInput.addEventListener('input', checkExplodeReady);
+            explodeBtn.addEventListener('click', explodeData);
+            explodeColSelect.addEventListener('change', checkExplodeReady);
+
+            copyResultBtn.addEventListener('click', copyResult);
+            exportBtn.addEventListener('click', exportResult);
+
+            switchInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+        })();
+    </script>
+</body>
+</html>

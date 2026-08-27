@@ -112,6 +112,12 @@ const toolConfig = [
     link: "ch/016.Group_freq_stat.html"
 },
 
+{
+    toolName: "矩阵标准化工具",
+    toolDesc: "导入矩阵数据，按行/列进行标准化及相对值的计算。",
+    link: "ch/032.Matrix_standardization.html"
+},
+
         ]
     },
     {
@@ -210,6 +216,18 @@ const toolConfig = [
     toolName: "ARWEN tRNA二级结构提取",
     toolDesc: "从ARWEN输出结果中提取tRNA二级结构式，方便后续绘图。",
     link: "ch/029.ARWEN_trna_extract.html"
+},
+
+{
+    toolName: "表格合并工具",
+    toolDesc: "支持左合并、右合并、内合并、外合并、水平拼接五种方式。",
+    link: "ch/030.Table_merge_tool.html"
+},
+
+{
+    toolName: "表格列展开工具",
+    toolDesc: "将指定列中的分隔值展开为多行，其余列自动填充。支持任意分隔符（分号、逗号、空格、斜杠等）。",
+    link: "ch/031.Table_column_explode.html"
 },
         ]
     },

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>矩阵标准化工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>矩阵标准化工具</h2>
+            <p>导入矩阵数据，按行/列进行标准化及相对值的计算。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入矩阵表格</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="matrixFile" accept=".csv,.tsv,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="matrixText" placeholder="粘贴矩阵表格（第一行为列名，第一列为行名）" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 第一行为列名，第一列为行名。支持制表符、逗号或空格分隔。
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">导入矩阵</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：设置标准化参数</div>
+            <div class="filter-box" style="gap:20px; margin-bottom:10px;">
+                <label>标准化方法：
+                    <select id="transformMethod" style="min-width:220px;">
+                        <option value="minmax">Min-max标准化</option>
+                        <option value="zscore">Z-score标准化</option>
+                        <option value="mean">Mean标准化</option>
+                        <option value="pareto">Pareto标准化</option>
+                        <option value="center">Center中心化</option>
+                        <option value="relative">相对丰度/表达量计算</option>
+                    </select>
+                </label>
+                <label>标准化方向：
+                    <select id="direction" style="min-width:120px;">
+                        <option value="col" selected>按列</option>
+                        <option value="row">按行</option>
+                    </select>
+                </label>
+                <label>标准差类型设置：</label>
+                <select id="stdType" style="min-width:120px;">
+                    <option value="sample" selected>样本标准差（除以N-1）</option>
+                    <option value="population">总体标准差（除以N）</option>
+                </select>
+            </div>
+
+            <div class="info-box" style="margin-bottom:10px;">
+                <strong>公式说明：</strong><br>
+                <strong>Min-max标准化：</strong> X = (x - min) / (max - min)  把数据压缩到[0, 1]之间。<br>
+                <strong>Z-score标准化：</strong> X = (x - μ) / σ （σ为样本标准差） 让数据均值为0，方差为1。<br>
+                <strong>Mean标准化：</strong> X = (x - mean) / (max - min)  把压缩到[-1, 1]之间。<br>
+                <strong>Pareto标准化：</strong> X = (x - mean) / sqrt(σ) （σ为样本标准差）<br>
+                <strong>Center中心化：</strong> X = x - mean<br>
+                <strong>相对丰度/表达量计算：</strong> X = x / 列或行的总和  用于相对丰度/表达量的计算<br>
+                <strong>注意：请按照需求正确选择按列或按行进行标准化！</strong> 
+            </div>
+            <div style="display:flex; gap:16px; align-items:center; margin-bottom:10px;">
+                <label>小数位数：<input type="number" id="decimalPlaces" value="6" min="0" max="15" style="width:70px;"></label>
+                <label><input type="checkbox" id="useRawPrecision"> 保留原始精度</label>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" id="transformBtn" disabled>执行标准化</button>
+            </div>
+            <div id="transformMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：结果导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>复制结果</button>
+                <button class="btn" id="exportBtn" disabled>导出表格</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div class="table-container">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="rowCount"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">执行标准化后，结果将在此处显示</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const matrixFile = document.getElementById('matrixFile');
+            const matrixText = document.getElementById('matrixText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const transformMethod = document.getElementById('transformMethod');
+            const direction = document.getElementById('direction');
+            const stdType = document.getElementById('stdType');
+            const decimalPlaces = document.getElementById('decimalPlaces');
+            const useRawPrecision = document.getElementById('useRawPrecision');
+            const transformBtn = document.getElementById('transformBtn');
+            const transformMsg = document.getElementById('transformMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let matrixData = null;
+            let currentResultText = '';
+
+            const EXAMPLE = 'OTUID\tSampleA\tSampleB\tSampleC\nOTU1\t10\t40\t30\nOTU2\t5\t10\t15\nOTU3\t1\t2\t3';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(() => { if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = ''; }, 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, function(m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+
+            function parseMatrix(text) {
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) return null;
+                let delim = '\t';
+                if (lines[0].includes('\t')) delim = '\t';
+                else if (lines[0].includes(',')) delim = ',';
+                else if (lines[0].includes(' ')) delim = ' ';
+                const rows = lines.map(line => line.split(delim).map(cell => cell.trim()));
+                const headers = rows[0].slice(1);
+                const rowNames = [];
+                const data = [];
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length < 2) continue;
+                    rowNames.push(row[0]);
+                    const values = [];
+                    for (let j = 1; j < headers.length + 1; j++) {
+                        const val = parseFloat(row[j]);
+                        values.push(isNaN(val) ? 0 : val);
+                    }
+                    data.push(values);
+                }
+                if (headers.length === 0) return null;
+                return { headers, rowNames, data };
+            }
+
+            function calcStd(arr, type) {
+                const n = arr.length;
+                if (n === 0) return 0;
+                const mean = arr.reduce((a, b) => a + b, 0) / n;
+                const sumSq = arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+                let variance;
+                if (type === 'sample' && n > 1) variance = sumSq / (n - 1);
+                else variance = sumSq / n;
+                return Math.sqrt(variance);
+            }
+
+            function computeMean(arr) {
+                return arr.reduce((a, b) => a + b, 0) / arr.length;
+            }
+
+            function getLine(data, direction, index) {
+                if (direction === 'row') return data[index];
+                return data.map(row => row[index]);
+            }
+
+            function transformData(data, method, direction, stdType) {
+                const nRows = data.length;
+                const nCols = data[0].length;
+                const newData = data.map(row => row.slice());
+
+                if (method === 'relative') {
+                    if (direction === 'col') {
+                        for (let c = 0; c < nCols; c++) {
+                            const colSum = data.reduce((sum, row) => sum + row[c], 0);
+                            for (let r = 0; r < nRows; r++) newData[r][c] = colSum === 0 ? 0 : data[r][c] / colSum;
+                        }
+                    } else {
+                        for (let r = 0; r < nRows; r++) {
+                            const rowSum = data[r].reduce((a, b) => a + b, 0);
+                            for (let c = 0; c < nCols; c++) newData[r][c] = rowSum === 0 ? 0 : data[r][c] / rowSum;
+                        }
+                    }
+                } else if (method === 'minmax') {
+                    if (direction === 'row') {
+                        for (let r = 0; r < nRows; r++) {
+                            const line = data[r];
+                            const min = Math.min(...line);
+                            const max = Math.max(...line);
+                            for (let c = 0; c < nCols; c++) newData[r][c] = (max - min) === 0 ? 0 : (line[c] - min) / (max - min);
+                        }
+                    } else {
+                        for (let c = 0; c < nCols; c++) {
+                            const line = data.map(row => row[c]);
+                            const min = Math.min(...line);
+                            const max = Math.max(...line);
+                            for (let r = 0; r < nRows; r++) newData[r][c] = (max - min) === 0 ? 0 : (data[r][c] - min) / (max - min);
+                        }
+                    }
+                } else if (method === 'zscore' || method === 'mean' || method === 'center' || method === 'pareto') {
+                    const len = (direction === 'row') ? nRows : nCols;
+                    for (let idx = 0; idx < len; idx++) {
+                        const line = getLine(data, direction, idx);
+                        const mean = computeMean(line);
+                        const max = Math.max(...line);
+                        const min = Math.min(...line);
+                        const range = max - min;
+                        let std = 0;
+                        if (method === 'zscore' || method === 'pareto') {
+                            std = calcStd(line, stdType);
+                        }
+                        for (let k = 0; k < line.length; k++) {
+                            let val;
+                            if (method === 'zscore') {
+                                val = std === 0 ? 0 : (line[k] - mean) / std;
+                            } else if (method === 'mean') {
+                                val = range === 0 ? 0 : (line[k] - mean) / range;
+                            } else if (method === 'center') {
+                                val = line[k] - mean;
+                            } else if (method === 'pareto') {
+                                const sqrtStd = Math.sqrt(std);
+                                val = sqrtStd === 0 ? 0 : (line[k] - mean) / sqrtStd;
+                            }
+                            if (direction === 'row') newData[idx][k] = val;
+                            else newData[k][idx] = val;
+                        }
+                    }
+                }
+                return newData;
+            }
+
+            function formatVal(val) {
+                if (!Number.isFinite(val)) return val === -Infinity ? '-Inf' : 'NaN';
+                if (useRawPrecision.checked) {
+                    return val.toPrecision(15).replace(/\.?0+$/, '');
+                } else {
+                    let dec = parseInt(decimalPlaces.value);
+                    if (isNaN(dec) || dec < 0) dec = 6;
+                    return val.toFixed(dec);
+                }
+            }
+
+            function updateTransformBtn() {
+                transformBtn.disabled = !matrixData;
+            }
+
+            function doTransform() {
+                if (!matrixData) {
+                    showMsg(transformMsg, '请先导入矩阵', 'error');
+                    return;
+                }
+                const method = transformMethod.value;
+                const dir = direction.value;
+                const stdT = stdType.value;
+                const resultData = transformData(matrixData.data, method, dir, stdT);
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                let thead = '<tr><th></th>';
+                for (const h of matrixData.headers) thead += '<th>' + escapeHtml(h) + '</th>';
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                let tbody = '';
+                for (let i = 0; i < resultData.length; i++) {
+                    tbody += '<tr><th>' + escapeHtml(matrixData.rowNames[i]) + '</th>';
+                    for (let j = 0; j < resultData[i].length; j++) {
+                        tbody += '<td>' + formatVal(resultData[i][j]) + '</td>';
+                    }
+                    tbody += '</tr>';
+                }
+                resultBody.innerHTML = tbody;
+
+                rowCount.textContent = '共 ' + resultData.length + ' 行 × ' + matrixData.headers.length + ' 列';
+                currentResultText = ['', ...matrixData.headers].join('\t') + '\n' +
+                    resultData.map((row, i) => [matrixData.rowNames[i], ...row.map(v => formatVal(v))].join('\t')).join('\n');
+
+                copyResultBtn.disabled = false;
+                exportBtn.disabled = false;
+                showMsg(transformMsg, '标准化完成', 'success');
+                toast('标准化完成');
+            }
+
+            function copyResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '无结果可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + currentResultText).then(() => {
+                        showMsg(resultMsg, '已复制结果', 'success');
+                        toast('已复制');
+                    }).catch(() => fallbackCopy(currentResultText));
+                } else {
+                    fallbackCopy(currentResultText);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '已复制结果', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(resultMsg, '复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '无结果可导出', 'error');
+                    return;
+                }
+                const csv = '\uFEFF' + currentResultText.split('\n').map(line => line.split('\t').join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'standardized_matrix.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, 'CSV已导出', 'success');
+                toast('已导出');
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    matrixFile.disabled = false;
+                    matrixText.disabled = true;
+                    matrixText.value = '';
+                } else {
+                    matrixFile.disabled = true;
+                    matrixFile.value = '';
+                    matrixText.disabled = false;
+                }
+                matrixData = null;
+                msgTip.innerHTML = '';
+                updateTransformBtn();
+                clearResults();
+            };
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentResultText = '';
+                copyResultBtn.disabled = true;
+                exportBtn.disabled = true;
+                rowCount.textContent = '';
+            }
+
+            matrixFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    matrixText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+            });
+
+            function loadData(text) {
+                const parsed = parseMatrix(text);
+                if (!parsed) {
+                    showMsg(msgTip, '矩阵解析失败，请检查格式', 'error');
+                    return;
+                }
+                matrixData = parsed;
+                showMsg(msgTip, '矩阵加载成功：' + matrixData.data.length + '行 × ' + matrixData.headers.length + '列', 'success');
+                toast('矩阵加载成功');
+                updateTransformBtn();
+                clearResults();
+            }
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (matrixFile.files.length === 0) {
+                        if (matrixText.value.trim()) loadData(matrixText.value);
+                        else showMsg(msgTip, '请选择文件或粘贴数据', 'error');
+                    }
+                } else {
+                    const content = matrixText.value.trim();
+                    if (!content) { showMsg(msgTip, '请粘贴数据', 'error'); return; }
+                    loadData(content);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                matrixText.value = EXAMPLE;
+                loadData(EXAMPLE);
+            });
+
+            transformBtn.addEventListener('click', doTransform);
+            copyResultBtn.addEventListener('click', copyResult);
+            exportBtn.addEventListener('click', exportResult);
+            
+
+            switchInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+        })();
+    </script>
+</body>
+</html>

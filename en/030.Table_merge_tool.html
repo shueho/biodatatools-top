@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table Merge Tool - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>Table Merge Tool</h2>
+            <p>Supports left merge, right merge, inner merge, outer merge, and horizontal stack.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Left Table</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="leftMode" value="file" checked onchange="switchLeftInput()"> Upload File</label>
+                <label><input type="radio" name="leftMode" value="text" onchange="switchLeftInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="leftFile" accept=".csv,.tsv,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="leftText" placeholder="Paste table data (first row is header)" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> First row should be column names. Supports tab, comma, or space delimiters.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="leftLoadBtn">Import Left Table</button>
+                <button class="btn" id="leftExampleBtn">Load Example</button>
+            </div>
+            <div id="leftMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Import Right Table</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="rightMode" value="file" checked onchange="switchRightInput()"> Upload File</label>
+                <label><input type="radio" name="rightMode" value="text" onchange="switchRightInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="rightFile" accept=".csv,.tsv,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="rightText" placeholder="Paste table data (first row is header)" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> First row should be column names. Supports tab, comma, or space delimiters.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="rightLoadBtn">Import Right Table</button>
+                <button class="btn" id="rightExampleBtn">Load Example</button>
+            </div>
+            <div id="rightMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Merge Settings</div>
+            <div class="filter-box" style="gap:16px; margin-bottom:10px;">
+                <label>Merge Mode:
+                    <select id="mergeMode" style="min-width:180px;">
+                        <option value="left">Left Merge</option>
+                        <option value="right">Right Merge</option>
+                        <option value="hstack">Horizontal Stack</option>
+                        <option value="inner">Inner Merge</option>
+                        <option value="outer">Outer Merge</option>
+                    </select>
+                </label>
+                <label>Fill Missing With:
+                    <input type="text" id="naValue" value="NA" style="width:60px;">
+                </label>
+            </div>
+            <div class="filter-box" style="gap:20px; margin-bottom:10px;">
+                <label>Left Key Column:
+                    <select id="leftKeySelect" style="min-width:120px; padding:4px 8px;">
+                        <option value="">Import Left Table First</option>
+                    </select>
+                </label>
+                <label>Right Key Column:
+                    <select id="rightKeySelect" style="min-width:120px; padding:4px 8px;">
+                        <option value="">Import Right Table First</option>
+                    </select>
+                </label>
+            </div>
+            <div class="info-box" style="margin-bottom:10px;">
+                <strong>Merge Mode Description:</strong><br>
+                <strong>Left Merge:</strong> Keep all rows from left table, append matched columns from right table, fill missing with NA.<br>
+                <strong>Right Merge:</strong> Keep all rows from right table, append matched columns from left table, fill missing with NA.<br>
+                <strong>Horizontal Stack:</strong> Concatenate columns row-wise without matching keys.<br>
+                <strong>Inner Merge:</strong> Keep only rows with matching keys in both tables (intersection).<br>
+                <strong>Outer Merge:</strong> Keep all unique keys from both tables, fill missing with NA (union).<br>
+                <strong>Column Output:</strong> All left table columns keep original names. All right table columns are included; if a right column name duplicates a left column name, a <code>_R</code> suffix is added.
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="mergeBtn" disabled>Execute Merge</button>
+            </div>
+            <div id="mergeMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Merge Result</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>Copy Result</button>
+                <button class="btn" id="exportBtn" disabled>Export CSV</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div class="table-container">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="rowCount"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Import both tables and click "Execute Merge"</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: 'Di Shang Fei Zhu',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const leftFile = document.getElementById('leftFile');
+            const leftText = document.getElementById('leftText');
+            const leftLoadBtn = document.getElementById('leftLoadBtn');
+            const leftExampleBtn = document.getElementById('leftExampleBtn');
+            const leftMsg = document.getElementById('leftMsg');
+
+            const rightFile = document.getElementById('rightFile');
+            const rightText = document.getElementById('rightText');
+            const rightLoadBtn = document.getElementById('rightLoadBtn');
+            const rightExampleBtn = document.getElementById('rightExampleBtn');
+            const rightMsg = document.getElementById('rightMsg');
+
+            const mergeMode = document.getElementById('mergeMode');
+            const naValue = document.getElementById('naValue');
+            const leftKeySelect = document.getElementById('leftKeySelect');
+            const rightKeySelect = document.getElementById('rightKeySelect');
+            const mergeBtn = document.getElementById('mergeBtn');
+            const mergeMsg = document.getElementById('mergeMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let leftData = null;
+            let rightData = null;
+            let currentResultText = '';
+
+            const LEFT_EXAMPLE = 'ID\tGeneX\tGeneY\nSample1\t1.5\t2.6\nSample2\t3.7\t4.8\nSample3\t5.9\t6.0';
+            const RIGHT_EXAMPLE = 'sampleID\tGeneZ\tGeneW\nSample1\t7.1\t8.2\nSample3\t9.3\t0.4\nSample4\t1.2\t2.3';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(() => { if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = ''; }, 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, function(m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+
+            function parseTable(text) {
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) return null;
+                let delim = '\t';
+                if (lines[0].includes('\t')) delim = '\t';
+                else if (lines[0].includes(',')) delim = ',';
+                else if (lines[0].includes(' ')) delim = ' ';
+                const rows = lines.map(line => line.split(delim).map(cell => cell.trim()));
+                const header = rows[0];
+                const dataRows = rows.slice(1).filter(row => row.length >= 1 && row[0] !== '');
+                if (header.length < 1) return null;
+                return { header, dataRows };
+            }
+
+            function updateKeySelect(selectEl, tableData, defaultIndex) {
+                if (!tableData) {
+                    selectEl.innerHTML = '<option value="">Import Table First</option>';
+                    return;
+                }
+                selectEl.innerHTML = '';
+                tableData.header.forEach((col, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = col;
+                    opt.textContent = col;
+                    selectEl.appendChild(opt);
+                });
+                if (tableData.header.length > 0 && defaultIndex !== undefined) {
+                    selectEl.value = tableData.header[defaultIndex] || tableData.header[0];
+                }
+            }
+
+            function refreshKeySelects() {
+                updateKeySelect(leftKeySelect, leftData, 0);
+                updateKeySelect(rightKeySelect, rightData, 0);
+                checkMergeReady();
+            }
+
+            function mergeTables(left, right, mode, fillValue, leftKeyCol, rightKeyCol) {
+                if (!left || !right) return null;
+                if (mode === 'hstack') {
+                    const newHeader = [...left.header, ...right.header];
+                    const maxLen = Math.max(left.dataRows.length, right.dataRows.length);
+                    const newData = [];
+                    for (let i = 0; i < maxLen; i++) {
+                        const lr = left.dataRows[i] || Array(left.header.length).fill(fillValue);
+                        const rr = right.dataRows[i] || Array(right.header.length).fill(fillValue);
+                        newData.push([...lr, ...rr]);
+                    }
+                    return { header: newHeader, dataRows: newData };
+                }
+
+                const leftKeyIndex = left.header.indexOf(leftKeyCol);
+                const rightKeyIndex = right.header.indexOf(rightKeyCol);
+                if (leftKeyIndex === -1 || rightKeyIndex === -1) {
+                    alert('Key column not found, please re-select');
+                    return null;
+                }
+
+                const leftMap = new Map();
+                left.dataRows.forEach(row => {
+                    const key = row[leftKeyIndex];
+                    if (!leftMap.has(key)) leftMap.set(key, row);
+                });
+                const rightMap = new Map();
+                right.dataRows.forEach(row => {
+                    const key = row[rightKeyIndex];
+                    if (!rightMap.has(key)) rightMap.set(key, row);
+                });
+
+                let ids = [];
+                if (mode === 'left') {
+                    ids = Array.from(leftMap.keys());
+                } else if (mode === 'right') {
+                    ids = Array.from(rightMap.keys());
+                } else if (mode === 'inner') {
+                    const leftIds = new Set(leftMap.keys());
+                    ids = Array.from(rightMap.keys()).filter(id => leftIds.has(id));
+                } else if (mode === 'outer') {
+                    const allIds = new Set([...leftMap.keys(), ...rightMap.keys()]);
+                    ids = Array.from(allIds);
+                }
+
+                const rightHeaderRenamed = right.header.map(col => {
+                    return left.header.includes(col) ? col + '_R' : col;
+                });
+                const newHeader = [...left.header, ...rightHeaderRenamed];
+
+                const newData = ids.map(id => {
+                    const lr = leftMap.get(id) || [];
+                    const rr = rightMap.get(id) || [];
+                    const row = [];
+                    for (let i = 0; i < left.header.length; i++) {
+                        row.push(lr[i] !== undefined ? lr[i] : fillValue);
+                    }
+                    for (let i = 0; i < right.header.length; i++) {
+                        row.push(rr[i] !== undefined ? rr[i] : fillValue);
+                    }
+                    return row;
+                });
+
+                return { header: newHeader, dataRows: newData };
+            }
+
+            function renderTable(headEl, bodyEl, header, dataRows) {
+                let thead = '<tr>';
+                for (const h of header) {
+                    thead += '<th>' + escapeHtml(h) + '</th>';
+                }
+                thead += '</tr>';
+                headEl.innerHTML = thead;
+
+                let tbody = '';
+                for (const row of dataRows) {
+                    tbody += '<tr>';
+                    for (const cell of row) {
+                        tbody += '<td>' + escapeHtml(cell) + '</td>';
+                    }
+                    tbody += '</tr>';
+                }
+                bodyEl.innerHTML = tbody;
+            }
+
+            function checkMergeReady() {
+                mergeBtn.disabled = !(leftData && rightData && leftKeySelect.value && rightKeySelect.value);
+            }
+
+            function doMerge() {
+                if (!leftData || !rightData) {
+                    showMsg(mergeMsg, 'Please import both tables first', 'error');
+                    return;
+                }
+                const mode = mergeMode.value;
+                const fill = naValue.value.trim() || 'NA';
+                const leftKey = leftKeySelect.value;
+                const rightKey = rightKeySelect.value;
+                if (!leftKey || !rightKey) {
+                    showMsg(mergeMsg, 'Please select key columns', 'error');
+                    return;
+                }
+                const result = mergeTables(leftData, rightData, mode, fill, leftKey, rightKey);
+                if (result) {
+                    resultArea.style.display = 'block';
+                    emptyResult.style.display = 'none';
+                    renderTable(resultHead, resultBody, result.header, result.dataRows);
+                    rowCount.textContent = 'Total ' + result.dataRows.length + ' rows × ' + result.header.length + ' columns';
+                    copyResultBtn.disabled = false;
+                    exportBtn.disabled = false;
+                    currentResultText = result.header.join('\t') + '\n' + result.dataRows.map(row => row.join('\t')).join('\n');
+                    showMsg(mergeMsg, 'Merge complete: ' + result.dataRows.length + ' rows × ' + result.header.length + ' columns', 'success');
+                    toast('Merge complete');
+                } else {
+                    showMsg(mergeMsg, 'Merge failed', 'error');
+                }
+            }
+
+            function copyResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, 'No result to copy', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + currentResultText).then(() => {
+                        showMsg(resultMsg, 'Result copied', 'success');
+                        toast('Copied');
+                    }).catch(() => fallbackCopy(currentResultText));
+                } else {
+                    fallbackCopy(currentResultText);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, 'Result copied', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(resultMsg, 'Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, 'No result to export', 'error');
+                    return;
+                }
+                const csv = '\uFEFF' + currentResultText.split('\n').map(line => line.split('\t').join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'merged_table.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, 'CSV exported', 'success');
+                toast('Exported');
+            }
+
+            window.switchLeftInput = function() {
+                const mode = document.querySelector('input[name="leftMode"]:checked').value;
+                if (mode === 'file') {
+                    leftFile.disabled = false;
+                    leftText.disabled = true;
+                    leftText.value = '';
+                } else {
+                    leftFile.disabled = true;
+                    leftFile.value = '';
+                    leftText.disabled = false;
+                }
+                leftData = null;
+                leftMsg.innerHTML = '';
+                refreshKeySelects();
+            };
+
+            window.switchRightInput = function() {
+                const mode = document.querySelector('input[name="rightMode"]:checked').value;
+                if (mode === 'file') {
+                    rightFile.disabled = false;
+                    rightText.disabled = true;
+                    rightText.value = '';
+                } else {
+                    rightFile.disabled = true;
+                    rightFile.value = '';
+                    rightText.disabled = false;
+                }
+                rightData = null;
+                rightMsg.innerHTML = '';
+                refreshKeySelects();
+            };
+
+            leftFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    leftText.value = ev.target.result;
+                    leftData = parseTable(ev.target.result);
+                    if (leftData) {
+                        showMsg(leftMsg, 'Left table loaded: ' + leftData.dataRows.length + ' rows × ' + leftData.header.length + ' columns', 'success');
+                        toast('Left table loaded');
+                    } else {
+                        showMsg(leftMsg, 'Failed to parse left table', 'error');
+                    }
+                    refreshKeySelects();
+                };
+                reader.readAsText(file);
+            });
+
+            rightFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    rightText.value = ev.target.result;
+                    rightData = parseTable(ev.target.result);
+                    if (rightData) {
+                        showMsg(rightMsg, 'Right table loaded: ' + rightData.dataRows.length + ' rows × ' + rightData.header.length + ' columns', 'success');
+                        toast('Right table loaded');
+                    } else {
+                        showMsg(rightMsg, 'Failed to parse right table', 'error');
+                    }
+                    refreshKeySelects();
+                };
+                reader.readAsText(file);
+            });
+
+            leftLoadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="leftMode"]:checked').value;
+                if (mode === 'file') {
+                    if (leftFile.files.length === 0) {
+                        if (leftText.value.trim()) {
+                            leftData = parseTable(leftText.value);
+                            if (leftData) showMsg(leftMsg, 'Left table loaded: ' + leftData.dataRows.length + ' rows', 'success');
+                            else showMsg(leftMsg, 'Failed to parse left table', 'error');
+                        } else {
+                            showMsg(leftMsg, 'Please select a file or paste data', 'error');
+                        }
+                    }
+                } else {
+                    const content = leftText.value.trim();
+                    if (!content) { showMsg(leftMsg, 'Please enter left table data', 'error'); return; }
+                    leftData = parseTable(content);
+                    if (leftData) showMsg(leftMsg, 'Left table loaded: ' + leftData.dataRows.length + ' rows × ' + leftData.header.length + ' columns', 'success');
+                    else showMsg(leftMsg, 'Failed to parse left table', 'error');
+                }
+                refreshKeySelects();
+            });
+
+            rightLoadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="rightMode"]:checked').value;
+                if (mode === 'file') {
+                    if (rightFile.files.length === 0) {
+                        if (rightText.value.trim()) {
+                            rightData = parseTable(rightText.value);
+                            if (rightData) showMsg(rightMsg, 'Right table loaded: ' + rightData.dataRows.length + ' rows', 'success');
+                            else showMsg(rightMsg, 'Failed to parse right table', 'error');
+                        } else {
+                            showMsg(rightMsg, 'Please select a file or paste data', 'error');
+                        }
+                    }
+                } else {
+                    const content = rightText.value.trim();
+                    if (!content) { showMsg(rightMsg, 'Please enter right table data', 'error'); return; }
+                    rightData = parseTable(content);
+                    if (rightData) showMsg(rightMsg, 'Right table loaded: ' + rightData.dataRows.length + ' rows × ' + rightData.header.length + ' columns', 'success');
+                    else showMsg(rightMsg, 'Failed to parse right table', 'error');
+                }
+                refreshKeySelects();
+            });
+
+            leftExampleBtn.addEventListener('click', function() {
+                const radio = document.querySelector('input[name="leftMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchLeftInput();
+                leftText.value = LEFT_EXAMPLE;
+                leftData = parseTable(LEFT_EXAMPLE);
+                if (leftData) {
+                    showMsg(leftMsg, 'Left example loaded: ' + leftData.dataRows.length + ' rows × ' + leftData.header.length + ' columns', 'success');
+                    toast('Left example loaded');
+                }
+                refreshKeySelects();
+            });
+
+            rightExampleBtn.addEventListener('click', function() {
+                const radio = document.querySelector('input[name="rightMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchRightInput();
+                rightText.value = RIGHT_EXAMPLE;
+                rightData = parseTable(RIGHT_EXAMPLE);
+                if (rightData) {
+                    showMsg(rightMsg, 'Right example loaded: ' + rightData.dataRows.length + ' rows × ' + rightData.header.length + ' columns', 'success');
+                    toast('Right example loaded');
+                }
+                refreshKeySelects();
+            });
+
+            mergeBtn.addEventListener('click', doMerge);
+            copyResultBtn.addEventListener('click', copyResult);
+            exportBtn.addEventListener('click', exportResult);
+
+            mergeMode.addEventListener('change', function() {
+                if (leftData && rightData) doMerge();
+            });
+            leftKeySelect.addEventListener('change', function() {
+                if (leftData && rightData) doMerge();
+            });
+            rightKeySelect.addEventListener('change', function() {
+                if (leftData && rightData) doMerge();
+            });
+
+            switchLeftInput();
+            switchRightInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+            copyResultBtn.disabled = true;
+            exportBtn.disabled = true;
+            mergeBtn.disabled = true;
+            refreshKeySelects();
+        })();
+    </script>
+</body>
+</html>

@@ -108,7 +108,13 @@ const toolConfig = [
     toolName: "Group Statistics for Base/Amino Acid Usage",
     toolDesc: "Import FASTA sequences, set groups, then calculate the frequency or count of bases or amino acids by group.",
     link: "en/016.Group_freq_stat.html"
-}
+},
+
+{
+    toolName: "Matrix Standardization Tool",
+    toolDesc: "Import a matrix, perform row/column standardization, and calculate relative values.",
+    link: "en/032.Matrix_standardization.html"
+},
 
         ]
     },
@@ -207,6 +213,18 @@ const toolConfig = [
     toolName: "ARWEN tRNA Secondary Structure Extraction",
     toolDesc: "Extract tRNA secondary structures from ARWEN output to facilitate downstream plotting.",
     link: "en/029.ARWEN_trna_extract.html"
+},
+
+{
+    toolName: "Table Merge Tool",
+    toolDesc: "Supports left merge, right merge, inner merge, outer merge, and horizontal stack.",
+    link: "en/030.Table_merge_tool.html"
+},
+
+{
+    toolName: "Table Column Explode",
+    toolDesc: "Split separated values in a column into multiple rows, keeping other columns. Supports any separator (semicolon, comma, space, slash, etc.).",
+    link: "en/031.Table_column_explode.html"
 },
         ]
     },

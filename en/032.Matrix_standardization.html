@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Standardization Tool - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>Matrix Standardization Tool</h2>
+            <p>Import a matrix, perform row/column standardization, and calculate relative values.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Matrix Data</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="matrixFile" accept=".csv,.tsv,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="matrixText" placeholder="Paste matrix data (first row is column names, first column is row names)" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> First row is column names, first column is row names. Supports tab, comma, or space delimiters.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">Import Matrix</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Standardization Parameters</div>
+            <div class="filter-box" style="gap:20px; margin-bottom:10px;">
+                <label>Standardization Method:
+                    <select id="transformMethod" style="min-width:220px;">
+                        <option value="minmax">Min-max Normalization</option>
+                        <option value="zscore">Z-score Normalization</option>
+                        <option value="mean">Mean Normalization</option>
+                        <option value="pareto">Pareto Normalization</option>
+                        <option value="center">Center</option>
+                        <option value="relative">Relative Abundance Calculation</option>
+                    </select>
+                </label>
+                <label>Direction:
+                    <select id="direction" style="min-width:120px;">
+                        <option value="col" selected>Column</option>
+                        <option value="row">Row</option>
+                    </select>
+                </label>
+                <label>Standard Deviation Type:</label>
+                <select id="stdType" style="min-width:120px;">
+                    <option value="sample" selected>Sample SD (N-1)</option>
+                    <option value="population">Population SD (N)</option>
+                </select>
+            </div>
+
+            <div class="info-box" style="margin-bottom:10px;">
+                <strong>Formula Reference:</strong><br>
+                <strong>Min-max:</strong> X = (x - min) / (max - min)   &nbsp; (scales to [0, 1])<br>
+                <strong>Z-score:</strong> X = (x - μ) / σ (sample SD) &nbsp; (mean=0, variance=1)<br>
+                <strong>Mean:</strong> X = (x - mean) / (max - min) &nbsp; (scales to [-1, 1])<br>
+                <strong>Pareto:</strong> X = (x - mean) / sqrt(σ) (sample SD)<br>
+                <strong>Center:</strong> X = x - mean<br>
+                <strong>Relative Abundance:</strong> X = x / column or row sum<br>
+                <strong>Note:</strong> Please select the appropriate direction (row/column) according to your analysis needs.
+            </div>
+            <div style="display:flex; gap:16px; align-items:center; margin-bottom:10px;">
+                <label>Decimal Places: <input type="number" id="decimalPlaces" value="6" min="0" max="15" style="width:70px;"></label>
+                <label><input type="checkbox" id="useRawPrecision"> Keep Raw Precision</label>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" id="transformBtn" disabled>Run Standardization</button>
+            </div>
+            <div id="transformMsg" class="tip-text"></div>
+        </div>
+
+        <!-- Step 3: Results -->
+        <div class="step-card">
+            <div class="step-title">Step 3: Results</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>Copy Result</button>
+                <button class="btn" id="exportBtn" disabled>Export CSV</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div class="table-container">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="rowCount"></span>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Results will appear here after standardization.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: 'Di Shang Fei Zhu',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const matrixFile = document.getElementById('matrixFile');
+            const matrixText = document.getElementById('matrixText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const transformMethod = document.getElementById('transformMethod');
+            const direction = document.getElementById('direction');
+            const stdType = document.getElementById('stdType');
+            const decimalPlaces = document.getElementById('decimalPlaces');
+            const useRawPrecision = document.getElementById('useRawPrecision');
+            const transformBtn = document.getElementById('transformBtn');
+            const transformMsg = document.getElementById('transformMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const rowCount = document.getElementById('rowCount');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let matrixData = null;
+            let currentResultText = '';
+
+            const EXAMPLE = 'OTUID\tSampleA\tSampleB\tSampleC\nOTU1\t10\t40\t30\nOTU2\t5\t10\t15\nOTU3\t1\t2\t3';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(() => { if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = ''; }, 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, function(m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+
+            function parseMatrix(text) {
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) return null;
+                let delim = '\t';
+                if (lines[0].includes('\t')) delim = '\t';
+                else if (lines[0].includes(',')) delim = ',';
+                else if (lines[0].includes(' ')) delim = ' ';
+                const rows = lines.map(line => line.split(delim).map(cell => cell.trim()));
+                const headers = rows[0].slice(1);
+                const rowNames = [];
+                const data = [];
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length < 2) continue;
+                    rowNames.push(row[0]);
+                    const values = [];
+                    for (let j = 1; j < headers.length + 1; j++) {
+                        const val = parseFloat(row[j]);
+                        values.push(isNaN(val) ? 0 : val);
+                    }
+                    data.push(values);
+                }
+                if (headers.length === 0) return null;
+                return { headers, rowNames, data };
+            }
+
+            function calcStd(arr, type) {
+                const n = arr.length;
+                if (n === 0) return 0;
+                const mean = arr.reduce((a, b) => a + b, 0) / n;
+                const sumSq = arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+                let variance;
+                if (type === 'sample' && n > 1) variance = sumSq / (n - 1);
+                else variance = sumSq / n;
+                return Math.sqrt(variance);
+            }
+
+            function computeMean(arr) {
+                return arr.reduce((a, b) => a + b, 0) / arr.length;
+            }
+
+            function getLine(data, direction, index) {
+                if (direction === 'row') return data[index];
+                return data.map(row => row[index]);
+            }
+
+            function transformData(data, method, direction, stdType) {
+                const nRows = data.length;
+                const nCols = data[0].length;
+                const newData = data.map(row => row.slice());
+
+                if (method === 'relative') {
+                    if (direction === 'col') {
+                        for (let c = 0; c < nCols; c++) {
+                            const colSum = data.reduce((sum, row) => sum + row[c], 0);
+                            for (let r = 0; r < nRows; r++) newData[r][c] = colSum === 0 ? 0 : data[r][c] / colSum;
+                        }
+                    } else {
+                        for (let r = 0; r < nRows; r++) {
+                            const rowSum = data[r].reduce((a, b) => a + b, 0);
+                            for (let c = 0; c < nCols; c++) newData[r][c] = rowSum === 0 ? 0 : data[r][c] / rowSum;
+                        }
+                    }
+                } else if (method === 'minmax') {
+                    if (direction === 'row') {
+                        for (let r = 0; r < nRows; r++) {
+                            const line = data[r];
+                            const min = Math.min(...line);
+                            const max = Math.max(...line);
+                            for (let c = 0; c < nCols; c++) newData[r][c] = (max - min) === 0 ? 0 : (line[c] - min) / (max - min);
+                        }
+                    } else {
+                        for (let c = 0; c < nCols; c++) {
+                            const line = data.map(row => row[c]);
+                            const min = Math.min(...line);
+                            const max = Math.max(...line);
+                            for (let r = 0; r < nRows; r++) newData[r][c] = (max - min) === 0 ? 0 : (data[r][c] - min) / (max - min);
+                        }
+                    }
+                } else if (method === 'zscore' || method === 'mean' || method === 'center' || method === 'pareto') {
+                    const len = (direction === 'row') ? nRows : nCols;
+                    for (let idx = 0; idx < len; idx++) {
+                        const line = getLine(data, direction, idx);
+                        const mean = computeMean(line);
+                        const max = Math.max(...line);
+                        const min = Math.min(...line);
+                        const range = max - min;
+                        let std = 0;
+                        if (method === 'zscore' || method === 'pareto') {
+                            std = calcStd(line, stdType);
+                        }
+                        for (let k = 0; k < line.length; k++) {
+                            let val;
+                            if (method === 'zscore') {
+                                val = std === 0 ? 0 : (line[k] - mean) / std;
+                            } else if (method === 'mean') {
+                                val = range === 0 ? 0 : (line[k] - mean) / range;
+                            } else if (method === 'center') {
+                                val = line[k] - mean;
+                            } else if (method === 'pareto') {
+                                const sqrtStd = Math.sqrt(std);
+                                val = sqrtStd === 0 ? 0 : (line[k] - mean) / sqrtStd;
+                            }
+                            if (direction === 'row') newData[idx][k] = val;
+                            else newData[k][idx] = val;
+                        }
+                    }
+                }
+                return newData;
+            }
+
+            function formatVal(val) {
+                if (!Number.isFinite(val)) return val === -Infinity ? '-Inf' : 'NaN';
+                if (useRawPrecision.checked) {
+                    return val.toPrecision(15).replace(/\.?0+$/, '');
+                } else {
+                    let dec = parseInt(decimalPlaces.value);
+                    if (isNaN(dec) || dec < 0) dec = 6;
+                    return val.toFixed(dec);
+                }
+            }
+
+            function updateTransformBtn() {
+                transformBtn.disabled = !matrixData;
+            }
+
+            function doTransform() {
+                if (!matrixData) {
+                    showMsg(transformMsg, 'Please import a matrix first', 'error');
+                    return;
+                }
+                const method = transformMethod.value;
+                const dir = direction.value;
+                const stdT = stdType.value;
+                const resultData = transformData(matrixData.data, method, dir, stdT);
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                let thead = '<tr><th></th>';
+                for (const h of matrixData.headers) thead += '<th>' + escapeHtml(h) + '</th>';
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                let tbody = '';
+                for (let i = 0; i < resultData.length; i++) {
+                    tbody += '<tr><th>' + escapeHtml(matrixData.rowNames[i]) + '</th>';
+                    for (let j = 0; j < resultData[i].length; j++) {
+                        tbody += '<td>' + formatVal(resultData[i][j]) + '</td>';
+                    }
+                    tbody += '</tr>';
+                }
+                resultBody.innerHTML = tbody;
+
+                rowCount.textContent = 'Total: ' + resultData.length + ' rows × ' + matrixData.headers.length + ' columns';
+                currentResultText = ['', ...matrixData.headers].join('\t') + '\n' +
+                    resultData.map((row, i) => [matrixData.rowNames[i], ...row.map(v => formatVal(v))].join('\t')).join('\n');
+
+                copyResultBtn.disabled = false;
+                exportBtn.disabled = false;
+                showMsg(transformMsg, 'Standardization completed', 'success');
+                toast('Standardization completed');
+            }
+
+            function copyResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, 'No result to copy', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + currentResultText).then(() => {
+                        showMsg(resultMsg, 'Result copied', 'success');
+                        toast('Copied');
+                    }).catch(() => fallbackCopy(currentResultText));
+                } else {
+                    fallbackCopy(currentResultText);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, 'Result copied', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(resultMsg, 'Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, 'No result to export', 'error');
+                    return;
+                }
+                const csv = '\uFEFF' + currentResultText.split('\n').map(line => line.split('\t').join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'standardized_matrix.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, 'CSV exported', 'success');
+                toast('Exported');
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    matrixFile.disabled = false;
+                    matrixText.disabled = true;
+                    matrixText.value = '';
+                } else {
+                    matrixFile.disabled = true;
+                    matrixFile.value = '';
+                    matrixText.disabled = false;
+                }
+                matrixData = null;
+                msgTip.innerHTML = '';
+                updateTransformBtn();
+                clearResults();
+            };
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentResultText = '';
+                copyResultBtn.disabled = true;
+                exportBtn.disabled = true;
+                rowCount.textContent = '';
+            }
+
+            matrixFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    matrixText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+            });
+
+            function loadData(text) {
+                const parsed = parseMatrix(text);
+                if (!parsed) {
+                    showMsg(msgTip, 'Failed to parse matrix. Please check format.', 'error');
+                    return;
+                }
+                matrixData = parsed;
+                showMsg(msgTip, 'Matrix loaded: ' + matrixData.data.length + ' rows × ' + matrixData.headers.length + ' columns', 'success');
+                toast('Matrix loaded');
+                updateTransformBtn();
+                clearResults();
+            }
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (matrixFile.files.length === 0) {
+                        if (matrixText.value.trim()) loadData(matrixText.value);
+                        else showMsg(msgTip, 'Please select a file or paste data', 'error');
+                    }
+                } else {
+                    const content = matrixText.value.trim();
+                    if (!content) { showMsg(msgTip, 'Please paste data', 'error'); return; }
+                    loadData(content);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                matrixText.value = EXAMPLE;
+                loadData(EXAMPLE);
+            });
+
+            transformBtn.addEventListener('click', doTransform);
+            copyResultBtn.addEventListener('click', copyResult);
+            exportBtn.addEventListener('click', exportResult);
+
+            switchInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+        })();
+    </script>
+</body>
+</html>
