@@ -4,7 +4,7 @@
   <!-- ========== 首页（根路径） ========== -->
   <url>
     <loc>https://www.biodatatools.cn/</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -27,197 +27,215 @@
   <!-- ===== 分类：Nucleic Acid Sequence Processing ===== -->
   <url>
     <loc>https://www.biodatatools.cn/en/001.Genbank_feat_extract.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/005.CDS_translate.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/006.Seq_concat.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/010.Fasta_to_AXT.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/013.Fasta_append_merge.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/014.Fasta_id_modify.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/015.Sequence_cleaner.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/018.Fasta_extract_rename.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/027.Fasta_group_extract.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <!-- ===== 分类：Statistical Analysis ===== -->
   <url>
     <loc>https://www.biodatatools.cn/en/002.RSCU.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/007.Protparam.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/009.Base_composition.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/011.Codon_position_base_stats.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/012.CodonW_indices.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/016.Group_freq_stat.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.cn/en/032.Matrix_standardization.html</loc>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <!-- ===== 分类：Plotting & Visualization ===== -->
   <url>
     <loc>https://www.biodatatools.cn/en/003.RSCU_plot.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/004.Trna_structure_beautifier.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/008.Visualize_gene_arrangement.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <!-- ===== 分类：Gadget ===== -->
   <url>
     <loc>https://www.biodatatools.cn/en/017.TaxSet_generator.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/019.PopART_nexus_generator.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/020.Samova_geo_map.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/021.Arp_hap_merger.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/022.Wide_long_table_reshaping.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/023.Triangular_matrix_tool.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/024.Triangular_matrix_reorder.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/025.Geo_coordinate_converter.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/026.Long_to_triangular.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/028.Haversine_distance_matrix.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/029.ARWEN_trna_extract.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.cn/en/030.Table_merge_tool.html</loc>
+    <lastmod>2026-08-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.cn/en/031.Table_column_explode.html</loc>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <!-- ===== 分类：Others ===== -->
   <url>
     <loc>https://www.biodatatools.cn/en/997.Software_download.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/998.Links.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/en/999.Script_download.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -227,197 +245,215 @@
   <!-- ===== 分类：核酸序列处理 ===== -->
   <url>
     <loc>https://www.biodatatools.cn/ch/001.Genbank_feat_extract.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/005.CDS_translate.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/006.Seq_concat.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/010.Fasta_to_AXT.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/013.Fasta_append_merge.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/014.Fasta_id_modify.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/015.Sequence_cleaner.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/018.Fasta_extract_rename.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/027.Fasta_group_extract.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <!-- ===== 分类：统计分析 ===== -->
   <url>
     <loc>https://www.biodatatools.cn/ch/002.RSCU.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/007.Protparam.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/009.Base_composition.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/011.Codon_position_base_stats.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/012.CodonW_indices.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/016.Group_freq_stat.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.cn/ch/032.Matrix_standardization.html</loc>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <!-- ===== 分类：绘图与美化 ===== -->
   <url>
     <loc>https://www.biodatatools.cn/ch/003.RSCU_plot.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/004.Trna_structure_beautifier.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/008.Visualize_gene_arrangement.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <!-- ===== 分类：小工具 ===== -->
   <url>
     <loc>https://www.biodatatools.cn/ch/017.TaxSet_generator.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/019.PopART_nexus_generator.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/020.Samova_geo_map.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/021.Arp_hap_merger.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/022.Wide_long_table_reshaping.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/023.Triangular_matrix_tool.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/024.Triangular_matrix_reorder.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/025.Geo_coordinate_converter.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/026.Long_to_triangular.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/028.Haversine_distance_matrix.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/029.ARWEN_trna_extract.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.cn/ch/030.Table_merge_tool.html</loc>
+    <lastmod>2026-08-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.cn/ch/031.Table_column_explode.html</loc>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <!-- ===== 分类：其他 ===== -->
   <url>
     <loc>https://www.biodatatools.cn/ch/997.Software_download.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/998.Links.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.biodatatools.cn/ch/999.Script_download.html</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-08-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
