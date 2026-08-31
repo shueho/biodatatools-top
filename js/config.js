@@ -64,6 +64,18 @@ const toolConfig = [
     link: "en/027.Fasta_group_extract.html"
 },
 
+{
+    toolName: "Codon Position Splitter",
+    toolDesc: "Split multiple FASTA sequences into three codon position (1, 2, 3) sequences.",
+    link: "en/033.Codon_position_split.html"
+},
+
+{
+    toolName: "Variant Site Extractor",
+    toolDesc: "Extract variable sites (columns with at least two different characters) from aligned FASTA sequences.",
+    link: "en/034.Variant_site_extractor.html"
+},
+
         ]
     },
     {

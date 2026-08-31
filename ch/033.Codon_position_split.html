@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>密码子位点拆分工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>密码子位点拆分工具</h2>
+            <p>将多条FASTA序列按密码子位点（1、2、3）拆分为新序列。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入FASTA序列</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="粘贴标准FASTA格式内容（支持多条序列）" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 每条序列独立处理，最终每个序列的三个位点序列长度相同。
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">导入序列</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：拆分参数设置</div>
+            <div class="filter-box" style="gap:20px; align-items:center; flex-wrap:wrap;">
+                <label>序列名称与位置数字间的分隔符：
+                    <input type="text" id="sepInput" value="_" style="width:60px;">
+                </label>
+                <label>密码子残基处理方式：
+                    <select id="padMode" style="padding:4px 8px;">
+                        <option value="pad">补齐到3的倍数（末尾补“-”）</option>
+                        <option value="truncate">截断至3的倍数（删除末尾不足3个的碱基）</option>
+                    </select>
+                </label>
+            </div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="splitBtn" disabled>执行拆分</button>
+            </div>
+            <div id="splitMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：拆分结果</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>复制FASTA</button>
+                <button class="btn" id="downloadResultBtn" disabled>下载FASTA</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    预览（前1000字符）<span id="resultStats" style="font-weight:400; color:#6c757d; font-size:0.85rem;"></span>
+                </div>
+                <div class="result-item" style="max-height:400px; overflow-y:auto; white-space:pre-wrap; font-family:Consolas,monospace; font-size:13px;" id="resultBox"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">执行拆分后，结果将显示在此处</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const sepInput = document.getElementById('sepInput');
+            const padMode = document.getElementById('padMode');
+            const splitBtn = document.getElementById('splitBtn');
+            const splitMsg = document.getElementById('splitMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultBox = document.getElementById('resultBox');
+            const resultStats = document.getElementById('resultStats');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const downloadResultBtn = document.getElementById('downloadResultBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let sequences = [];
+            let currentResult = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if ([msgTip, splitMsg, resultMsg].includes(el)) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ id: name, seq: seq });
+                        name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ id: name, seq: seq });
+                return seqs;
+            }
+
+            function processSeq(seq, mode) {
+                if (mode === 'pad') {
+                    const remainder = seq.length % 3;
+                    if (remainder !== 0) {
+                        const padLen = 3 - remainder;
+                        return seq + '-'.repeat(padLen);
+                    }
+                    return seq;
+                } else { // truncate
+                    const trimLen = seq.length - (seq.length % 3);
+                    return seq.slice(0, trimLen);
+                }
+            }
+
+            function splitByCodon(seqs, separator, mode) {
+                if (seqs.length === 0) return null;
+                const codonPositions = [0, 1, 2];
+                const resultSeqs = [];
+
+                for (const seqObj of seqs) {
+                    const processed = processSeq(seqObj.seq, mode);
+                    if (processed.length === 0) continue; 
+                    for (const pos of codonPositions) {
+                        let newSeq = '';
+                        for (let i = pos; i < processed.length; i += 3) {
+                            newSeq += processed[i];
+                        }
+                        const newId = seqObj.id + separator + (pos + 1);
+                        resultSeqs.push({ id: newId, seq: newSeq });
+                    }
+                }
+                return resultSeqs;
+            }
+
+            function loadData(text) {
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, '未解析到有效FASTA序列', 'error');
+                    return false;
+                }
+                sequences = parsed;
+                showMsg(msgTip, `成功加载 ${sequences.length} 条序列`, 'success');
+                toast(`已加载 ${sequences.length} 条序列`);
+                splitBtn.disabled = false;
+                clearResults();
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = fastaFile.files[0];
+                if (!file) { showMsg(msgTip, '请选择文件', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fastaText.value = e.target.result;
+                    loadData(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = fastaText.value.trim();
+                if (!text) { showMsg(msgTip, '请粘贴FASTA内容', 'error'); return; }
+                loadData(text);
+            }
+
+            function loadExample() {
+                const example = `>seq1
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq2
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAG---CTAGCTAGCTAGCTAGCTAGCTA
+>seq3
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC--
+>seq4
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                fastaText.value = example;
+                loadData(example);
+            }
+
+            function doSplit() {
+                if (sequences.length === 0) {
+                    showMsg(splitMsg, '请先导入序列', 'error');
+                    return;
+                }
+                const sep = sepInput.value || '_';
+                const mode = padMode.value;
+                const resultSeqs = splitByCodon(sequences, sep, mode);
+                if (!resultSeqs || resultSeqs.length === 0) {
+                    showMsg(splitMsg, '拆分失败，请检查序列', 'error');
+                    return;
+                }
+
+                let fasta = '';
+                for (const s of resultSeqs) {
+                    fasta += '>' + s.id + '\n' + s.seq + '\n';
+                }
+                currentResult = fasta;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                const preview = fasta.length > 1000 ? fasta.slice(0, 1000) + '\n... (截断)' : fasta;
+                resultBox.textContent = preview;
+                resultStats.textContent = `（共 ${resultSeqs.length} 条序列，总长度 ${fasta.length} 字符）`;
+                copyResultBtn.disabled = false;
+                downloadResultBtn.disabled = false;
+                showMsg(splitMsg, `拆分完成，生成 ${resultSeqs.length} 条序列`, 'success');
+                toast('拆分完成');
+            }
+
+            function copyResult() {
+                if (!currentResult) {
+                    showMsg(resultMsg, '无内容可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResult).then(() => {
+                        showMsg(resultMsg, '已复制FASTA内容', 'success');
+                        toast('已复制');
+                    }).catch(() => fallbackCopy(currentResult));
+                } else {
+                    fallbackCopy(currentResult);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '已复制FASTA内容', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(resultMsg, '复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!currentResult) {
+                    showMsg(resultMsg, '无内容可下载', 'error');
+                    return;
+                }
+                const blob = new Blob([currentResult], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'codon_split.fasta';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '已下载 codon_split.fasta', 'success');
+                toast('已下载');
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentResult = '';
+                copyResultBtn.disabled = true;
+                downloadResultBtn.disabled = true;
+                resultBox.textContent = '';
+                resultStats.textContent = '';
+                resultMsg.innerHTML = '';
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                splitBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+                splitMsg.innerHTML = '';
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fastaFile.files || fastaFile.files.length === 0) {
+                        if (fastaText.value.trim()) loadFromText();
+                        else showMsg(msgTip, '请选择文件或粘贴数据', 'error');
+                    } else {
+                        loadFromFile();
+                    }
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+            splitBtn.addEventListener('click', doSplit);
+            copyResultBtn.addEventListener('click', copyResult);
+            downloadResultBtn.addEventListener('click', downloadResult);
+
+            sepInput.addEventListener('input', function() {
+                if (sequences.length > 0 && !splitBtn.disabled) doSplit();
+            });
+            padMode.addEventListener('change', function() {
+                if (sequences.length > 0 && !splitBtn.disabled) doSplit();
+            });
+
+            switchInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+            splitBtn.disabled = true;
+            copyResultBtn.disabled = true;
+            downloadResultBtn.disabled = true;
+        })();
+    </script>
+</body>
+</html>

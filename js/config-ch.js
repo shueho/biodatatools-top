@@ -65,6 +65,18 @@ const toolConfig = [
     link: "ch/027.Fasta_group_extract.html"
 },
 
+{
+    toolName: "密码子位点拆分工具",
+    toolDesc: "将多条FASTA序列按密码子位点（1、2、3）拆分为新序列。",
+    link: "ch/033.Codon_position_split.html"
+},
+
+{
+    toolName: "变异位点提取工具",
+    toolDesc: "从已比对的FASTA序列中提取所有变异位点。",
+    link: "ch/034.Variant_site_extractor.html"
+},
+
         ]
     },
     {

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codon Position Splitter - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>Codon Position Splitter</h2>
+            <p>Split multiple FASTA sequences into three codon position (1, 2, 3) sequences.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import FASTA Sequences</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload FASTA File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste FASTA Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="Paste standard FASTA content (multiple sequences supported)" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> Each sequence is processed independently. The three position sequences from the same original sequence will have equal length.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">Load Sequences</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Split Parameters</div>
+            <div class="filter-box" style="gap:20px; align-items:center; flex-wrap:wrap;">
+                <label>Separator between sequence name and position number:
+                    <input type="text" id="sepInput" value="_" style="width:60px;">
+                </label>
+                <label>Non‑multiple‑of‑3 handling:
+                    <select id="padMode" style="padding:4px 8px;">
+                        <option value="pad">Pad to multiple of 3 (add "-" at end)</option>
+                        <option value="truncate">Truncate to multiple of 3 (drop extra bases)</option>
+                    </select>
+                </label>
+            </div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="splitBtn" disabled>Run Split</button>
+            </div>
+            <div id="splitMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Split Results</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>Copy FASTA</button>
+                <button class="btn" id="downloadResultBtn" disabled>Download FASTA</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    Preview (first 1000 chars) <span id="resultStats" style="font-weight:400; color:#6c757d; font-size:0.85rem;"></span>
+                </div>
+                <div class="result-item" style="max-height:400px; overflow-y:auto; white-space:pre-wrap; font-family:Consolas,monospace; font-size:13px;" id="resultBox"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Results will appear here after splitting.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: 'Di Shang Fei Zhu (Hao Xue)',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const sepInput = document.getElementById('sepInput');
+            const padMode = document.getElementById('padMode');
+            const splitBtn = document.getElementById('splitBtn');
+            const splitMsg = document.getElementById('splitMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultBox = document.getElementById('resultBox');
+            const resultStats = document.getElementById('resultStats');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const downloadResultBtn = document.getElementById('downloadResultBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let sequences = [];
+            let currentResult = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if ([msgTip, splitMsg, resultMsg].includes(el)) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ id: name, seq: seq });
+                        name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ id: name, seq: seq });
+                return seqs;
+            }
+
+            function processSeq(seq, mode) {
+                if (mode === 'pad') {
+                    const remainder = seq.length % 3;
+                    if (remainder !== 0) {
+                        const padLen = 3 - remainder;
+                        return seq + '-'.repeat(padLen);
+                    }
+                    return seq;
+                } else { // truncate
+                    const trimLen = seq.length - (seq.length % 3);
+                    return seq.slice(0, trimLen);
+                }
+            }
+
+            function splitByCodon(seqs, separator, mode) {
+                if (seqs.length === 0) return null;
+                const codonPositions = [0, 1, 2];
+                const resultSeqs = [];
+
+                for (const seqObj of seqs) {
+                    const processed = processSeq(seqObj.seq, mode);
+                    if (processed.length === 0) continue;
+                    for (const pos of codonPositions) {
+                        let newSeq = '';
+                        for (let i = pos; i < processed.length; i += 3) {
+                            newSeq += processed[i];
+                        }
+                        const newId = seqObj.id + separator + (pos + 1);
+                        resultSeqs.push({ id: newId, seq: newSeq });
+                    }
+                }
+                return resultSeqs;
+            }
+
+            function loadData(text) {
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, 'No valid FASTA sequences found.', 'error');
+                    return false;
+                }
+                sequences = parsed;
+                showMsg(msgTip, `Successfully loaded ${sequences.length} sequences.`, 'success');
+                toast(`Loaded ${sequences.length} sequences.`);
+                splitBtn.disabled = false;
+                clearResults();
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = fastaFile.files[0];
+                if (!file) { showMsg(msgTip, 'Please select a file.', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fastaText.value = e.target.result;
+                    loadData(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = fastaText.value.trim();
+                if (!text) { showMsg(msgTip, 'Please paste FASTA content.', 'error'); return; }
+                loadData(text);
+            }
+
+            function loadExample() {
+                // Example includes internal gaps, trailing gaps, and non‑multiple lengths
+                const example = `>seq1
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
+>seq2
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAG---CTAGCTAGCTAGCTAGCTAGCTA
+>seq3
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC--
+>seq4
+ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                fastaText.value = example;
+                loadData(example);
+            }
+
+            function doSplit() {
+                if (sequences.length === 0) {
+                    showMsg(splitMsg, 'Please load sequences first.', 'error');
+                    return;
+                }
+                const sep = sepInput.value || '_';
+                const mode = padMode.value;
+                const resultSeqs = splitByCodon(sequences, sep, mode);
+                if (!resultSeqs || resultSeqs.length === 0) {
+                    showMsg(splitMsg, 'Split failed. Please check your sequences.', 'error');
+                    return;
+                }
+
+                let fasta = '';
+                for (const s of resultSeqs) {
+                    fasta += '>' + s.id + '\n' + s.seq + '\n';
+                }
+                currentResult = fasta;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                const preview = fasta.length > 1000 ? fasta.slice(0, 1000) + '\n... (truncated)' : fasta;
+                resultBox.textContent = preview;
+                resultStats.textContent = `(${resultSeqs.length} sequences, total length ${fasta.length} chars)`;
+                copyResultBtn.disabled = false;
+                downloadResultBtn.disabled = false;
+                showMsg(splitMsg, `Split complete. Generated ${resultSeqs.length} sequences.`, 'success');
+                toast('Split complete.');
+            }
+
+            function copyResult() {
+                if (!currentResult) {
+                    showMsg(resultMsg, 'No content to copy.', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResult).then(() => {
+                        showMsg(resultMsg, 'FASTA content copied.', 'success');
+                        toast('Copied.');
+                    }).catch(() => fallbackCopy(currentResult));
+                } else {
+                    fallbackCopy(currentResult);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, 'FASTA content copied.', 'success');
+                    toast('Copied.');
+                } catch (e) {
+                    showMsg(resultMsg, 'Copy failed. Please copy manually.', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!currentResult) {
+                    showMsg(resultMsg, 'No content to download.', 'error');
+                    return;
+                }
+                const blob = new Blob([currentResult], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'codon_split.fasta';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, 'Downloaded codon_split.fasta', 'success');
+                toast('Downloaded.');
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentResult = '';
+                copyResultBtn.disabled = true;
+                downloadResultBtn.disabled = true;
+                resultBox.textContent = '';
+                resultStats.textContent = '';
+                resultMsg.innerHTML = '';
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                splitBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+                splitMsg.innerHTML = '';
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fastaFile.files || fastaFile.files.length === 0) {
+                        if (fastaText.value.trim()) loadFromText();
+                        else showMsg(msgTip, 'Please select a file or paste data.', 'error');
+                    } else {
+                        loadFromFile();
+                    }
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+            splitBtn.addEventListener('click', doSplit);
+            copyResultBtn.addEventListener('click', copyResult);
+            downloadResultBtn.addEventListener('click', downloadResult);
+
+            sepInput.addEventListener('input', function() {
+                if (sequences.length > 0 && !splitBtn.disabled) doSplit();
+            });
+            padMode.addEventListener('change', function() {
+                if (sequences.length > 0 && !splitBtn.disabled) doSplit();
+            });
+
+            switchInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+            splitBtn.disabled = true;
+            copyResultBtn.disabled = true;
+            downloadResultBtn.disabled = true;
+        })();
+    </script>
+</body>
+</html>

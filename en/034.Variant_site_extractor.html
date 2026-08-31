@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Variant Site Extractor - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>Variant Site Extractor</h2>
+            <p>Extract variable sites (columns with at least two different characters) from aligned FASTA sequences.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import FASTA Sequences</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload FASTA File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste FASTA Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="Paste aligned FASTA content (all sequences must have identical length)" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> All sequences must be aligned and have exactly the same length.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">Load Sequences</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Parameters</div>
+            <div class="filter-box" style="gap:20px; align-items:center; flex-wrap:wrap;">
+                <label>
+                    <input type="checkbox" id="removeGapSites"> 
+                    Remove sites containing gaps
+                    <span style="font-weight:400; color:#888; font-size:0.85rem; margin-left:4px;">(if checked, any site with at least one "-" will be excluded)</span>
+                </label>
+            </div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="extractBtn" disabled>Extract Variant Sites</button>
+            </div>
+            <div id="extractMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Results</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>Copy FASTA</button>
+                <button class="btn" id="downloadResultBtn" disabled>Download FASTA</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    FASTA Preview (first 1000 chars) <span id="resultStats" style="font-weight:400; color:#6c757d; font-size:0.85rem;"></span>
+                </div>
+                <div class="result-item" style="max-height:400px; overflow-y:auto; white-space:pre-wrap; font-family:Consolas,monospace; font-size:13px;" id="resultBox"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Results will appear here after extraction.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: 'Di Shang Fei Zhu (Hao Xue)',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const removeGapSites = document.getElementById('removeGapSites');
+            const extractBtn = document.getElementById('extractBtn');
+            const extractMsg = document.getElementById('extractMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultBox = document.getElementById('resultBox');
+            const resultStats = document.getElementById('resultStats');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const downloadResultBtn = document.getElementById('downloadResultBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let sequences = [];
+            let currentResult = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if ([msgTip, extractMsg, resultMsg].includes(el)) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.startsWith('>')) {
+                        if (name && seq) seqs.push({ id: name, seq: seq });
+                        name = trimmed.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += trimmed;
+                    }
+                }
+                if (name && seq) seqs.push({ id: name, seq: seq });
+                return seqs;
+            }
+
+            function checkLengths(seqs) {
+                if (seqs.length === 0) return true;
+                const len = seqs[0].seq.length;
+                for (let i = 1; i < seqs.length; i++) {
+                    if (seqs[i].seq.length !== len) return false;
+                }
+                return true;
+            }
+
+            function extractVariants(seqs, removeGap) {
+                if (seqs.length === 0) return null;
+                const seqLen = seqs[0].seq.length;
+                const variantPositions = [];
+
+                for (let i = 0; i < seqLen; i++) {
+                    const chars = seqs.map(s => s.seq[i]);
+                    const unique = new Set(chars);
+                    if (unique.size === 1) continue;
+                    if (removeGap && chars.includes('-')) continue;
+                    variantPositions.push(i);
+                }
+
+                if (variantPositions.length === 0) return null;
+
+                const newSeqs = seqs.map(s => {
+                    let newSeq = '';
+                    for (const pos of variantPositions) {
+                        newSeq += s.seq[pos];
+                    }
+                    return { id: s.id, seq: newSeq };
+                });
+
+                return newSeqs;
+            }
+
+            function loadData(text) {
+                const parsed = parseFasta(text);
+                if (parsed.length === 0) {
+                    showMsg(msgTip, 'No valid FASTA sequences found.', 'error');
+                    return false;
+                }
+                if (!checkLengths(parsed)) {
+                    showMsg(msgTip, 'Sequences have different lengths. Please align them first.', 'error');
+                    return false;
+                }
+                sequences = parsed;
+                showMsg(msgTip, `Successfully loaded ${sequences.length} sequences, length ${sequences[0].seq.length} bp.`, 'success');
+                toast(`Loaded ${sequences.length} sequences.`);
+                extractBtn.disabled = false;
+                clearResults();
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = fastaFile.files[0];
+                if (!file) { showMsg(msgTip, 'Please select a file.', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fastaText.value = e.target.result;
+                    loadData(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = fastaText.value.trim();
+                if (!text) { showMsg(msgTip, 'Please paste FASTA content.', 'error'); return; }
+                loadData(text);
+            }
+
+            function loadExample() {
+                const example = `>seq1
+ATGC-AGCTAGCAAGCTAGCTAGATAGCTAGCTAGCTAGGTAGCTAGC-AGCTAGCTAG
+>seq2
+ATGC-AGCTAGCTAGCTAGCTAGCTAGCTA-CTAGCTGGGTAGCTAGC-AGCTAGCTAG
+>seq3
+ATGCTAGCTAGCCAGCTAGCTAGATAGCTA-CTAGCTAGATAGCTAGC-AGCTAGCTAG
+>seq4
+ATGCAAGCTAGCTAGCTAGCTAGATAGCTAGCTAGCTAGATAGCTAGCTAGCTAGCTAG`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                fastaText.value = example;
+                loadData(example);
+            }
+
+            function doExtract() {
+                if (sequences.length === 0) {
+                    showMsg(extractMsg, 'Please load sequences first.', 'error');
+                    return;
+                }
+                const removeGap = removeGapSites.checked;
+                const newSeqs = extractVariants(sequences, removeGap);
+                if (!newSeqs) {
+                    showMsg(extractMsg, 'No variant sites found (all sites are identical).', 'warn');
+                    return;
+                }
+
+                let fasta = '';
+                for (const s of newSeqs) {
+                    fasta += '>' + s.id + '\n' + s.seq + '\n';
+                }
+                currentResult = fasta;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                const preview = fasta.length > 1000 ? fasta.slice(0, 1000) + '\n... (truncated)' : fasta;
+                resultBox.textContent = preview;
+                resultStats.textContent = `(${newSeqs.length} sequences, ${newSeqs[0].seq.length} variant sites, original length ${sequences[0].seq.length} bp)`;
+                copyResultBtn.disabled = false;
+                downloadResultBtn.disabled = false;
+                showMsg(extractMsg, `Extraction complete. ${newSeqs[0].seq.length} variant sites retained.`, 'success');
+                toast('Extraction complete.');
+            }
+
+            function copyResult() {
+                if (!currentResult) {
+                    showMsg(resultMsg, 'No content to copy.', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResult).then(() => {
+                        showMsg(resultMsg, 'FASTA content copied.', 'success');
+                        toast('Copied.');
+                    }).catch(() => fallbackCopy(currentResult));
+                } else {
+                    fallbackCopy(currentResult);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, 'FASTA content copied.', 'success');
+                    toast('Copied.');
+                } catch (e) {
+                    showMsg(resultMsg, 'Copy failed. Please copy manually.', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!currentResult) {
+                    showMsg(resultMsg, 'No content to download.', 'error');
+                    return;
+                }
+                const blob = new Blob([currentResult], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'variant_sites.fasta';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, 'Downloaded variant_sites.fasta', 'success');
+                toast('Downloaded.');
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentResult = '';
+                copyResultBtn.disabled = true;
+                downloadResultBtn.disabled = true;
+                resultBox.textContent = '';
+                resultStats.textContent = '';
+                resultMsg.innerHTML = '';
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                extractBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+                extractMsg.innerHTML = '';
+            };
+
+            fastaFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    fastaText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            fastaText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fastaFile.files || fastaFile.files.length === 0) {
+                        if (fastaText.value.trim()) loadFromText();
+                        else showMsg(msgTip, 'Please select a file or paste data.', 'error');
+                    } else {
+                        loadFromFile();
+                    }
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+            extractBtn.addEventListener('click', doExtract);
+            copyResultBtn.addEventListener('click', copyResult);
+            downloadResultBtn.addEventListener('click', downloadResult);
+
+            removeGapSites.addEventListener('change', function() {
+                if (sequences.length > 0 && !extractBtn.disabled) doExtract();
+            });
+
+            switchInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+            extractBtn.disabled = true;
+            copyResultBtn.disabled = true;
+            downloadResultBtn.disabled = true;
+        })();
+    </script>
+</body>
+</html>
