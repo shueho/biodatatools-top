@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Species Abundance Table Taxonomy Parser - BioDataTools</title>
+    <title>Taxonomy Abundance Table Classification Analysis - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
@@ -13,12 +13,12 @@
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>Species Abundance Table Taxonomy Parser</h2>
-            <p>Parse taxonomic strings (e.g., d__Bacteria;k__Bacteria;p__Proteobacteria;...) into Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species, with optional aggregation to a specified rank, relative abundance conversion, and missing rank completion.</p>
+            <h2>Taxonomy Abundance Table Classification Analysis</h2>
+            <p>Split classification strings in abundance tables (e.g., d__Bacteria;k__Bacteria;p__Proteobacteria;...) into Domain, Kingdom, Phylum, Class, Order, Family, Genus, and Species. Aggregate by a selected rank, supports relative abundance calculation and missing-rank imputation.</p>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 1: Import Table Data</div>
+            <div class="step-title">Step 1: Import Data</div>
             <div class="mode-tabs">
                 <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
                 <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
@@ -27,10 +27,10 @@
                 <input type="file" id="fileInput" accept=".csv,.tsv,.txt" disabled>
             </div>
             <div class="text-input">
-                <textarea id="textInput" placeholder="Paste table data (first row as column names, first column as taxonomic strings)" disabled></textarea>
+                <textarea id="textInput" placeholder="Paste table data (first row = headers, first column = taxonomy strings)" disabled></textarea>
             </div>
             <div class="info-box">
-                <strong>Note:</strong> The first row should contain column names, and the first column should contain taxonomic strings (e.g., &ldquo;d__Bacteria;k__Bacteria;p__Proteobacteria;...&rdquo;). The remaining columns are sample abundance data. Supports tab, comma, or space delimiters.
+                <strong>Note:</strong> First row must contain column headers; first column is the taxonomy string (e.g., "d__Bacteria;k__Bacteria;p__Proteobacteria;..."); remaining columns are sample abundance values. Supports tab, comma, or space delimiters.
             </div>
             <div style="margin-top:12px; display:flex; gap:10px;">
                 <button class="btn" id="loadBtn">Load Data</button>
@@ -44,23 +44,27 @@
 
             <div class="param-group" style="gap:16px; flex-wrap:wrap;">
                 <label>
-                    Delimiter for first column:
+                    Rank delimiter:
                     <input type="text" id="rankDelimiter" value=";" style="width:50px;">
-                    <span style="font-weight:400;color:#888;font-size:0.85rem;">(separator between taxonomic ranks)</span>
+                    <span style="font-weight:400;color:#888;font-size:0.85rem;">(separator between ranks in taxonomy string)</span>
                 </label>
                 <label>Prefix mode:
                     <select id="prefixMode" style="padding:4px 8px;">
-                        <option value="keep">Keep prefixes</option>
-                        <option value="remove">Remove prefixes</option>
-                        <option value="stamp">Complete missing ranks</option>
+                        <option value="keep">Keep prefix</option>
+                        <option value="remove">Remove prefix</option>
+                        <option value="stamp">Fill unknown</option>
                     </select>
                 </label>
                 <label>
                     <input type="checkbox" id="mergeDomain">
                     Merge Domain into Kingdom
-                    <span style="font-weight:400;color:#888;font-size:0.85rem;margin-left:4px;">(Kingdom uses k__ if present, otherwise uses d__)</span>
+                    <span style="font-weight:400;color:#888;font-size:0.85rem;margin-left:4px;">(Kingdom uses k__; falls back to Domain if missing)</span>
                 </label>
-                <label>Aggregate to:
+                <label>
+                    <input type="checkbox" id="treatUnculturedAsUnknown" checked>
+                    Treat "uncultured" as unknown
+                </label>
+                <label>Aggregate at:
                     <select id="cutRank" style="padding:4px 8px;">
                         <option value="none">All ranks</option>
                         <option value="Domain">Domain</option>
@@ -75,7 +79,7 @@
                 </label>
                 <label>
                     <input type="checkbox" id="relativeAbundance">
-                    Convert to relative abundance (column-wise normalization)
+                    Convert to relative abundance
                 </label>
             </div>
 
@@ -86,9 +90,9 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 3: Results</div>
+            <div class="step-title">Step 3: Export Results</div>
             <div class="result-toolbar">
-                <button class="btn" id="copyResultBtn" disabled>Copy Results</button>
+                <button class="btn" id="copyResultBtn" disabled>Copy Result</button>
                 <button class="btn" id="exportResultBtn" disabled>Export Table</button>
                 <span id="resultMsg" class="tip-text" style="margin:0;"></span>
             </div>
@@ -111,12 +115,12 @@
 
     <script>
         window.headerConfig = {
-            //author: 'Di Shang Fei Zhu (Hao Xue)',
+            //author: '地上飞猪',
         };
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/footer.js"></script>
 
     <script>
         (function() {
@@ -131,6 +135,7 @@
             const rankDelimiter = document.getElementById('rankDelimiter');
             const prefixMode = document.getElementById('prefixMode');
             const mergeDomain = document.getElementById('mergeDomain');
+            const treatUnculturedAsUnknown = document.getElementById('treatUnculturedAsUnknown');
             const cutRank = document.getElementById('cutRank');
             const relativeAbundance = document.getElementById('relativeAbundance');
             const processBtn = document.getElementById('processBtn');
@@ -203,11 +208,19 @@
                 return rows;
             }
 
-            function extractRank(cell, rank, prefixModeVal, mergeDomainFlag, patterns) {
+            function extractRank(cell, rank, prefixModeVal, mergeDomainFlag, treatUnculturedAsUnknownFlag, patterns) {
                 if (mergeDomainFlag && rank === 'Kingdom') {
                     let kMatch = cell.match(patterns['Kingdom']);
                     if (kMatch && kMatch[1] && kMatch[1] !== '') {
                         let val = kMatch[1];
+                        let isUncultured = treatUnculturedAsUnknownFlag && val.toLowerCase() === 'uncultured';
+                        if (isUncultured) {
+                            if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                                return { value: 'k__unclassified', found: false, isEmpty: true };
+                            } else {
+                                return { value: 'unclassified', found: false, isEmpty: true };
+                            }
+                        }
                         if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
                             return { value: 'k__' + val, found: true, isEmpty: false };
                         } else {
@@ -217,6 +230,14 @@
                         let dMatch = cell.match(patterns['Domain']);
                         if (dMatch && dMatch[1] && dMatch[1] !== '') {
                             let val = dMatch[1];
+                            let isUncultured = treatUnculturedAsUnknownFlag && val.toLowerCase() === 'uncultured';
+                            if (isUncultured) {
+                                if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                                    return { value: 'k__unclassified', found: false, isEmpty: true };
+                                } else {
+                                    return { value: 'unclassified', found: false, isEmpty: true };
+                                }
+                            }
                             if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
                                 return { value: 'k__' + val, found: true, isEmpty: false };
                             } else {
@@ -249,6 +270,14 @@
                     }
                 }
                 let val = match[1];
+                let isUncultured = treatUnculturedAsUnknownFlag && val.toLowerCase() === 'uncultured';
+                if (isUncultured) {
+                    if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                        return { value: rank[0].toLowerCase() + '__unclassified', found: false, isEmpty: true };
+                    } else {
+                        return { value: 'unclassified', found: false, isEmpty: true };
+                    }
+                }
                 if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
                     return { value: rank[0].toLowerCase() + '__' + val, found: true, isEmpty: false };
                 } else {
@@ -269,7 +298,7 @@
                 }
             }
 
-            function processData(dataRows, headerRow, prefixModeVal, mergeDomainFlag, cutRankValue, patterns) {
+            function processData(dataRows, headerRow, prefixModeVal, mergeDomainFlag, treatUnculturedAsUnknownFlag, cutRankValue, patterns) {
                 const taxCol = 0;
                 const valueCols = headerRow.slice(1);
                 const valueIndices = valueCols.map((_, idx) => idx + 1);
@@ -279,7 +308,7 @@
                     const taxStr = row[taxCol] || '';
                     const rankInfo = {};
                     RANKS.forEach(r => {
-                        rankInfo[r] = extractRank(taxStr, r, prefixModeVal, mergeDomainFlag, patterns);
+                        rankInfo[r] = extractRank(taxStr, r, prefixModeVal, mergeDomainFlag, treatUnculturedAsUnknownFlag, patterns);
                     });
                     const values = valueIndices.map(idx => {
                         const v = parseFloat(row[idx]);
@@ -428,13 +457,13 @@
             function loadData(text) {
                 const rows = parseTable(text);
                 if (!rows || rows.length < 2) {
-                    showMsg(msgTip, 'Invalid table format. Please check delimiter or data.', 'error');
+                    showMsg(msgTip, 'Table format error. Check delimiter or data.', 'error');
                     return false;
                 }
                 headers = rows[0];
                 rawData = rows.slice(1);
-                showMsg(msgTip, `Successfully loaded ${rawData.length} rows × ${headers.length} columns.`, 'success');
-                toast('Data loaded successfully.');
+                showMsg(msgTip, `Loaded ${rawData.length} rows × ${headers.length} columns.`, 'success');
+                toast('Data loaded');
                 processBtn.disabled = false;
                 clearResults();
                 return true;
@@ -459,11 +488,11 @@
 
             function loadExample() {
                 const example = `taxonomy	Sample1	Sample2	Sample3
-d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__	10	20	30
+d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__uncultured	10	20	30
 d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__;s__	5	15	25
 d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Turicibacterales;f__Turicibacteraceae;g__Turicibacter;s__	8	12	18
 d__Archaea;k__Archaea;p__Halobacterota;c__Halobacteria;o__Halobacterales;f__Haloferacaceae;g__Halorubrum;s__sp.	12	8	6
-d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales;f__Streptomycetaceae;g__Streptomyces;s__sp.	3	7	11`;
+d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales;f__Streptomycetaceae;g__uncultured;s__sp.	3	7	11`;
                 const radio = document.querySelector('input[name="inputMode"][value="text"]');
                 if (radio) radio.checked = true;
                 switchInput();
@@ -478,6 +507,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 }
                 const prefixModeVal = prefixMode.value;
                 const mergeDomainFlag = mergeDomain.checked;
+                const treatUnculturedAsUnknownFlag = treatUnculturedAsUnknown.checked;
                 const cutRankValue = cutRank.value;
                 const relAbundance = relativeAbundance.checked;
                 const delim = rankDelimiter.value.trim() || ';';
@@ -487,15 +517,15 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 const text = textInput.value;
                 const rows = parseTable(text);
                 if (!rows || rows.length < 2) {
-                    showMsg(processMsg, 'Data parsing failed. Please check format.', 'error');
+                    showMsg(processMsg, 'Data parse failed. Check format.', 'error');
                     return;
                 }
                 const header = rows[0];
                 const dataRows = rows.slice(1);
 
-                let result = processData(dataRows, header, prefixModeVal, mergeDomainFlag, cutRankValue, patterns);
+                let result = processData(dataRows, header, prefixModeVal, mergeDomainFlag, treatUnculturedAsUnknownFlag, cutRankValue, patterns);
                 if (!result || result.rows.length === 0) {
-                    showMsg(processMsg, 'No results. Please check your data.', 'warn');
+                    showMsg(processMsg, 'Processing result is empty. Check data.', 'warn');
                     return;
                 }
 
@@ -505,8 +535,8 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 }
 
                 renderResult(result.headers, result.rows);
-                showMsg(processMsg, `Processing complete. ${result.rows.length} rows${relAbundance ? ' (relative abundance)' : ''}.`, 'success');
-                toast('Processing complete.');
+                showMsg(processMsg, `Done. ${result.rows.length} rows${relAbundance ? ' (relative abundance)' : ''}.`, 'success');
+                toast('Processing complete');
             }
 
             function renderResult(headers, rows) {
@@ -532,7 +562,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
 
                 resultArea.style.display = 'block';
                 emptyResult.style.display = 'none';
-                resultStats.textContent = `（${rows.length} rows × ${headers.length} columns）`;
+                resultStats.textContent = `(${rows.length} rows × ${headers.length} columns)`;
                 copyResultBtn.disabled = false;
                 exportResultBtn.disabled = false;
 
@@ -561,13 +591,13 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
 
             function copyResult() {
                 if (!currentResultText) {
-                    showMsg(resultMsg, 'No content to copy.', 'error');
+                    showMsg(resultMsg, 'Nothing to copy.', 'error');
                     return;
                 }
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText('\uFEFF' + currentResultText).then(() => {
-                        showMsg(resultMsg, 'Results copied (TSV format).', 'success');
-                        toast('Copied.');
+                        showMsg(resultMsg, 'Result copied (TSV format).', 'success');
+                        toast('Copied');
                     }).catch(() => fallbackCopy(currentResultText));
                 } else {
                     fallbackCopy(currentResultText);
@@ -583,8 +613,8 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 ta.select();
                 try {
                     document.execCommand('copy');
-                    showMsg(resultMsg, 'Results copied.', 'success');
-                    toast('Copied.');
+                    showMsg(resultMsg, 'Result copied.', 'success');
+                    toast('Copied');
                 } catch (e) {
                     showMsg(resultMsg, 'Copy failed. Please copy manually.', 'error');
                 }
@@ -593,7 +623,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
 
             function exportResult() {
                 if (!currentResultText) {
-                    showMsg(resultMsg, 'No content to export.', 'error');
+                    showMsg(resultMsg, 'Nothing to export.', 'error');
                     return;
                 }
                 const csv = currentResultText.split('\n').map(line => line.split('\t').join(',')).join('\n');
@@ -607,7 +637,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 showMsg(resultMsg, 'Table exported.', 'success');
-                toast('Exported.');
+                toast('Table exported');
             }
 
             window.switchInput = function() {
@@ -668,7 +698,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
             copyResultBtn.addEventListener('click', copyResult);
             exportResultBtn.addEventListener('click', exportResult);
 
-            const paramInputs = [rankDelimiter, prefixMode, mergeDomain, cutRank, relativeAbundance];
+            const paramInputs = [rankDelimiter, prefixMode, mergeDomain, treatUnculturedAsUnknown, cutRank, relativeAbundance];
             paramInputs.forEach(el => {
                 el.addEventListener('change', function() {
                     if (rawData.length > 0 && !processBtn.disabled) {

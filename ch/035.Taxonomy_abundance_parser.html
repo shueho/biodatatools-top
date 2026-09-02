@@ -52,13 +52,17 @@
                     <select id="prefixMode" style="padding:4px 8px;">
                         <option value="keep">保留前缀</option>
                         <option value="remove">不保留前缀</option>
-                        <option value="stamp">未知分类补全</option>
+                        <option value="stamp">补全未知分类</option>
                     </select>
                 </label>
                 <label>
                     <input type="checkbox" id="mergeDomain">
                     合并域到界
                     <span style="font-weight:400;color:#888;font-size:0.85rem;margin-left:4px;">（Kingdom优先使用k__，缺失时用Domain补充）</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="treatUnculturedAsUnknown" checked>
+                    将uncultured视为未知分类
                 </label>
                 <label>统计到：
                     <select id="cutRank" style="padding:4px 8px;">
@@ -131,6 +135,7 @@
             const rankDelimiter = document.getElementById('rankDelimiter');
             const prefixMode = document.getElementById('prefixMode');
             const mergeDomain = document.getElementById('mergeDomain');
+            const treatUnculturedAsUnknown = document.getElementById('treatUnculturedAsUnknown');
             const cutRank = document.getElementById('cutRank');
             const relativeAbundance = document.getElementById('relativeAbundance');
             const processBtn = document.getElementById('processBtn');
@@ -203,11 +208,19 @@
                 return rows;
             }
 
-            function extractRank(cell, rank, prefixModeVal, mergeDomainFlag, patterns) {
+            function extractRank(cell, rank, prefixModeVal, mergeDomainFlag, treatUnculturedAsUnknownFlag, patterns) {
                 if (mergeDomainFlag && rank === 'Kingdom') {
                     let kMatch = cell.match(patterns['Kingdom']);
                     if (kMatch && kMatch[1] && kMatch[1] !== '') {
                         let val = kMatch[1];
+                        let isUncultured = treatUnculturedAsUnknownFlag && val.toLowerCase() === 'uncultured';
+                        if (isUncultured) {
+                            if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                                return { value: 'k__unclassified', found: false, isEmpty: true };
+                            } else {
+                                return { value: 'unclassified', found: false, isEmpty: true };
+                            }
+                        }
                         if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
                             return { value: 'k__' + val, found: true, isEmpty: false };
                         } else {
@@ -217,6 +230,14 @@
                         let dMatch = cell.match(patterns['Domain']);
                         if (dMatch && dMatch[1] && dMatch[1] !== '') {
                             let val = dMatch[1];
+                            let isUncultured = treatUnculturedAsUnknownFlag && val.toLowerCase() === 'uncultured';
+                            if (isUncultured) {
+                                if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                                    return { value: 'k__unclassified', found: false, isEmpty: true };
+                                } else {
+                                    return { value: 'unclassified', found: false, isEmpty: true };
+                                }
+                            }
                             if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
                                 return { value: 'k__' + val, found: true, isEmpty: false };
                             } else {
@@ -249,6 +270,14 @@
                     }
                 }
                 let val = match[1];
+                let isUncultured = treatUnculturedAsUnknownFlag && val.toLowerCase() === 'uncultured';
+                if (isUncultured) {
+                    if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                        return { value: rank[0].toLowerCase() + '__unclassified', found: false, isEmpty: true };
+                    } else {
+                        return { value: 'unclassified', found: false, isEmpty: true };
+                    }
+                }
                 if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
                     return { value: rank[0].toLowerCase() + '__' + val, found: true, isEmpty: false };
                 } else {
@@ -269,7 +298,7 @@
                 }
             }
 
-            function processData(dataRows, headerRow, prefixModeVal, mergeDomainFlag, cutRankValue, patterns) {
+            function processData(dataRows, headerRow, prefixModeVal, mergeDomainFlag, treatUnculturedAsUnknownFlag, cutRankValue, patterns) {
                 const taxCol = 0;
                 const valueCols = headerRow.slice(1);
                 const valueIndices = valueCols.map((_, idx) => idx + 1);
@@ -279,7 +308,7 @@
                     const taxStr = row[taxCol] || '';
                     const rankInfo = {};
                     RANKS.forEach(r => {
-                        rankInfo[r] = extractRank(taxStr, r, prefixModeVal, mergeDomainFlag, patterns);
+                        rankInfo[r] = extractRank(taxStr, r, prefixModeVal, mergeDomainFlag, treatUnculturedAsUnknownFlag, patterns);
                     });
                     const values = valueIndices.map(idx => {
                         const v = parseFloat(row[idx]);
@@ -355,8 +384,6 @@
                             } else {
                                 if (!isPlaceholder(val, r, prefixModeVal)) {
                                     hasRealValue = true;
-                                }
-                                if (prefixModeVal === 'remove' && val === 'unclassified') {
                                 }
                             }
                             rowObj[r] = val;
@@ -461,11 +488,11 @@
 
             function loadExample() {
                 const example = `taxonomy	Sample1	Sample2	Sample3
-d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__	10	20	30
+d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__uncultured	10	20	30
 d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__;s__	5	15	25
 d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Turicibacterales;f__Turicibacteraceae;g__Turicibacter;s__	8	12	18
 d__Archaea;k__Archaea;p__Halobacterota;c__Halobacteria;o__Halobacterales;f__Haloferacaceae;g__Halorubrum;s__sp.	12	8	6
-d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales;f__Streptomycetaceae;g__Streptomyces;s__sp.	3	7	11`;
+d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales;f__Streptomycetaceae;g__uncultured;s__sp.	3	7	11`;
                 const radio = document.querySelector('input[name="inputMode"][value="text"]');
                 if (radio) radio.checked = true;
                 switchInput();
@@ -480,6 +507,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 }
                 const prefixModeVal = prefixMode.value;
                 const mergeDomainFlag = mergeDomain.checked;
+                const treatUnculturedAsUnknownFlag = treatUnculturedAsUnknown.checked;
                 const cutRankValue = cutRank.value;
                 const relAbundance = relativeAbundance.checked;
                 const delim = rankDelimiter.value.trim() || ';';
@@ -495,7 +523,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 const header = rows[0];
                 const dataRows = rows.slice(1);
 
-                let result = processData(dataRows, header, prefixModeVal, mergeDomainFlag, cutRankValue, patterns);
+                let result = processData(dataRows, header, prefixModeVal, mergeDomainFlag, treatUnculturedAsUnknownFlag, cutRankValue, patterns);
                 if (!result || result.rows.length === 0) {
                     showMsg(processMsg, '处理结果为空，请检查数据', 'warn');
                     return;
@@ -670,7 +698,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
             copyResultBtn.addEventListener('click', copyResult);
             exportResultBtn.addEventListener('click', exportResult);
 
-            const paramInputs = [rankDelimiter, prefixMode, mergeDomain, cutRank, relativeAbundance];
+            const paramInputs = [rankDelimiter, prefixMode, mergeDomain, treatUnculturedAsUnknown, cutRank, relativeAbundance];
             paramInputs.forEach(el => {
                 el.addEventListener('change', function() {
                     if (rawData.length > 0 && !processBtn.disabled) {
