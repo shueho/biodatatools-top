@@ -130,7 +130,7 @@ const toolConfig = [
 
 {
     toolName: "Species Abundance Table Taxonomy Parser",
-    toolDesc: "Parse taxonomic strings (e.g., d__Bacteria;k__Bacteria;p__Proteobacteria;...) into Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species, with optional aggregation to a specified rank, and relative abundance conversion.",
+    toolDesc: "Parse taxonomic strings (e.g., d__Bacteria;k__Bacteria;p__Proteobacteria;...) into Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species, with optional aggregation to a specified rank, relative abundance conversion, and missing rank completion.",
     link: "en/035.Taxonomy_abundance_parser.html"
 },
 

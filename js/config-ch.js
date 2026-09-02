@@ -132,7 +132,7 @@ const toolConfig = [
 
 {
     toolName: "物种丰度表分类解析",
-    toolDesc: "将丰度表格中的分类信息（如 d__Bacteria;k__Bacteria;p__Proteobacteria;...）拆分为域、界、门、纲、目、科、属、种，并按照某一等级进行分组求和，支持相对丰度计算。",
+    toolDesc: "将丰度表格中的分类信息（如 d__Bacteria;k__Bacteria;p__Proteobacteria;...）拆分为域、界、门、纲、目、科、属、种，并按照某一等级进行分组求和，支持相对丰度计算及缺失等级补全。",
     link: "ch/035.Taxonomy_abundance_parser.html"
 },
 

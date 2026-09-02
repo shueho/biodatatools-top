@@ -14,7 +14,7 @@
     <div class="main" id="app">
         <div class="page-intro">
             <h2>物种丰度表分类解析</h2>
-            <p>将丰度表格中的分类信息（如 d__Bacteria;k__Bacteria;p__Proteobacteria;...）拆分为域、界、门、纲、目、科、属、种，并按照某一等级进行分组求和，支持相对丰度计算。</p>
+            <p>将丰度表格中的分类信息（如 d__Bacteria;k__Bacteria;p__Proteobacteria;...）拆分为域、界、门、纲、目、科、属、种，并按照某一等级进行分组求和，支持相对丰度计算及缺失等级补全。</p>
         </div>
 
         <div class="step-card">
@@ -40,7 +40,7 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">第二步：解析与聚合参数设置</div>
+            <div class="step-title">第二步：解析参数设置</div>
 
             <div class="param-group" style="gap:16px; flex-wrap:wrap;">
                 <label>
@@ -48,9 +48,17 @@
                     <input type="text" id="rankDelimiter" value=";" style="width:50px;">
                     <span style="font-weight:400;color:#888;font-size:0.85rem;">（分类字符串中各等级之间的分隔符）</span>
                 </label>
+                <label>前缀模式：
+                    <select id="prefixMode" style="padding:4px 8px;">
+                        <option value="keep">保留前缀</option>
+                        <option value="remove">不保留前缀</option>
+                        <option value="stamp">未知分类补全</option>
+                    </select>
+                </label>
                 <label>
-                    <input type="checkbox" id="keepPrefix" checked>
-                    保留等级前缀（如 d__、k__）
+                    <input type="checkbox" id="mergeDomain">
+                    合并域到界
+                    <span style="font-weight:400;color:#888;font-size:0.85rem;margin-left:4px;">（Kingdom优先使用k__，缺失时用Domain补充）</span>
                 </label>
                 <label>统计到：
                     <select id="cutRank" style="padding:4px 8px;">
@@ -72,7 +80,7 @@
             </div>
 
             <div style="margin-top:12px;">
-                <button class="btn" id="processBtn" disabled>执行解析与聚合</button>
+                <button class="btn" id="processBtn" disabled>解析与合并</button>
             </div>
             <div id="processMsg" class="tip-text"></div>
         </div>
@@ -121,7 +129,8 @@
             const msgTip = document.getElementById('msgTip');
 
             const rankDelimiter = document.getElementById('rankDelimiter');
-            const keepPrefix = document.getElementById('keepPrefix');
+            const prefixMode = document.getElementById('prefixMode');
+            const mergeDomain = document.getElementById('mergeDomain');
             const cutRank = document.getElementById('cutRank');
             const relativeAbundance = document.getElementById('relativeAbundance');
             const processBtn = document.getElementById('processBtn');
@@ -194,22 +203,73 @@
                 return rows;
             }
 
-            function extractRank(cell, rank, keepPrefixFlag, patterns) {
-                const pattern = patterns[rank];
-                if (!pattern) return keepPrefixFlag ? rank[0].toLowerCase() + '__unclassified' : 'unclassified';
-                const match = cell.match(pattern);
-                let val = (match && match[1] !== undefined) ? match[1] : '';
-                if (val === '') {
-                    return keepPrefixFlag ? rank[0].toLowerCase() + '__unclassified' : 'unclassified';
+            function extractRank(cell, rank, prefixModeVal, mergeDomainFlag, patterns) {
+                if (mergeDomainFlag && rank === 'Kingdom') {
+                    let kMatch = cell.match(patterns['Kingdom']);
+                    if (kMatch && kMatch[1] && kMatch[1] !== '') {
+                        let val = kMatch[1];
+                        if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                            return { value: 'k__' + val, found: true, isEmpty: false };
+                        } else {
+                            return { value: val, found: true, isEmpty: false };
+                        }
+                    } else {
+                        let dMatch = cell.match(patterns['Domain']);
+                        if (dMatch && dMatch[1] && dMatch[1] !== '') {
+                            let val = dMatch[1];
+                            if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                                return { value: 'k__' + val, found: true, isEmpty: false };
+                            } else {
+                                return { value: val, found: true, isEmpty: false };
+                            }
+                        } else {
+                            if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                                return { value: 'k__unclassified', found: false, isEmpty: true };
+                            } else {
+                                return { value: 'unclassified', found: false, isEmpty: true };
+                            }
+                        }
+                    }
                 }
-                if (keepPrefixFlag) {
-                    return rank[0].toLowerCase() + '__' + val;
+
+                const pattern = patterns[rank];
+                if (!pattern) {
+                    if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                        return { value: rank[0].toLowerCase() + '__unclassified', found: false, isEmpty: true };
+                    } else {
+                        return { value: 'unclassified', found: false, isEmpty: true };
+                    }
+                }
+                const match = cell.match(pattern);
+                if (!match || !match[1] || match[1] === '') {
+                    if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                        return { value: rank[0].toLowerCase() + '__unclassified', found: false, isEmpty: true };
+                    } else {
+                        return { value: 'unclassified', found: false, isEmpty: true };
+                    }
+                }
+                let val = match[1];
+                if (prefixModeVal === 'keep' || prefixModeVal === 'stamp') {
+                    return { value: rank[0].toLowerCase() + '__' + val, found: true, isEmpty: false };
                 } else {
-                    return val;
+                    return { value: val, found: true, isEmpty: false };
                 }
             }
 
-            function processData(dataRows, headerRow, keepPrefixFlag, cutRankValue, patterns) {
+            function isPlaceholder(val, rank, prefixModeVal) {
+                if (!val) return true;
+                if (prefixModeVal === 'remove') {
+                    return val === 'unclassified';
+                } else {
+                    if (val === rank[0].toLowerCase() + '__unclassified') return true;
+                    if (prefixModeVal === 'stamp') {
+                        if (val.endsWith('_') || val.endsWith('_s') || val.endsWith('_g')) return true;
+                    }
+                    return false;
+                }
+            }
+
+            function processData(dataRows, headerRow, prefixModeVal, mergeDomainFlag, cutRankValue, patterns) {
                 const taxCol = 0;
                 const valueCols = headerRow.slice(1);
                 const valueIndices = valueCols.map((_, idx) => idx + 1);
@@ -217,15 +277,15 @@
                 const parsedRows = [];
                 for (let row of dataRows) {
                     const taxStr = row[taxCol] || '';
-                    const rankValues = {};
+                    const rankInfo = {};
                     RANKS.forEach(r => {
-                        rankValues[r] = extractRank(taxStr, r, keepPrefixFlag, patterns);
+                        rankInfo[r] = extractRank(taxStr, r, prefixModeVal, mergeDomainFlag, patterns);
                     });
                     const values = valueIndices.map(idx => {
                         const v = parseFloat(row[idx]);
                         return isNaN(v) ? 0 : v;
                     });
-                    parsedRows.push({ rankValues, values });
+                    parsedRows.push({ rankInfo, values });
                 }
 
                 let keepRanks = [];
@@ -237,18 +297,31 @@
                     else keepRanks = RANKS.slice(0, cutIndex + 1);
                 }
 
+                if (mergeDomainFlag) {
+                    keepRanks = keepRanks.filter(r => r !== 'Domain');
+                }
+
                 let groupKeyRank = null;
                 if (cutRankValue !== 'none') groupKeyRank = cutRankValue;
+                if (mergeDomainFlag && groupKeyRank === 'Domain') {
+                    groupKeyRank = 'Kingdom';
+                    if (!keepRanks.includes('Kingdom')) {
+                        keepRanks.unshift('Kingdom');
+                    }
+                }
 
                 let resultRows = [];
                 if (groupKeyRank) {
                     const groupMap = new Map();
                     for (let row of parsedRows) {
-                        const keyParts = keepRanks.map(r => row.rankValues[r] || (keepPrefixFlag ? r[0].toLowerCase() + '__unclassified' : 'unclassified'));
+                        const keyParts = keepRanks.map(r => {
+                            const info = row.rankInfo[r];
+                            return info.value;
+                        });
                         const key = keyParts.join('|||');
                         if (!groupMap.has(key)) {
                             groupMap.set(key, {
-                                rankValues: row.rankValues,
+                                rankInfo: row.rankInfo,
                                 values: new Array(valueIndices.length).fill(0)
                             });
                         }
@@ -257,11 +330,40 @@
                             entry.values[i] += row.values[i];
                         }
                     }
+
                     for (let [key, entry] of groupMap.entries()) {
                         const rowObj = {};
-                        keepRanks.forEach(r => {
-                            rowObj[r] = entry.rankValues[r] || (keepPrefixFlag ? r[0].toLowerCase() + '__unclassified' : 'unclassified');
-                        });
+                        let prefix = '';
+                        let hasRealValue = false;
+
+                        for (let r of keepRanks) {
+                            let info = entry.rankInfo[r];
+                            let val = info.value;
+
+                            if (prefixModeVal === 'stamp') {
+                                if (isPlaceholder(val, r, prefixModeVal)) {
+                                    if (prefix === '') {
+                                        val = r[0].toLowerCase() + '__unclassified';
+                                    } else {
+                                        val = prefix + '_' + r[0].toLowerCase();
+                                    }
+                                    prefix = val;
+                                } else {
+                                    prefix = val;
+                                    hasRealValue = true;
+                                }
+                            } else {
+                                if (!isPlaceholder(val, r, prefixModeVal)) {
+                                    hasRealValue = true;
+                                }
+                                if (prefixModeVal === 'remove' && val === 'unclassified') {
+                                }
+                            }
+                            rowObj[r] = val;
+                        }
+
+                        if (!hasRealValue) continue;
+
                         valueCols.forEach((colName, idx) => {
                             rowObj[colName] = entry.values[idx];
                         });
@@ -270,9 +372,35 @@
                 } else {
                     for (let row of parsedRows) {
                         const rowObj = {};
-                        keepRanks.forEach(r => {
-                            rowObj[r] = row.rankValues[r] || (keepPrefixFlag ? r[0].toLowerCase() + '__unclassified' : 'unclassified');
-                        });
+                        let prefix = '';
+                        let hasRealValue = false;
+
+                        for (let r of keepRanks) {
+                            let info = row.rankInfo[r];
+                            let val = info.value;
+
+                            if (prefixModeVal === 'stamp') {
+                                if (isPlaceholder(val, r, prefixModeVal)) {
+                                    if (prefix === '') {
+                                        val = r[0].toLowerCase() + '__unclassified';
+                                    } else {
+                                        val = prefix + '_' + r[0].toLowerCase();
+                                    }
+                                    prefix = val;
+                                } else {
+                                    prefix = val;
+                                    hasRealValue = true;
+                                }
+                            } else {
+                                if (!isPlaceholder(val, r, prefixModeVal)) {
+                                    hasRealValue = true;
+                                }
+                            }
+                            rowObj[r] = val;
+                        }
+
+                        if (!hasRealValue) continue;
+
                         valueCols.forEach((colName, idx) => {
                             rowObj[colName] = row.values[idx];
                         });
@@ -333,10 +461,9 @@
 
             function loadExample() {
                 const example = `taxonomy	Sample1	Sample2	Sample3
-d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Streptococcaceae;g__Streptococcus;s__	10	20	30
-d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Streptococcaceae;g__Streptococcus;s__pyogenes	5	15	25
-d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae;g__Bacillus;s__subtilis	8	12	18
-d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae;g__Bacillus;s__cereus	4	9	14
+d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__	10	20	30
+d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__;s__	5	15	25
+d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Turicibacterales;f__Turicibacteraceae;g__Turicibacter;s__	8	12	18
 d__Archaea;k__Archaea;p__Halobacterota;c__Halobacteria;o__Halobacterales;f__Haloferacaceae;g__Halorubrum;s__sp.	12	8	6
 d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales;f__Streptomycetaceae;g__Streptomyces;s__sp.	3	7	11`;
                 const radio = document.querySelector('input[name="inputMode"][value="text"]');
@@ -351,12 +478,12 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                     showMsg(processMsg, '请先导入数据', 'error');
                     return;
                 }
-                const keepPrefixFlag = keepPrefix.checked;
+                const prefixModeVal = prefixMode.value;
+                const mergeDomainFlag = mergeDomain.checked;
                 const cutRankValue = cutRank.value;
                 const relAbundance = relativeAbundance.checked;
                 const delim = rankDelimiter.value.trim() || ';';
 
-                // 动态构建正则
                 const patterns = buildRankPatterns(delim);
 
                 const text = textInput.value;
@@ -368,14 +495,14 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 const header = rows[0];
                 const dataRows = rows.slice(1);
 
-                let result = processData(dataRows, header, keepPrefixFlag, cutRankValue, patterns);
+                let result = processData(dataRows, header, prefixModeVal, mergeDomainFlag, cutRankValue, patterns);
                 if (!result || result.rows.length === 0) {
                     showMsg(processMsg, '处理结果为空，请检查数据', 'warn');
                     return;
                 }
 
                 if (relAbundance) {
-                    const sampleCols = header.slice(1); 
+                    const sampleCols = header.slice(1);
                     normalizeToRelative(result.rows, sampleCols);
                 }
 
@@ -543,7 +670,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
             copyResultBtn.addEventListener('click', copyResult);
             exportResultBtn.addEventListener('click', exportResult);
 
-            const paramInputs = [rankDelimiter, keepPrefix, cutRank, relativeAbundance];
+            const paramInputs = [rankDelimiter, prefixMode, mergeDomain, cutRank, relativeAbundance];
             paramInputs.forEach(el => {
                 el.addEventListener('change', function() {
                     if (rawData.length > 0 && !processBtn.disabled) {
