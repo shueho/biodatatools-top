@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物种丰度表分类解析 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>物种丰度表分类解析</h2>
+            <p>将丰度表格中的分类信息（如 d__Bacteria;k__Bacteria;p__Proteobacteria;...）拆分为域、界、门、纲、目、科、属、种，并按照某一等级进行分组求和，以及相对丰度计算。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入表格数据</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fileInput" accept=".csv,.tsv,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="textInput" placeholder="粘贴表格数据（第一行为列名，第一列为分类信息）" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 表格第一行为列名，第一列为分类字符串（如“d__Bacteria;k__Bacteria;p__Proteobacteria;...”），其余列为样本丰度数据。支持制表符、逗号或空格分隔。
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" id="loadBtn">导入数据</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：解析与聚合参数设置</div>
+
+            <div class="param-group" style="gap:16px; flex-wrap:wrap;">
+                <label>
+                    <input type="checkbox" id="keepPrefix" checked>
+                    保留等级前缀（如 d__、k__）
+                </label>
+                <label>统计到：
+                    <select id="cutRank" style="padding:4px 8px;">
+                        <option value="none">统计全部</option>
+                        <option value="Domain">Domain</option>
+                        <option value="Kingdom" selected>Kingdom</option>
+                        <option value="Phylum">Phylum</option>
+                        <option value="Class">Class</option>
+                        <option value="Order">Order</option>
+                        <option value="Family">Family</option>
+                        <option value="Genus">Genus</option>
+                        <option value="Species">Species</option>
+                    </select>
+                </label>
+                <label>
+                    <input type="checkbox" id="relativeAbundance">
+                    转换为相对丰度
+                </label>
+            </div>
+
+            <div style="margin-top:12px;">
+                <button class="btn" id="processBtn" disabled>执行解析与聚合</button>
+            </div>
+            <div id="processMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：结果</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>复制结果</button>
+                <button class="btn" id="exportResultBtn" disabled>导出表格</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    结果预览 <span id="resultStats" style="font-weight:400; color:#6c757d; font-size:0.85rem;"></span>
+                </div>
+                <div class="table-container" style="max-height:450px; overflow-y:auto;">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">处理完成后，结果将显示在此处。</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('fileInput');
+            const textInput = document.getElementById('textInput');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const keepPrefix = document.getElementById('keepPrefix');
+            const cutRank = document.getElementById('cutRank');
+            const relativeAbundance = document.getElementById('relativeAbundance');
+            const processBtn = document.getElementById('processBtn');
+            const processMsg = document.getElementById('processMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const resultStats = document.getElementById('resultStats');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportResultBtn = document.getElementById('exportResultBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            const RANKS = ['Domain', 'Kingdom', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species'];
+            const RANK_PATTERNS = {
+                Domain: /d__([^;]*)/,
+                Kingdom: /k__([^;]*)/,
+                Phylum: /p__([^;]*)/,
+                Class: /c__([^;]*)/,
+                Order: /o__([^;]*)/,
+                Family: /f__([^;]*)/,
+                Genus: /g__([^;]*)/,
+                Species: /s__([^;]*)/
+            };
+
+            let rawData = [];
+            let headers = [];
+            let currentResultText = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === processMsg || el === resultMsg) {
+                    setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, function(m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+
+            function getTableDelimiter(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length === 0) return '\t';
+                const first = lines[0];
+                if (first.includes('\t')) return '\t';
+                if (first.includes(',')) return ',';
+                if (first.includes(' ')) return ' ';
+                return '\t';
+            }
+
+            function parseTable(text) {
+                const delim = getTableDelimiter(text);
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length < 2) return null;
+                const rows = lines.map(line => line.split(delim).map(cell => cell.trim()));
+                const maxCols = Math.max(...rows.map(r => r.length));
+                rows.forEach(r => { while (r.length < maxCols) r.push(''); });
+                return rows;
+            }
+
+            function extractRank(cell, rank, keepPrefixFlag) {
+                const pattern = RANK_PATTERNS[rank];
+                if (!pattern) return keepPrefixFlag ? rank[0].toLowerCase() + '__unclassified' : 'unclassified';
+                const match = cell.match(pattern);
+                let val = (match && match[1] !== undefined) ? match[1] : '';
+                if (val === '') {
+                    return keepPrefixFlag ? rank[0].toLowerCase() + '__unclassified' : 'unclassified';
+                }
+                if (keepPrefixFlag) {
+                    return rank[0].toLowerCase() + '__' + val;
+                } else {
+                    return val;
+                }
+            }
+
+            function processData(dataRows, headerRow, keepPrefixFlag, cutRankValue) {
+                const taxCol = 0;
+                const valueCols = headerRow.slice(1);
+                const valueIndices = valueCols.map((_, idx) => idx + 1);
+
+                const parsedRows = [];
+                for (let row of dataRows) {
+                    const taxStr = row[taxCol] || '';
+                    const rankValues = {};
+                    RANKS.forEach(r => {
+                        rankValues[r] = extractRank(taxStr, r, keepPrefixFlag);
+                    });
+                    const values = valueIndices.map(idx => {
+                        const v = parseFloat(row[idx]);
+                        return isNaN(v) ? 0 : v;
+                    });
+                    parsedRows.push({ rankValues, values });
+                }
+
+                let keepRanks = [];
+                if (cutRankValue === 'none') {
+                    keepRanks = RANKS.slice();
+                } else {
+                    const cutIndex = RANKS.indexOf(cutRankValue);
+                    if (cutIndex === -1) keepRanks = RANKS.slice();
+                    else keepRanks = RANKS.slice(0, cutIndex + 1);
+                }
+
+                let groupKeyRank = null;
+                if (cutRankValue !== 'none') groupKeyRank = cutRankValue;
+
+                let resultRows = [];
+                if (groupKeyRank) {
+                    const groupMap = new Map();
+                    for (let row of parsedRows) {
+                        const keyParts = keepRanks.map(r => row.rankValues[r] || (keepPrefixFlag ? r[0] + '__unclassified' : 'unclassified'));
+                        const key = keyParts.join('|||');
+                        if (!groupMap.has(key)) {
+                            groupMap.set(key, {
+                                rankValues: row.rankValues,
+                                values: new Array(valueIndices.length).fill(0)
+                            });
+                        }
+                        const entry = groupMap.get(key);
+                        for (let i = 0; i < valueIndices.length; i++) {
+                            entry.values[i] += row.values[i];
+                        }
+                    }
+                    for (let [key, entry] of groupMap.entries()) {
+                        const rowObj = {};
+                        keepRanks.forEach(r => {
+                            rowObj[r] = entry.rankValues[r] || (keepPrefixFlag ? r[0] + '__unclassified' : 'unclassified');
+                        });
+                        valueCols.forEach((colName, idx) => {
+                            rowObj[colName] = entry.values[idx];
+                        });
+                        resultRows.push(rowObj);
+                    }
+                } else {
+                    for (let row of parsedRows) {
+                        const rowObj = {};
+                        keepRanks.forEach(r => {
+                            rowObj[r] = row.rankValues[r] || (keepPrefixFlag ? r[0] + '__unclassified' : 'unclassified');
+                        });
+                        valueCols.forEach((colName, idx) => {
+                            rowObj[colName] = row.values[idx];
+                        });
+                        resultRows.push(rowObj);
+                    }
+                }
+
+                let resultHeaders = keepRanks.slice();
+                resultHeaders = resultHeaders.concat(valueCols);
+                return { headers: resultHeaders, rows: resultRows };
+            }
+
+            function normalizeToRelative(rows, sampleCols) {
+                if (rows.length === 0 || sampleCols.length === 0) return;
+                const sums = {};
+                sampleCols.forEach(col => {
+                    sums[col] = rows.reduce((acc, row) => acc + (row[col] || 0), 0);
+                });
+                rows.forEach(row => {
+                    sampleCols.forEach(col => {
+                        const total = sums[col];
+                        row[col] = total > 0 ? row[col] / total : 0;
+                    });
+                });
+            }
+
+            function loadData(text) {
+                const rows = parseTable(text);
+                if (!rows || rows.length < 2) {
+                    showMsg(msgTip, '表格格式错误，请检查分隔符或数据', 'error');
+                    return false;
+                }
+                headers = rows[0];
+                rawData = rows.slice(1);
+                showMsg(msgTip, `成功加载 ${rawData.length} 行 × ${headers.length} 列`, 'success');
+                toast('数据加载成功');
+                processBtn.disabled = false;
+                clearResults();
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = fileInput.files[0];
+                if (!file) { showMsg(msgTip, '请选择文件', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    textInput.value = e.target.result;
+                    loadData(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = textInput.value.trim();
+                if (!text) { showMsg(msgTip, '请粘贴数据', 'error'); return; }
+                loadData(text);
+            }
+
+            function loadExample() {
+                const example = `taxonomy	Sample1	Sample2	Sample3
+d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Streptococcaceae;g__Streptococcus;s__	10	20	30
+d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Streptococcaceae;g__Streptococcus;s__pyogenes	5	15	25
+d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae;g__Bacillus;s__subtilis	8	12	18
+d__Bacteria;k__unclassified;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae;g__Bacillus;s__cereus	4	9	14
+d__Archaea;k__Archaea;p__Halobacterota;c__Halobacteria;o__Halobacterales;f__Haloferacaceae;g__Halorubrum;s__sp.	12	8	6
+d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales;f__Streptomycetaceae;g__Streptomyces;s__sp.	3	7	11`;
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                textInput.value = example;
+                loadData(example);
+            }
+
+            function doProcess() {
+                if (rawData.length === 0) {
+                    showMsg(processMsg, '请先导入数据', 'error');
+                    return;
+                }
+                const keepPrefixFlag = keepPrefix.checked;
+                const cutRankValue = cutRank.value;
+                const relAbundance = relativeAbundance.checked;
+
+                const text = textInput.value;
+                const rows = parseTable(text);
+                if (!rows || rows.length < 2) {
+                    showMsg(processMsg, '数据解析失败，请检查格式', 'error');
+                    return;
+                }
+                const header = rows[0];
+                const dataRows = rows.slice(1);
+
+                let result = processData(dataRows, header, keepPrefixFlag, cutRankValue);
+                if (!result || result.rows.length === 0) {
+                    showMsg(processMsg, '处理结果为空，请检查数据', 'warn');
+                    return;
+                }
+
+                if (relAbundance) {
+                    const sampleCols = header.slice(1); 
+                    normalizeToRelative(result.rows, sampleCols);
+                }
+
+                renderResult(result.headers, result.rows);
+                showMsg(processMsg, `处理完成，共 ${result.rows.length} 行${relAbundance ? '（相对丰度）' : ''}`, 'success');
+                toast('处理完成');
+            }
+
+            function renderResult(headers, rows) {
+                let thead = '<tr>';
+                headers.forEach(h => thead += `<th>${escapeHtml(h)}</th>`);
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                let tbody = '';
+                rows.forEach(row => {
+                    tbody += '<tr>';
+                    headers.forEach(h => {
+                        const val = row[h] !== undefined ? row[h] : '';
+                        let displayVal = val;
+                        if (typeof val === 'number' && !Number.isInteger(val)) {
+                            displayVal = val.toFixed(8);
+                        }
+                        tbody += `<td>${escapeHtml(String(displayVal))}</td>`;
+                    });
+                    tbody += '</tr>';
+                });
+                resultBody.innerHTML = tbody;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                resultStats.textContent = `（${rows.length} 行 × ${headers.length} 列）`;
+                copyResultBtn.disabled = false;
+                exportResultBtn.disabled = false;
+
+                const tsvRows = [headers.join('\t')];
+                rows.forEach(row => {
+                    const line = headers.map(h => {
+                        const val = row[h] !== undefined ? row[h] : '';
+                        return String(val);
+                    }).join('\t');
+                    tsvRows.push(line);
+                });
+                currentResultText = tsvRows.join('\n');
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                copyResultBtn.disabled = true;
+                exportResultBtn.disabled = true;
+                resultHead.innerHTML = '';
+                resultBody.innerHTML = '';
+                resultStats.textContent = '';
+                currentResultText = '';
+                resultMsg.innerHTML = '';
+            }
+
+            function copyResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '无内容可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + currentResultText).then(() => {
+                        showMsg(resultMsg, '已复制结果（TSV格式）', 'success');
+                        toast('已复制');
+                    }).catch(() => fallbackCopy(currentResultText));
+                } else {
+                    fallbackCopy(currentResultText);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '已复制结果', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(resultMsg, '复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '无内容可导出', 'error');
+                    return;
+                }
+                const csv = currentResultText.split('\n').map(line => line.split('\t').join(',')).join('\n');
+                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'taxonomy_aggregated.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '表格已导出', 'success');
+                toast('表格已导出');
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fileInput.disabled = false;
+                    textInput.disabled = true;
+                    textInput.value = '';
+                } else {
+                    fileInput.disabled = true;
+                    fileInput.value = '';
+                    textInput.disabled = false;
+                }
+                rawData = [];
+                headers = [];
+                processBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+                processMsg.innerHTML = '';
+                resultMsg.innerHTML = '';
+            };
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    textInput.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            textInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fileInput.files || fileInput.files.length === 0) {
+                        if (textInput.value.trim()) loadFromText();
+                        else showMsg(msgTip, '请选择文件或粘贴数据', 'error');
+                    } else {
+                        loadFromFile();
+                    }
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+            processBtn.addEventListener('click', doProcess);
+            copyResultBtn.addEventListener('click', copyResult);
+            exportResultBtn.addEventListener('click', exportResult);
+
+            const paramInputs = [keepPrefix, cutRank, relativeAbundance];
+            paramInputs.forEach(el => {
+                el.addEventListener('change', function() {
+                    if (rawData.length > 0 && !processBtn.disabled) {
+                        doProcess();
+                    }
+                });
+            });
+
+            switchInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+            processBtn.disabled = true;
+            copyResultBtn.disabled = true;
+            exportResultBtn.disabled = true;
+
+        })();
+    </script>
+</body>
+</html>

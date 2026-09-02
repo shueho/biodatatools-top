@@ -128,6 +128,12 @@ const toolConfig = [
     link: "en/032.Matrix_standardization.html"
 },
 
+{
+    toolName: "Species Abundance Table Taxonomy Parser",
+    toolDesc: "Parse taxonomic strings (e.g., d__Bacteria;k__Bacteria;p__Proteobacteria;...) into Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species, with optional truncation to a specified rank, grouping and summing, and relative abundance conversion.",
+    link: "en/035.Taxonomy_abundance_parser.html"
+},
+
         ]
     },
     {
