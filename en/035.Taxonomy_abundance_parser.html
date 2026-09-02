@@ -14,7 +14,7 @@
     <div class="main" id="app">
         <div class="page-intro">
             <h2>Species Abundance Table Taxonomy Parser</h2>
-            <p>Parse taxonomic strings (e.g., d__Bacteria;k__Bacteria;p__Proteobacteria;...) into Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species, with optional truncation to a specified rank, grouping and summing, and relative abundance conversion.</p>
+            <p>Parse taxonomic strings (e.g., d__Bacteria;k__Bacteria;p__Proteobacteria;...) into Domain, Kingdom, Phylum, Class, Order, Family, Genus, Species, with optional aggregation to a specified rank, and relative abundance conversion.</p>
         </div>
 
         <div class="step-card">
@@ -43,6 +43,11 @@
             <div class="step-title">Step 2: Parse & Aggregate Parameters</div>
 
             <div class="param-group" style="gap:16px; flex-wrap:wrap;">
+                <label>
+                    Delimiter for first column:
+                    <input type="text" id="rankDelimiter" value=";" style="width:50px;">
+                    <span style="font-weight:400;color:#888;font-size:0.85rem;">(separator between taxonomic ranks)</span>
+                </label>
                 <label>
                     <input type="checkbox" id="keepPrefix" checked>
                     Preserve rank prefixes (e.g., d__, k__)
@@ -103,7 +108,7 @@
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/footer.js"></script>
 
     <script>
         (function() {
@@ -115,6 +120,7 @@
             const exampleBtn = document.getElementById('exampleBtn');
             const msgTip = document.getElementById('msgTip');
 
+            const rankDelimiter = document.getElementById('rankDelimiter');
             const keepPrefix = document.getElementById('keepPrefix');
             const cutRank = document.getElementById('cutRank');
             const relativeAbundance = document.getElementById('relativeAbundance');
@@ -131,16 +137,20 @@
             const resultMsg = document.getElementById('resultMsg');
 
             const RANKS = ['Domain', 'Kingdom', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species'];
-            const RANK_PATTERNS = {
-                Domain: /d__([^;]*)/,
-                Kingdom: /k__([^;]*)/,
-                Phylum: /p__([^;]*)/,
-                Class: /c__([^;]*)/,
-                Order: /o__([^;]*)/,
-                Family: /f__([^;]*)/,
-                Genus: /g__([^;]*)/,
-                Species: /s__([^;]*)/
-            };
+
+            function buildRankPatterns(delim) {
+                const escDelim = delim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return {
+                    Domain: new RegExp('d__([^' + escDelim + ']*)'),
+                    Kingdom: new RegExp('k__([^' + escDelim + ']*)'),
+                    Phylum: new RegExp('p__([^' + escDelim + ']*)'),
+                    Class: new RegExp('c__([^' + escDelim + ']*)'),
+                    Order: new RegExp('o__([^' + escDelim + ']*)'),
+                    Family: new RegExp('f__([^' + escDelim + ']*)'),
+                    Genus: new RegExp('g__([^' + escDelim + ']*)'),
+                    Species: new RegExp('s__([^' + escDelim + ']*)')
+                };
+            }
 
             let rawData = [];
             let headers = [];
@@ -184,8 +194,8 @@
                 return rows;
             }
 
-            function extractRank(cell, rank, keepPrefixFlag) {
-                const pattern = RANK_PATTERNS[rank];
+            function extractRank(cell, rank, keepPrefixFlag, patterns) {
+                const pattern = patterns[rank];
                 if (!pattern) return keepPrefixFlag ? rank[0].toLowerCase() + '__unclassified' : 'unclassified';
                 const match = cell.match(pattern);
                 let val = (match && match[1] !== undefined) ? match[1] : '';
@@ -199,7 +209,7 @@
                 }
             }
 
-            function processData(dataRows, headerRow, keepPrefixFlag, cutRankValue) {
+            function processData(dataRows, headerRow, keepPrefixFlag, cutRankValue, patterns) {
                 const taxCol = 0;
                 const valueCols = headerRow.slice(1);
                 const valueIndices = valueCols.map((_, idx) => idx + 1);
@@ -209,7 +219,7 @@
                     const taxStr = row[taxCol] || '';
                     const rankValues = {};
                     RANKS.forEach(r => {
-                        rankValues[r] = extractRank(taxStr, r, keepPrefixFlag);
+                        rankValues[r] = extractRank(taxStr, r, keepPrefixFlag, patterns);
                     });
                     const values = valueIndices.map(idx => {
                         const v = parseFloat(row[idx]);
@@ -234,7 +244,7 @@
                 if (groupKeyRank) {
                     const groupMap = new Map();
                     for (let row of parsedRows) {
-                        const keyParts = keepRanks.map(r => row.rankValues[r] || (keepPrefixFlag ? r[0] + '__unclassified' : 'unclassified'));
+                        const keyParts = keepRanks.map(r => row.rankValues[r] || (keepPrefixFlag ? r[0].toLowerCase() + '__unclassified' : 'unclassified'));
                         const key = keyParts.join('|||');
                         if (!groupMap.has(key)) {
                             groupMap.set(key, {
@@ -250,7 +260,7 @@
                     for (let [key, entry] of groupMap.entries()) {
                         const rowObj = {};
                         keepRanks.forEach(r => {
-                            rowObj[r] = entry.rankValues[r] || (keepPrefixFlag ? r[0] + '__unclassified' : 'unclassified');
+                            rowObj[r] = entry.rankValues[r] || (keepPrefixFlag ? r[0].toLowerCase() + '__unclassified' : 'unclassified');
                         });
                         valueCols.forEach((colName, idx) => {
                             rowObj[colName] = entry.values[idx];
@@ -261,7 +271,7 @@
                     for (let row of parsedRows) {
                         const rowObj = {};
                         keepRanks.forEach(r => {
-                            rowObj[r] = row.rankValues[r] || (keepPrefixFlag ? r[0] + '__unclassified' : 'unclassified');
+                            rowObj[r] = row.rankValues[r] || (keepPrefixFlag ? r[0].toLowerCase() + '__unclassified' : 'unclassified');
                         });
                         valueCols.forEach((colName, idx) => {
                             rowObj[colName] = row.values[idx];
@@ -344,6 +354,9 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 const keepPrefixFlag = keepPrefix.checked;
                 const cutRankValue = cutRank.value;
                 const relAbundance = relativeAbundance.checked;
+                const delim = rankDelimiter.value.trim() || ';';
+
+                const patterns = buildRankPatterns(delim);
 
                 const text = textInput.value;
                 const rows = parseTable(text);
@@ -354,7 +367,7 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
                 const header = rows[0];
                 const dataRows = rows.slice(1);
 
-                let result = processData(dataRows, header, keepPrefixFlag, cutRankValue);
+                let result = processData(dataRows, header, keepPrefixFlag, cutRankValue, patterns);
                 if (!result || result.rows.length === 0) {
                     showMsg(processMsg, 'No results. Please check your data.', 'warn');
                     return;
@@ -529,13 +542,20 @@ d__Bacteria;k__Bacteria;p__Actinobacteriota;c__Actinobacteria;o__Actinomycetales
             copyResultBtn.addEventListener('click', copyResult);
             exportResultBtn.addEventListener('click', exportResult);
 
-            const paramInputs = [keepPrefix, cutRank, relativeAbundance];
+            const paramInputs = [rankDelimiter, keepPrefix, cutRank, relativeAbundance];
             paramInputs.forEach(el => {
                 el.addEventListener('change', function() {
                     if (rawData.length > 0 && !processBtn.disabled) {
                         doProcess();
                     }
                 });
+                if (el.tagName === 'INPUT' && el.type !== 'checkbox') {
+                    el.addEventListener('input', function() {
+                        if (rawData.length > 0 && !processBtn.disabled) {
+                            doProcess();
+                        }
+                    });
+                }
             });
 
             switchInput();
