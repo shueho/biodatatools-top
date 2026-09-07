@@ -160,6 +160,11 @@ const toolConfig = [
     link: "en/008.Visualize_gene_arrangement.html"
 },
 
+{
+    toolName: "Gephi Legend Generator",
+    toolDesc: "Extract node colors from Gephi network SVG and generate a custom legend.",
+    link: "en/036.Gephi_legend_generator.html"
+},
 
         ]
     },

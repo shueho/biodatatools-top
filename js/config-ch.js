@@ -163,6 +163,12 @@ const toolConfig = [
     link: "ch/008.Visualize_gene_arrangement.html"
 },
 
+{
+    toolName: "Gephi图例生成器",
+    toolDesc: "从Gephi导出的网络图SVG中提取节点颜色，生成图例。",
+    link: "ch/036.Gephi_legend_generator.html"
+},
+
 
         ]
     },
