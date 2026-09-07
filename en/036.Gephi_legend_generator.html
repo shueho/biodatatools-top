@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gephi Legend Generator - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>Gephi Legend Generator</h2>
+            <p>Extract node colors from Gephi network SVG and generate a custom legend.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Node Data Table</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="tableInputMode" value="file" checked onchange="switchTableInput()"> Upload File</label>
+                <label><input type="radio" name="tableInputMode" value="text" onchange="switchTableInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="tableFileInput" accept=".csv,.tsv,.txt,.tab" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="tableTextInput" placeholder="Paste table data (first row as header, tab/comma separated)" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> The table can be exported from Gephi Data Laboratory. You can add custom columns for node labels.
+            </div>
+            <div id="tableMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Import Network SVG</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="svgInputMode" value="file" checked onchange="switchSvgInput()"> Upload File</label>
+                <label><input type="radio" name="svgInputMode" value="text" onchange="switchSvgInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="svgFileInput" accept=".svg" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="svgTextInput" placeholder="Paste SVG source code" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> Must be an SVG exported from Gephi.
+            </div>
+            <div id="svgMsg" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Set Parameters</div>
+
+            <div class="filter-box">
+                <label>Legend Title: <input type="text" id="legendTitle" value="Phylum" style="width:120px;"></label>
+                <label>Items per row: <input type="number" id="colsPerRow" value="4" min="1" max="12" style="width:60px;"></label>
+                <label>Circle radius: <input type="number" id="circleRadius" value="10" min="2" max="50" style="width:60px;"></label>
+                <label>Circle stroke: <input type="color" id="circleStroke" value="#333333" style="width:40px;"></label>
+                <label>Font: <select id="fontFamily" style="width:140px;">
+                        <option value="Times New Roman" selected>Times New Roman</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Microsoft YaHei">Microsoft YaHei</option>
+                    </select></label>
+                <label>Font size: <input type="number" id="fontSize" value="16" min="8" max="48" style="width:60px;"></label>
+                <label>Scale factor: <input type="number" id="scaleFactor" value="3" min="0.5" max="20" step="0.1" style="width:70px;"></label>
+            </div>
+            <div class="filter-box" style="margin-top:10px;">
+                <label>Horizontal gap: <input type="number" id="horizGap" value="20" min="5" max="100" style="width:60px;"></label>
+                <label>Vertical gap: <input type="number" id="vertGap" value="8" min="2" max="50" style="width:60px;"></label>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> Adjust the scale factor to resize the entire legend. Set the title to "Phylum" or "Modules" as needed. The classification column should match the attribute used for coloring in Gephi (e.g., att2 for Phylum, att4 for Modules as shown in video tutorial).
+            </div>
+            <div class="filter-box" style="margin-top:10px;">
+                <label>Classification column:
+                    <select id="classColSelect" style="min-width:150px; padding:4px 8px;">
+                        <option value="">Please import table first</option>
+                    </select>
+                </label>
+                <span id="classColMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+
+            <div style="margin-top:15px;">
+                <div class="filter-box" style="justify-content:space-between;">
+                    <span style="font-weight:500; color:#1f4068;">Categories to display (one per line, in order)</span>
+                    <div class="filter-box" style="gap:8px; margin:0;">
+                        <button class="btn btn-sm" id="loadAllTaxaBtn">Load All</button>
+                        <button class="btn btn-sm" id="clearTaxaBtn">Clear</button>
+                        <span id="taxaCount" class="tip-text" style="margin:0;">0</span>
+                    </div>
+                </div>
+                <div class="text-input" style="margin:0;">
+                    <textarea id="taxaListText" rows="6" placeholder="Enter one category per line, the legend will follow this order"></textarea>
+                </div>
+                <div id="taxaMsg" class="tip-text"></div>
+                <div id="colorPreviewGrid" class="result-item" style="display:flex; flex-wrap:wrap; gap:8px 16px; max-height:150px; overflow-y:auto;">
+                    <span class="empty-hint">No category-color mapping yet</span>
+                </div>
+            </div>
+
+            <div style="margin-top:15px; border-top:1px solid #e8edf2; padding-top:12px;">
+                <div style="font-weight:500; color:#1f4068; margin-bottom:8px;">Correlation Legend (optional)</div>
+                <div class="filter-box">
+                    <label><input type="checkbox" id="showCorrelation"> Show correlation</label>
+                    <label>Correlation title: <input type="text" id="corrTitle" value="Correlation" style="width:100px;"></label>
+                    <label>Layout:
+                        <select id="corrLayout" style="padding:2px 6px;">
+                            <option value="horizontal">Horizontal</option>
+                            <option value="vertical">Vertical</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="filter-box">
+                    <label>Positive color: <input type="color" id="posColor" value="#EE7993" style="width:40px;"></label>
+                    <label>Negative color: <input type="color" id="negColor" value="#3FB17D" style="width:40px;"></label>
+                    <label>Line width: <input type="number" id="corrLineWidth" value="3" min="1" max="10" style="width:60px;"></label>
+                    <label>Positive label: <input type="text" id="posLabel" value="Positive" style="width:80px;"></label>
+                    <label>Negative label: <input type="text" id="negLabel" value="Negative" style="width:80px;"></label>
+                </div>
+                <div class="info-box">
+                    <strong>Note:</strong> This tool does not automatically detect correlation colors; you must manually set the line colors to match those used in Gephi.
+                </div>
+            </div>
+
+            <div style="margin-top:15px; border-top:1px solid #e8edf2; padding-top:12px;">
+                <div style="font-weight:500; color:#1f4068; margin-bottom:8px;">Merge Options (optional)</div>
+                <div class="filter-box">
+                    <label><input type="checkbox" id="injectSvg"> Merge legend into original SVG</label>
+                    <label>Horizontal offset: <input type="number" id="offsetX" value="10" style="width:60px;"></label>
+                    <label>Vertical offset: <input type="number" id="offsetY" value="10" style="width:60px;"></label>
+                </div>
+                <div class="filter-box" style="margin-top:6px;">
+                    <label><input type="checkbox" id="addLabels"> Add labels to nodes</label>
+                    <label>Label column:
+                        <select id="labelColSelect" style="min-width:120px; padding:4px 8px;">
+                            <option value="">Please import table first</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="text-input" style="margin-top:6px; display:none;" id="labelIdWrap">
+                    <textarea id="labelIdList" rows="3" placeholder="Specify node IDs (one per line, leave empty for all)"></textarea>
+                </div>
+                <div class="info-box">
+                    <strong>Note:</strong> When merging, the legend is embedded directly into the original SVG. You can also add labels from any column of the node table (including custom columns) and optionally restrict to specific node IDs.
+                </div>
+            </div>
+
+            <div class="filter-box" style="margin-top:16px; gap:12px;">
+                <button class="btn" id="generateBtn">Generate Result</button>
+                <span id="genMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Preview & Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="previewFullBtn">Preview in New Window</button>
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="copySvgBtn" disabled>Copy SVG</button>
+                <span id="exportMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> The preview may differ slightly from the final SVG due to browser rendering. Use Adobe Illustrator for fine adjustments if needed.
+            </div>
+            <div class="result-item" id="previewWrap" style="min-height:200px; display:flex; justify-content:center; align-items:center; overflow-x:auto;">
+                <span class="empty-hint">Results will appear here after generation</span>
+            </div>
+            <div id="previewInfo" class="tip-text"></div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            author: 'Author: Di Shang Fei Zhu (Hao Xue)',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const tableFileInput = document.getElementById('tableFileInput');
+            const tableTextInput = document.getElementById('tableTextInput');
+            const tableMsg = document.getElementById('tableMsg');
+            const tableStat = document.getElementById('tableStat');
+
+            const svgFileInput = document.getElementById('svgFileInput');
+            const svgTextInput = document.getElementById('svgTextInput');
+            const svgMsg = document.getElementById('svgMsg');
+            const svgStat = document.getElementById('svgStat');
+
+            const classColSelect = document.getElementById('classColSelect');
+            const classColMsg = document.getElementById('classColMsg');
+            const labelColSelect = document.getElementById('labelColSelect');
+
+            const legendTitle = document.getElementById('legendTitle');
+            const colsPerRow = document.getElementById('colsPerRow');
+            const circleRadius = document.getElementById('circleRadius');
+            const circleStroke = document.getElementById('circleStroke');
+            const fontFamily = document.getElementById('fontFamily');
+            const fontSize = document.getElementById('fontSize');
+            const scaleFactor = document.getElementById('scaleFactor');
+
+            const horizGap = document.getElementById('horizGap');
+            const vertGap = document.getElementById('vertGap');
+
+            const taxaListText = document.getElementById('taxaListText');
+            const loadAllTaxaBtn = document.getElementById('loadAllTaxaBtn');
+            const clearTaxaBtn = document.getElementById('clearTaxaBtn');
+            const taxaCount = document.getElementById('taxaCount');
+            const taxaMsg = document.getElementById('taxaMsg');
+            const colorPreviewGrid = document.getElementById('colorPreviewGrid');
+
+            const showCorrelation = document.getElementById('showCorrelation');
+            const corrTitle = document.getElementById('corrTitle');
+            const corrLayout = document.getElementById('corrLayout');
+            const posColor = document.getElementById('posColor');
+            const negColor = document.getElementById('negColor');
+            const corrLineWidth = document.getElementById('corrLineWidth');
+            const posLabel = document.getElementById('posLabel');
+            const negLabel = document.getElementById('negLabel');
+
+            const injectSvg = document.getElementById('injectSvg');
+            const addLabels = document.getElementById('addLabels');
+            const labelIdList = document.getElementById('labelIdList');
+            const labelIdWrap = document.getElementById('labelIdWrap');
+            const offsetX = document.getElementById('offsetX');
+            const offsetY = document.getElementById('offsetY');
+
+            const generateBtn = document.getElementById('generateBtn');
+            const previewFullBtn = document.getElementById('previewFullBtn');
+            const genMsg = document.getElementById('genMsg');
+            const previewWrap = document.getElementById('previewWrap');
+            const previewInfo = document.getElementById('previewInfo');
+            const exportSvgBtn = document.getElementById('exportSvgBtn');
+            const copySvgBtn = document.getElementById('copySvgBtn');
+            const exportMsg = document.getElementById('exportMsg');
+
+            addLabels.addEventListener('change', function() {
+                labelIdWrap.style.display = this.checked ? 'block' : 'none';
+            });
+
+            let headerRow = [];
+            let dataRows = [];
+            let classColIndex = -1;
+            let labelColIndex = -1;
+            let nodeColorMap = {};
+            let taxonColorMap = {};
+            let currentSvgString = '';
+            let originalSvgText = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } [
+                    m
+                ] || m));
+            }
+
+            function getDelimiter(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                if (lines.length === 0) return '\t';
+                const first = lines[0];
+                if (first.includes('\t')) return '\t';
+                if (first.includes(',')) return ',';
+                if (first.includes(';')) return ';';
+                return '\t';
+            }
+
+            function parseTable(text) {
+                const delim = getDelimiter(text);
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length < 2) return null;
+                const rows = lines.map(line => line.split(delim).map(cell => cell.trim()));
+                const maxLen = Math.max(...rows.map(r => r.length));
+                rows.forEach(r => { while (r.length < maxLen) r.push(''); });
+                return { header: rows[0], rows: rows.slice(1) };
+            }
+
+            function parseSvgColors(svgText) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(svgText, 'image/svg+xml');
+                const nodes = doc.querySelectorAll('#nodes circle');
+                const map = {};
+                nodes.forEach(circle => {
+                    const cls = circle.getAttribute('class') || '';
+                    const match = cls.match(/id_(\d+)/);
+                    if (match) {
+                        const id = match[1];
+                        const fill = circle.getAttribute('fill') || '';
+                        if (fill && fill.startsWith('#')) {
+                            map[id] = fill;
+                        }
+                    }
+                });
+                return { doc, map };
+            }
+
+            function buildTaxonColorMap(tableRows, header, colIdx, nodeColorMap) {
+                const taxonMap = {};
+                const idIdx = 0;
+                for (const row of tableRows) {
+                    if (row.length <= Math.max(idIdx, colIdx)) continue;
+                    const id = row[idIdx].trim();
+                    const taxon = row[colIdx].trim();
+                    if (!id || !taxon) continue;
+                    const color = nodeColorMap[id];
+                    if (color) {
+                        if (!taxonMap[taxon]) taxonMap[taxon] = [];
+                        taxonMap[taxon].push(color);
+                    }
+                }
+                const result = {};
+                for (const [taxon, colors] of Object.entries(taxonMap)) {
+                    if (colors.length === 0) continue;
+                    const freq = {};
+                    let maxCount = 0;
+                    let dominant = colors[0];
+                    for (const c of colors) {
+                        freq[c] = (freq[c] || 0) + 1;
+                        if (freq[c] > maxCount) { maxCount = freq[c];
+                            dominant = c; }
+                    }
+                    result[taxon] = dominant;
+                }
+                return result;
+            }
+
+            function updateClassColSelect() {
+                classColSelect.innerHTML = '';
+                labelColSelect.innerHTML = '';
+                if (!headerRow || headerRow.length === 0) {
+                    classColSelect.innerHTML = '<option value="">Please import table first</option>';
+                    labelColSelect.innerHTML = '<option value="">Please import table first</option>';
+                    classColMsg.innerHTML = '';
+                    return;
+                }
+                headerRow.forEach((h, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `${idx}: ${h || 'Col ' + (idx+1)}`;
+                    classColSelect.appendChild(opt);
+                    const opt2 = document.createElement('option');
+                    opt2.value = idx;
+                    opt2.textContent = `${idx}: ${h || 'Col ' + (idx+1)}`;
+                    labelColSelect.appendChild(opt2);
+                });
+                if (headerRow.length > 3) {
+                    classColSelect.value = 3;
+                } else if (headerRow.length > 1) {
+                    classColSelect.value = 1;
+                } else {
+                    classColSelect.value = 0;
+                }
+                if (headerRow.length > 1) {
+                    labelColSelect.value = 1;
+                } else {
+                    labelColSelect.value = 0;
+                }
+                classColMsg.innerHTML = '';
+                onClassColChange();
+            }
+
+            function onClassColChange() {
+                classColIndex = parseInt(classColSelect.value);
+                if (!isNaN(classColIndex) && headerRow[classColIndex]) {} else { classColIndex = -1; }
+                if (Object.keys(nodeColorMap).length > 0 && dataRows.length > 0 && classColIndex >= 0) {
+                    taxonColorMap = buildTaxonColorMap(dataRows, headerRow, classColIndex, nodeColorMap);
+                    updateColorPreview();
+                    updateTaxaListFromAll();
+                } else {
+                    taxonColorMap = {};
+                    updateColorPreview();
+                }
+                updateStats();
+            }
+
+            function updateStats() {
+                const nodeCount = Object.keys(nodeColorMap).length;
+                const taxonCount = Object.keys(taxonColorMap).length;
+                tableStat.innerHTML = dataRows.length > 0 ? '✅ Table loaded' : 'Not loaded';
+                svgStat.innerHTML = nodeCount > 0 ? `✅ SVG loaded (${nodeCount} nodes)` : 'Not loaded';
+                taxaCount.textContent = `Categories: ${taxonCount}`;
+                if (classColIndex >= 0 && headerRow[classColIndex]) {
+                    classColMsg.innerHTML = `<span class="success">Current classification column: ${headerRow[classColIndex]}</span>`;
+                } else {
+                    classColMsg.innerHTML = '';
+                }
+            }
+
+            function updateColorPreview() {
+                colorPreviewGrid.innerHTML = '';
+                const entries = Object.entries(taxonColorMap);
+                if (entries.length === 0) {
+                    colorPreviewGrid.innerHTML = '<span class="empty-hint">No category-color mapping yet</span>';
+                    return;
+                }
+                entries.sort((a, b) => a[0].localeCompare(b[0]));
+                for (const [taxon, color] of entries) {
+                    const div = document.createElement('span');
+                    div.className = 'color-preview-item';
+                    div.style.display = 'inline-flex';
+                    div.style.alignItems = 'center';
+                    div.style.gap = '6px';
+                    div.style.marginRight = '12px';
+                    div.innerHTML =
+                        `<span style="display:inline-block; width:18px; height:18px; border-radius:50%; background:${color}; border:1px solid #ccc;"></span><span>${escapeHtml(taxon)}</span>`;
+                    colorPreviewGrid.appendChild(div);
+                }
+            }
+
+            function updateTaxaListFromAll() {
+                const taxa = Object.keys(taxonColorMap).sort();
+                if (taxa.length === 0) {
+                    taxaListText.value = '';
+                    taxaCount.textContent = '0';
+                    return;
+                }
+                taxaListText.value = taxa.join('\n');
+                taxaCount.textContent = taxa.length;
+            }
+
+            function getTaxaList() {
+                const text = taxaListText.value;
+                return text.split(/\r?\n/).map(s => s.trim()).filter(s => s !== '');
+            }
+
+            window.switchTableInput = function() {
+                const mode = document.querySelector('input[name="tableInputMode"]:checked').value;
+                if (mode === 'file') {
+                    tableFileInput.disabled = false;
+                    tableTextInput.disabled = true;
+                    tableTextInput.value = '';
+                } else {
+                    tableFileInput.disabled = true;
+                    tableFileInput.value = '';
+                    tableTextInput.disabled = false;
+                }
+                headerRow = [];
+                dataRows = [];
+                taxonColorMap = {};
+                updateClassColSelect();
+                updateStats();
+                clearPreviews();
+            };
+
+            window.switchSvgInput = function() {
+                const mode = document.querySelector('input[name="svgInputMode"]:checked').value;
+                if (mode === 'file') {
+                    svgFileInput.disabled = false;
+                    svgTextInput.disabled = true;
+                    svgTextInput.value = '';
+                } else {
+                    svgFileInput.disabled = true;
+                    svgFileInput.value = '';
+                    svgTextInput.disabled = false;
+                }
+                nodeColorMap = {};
+                taxonColorMap = {};
+                originalSvgText = '';
+                updateStats();
+                clearPreviews();
+            };
+
+            function clearPreviews() {
+                previewWrap.innerHTML = '<span class="empty-hint">Complete steps 1-3 and click "Generate Result"</span>';
+                exportSvgBtn.disabled = true;
+                copySvgBtn.disabled = true;
+                currentSvgString = '';
+                previewInfo.innerHTML = '';
+            }
+
+            function loadTableFromText(text) {
+                const result = parseTable(text);
+                if (!result) {
+                    showMsg(tableMsg, '❌ Failed to parse table, check format', 'error');
+                    return;
+                }
+                headerRow = result.header;
+                dataRows = result.rows;
+                updateClassColSelect();
+                showMsg(tableMsg, '✅ Table loaded successfully', 'success');
+                toast('Table loaded');
+                if (Object.keys(nodeColorMap).length > 0 && classColIndex >= 0) {
+                    taxonColorMap = buildTaxonColorMap(dataRows, headerRow, classColIndex, nodeColorMap);
+                    updateColorPreview();
+                    updateTaxaListFromAll();
+                }
+                updateStats();
+            }
+
+            function loadSvgFromText(text) {
+                const result = parseSvgColors(text);
+                if (Object.keys(result.map).length === 0) {
+                    showMsg(svgMsg, '⚠️ No node colors found, check if SVG contains <circle class="id_X"> and fill', 'warn');
+                    return;
+                }
+                nodeColorMap = result.map;
+                originalSvgText = text;
+                showMsg(svgMsg, `✅ SVG parsed, extracted ${Object.keys(nodeColorMap).length} node colors`, 'success');
+                toast('SVG parsed');
+                if (dataRows.length > 0 && classColIndex >= 0) {
+                    taxonColorMap = buildTaxonColorMap(dataRows, headerRow, classColIndex, nodeColorMap);
+                    updateColorPreview();
+                    updateTaxaListFromAll();
+                }
+                updateStats();
+            }
+
+            tableFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length === 0) return;
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    tableTextInput.value = ev.target.result;
+                    loadTableFromText(ev.target.result);
+                };
+                reader.readAsText(file);
+                tableFileInput.value = '';
+            });
+
+            tableTextInput.addEventListener('input', () => {
+                clearTimeout(window._tableTextTimer);
+                window._tableTextTimer = setTimeout(() => {
+                    const text = tableTextInput.value;
+                    if (text.trim()) loadTableFromText(text);
+                }, 300);
+            });
+
+            svgFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length === 0) return;
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    svgTextInput.value = ev.target.result;
+                    loadSvgFromText(ev.target.result);
+                };
+                reader.readAsText(file);
+                svgFileInput.value = '';
+            });
+
+            svgTextInput.addEventListener('input', () => {
+                clearTimeout(window._svgTextTimer);
+                window._svgTextTimer = setTimeout(() => {
+                    const text = svgTextInput.value;
+                    if (text.trim()) loadSvgFromText(text);
+                }, 300);
+            });
+
+            classColSelect.addEventListener('change', onClassColChange);
+
+            loadAllTaxaBtn.addEventListener('click', () => {
+                const taxa = Object.keys(taxonColorMap).sort();
+                if (taxa.length === 0) {
+                    showMsg(taxaMsg, 'No categories to load, import data first', 'warn');
+                    return;
+                }
+                taxaListText.value = taxa.join('\n');
+                taxaCount.textContent = taxa.length;
+                showMsg(taxaMsg, `✅ Loaded ${taxa.length} categories`, 'success');
+            });
+
+            clearTaxaBtn.addEventListener('click', () => {
+                taxaListText.value = '';
+                taxaCount.textContent = '0';
+                showMsg(taxaMsg, 'Cleared', 'info');
+            });
+
+            taxaListText.addEventListener('input', () => {
+                const lines = getTaxaList();
+                taxaCount.textContent = lines.length;
+            });
+
+            function generateLegendSvg(onlyLegend) {
+                const taxa = getTaxaList();
+                if (taxa.length === 0) {
+                    showMsg(genMsg, 'Please enter categories to display', 'error');
+                    return null;
+                }
+                const validTaxa = [];
+                const missing = [];
+                for (const t of taxa) {
+                    if (taxonColorMap[t]) {
+                        validTaxa.push(t);
+                    } else {
+                        missing.push(t);
+                    }
+                }
+                if (missing.length > 0) {
+                    showMsg(genMsg, `Categories not found: ${missing.join(', ')}`, 'warn');
+                }
+                if (validTaxa.length === 0) {
+                    showMsg(genMsg, 'No valid categories to display', 'error');
+                    return null;
+                }
+
+                const scale = parseFloat(scaleFactor.value) || 1.0;
+                const title = legendTitle.value.trim() || 'Legend';
+                const cols = parseInt(colsPerRow.value) || 4;
+                const radius = (parseInt(circleRadius.value) || 10) * scale;
+                const strokeColor = circleStroke.value || '#333333';
+                const fontFam = fontFamily.value || 'Times New Roman';
+                const fSize = (parseInt(fontSize.value) || 16) * scale;
+                const hGap = (parseInt(horizGap.value) || 20) * scale;
+                const vGap = (parseInt(vertGap.value) || 8) * scale;
+                const showCorr = showCorrelation.checked;
+                const corrTitleText = corrTitle.value.trim() || 'Correlation';
+                const layout = corrLayout.value;
+                const posColorVal = posColor.value || '#EE7993';
+                const negColorVal = negColor.value || '#3FB17D';
+                const lineWidth = (parseInt(corrLineWidth.value) || 3) * scale;
+                const posLabelText = posLabel.value.trim() || 'Positive';
+                const negLabelText = negLabel.value.trim() || 'Negative';
+
+                const labelGap = 8 * scale;
+                const itemHeight = radius * 2 + 8 * scale;
+                const textHeight = fSize * 1.4;
+                const baseRowHeight = Math.max(itemHeight, textHeight) + vGap;
+                const maxTextWidth = validTaxa.reduce((max, t) => Math.max(max, t.length * fSize * 0.55), 0);
+                const itemWidth = radius * 2 + labelGap + maxTextWidth + hGap;
+
+                let totalItems = validTaxa.length;
+                let extraRows = 0;
+                let corrLineLength = 40 * scale;
+                if (showCorr) {
+                    const corrTextWidth = Math.max(posLabelText.length, negLabelText.length, corrTitleText.length) * fSize *
+                    0.55;
+                    corrLineLength = Math.max(30 * scale, corrTextWidth * 0.8);
+                    if (layout === 'vertical') {
+                        extraRows = 3;
+                    } else {
+                        extraRows = 2;
+                    }
+                }
+                const totalRows = Math.ceil(totalItems / cols) + extraRows;
+                const svgWidth = Math.max(400 * scale, cols * (itemWidth + 10 * scale) + 40 * scale);
+                const svgHeight = 40 * scale + totalRows * baseRowHeight + 40 * scale;
+
+                let svg = '';
+                if (!onlyLegend) {
+                    svg +=
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}" style="background:#ffffff;font-family:${fontFam},serif;">\n`;
+                    svg += `<rect width="100%" height="100%" fill="#ffffff"/>\n`;
+                }
+
+                svg +=
+                    `<text x="${20*scale}" y="${28*scale}" font-size="${(parseInt(fontSize.value)||16)*scale+4*scale}" font-weight="bold" fill="#1f4068" font-family="${fontFam},serif">${escapeHtml(title)}</text>\n`;
+
+                let yPos = 48 * scale;
+                let xPos = 20 * scale;
+                let itemIdx = 0;
+                for (const taxon of validTaxa) {
+                    const color = taxonColorMap[taxon];
+                    const cx = xPos + radius;
+                    const cy = yPos + radius;
+                    svg +=
+                        `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="${color}" stroke="${strokeColor}" stroke-width="${1.5*scale}"/>\n`;
+                    svg +=
+                        `<text x="${cx + radius + labelGap}" y="${cy + fSize * 0.35}" font-size="${fSize}" fill="#222" font-family="${fontFam},serif">${escapeHtml(taxon)}</text>\n`;
+                    itemIdx++;
+                    if (itemIdx % cols === 0) {
+                        xPos = 20 * scale;
+                        yPos += baseRowHeight;
+                    } else {
+                        xPos += itemWidth + 10 * scale;
+                    }
+                }
+                if (showCorr && itemIdx % cols !== 0) {
+                    yPos += baseRowHeight;
+                    xPos = 20 * scale;
+                } else if (showCorr && itemIdx % cols === 0 && itemIdx > 0) {
+                    xPos = 20 * scale;
+                    yPos += baseRowHeight;
+                }
+
+                if (showCorr) {
+                    const titleY = yPos + fSize * 0.8;
+                    svg +=
+                        `<text x="${20*scale}" y="${titleY}" font-size="${(parseInt(fontSize.value)||16)*scale+4*scale}" font-weight="bold" fill="#1f4068" font-family="${fontFam},serif">${escapeHtml(corrTitleText)}</text>\n`;
+                    yPos += baseRowHeight;
+
+                    if (layout === 'vertical') {
+                        const posY = yPos + radius;
+                        svg +=
+                            `<line x1="${20*scale}" y1="${posY}" x2="${20*scale + corrLineLength}" y2="${posY}" stroke="${posColorVal}" stroke-width="${lineWidth}" stroke-linecap="round"/>\n`;
+                        svg +=
+                            `<text x="${20*scale + corrLineLength + labelGap}" y="${posY + fSize * 0.35}" font-size="${fSize}" fill="#222" font-family="${fontFam},serif">${escapeHtml(posLabelText)}</text>\n`;
+                        yPos += baseRowHeight;
+                        const negY = yPos + radius;
+                        svg +=
+                            `<line x1="${20*scale}" y1="${negY}" x2="${20*scale + corrLineLength}" y2="${negY}" stroke="${negColorVal}" stroke-width="${lineWidth}" stroke-linecap="round"/>\n`;
+                        svg +=
+                            `<text x="${20*scale + corrLineLength + labelGap}" y="${negY + fSize * 0.35}" font-size="${fSize}" fill="#222" font-family="${fontFam},serif">${escapeHtml(negLabelText)}</text>\n`;
+                    } else {
+                        const posY = yPos + radius;
+                        svg +=
+                            `<line x1="${20*scale}" y1="${posY}" x2="${20*scale + corrLineLength}" y2="${posY}" stroke="${posColorVal}" stroke-width="${lineWidth}" stroke-linecap="round"/>\n`;
+                        svg +=
+                            `<text x="${20*scale + corrLineLength + labelGap}" y="${posY + fSize * 0.35}" font-size="${fSize}" fill="#222" font-family="${fontFam},serif">${escapeHtml(posLabelText)}</text>\n`;
+                        const negX = 20 * scale + corrLineLength + labelGap + posLabelText.length * fSize * 0.55 + hGap;
+                        const negY = yPos + radius;
+                        svg +=
+                            `<line x1="${negX}" y1="${negY}" x2="${negX + corrLineLength}" y2="${negY}" stroke="${negColorVal}" stroke-width="${lineWidth}" stroke-linecap="round"/>\n`;
+                        svg +=
+                            `<text x="${negX + corrLineLength + labelGap}" y="${negY + fSize * 0.35}" font-size="${fSize}" fill="#222" font-family="${fontFam},serif">${escapeHtml(negLabelText)}</text>\n`;
+                    }
+                }
+
+                if (!onlyLegend) {
+                    svg += '</svg>';
+                }
+                return svg;
+            }
+
+            function generateFinalSvg(doInject) {
+                const inject = doInject !== undefined ? doInject : injectSvg.checked;
+                const offsetXVal = parseInt(offsetX.value) || 10;
+                const offsetYVal = parseInt(offsetY.value) || 10;
+                const addLabelsFlag = addLabels.checked;
+                const labelColIdx = parseInt(labelColSelect.value);
+
+                if (inject) {
+                    if (!originalSvgText) {
+                        showMsg(genMsg, 'Please import the original SVG first', 'error');
+                        return null;
+                    }
+                    const legendContent = generateLegendSvg(true);
+                    if (!legendContent) return null;
+
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(originalSvgText, 'image/svg+xml');
+                    const svgRoot = doc.querySelector('svg');
+                    if (!svgRoot) {
+                        showMsg(genMsg, 'Invalid original SVG format', 'error');
+                        return null;
+                    }
+
+                    let viewBoxMinX = 0,
+                        viewBoxMinY = 0,
+                        viewBoxWidth = 0,
+                        viewBoxHeight = 0;
+                    const viewBoxAttr = svgRoot.getAttribute('viewBox');
+                    if (viewBoxAttr) {
+                        const parts = viewBoxAttr.split(/\s+/).map(Number);
+                        if (parts.length === 4) {
+                            viewBoxMinX = parts[0];
+                            viewBoxMinY = parts[1];
+                            viewBoxWidth = parts[2];
+                            viewBoxHeight = parts[3];
+                        }
+                    }
+                    if (!viewBoxWidth || !viewBoxHeight) {
+                        viewBoxWidth = parseFloat(svgRoot.getAttribute('width')) || 800;
+                        viewBoxHeight = parseFloat(svgRoot.getAttribute('height')) || 600;
+                    }
+
+                    const tempSvg = generateLegendSvg(false);
+                    if (!tempSvg) return null;
+                    const tempDoc = parser.parseFromString(tempSvg, 'image/svg+xml');
+                    const tempRoot = tempDoc.querySelector('svg');
+                    const legendWidth = parseFloat(tempRoot.getAttribute('width')) || 400;
+                    const legendHeight = parseFloat(tempRoot.getAttribute('height')) || 200;
+
+                    const posX = viewBoxMinX + offsetXVal;
+                    const posY = viewBoxMinY + viewBoxHeight + offsetYVal;
+
+                    const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    g.setAttribute('transform', `translate(${posX}, ${posY})`);
+
+                    const children = tempRoot.children;
+                    for (let i = 0; i < children.length; i++) {
+                        const child = children[i];
+                        if (child.tagName === 'rect' && child.getAttribute('fill') === '#ffffff') {
+                            continue;
+                        }
+                        g.appendChild(child.cloneNode(true));
+                    }
+                    svgRoot.appendChild(g);
+
+                    if (addLabelsFlag && dataRows.length > 0 && labelColIdx >= 0 && labelColIdx < headerRow.length) {
+                        const idLabelMap = {};
+                        const idIdx = 0;
+                        for (const row of dataRows) {
+                            if (row.length > Math.max(idIdx, labelColIdx)) {
+                                const id = row[idIdx].trim();
+                                const label = row[labelColIdx].trim();
+                                if (id && label) {
+                                    idLabelMap[id] = label;
+                                }
+                            }
+                        }
+
+                        const idListText = labelIdList.value.trim();
+                        let specifiedIds = null;
+                        if (idListText) {
+                            specifiedIds = new Set();
+                            idListText.split(/\r?\n/).forEach(s => {
+                                s = s.trim();
+                                if (!s) return;
+                                if (/^\d+$/.test(s)) {
+                                    specifiedIds.add(s);
+                                } else if (/^id_\d+$/i.test(s)) {
+                                    specifiedIds.add(s.replace(/^id_/i, ''));
+                                } else {
+                                    specifiedIds.add(s);
+                                }
+                            });
+                        }
+
+                        const scale = parseFloat(scaleFactor.value) || 1.0;
+                        const labelFontSize = (12 * scale) + 'px';
+                        const circles = doc.querySelectorAll('#nodes circle');
+                        circles.forEach(circle => {
+                            const cls = circle.getAttribute('class') || '';
+                            const match = cls.match(/id_(\d+)/);
+                            if (match) {
+                                const id = match[1];
+                                if (specifiedIds && !specifiedIds.has(id)) {
+                                    return;
+                                }
+                                if (idLabelMap[id]) {
+                                    const cx = circle.getAttribute('cx');
+                                    const cy = circle.getAttribute('cy');
+                                    if (cx && cy) {
+                                        const text = doc.createElementNS('http://www.w3.org/2000/svg',
+                                        'text');
+                                        text.setAttribute('x', cx);
+                                        text.setAttribute('y', cy);
+                                        text.setAttribute('text-anchor', 'middle');
+                                        text.setAttribute('dy', '0.35em');
+                                        text.setAttribute('font-size', labelFontSize);
+                                        text.setAttribute('font-family', fontFamily.value || 'Times New Roman');
+                                        text.setAttribute('fill', '#000000');
+                                        text.textContent = idLabelMap[id];
+                                        circle.parentNode.insertBefore(text, circle.nextSibling);
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    const newWidth = Math.max(viewBoxWidth, legendWidth + posX - viewBoxMinX);
+                    const newHeight = Math.max(viewBoxHeight, legendHeight + posY - viewBoxMinY);
+                    if (viewBoxAttr) {
+                        svgRoot.setAttribute('viewBox', `${viewBoxMinX} ${viewBoxMinY} ${newWidth} ${newHeight}`);
+                    } else {
+                        svgRoot.setAttribute('width', newWidth);
+                        svgRoot.setAttribute('height', newHeight);
+                    }
+
+                    const serializer = new XMLSerializer();
+                    let mergedSvg = serializer.serializeToString(doc);
+                    mergedSvg = mergedSvg.replace(/<\?xml[^>]*\?>\s*/, '');
+                    return mergedSvg;
+                } else {
+                    return generateLegendSvg(false);
+                }
+            }
+
+            function renderPreview(svgString, isInjected) {
+                previewWrap.innerHTML = svgString;
+                currentSvgString = svgString;
+                exportSvgBtn.disabled = false;
+                copySvgBtn.disabled = false;
+                previewInfo.innerHTML = `Legend${isInjected ? ' (merged)' : ''} size: ${svgString.length} chars`;
+                showMsg(genMsg, isInjected ? '✅ Legend injected' : '✅ Legend preview generated', 'success');
+                toast(isInjected ? 'Legend injected' : 'Legend preview generated');
+            }
+
+            generateBtn.addEventListener('click', () => {
+                if (Object.keys(taxonColorMap).length === 0) {
+                    showMsg(genMsg, 'Please import table and SVG data first', 'error');
+                    return;
+                }
+                const svg = generateFinalSvg(injectSvg.checked);
+                if (svg) renderPreview(svg, injectSvg.checked);
+            });
+
+            previewFullBtn.addEventListener('click', () => {
+                if (!currentSvgString) {
+                    showMsg(exportMsg, 'Please generate the result first', 'error');
+                    return;
+                }
+                const win = window.open('', '_blank');
+                if (!win) {
+                    showMsg(exportMsg, 'Please allow pop-up windows', 'warn');
+                    return;
+                }
+                win.document.write(currentSvgString);
+                win.document.close();
+                win.focus();
+                showMsg(exportMsg, '✅ Full result opened in new window', 'success');
+            });
+
+            exportSvgBtn.addEventListener('click', () => {
+                if (!currentSvgString) {
+                    showMsg(exportMsg, 'Please generate the result first', 'error');
+                    return;
+                }
+                const blob = new Blob([currentSvgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'legend.svg';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(exportMsg, '✅ SVG exported', 'success');
+                toast('SVG exported');
+            });
+
+            copySvgBtn.addEventListener('click', () => {
+                if (!currentSvgString) {
+                    showMsg(exportMsg, 'Please generate the result first', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentSvgString).then(() => {
+                        showMsg(exportMsg, '✅ SVG copied to clipboard', 'success');
+                        toast('SVG copied');
+                    }).catch(() => {
+                        fallbackCopy(currentSvgString);
+                    });
+                } else {
+                    fallbackCopy(currentSvgString);
+                }
+            });
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(exportMsg, '✅ SVG copied to clipboard', 'success');
+                    toast('SVG copied');
+                } catch (e) {
+                    showMsg(exportMsg, '❌ Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            tableFileInput.disabled = false;
+            tableTextInput.disabled = true;
+            svgFileInput.disabled = false;
+            svgTextInput.disabled = true;
+            tableStat.innerHTML = 'Not loaded';
+            svgStat.innerHTML = 'Not loaded';
+            previewWrap.innerHTML = '<span class="empty-hint">Complete steps 1-3 and click "Generate Result"</span>';
+            exportSvgBtn.disabled = true;
+            copySvgBtn.disabled = true;
+            labelIdWrap.style.display = 'none';
+            updateClassColSelect();
+        })();
+    </script>
+</body>
+</html>
