@@ -145,7 +145,7 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：Plotting & Visualization (3个) ===== -->
+  <!-- ===== 分类：Plotting & Visualization (4个，新增036) ===== -->
   <url>
     <loc>https://www.biodatatools.top/en/003.RSCU_plot.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -161,6 +161,12 @@
   <url>
     <loc>https://www.biodatatools.top/en/008.Visualize_gene_arrangement.html</loc>
     <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/036.Gephi_legend_generator.html</loc>
+    <lastmod>2026-09-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -381,7 +387,7 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：绘图与美化 (3个) ===== -->
+  <!-- ===== 分类：绘图与美化 (4个，新增036) ===== -->
   <url>
     <loc>https://www.biodatatools.top/ch/003.RSCU_plot.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -397,6 +403,12 @@
   <url>
     <loc>https://www.biodatatools.top/ch/008.Visualize_gene_arrangement.html</loc>
     <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/036.Gephi_legend_generator.html</loc>
+    <lastmod>2026-09-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
