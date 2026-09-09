@@ -169,6 +169,12 @@ const toolConfig = [
     link: "ch/036.Gephi_legend_generator.html"
 },
 
+{
+    toolName: "SVG合并工具",
+    toolDesc: "将多个SVG文件简单合并为一张大图，支持调整每行展示数量、间距和缩放。",
+    link: "ch/037.SVG_merger.html"
+},
+
 
         ]
     },

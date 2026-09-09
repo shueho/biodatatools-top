@@ -166,6 +166,12 @@ const toolConfig = [
     link: "en/036.Gephi_legend_generator.html"
 },
 
+{
+    toolName: "SVG Merger Tool",
+    toolDesc: "Merge multiple SVG files into one large image. Supports adjusting order, items per row, spacing and scaling.",
+    link: "en/037.SVG_merger.html"
+},
+
         ]
     },
     {

@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG合并工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .preview-svg-wrap {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            overflow: auto;
+            min-height: 300px;
+            max-height: 600px;
+        }
+        .preview-svg-wrap svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .file-list .file-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .file-list .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-list .file-item .index {
+            color: #6c757d;
+            font-size: 0.85rem;
+            min-width: 24px;
+        }
+        .file-list .file-item .controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>SVG合并工具</h2>
+            <p>将多个SVG文件简单合并为一张大图，支持调整每行展示数量、间距和缩放。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：选择SVG文件</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="files" checked onchange="switchInputMode()"> 选择文件（可多选）</label>
+                <label><input type="radio" name="inputMode" value="folder" onchange="switchInputMode()"> 选择文件夹</label>
+            </div>
+            <div class="file-input" id="fileInputWrap">
+                <input type="file" id="fileInput" multiple accept=".svg" disabled>
+                <div class="input-hint">点击选择多个SVG文件（按住Ctrl可多选）</div>
+            </div>
+            <div class="file-input" id="folderInputWrap" style="display:none;">
+                <input type="file" id="folderInput" webkitdirectory multiple accept=".svg" disabled>
+                <div class="input-hint">点击选择整个文件夹，自动读取其中所有SVG文件</div>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="fileListWrap" style="display:none; margin-top:12px;">
+                <div class="file-list" id="fileList"></div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="fileCount">共0个SVG文件</span>
+                    <button class="btn btn-sm" id="clearFilesBtn" style="margin-left:12px; background:#dc3545;">清空</button>
+                </div>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 每个SVG的左上角将自动标注文件名，如果文件太多建议将文件名称改成标签内容。
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：参数设置</div>
+            <div class="param-group">
+                <label>每行SVG数量：<input type="number" id="colsPerRow" value="4" min="1" max="20" style="width:60px;"></label>
+                <label>水平间距(px)：<input type="number" id="horizGap" value="50" min="0" step="2" style="width:60px;"></label>
+                <label>垂直间距(px)：<input type="number" id="vertGap" value="50" min="0" step="2" style="width:60px;"></label>
+                <label>缩放比例：<input type="number" id="scaleFactor" value="1.0" min="0.1" max="5.0" step="0.05" style="width:60px;"></label>
+            </div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="mergeBtn" disabled>合并生成</button>
+                <span id="mergeMsg" class="tip-text" style="margin-left:12px;"></span>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="downloadBtn" disabled>下载结果</button>
+                <button class="btn" id="copySvgBtn" disabled>复制SVG源码</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 下方预览所展示的字体与图形样式，可能和最终导出的SVG文件存在差异，请以预览及导出结果为准进行调整；如需精细编辑，可在Adobe Illustrator中完成后续修改。
+            </div>
+            <div id="previewArea" style="display:none;">
+                <div class="preview-svg-wrap" id="previewContainer"></div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="previewInfo"></span>
+                </div>
+            </div>
+            <div id="emptyPreview" class="empty-tip">合并后，结果将可在此处预览</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const fileInput = document.getElementById('fileInput');
+            const folderInput = document.getElementById('folderInput');
+            const fileInputWrap = document.getElementById('fileInputWrap');
+            const folderInputWrap = document.getElementById('folderInputWrap');
+            const msgTip = document.getElementById('msgTip');
+            const fileListWrap = document.getElementById('fileListWrap');
+            const fileList = document.getElementById('fileList');
+            const fileCount = document.getElementById('fileCount');
+            const clearFilesBtn = document.getElementById('clearFilesBtn');
+            const mergeBtn = document.getElementById('mergeBtn');
+            const mergeMsg = document.getElementById('mergeMsg');
+            const colsPerRow = document.getElementById('colsPerRow');
+            const horizGap = document.getElementById('horizGap');
+            const vertGap = document.getElementById('vertGap');
+            const scaleFactor = document.getElementById('scaleFactor');
+            const previewArea = document.getElementById('previewArea');
+            const emptyPreview = document.getElementById('emptyPreview');
+            const previewContainer = document.getElementById('previewContainer');
+            const previewInfo = document.getElementById('previewInfo');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const copySvgBtn = document.getElementById('copySvgBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let svgFiles = [];           
+            let mergedSvgString = '';
+
+            window.switchInputMode = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'files') {
+                    fileInputWrap.style.display = 'block';
+                    folderInputWrap.style.display = 'none';
+                    fileInput.disabled = false;
+                    folderInput.disabled = true;
+                } else {
+                    fileInputWrap.style.display = 'none';
+                    folderInputWrap.style.display = 'block';
+                    fileInput.disabled = true;
+                    folderInput.disabled = false;
+                }
+                svgFiles = [];
+                updateFileListUI();
+                clearResults();
+                msgTip.innerHTML = '';
+                mergeMsg.innerHTML = '';
+            };
+
+            function processFiles(files) {
+                const validFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.svg'));
+                if (validFiles.length === 0) {
+                    showMsg(msgTip, '未找到有效的SVG文件', 'error');
+                    return;
+                }
+                let loaded = 0;
+                const total = validFiles.length;
+                for (const file of validFiles) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const content = e.target.result;
+                        const svgInfo = parseSvg(content, file.name);
+                        if (svgInfo) {
+                            svgFiles.push({
+                                name: file.name,
+                                content: content,
+                                doc: svgInfo.doc,
+                                viewBox: svgInfo.viewBox,
+                                width: svgInfo.width,
+                                height: svgInfo.height,
+                            });
+                        } else {
+                            showMsg(msgTip, `文件 ${file.name} 解析失败，已跳过`, 'warn');
+                        }
+                        loaded++;
+                        if (loaded === total) {
+                            updateFileListUI();
+                            showMsg(msgTip, `成功加载 ${svgFiles.length} 个SVG文件`, 'success');
+                            window.showToast(`加载 ${svgFiles.length} 个SVG文件`);
+                            mergeBtn.disabled = false;
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            }
+
+            function parseSvg(content, filename) {
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(content, 'image/svg+xml');
+                    const svg = doc.querySelector('svg');
+                    if (!svg) return null;
+
+                    let viewBox = svg.getAttribute('viewBox');
+                    let width = parseFloat(svg.getAttribute('width'));
+                    let height = parseFloat(svg.getAttribute('height'));
+
+                    if (viewBox) {
+                        const parts = viewBox.split(/\s+/).map(Number);
+                        if (parts.length === 4) {
+                            const w = parts[2];
+                            const h = parts[3];
+                            if (w > 0 && h > 0) {
+                                width = w;
+                                height = h;
+                            }
+                        } else {
+                            viewBox = null;
+                        }
+                    }
+                    if (!viewBox) {
+                        if (!width || !height || isNaN(width) || isNaN(height)) {
+                            width = 400;
+                            height = 400;
+                        }
+                        viewBox = `0 0 ${width} ${height}`;
+                    }
+
+                    return {
+                        doc: doc,
+                        viewBox: viewBox,
+                        width: width,
+                        height: height
+                    };
+                } catch (e) {
+                    console.warn('解析SVG失败:', filename, e);
+                    return null;
+                }
+            }
+
+            function updateFileListUI() {
+                if (svgFiles.length === 0) {
+                    fileListWrap.style.display = 'none';
+                    mergeBtn.disabled = true;
+                    return;
+                }
+                fileListWrap.style.display = 'block';
+                let html = '';
+                svgFiles.forEach((file, idx) => {
+                    html += `
+                        <div class="file-item" data-index="${idx}">
+                            <span class="index">${idx+1}</span>
+                            <span class="file-name">${escapeHtml(file.name)}</span>
+                            <span style="font-size:0.85rem; color:#6c757d;">(${file.width}×${file.height})</span>
+                            <div class="controls">
+                                <button class="btn-sm" onclick="moveFile(${idx}, -1)" ${idx===0?'disabled':''}>上移</button>
+                                <button class="btn-sm" onclick="moveFile(${idx}, 1)" ${idx===svgFiles.length-1?'disabled':''}>下移</button>
+                                <button class="btn-sm btn-del" onclick="removeFile(${idx})">删除</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                fileList.innerHTML = html;
+                fileCount.textContent = `共 ${svgFiles.length} 个SVG文件`;
+                mergeBtn.disabled = false;
+            }
+
+            window.moveFile = function(idx, delta) {
+                const newIdx = idx + delta;
+                if (newIdx < 0 || newIdx >= svgFiles.length) return;
+                [svgFiles[idx], svgFiles[newIdx]] = [svgFiles[newIdx], svgFiles[idx]];
+                updateFileListUI();
+                clearResults();
+            };
+
+            window.removeFile = function(idx) {
+                svgFiles.splice(idx, 1);
+                updateFileListUI();
+                clearResults();
+                if (svgFiles.length === 0) {
+                    mergeBtn.disabled = true;
+                }
+            };
+
+            clearFilesBtn.addEventListener('click', function() {
+                svgFiles = [];
+                updateFileListUI();
+                clearResults();
+                mergeBtn.disabled = true;
+                fileInput.value = '';
+                folderInput.value = '';
+                msgTip.innerHTML = '';
+                mergeMsg.innerHTML = '';
+            });
+
+            fileInput.addEventListener('change', function(e) {
+                const files = e.target.files;
+                if (files.length === 0) return;
+                processFiles(files);
+                this.value = '';
+            });
+
+            folderInput.addEventListener('change', function(e) {
+                const files = e.target.files;
+                if (files.length === 0) return;
+                processFiles(files);
+                this.value = '';
+            });
+
+            mergeBtn.addEventListener('click', function() {
+                if (svgFiles.length === 0) {
+                    showMsg(mergeMsg, '请先添加SVG文件', 'error');
+                    return;
+                }
+                const cols = parseInt(colsPerRow.value) || 4;
+                const hGap = parseInt(horizGap.value) || 20;
+                const vGap = parseInt(vertGap.value) || 20;
+                const scale = parseFloat(scaleFactor.value) || 1.0;
+
+                const items = svgFiles.map(f => ({
+                    name: f.name,
+                    width: f.width * scale,
+                    height: f.height * scale,
+                    doc: f.doc,
+                    viewBox: f.viewBox,
+                    origWidth: f.width,
+                    origHeight: f.height,
+                }));
+
+                const total = items.length;
+                const rows = Math.ceil(total / cols);
+                const rowItems = [];
+                for (let r = 0; r < rows; r++) {
+                    const start = r * cols;
+                    const end = Math.min(start + cols, total);
+                    rowItems.push(items.slice(start, end));
+                }
+
+                let totalWidth = 0;
+                let totalHeight = 0;
+                const rowHeights = [];
+                const rowWidths = [];
+                for (const row of rowItems) {
+                    let rowW = 0;
+                    let rowH = 0;
+                    for (const item of row) {
+                        rowW += item.width;
+                        if (item.height > rowH) rowH = item.height;
+                    }
+                    rowW += (row.length - 1) * hGap;
+                    rowWidths.push(rowW);
+                    rowHeights.push(rowH);
+                    if (rowW > totalWidth) totalWidth = rowW;
+                }
+                totalHeight = rowHeights.reduce((a, b) => a + b, 0) + (rows - 1) * vGap;
+
+                const svgNS = 'http://www.w3.org/2000/svg';
+                const svgRoot = document.createElementNS(svgNS, 'svg');
+                svgRoot.setAttribute('xmlns', svgNS);
+                svgRoot.setAttribute('width', totalWidth);
+                svgRoot.setAttribute('height', totalHeight);
+                svgRoot.setAttribute('viewBox', `0 0 ${totalWidth} ${totalHeight}`);
+                const bg = document.createElementNS(svgNS, 'rect');
+                bg.setAttribute('width', '100%');
+                bg.setAttribute('height', '100%');
+                bg.setAttribute('fill', '#ffffff');
+                svgRoot.appendChild(bg);
+
+                let yPos = 0;
+                for (let r = 0; r < rowItems.length; r++) {
+                    const row = rowItems[r];
+                    const rowH = rowHeights[r];
+                    let xPos = 0;
+                    for (const item of row) {
+                        const g = document.createElementNS(svgNS, 'g');
+                        g.setAttribute('transform', `translate(${xPos}, ${yPos})`);
+
+                        const label = document.createElementNS(svgNS, 'text');
+                        label.setAttribute('x', '4');
+                        label.setAttribute('y', '18');
+                        label.setAttribute('font-family', 'Times New Roman');
+                        label.setAttribute('font-weight', 'bold');
+                        label.setAttribute('fill', '#000000');
+                        label.setAttribute('font-size', '16');
+                        label.textContent = item.name;
+                        g.appendChild(label);
+
+                        const contentG = document.createElementNS(svgNS, 'g');
+                        contentG.setAttribute('transform', `scale(${scale})`);
+
+                        const innerSvg = document.createElementNS(svgNS, 'svg');
+                        innerSvg.setAttribute('viewBox', item.viewBox);
+                        innerSvg.setAttribute('width', item.origWidth);
+                        innerSvg.setAttribute('height', item.origHeight);
+
+                        const originalSvg = item.doc.querySelector('svg');
+                        if (originalSvg) {
+                            const children = originalSvg.childNodes;
+                            for (const child of children) {
+                                if (child.nodeType === 1) {
+                                    innerSvg.appendChild(child.cloneNode(true));
+                                }
+                            }
+                        }
+
+                        contentG.appendChild(innerSvg);
+                        g.appendChild(contentG);
+                        svgRoot.appendChild(g);
+
+                        xPos += item.width + hGap;
+                    }
+                    yPos += rowH + vGap;
+                }
+
+                const serializer = new XMLSerializer();
+                let svgString = serializer.serializeToString(svgRoot);
+                svgString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' + svgString;
+                mergedSvgString = svgString;
+
+                previewContainer.innerHTML = svgString;
+                previewArea.style.display = 'block';
+                emptyPreview.style.display = 'none';
+                previewInfo.textContent = `总尺寸：${totalWidth.toFixed(0)} × ${totalHeight.toFixed(0)}，共 ${total} 个SVG`;
+                downloadBtn.disabled = false;
+                copySvgBtn.disabled = false;
+                showMsg(mergeMsg, '✅ 合并完成', 'success');
+                window.showToast('合并完成');
+            });
+
+            downloadBtn.addEventListener('click', function() {
+                if (!mergedSvgString) {
+                    showMsg(resultMsg, '请先生成合并结果', 'error');
+                    return;
+                }
+                const blob = new Blob([mergedSvgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'merged_svg.svg';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '✅ 下载成功', 'success');
+                window.showToast('已下载 merged_svg.svg');
+            });
+
+            copySvgBtn.addEventListener('click', function() {
+                if (!mergedSvgString) {
+                    showMsg(resultMsg, '请先生成合并结果', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(mergedSvgString).then(() => {
+                        showMsg(resultMsg, '✅ 已复制SVG源码到剪贴板', 'success');
+                        window.showToast('已复制');
+                    }).catch(() => {
+                        fallbackCopy(mergedSvgString);
+                    });
+                } else {
+                    fallbackCopy(mergedSvgString);
+                }
+            });
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '✅ 已复制SVG源码', 'success');
+                    window.showToast('已复制');
+                } catch (e) {
+                    showMsg(resultMsg, '❌ 复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                setTimeout(() => { if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = ''; }, 5000);
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function clearResults() {
+                previewArea.style.display = 'none';
+                emptyPreview.style.display = 'block';
+                previewContainer.innerHTML = '';
+                previewInfo.textContent = '';
+                downloadBtn.disabled = true;
+                copySvgBtn.disabled = true;
+                mergedSvgString = '';
+                resultMsg.innerHTML = '';
+                mergeMsg.innerHTML = '';
+            }
+
+            window.switchInputMode();
+            mergeBtn.disabled = true;
+            clearResults();
+
+        })();
+    </script>
+</body>
+</html>
