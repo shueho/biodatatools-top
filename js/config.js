@@ -39,10 +39,9 @@ const toolConfig = [
 },
 
 {
-    toolName: "Batch Extract/Modify FASTA Sequence IDs",
-    toolDesc: "Batch extract or modify FASTA sequence IDs.",
-    toolIcon: "images/014.png",
-    link: "en/014.Fasta_id_modify.html"
+    toolName: "FASTA Rename by Order",
+    toolDesc: "Import FASTA sequences, specify an ID prefix and digit width, then generate new IDs in order.",
+    link: "en/014.Fasta_rename_by_order.html"
 },
 
 {
@@ -254,6 +253,12 @@ const toolConfig = [
     toolName: "Table Column Explode",
     toolDesc: "Split separated values in a column into multiple rows, keeping other columns. Supports any separator (semicolon, comma, space, slash, etc.).",
     link: "en/031.Table_column_explode.html"
+},
+
+{
+    toolName: "Taxonomy Format Converter",
+    toolDesc: "Convert between single-column taxonomy strings (d__Bacteria;p__Proteobacteria;...) and multi-column rank tables (Domain, Kingdom, Phylum...).",
+    link: "en/038.Taxonomy_format_converter.html"
 },
         ]
     },

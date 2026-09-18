@@ -65,7 +65,7 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.cn/en/014.Fasta_id_modify.html</loc>
+    <loc>https://www.biodatatools.cn/en/014.Fasta_rename_by_order.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -101,7 +101,7 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：Statistical Analysis (7个) ===== -->
+  <!-- ===== 分类：Statistical Analysis (8个) ===== -->
   <url>
     <loc>https://www.biodatatools.cn/en/002.RSCU.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -144,8 +144,14 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.cn/en/035.Taxonomy_abundance_parser.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-  <!-- ===== 分类：Plotting & Visualization (4个，新增036) ===== -->
+  <!-- ===== 分类：Plotting & Visualization (5个，新增036,037) ===== -->
   <url>
     <loc>https://www.biodatatools.cn/en/003.RSCU_plot.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -170,8 +176,14 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.cn/en/037.SVG_merger.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-  <!-- ===== 分类：Gadget (13个) ===== -->
+  <!-- ===== 分类：Gadget (14个) ===== -->
   <url>
     <loc>https://www.biodatatools.cn/en/017.TaxSet_generator.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -250,6 +262,12 @@
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.cn/en/038.Taxonomy_format_converter.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
 
   <!-- ===== 分类：Others (3个) ===== -->
   <url>
@@ -307,7 +325,7 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.cn/ch/014.Fasta_id_modify.html</loc>
+    <loc>https://www.biodatatools.cn/ch/014.Fasta_rename_by_order.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -343,7 +361,7 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：统计分析 (7个) ===== -->
+  <!-- ===== 分类：统计分析 (8个) ===== -->
   <url>
     <loc>https://www.biodatatools.cn/ch/002.RSCU.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -386,8 +404,14 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.cn/ch/035.Taxonomy_abundance_parser.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-  <!-- ===== 分类：绘图与美化 (4个，新增036) ===== -->
+  <!-- ===== 分类：绘图与美化 (5个，新增036,037) ===== -->
   <url>
     <loc>https://www.biodatatools.cn/ch/003.RSCU_plot.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -412,8 +436,14 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.cn/ch/037.SVG_merger.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-  <!-- ===== 分类：小工具 (13个) ===== -->
+  <!-- ===== 分类：小工具 (14个) ===== -->
   <url>
     <loc>https://www.biodatatools.cn/ch/017.TaxSet_generator.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -489,6 +519,12 @@
   <url>
     <loc>https://www.biodatatools.cn/ch/031.Table_column_explode.html</loc>
     <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.cn/ch/038.Taxonomy_format_converter.html</loc>
+    <lastmod>2026-09-18</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

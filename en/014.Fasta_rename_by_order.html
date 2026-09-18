@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Batch Extract/Modify FASTA Sequence IDs - BioDataTools</title>
+    <title>FASTA Rename by Order - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
@@ -13,8 +13,8 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>Batch Extract/Modify FASTA Sequence IDs</h2>
-            <p>Batch extract or modify FASTA sequence IDs.</p>
+            <h2>FASTA Rename by Order</h2>
+            <p>Import FASTA sequences, specify an ID prefix and digit width, then generate new IDs in order.</p>
         </div>
 
         <div class="step-card">
@@ -27,7 +27,7 @@
                 <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.txt,.fas">
             </div>
             <div class="text-input">
-                <textarea id="fastaText" placeholder="Paste standard FASTA format content" disabled></textarea>
+                <textarea id="fastaText" placeholder="Paste standard FASTA content" disabled></textarea>
             </div>
             <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
                 <button class="btn" id="loadBtn">Import Sequences</button>
@@ -37,27 +37,40 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 2: Modify Sequence IDs</div>
-            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:6px;">
-                <span><strong>ID Mapping Table</strong> <span class="tip-text" style="display:inline; margin-left:10px;" id="idCount">0 entries</span></span>
-                <span style="font-size:0.85rem; color:#888;">After importing, copy the old IDs to Excel, modify the second column, then paste back the two‑column tab‑separated table (old-ID\tnew-ID).</span>
+            <div class="step-title">Step 2: Naming Rule and ID Mapping</div>
+
+            <div class="filter-box" style="gap:20px;">
+                <label>ID Prefix:
+                    <input type="text" id="prefixInput" value="seq_" style="width:140px;">
+                </label>
+                <label>Minimum Digit Width (shorter numbers are zero-padded):
+                    <input type="number" id="digitsInput" value="3" min="1" max="10" style="width:70px;">
+                </label>
+                <button class="btn btn-sm" id="regenBtn">Regenerate</button>
             </div>
-            <textarea id="idListText" placeholder="After importing, a two‑column mapping (oldID\tnewID) will appear here. Modify the second column and paste it back."></textarea>
+
+            <div id="ruleHint" class="tip-text" style="color:#1f4068; margin-top:6px;"></div>
+
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-top:12px; margin-bottom:6px;">
+                <span><strong>ID Mapping</strong> <span class="tip-text" style="display:inline; margin-left:10px;" id="idCount">0 items</span></span>
+                <span style="font-size:0.85rem; color:#888;">(Column 1: original ID; Column 2: new ID. You can copy to Excel, edit column 2, paste back, then click "Apply")</span>
+            </div>
+            <textarea id="idListText" placeholder="After importing sequences, the two-column mapping (old ID\tnew ID) will appear here. Edit and paste back to apply."></textarea>
 
             <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
                 <button class="btn" id="copyIdBtn">Copy Table</button>
-                <button class="btn" id="applyBtn" disabled>Apply Changes</button>
+                <button class="btn" id="applyBtn" disabled>Apply</button>
                 <button class="btn" id="resetBtn">Clear All</button>
             </div>
             <div id="applyTip" class="tip-text"></div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 3: Export Modified FASTA</div>
+            <div class="step-title">Step 3: Export Renamed FASTA</div>
             <div id="resultArea" style="display:none;">
                 <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:6px;">
-                    <span><strong>New FASTA File Preview</strong></span>
-                    <span style="font-size:0.85rem; color:#6c757d;">(Download to view the full content)</span>
+                    <span><strong>New FASTA Preview</strong></span>
+                    <span style="font-size:0.85rem; color:#6c757d;">(Download for full content)</span>
                 </div>
                 <textarea id="resultFastaPreview" readonly style="min-height:150px; background:#f0f2f5; color:#1f4068;"></textarea>
 
@@ -67,7 +80,7 @@
                 </div>
                 <div id="resultTip" class="tip-text"></div>
             </div>
-            <div id="emptyResult" class="empty-tip">Results will appear here after applying changes.</div>
+            <div id="emptyResult" class="empty-tip">Results will appear here after applying.</div>
         </div>
     </div>
 
@@ -90,6 +103,11 @@
             const exampleBtn = document.getElementById('exampleBtn');
             const msgTip = document.getElementById('msgTip');
 
+            const prefixInput = document.getElementById('prefixInput');
+            const digitsInput = document.getElementById('digitsInput');
+            const regenBtn = document.getElementById('regenBtn');
+            const ruleHint = document.getElementById('ruleHint');
+
             const idListText = document.getElementById('idListText');
             const copyIdBtn = document.getElementById('copyIdBtn');
             const applyBtn = document.getElementById('applyBtn');
@@ -107,6 +125,7 @@
             let rawSequences = [];
             let newFastaContent = '';
             let isLocked = false;
+            let userEdited = false;
 
             function showMsg(el, msg, type) {
                 const prefix = type === 'success' ? '✅ ' : (type === 'error' ? '❌ ' : '');
@@ -123,33 +142,57 @@
             function parseFasta(text) {
                 const lines = text.split(/\r?\n/);
                 const seqs = [];
-                let name = '', desc = '', seq = '';
+                let header = '', seq = '';
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (!trimmed) continue;
                     if (trimmed.startsWith('>')) {
-                        if (name && seq) seqs.push({ id: name, desc: desc, seq: seq });
-                        const rest = trimmed.slice(1).trim();
-                        const spaceIdx = rest.indexOf(' ');
-                        if (spaceIdx > 0) {
-                            name = rest.substring(0, spaceIdx);
-                            desc = rest.substring(spaceIdx + 1);
-                        } else {
-                            name = rest;
-                            desc = '';
-                        }
+                        if (header && seq) seqs.push({ id: header, seq: seq });
+                        header = trimmed.slice(1).trim();
                         seq = '';
                     } else {
                         seq += trimmed;
                     }
                 }
-                if (name && seq) seqs.push({ id: name, desc: desc, seq: seq });
+                if (header && seq) seqs.push({ id: header, seq: seq });
                 return seqs;
+            }
+
+            function getDigits() {
+                const d = parseInt(digitsInput.value, 10);
+                return (isNaN(d) || d < 1) ? 1 : d;
+            }
+
+            function makeNewId(index) {
+                const prefix = prefixInput.value;
+                const d = getDigits();
+                return prefix + String(index + 1).padStart(d, '0');
+            }
+
+            function updateRuleHint() {
+                const d = getDigits();
+                const p = prefixInput.value;
+                const s1 = p + String(1).padStart(d, '0');
+                const s2 = p + String(2).padStart(d, '0');
+                ruleHint.textContent = 'Naming example: ' + s1 + ', ' + s2 + ', ...';
+            }
+
+            function buildMappingList() {
+                if (rawSequences.length === 0) return;
+                const lines = rawSequences.map((s, i) => s.id + '\t' + makeNewId(i));
+                idListText.value = lines.join('\n');
+                userEdited = false;
+                idCount.textContent = rawSequences.length + ' items';
             }
 
             function extractNewIdFromLine(line) {
                 const trimmed = line.trim();
                 if (!trimmed) return null;
+                const tabParts = trimmed.split('\t');
+                if (tabParts.length >= 2) {
+                    const v = tabParts.slice(1).join('\t').trim();
+                    return v || null;
+                }
                 const tokens = trimmed.split(/\s+/);
                 return tokens[tokens.length - 1];
             }
@@ -157,16 +200,14 @@
             function rebuildFasta(newIds) {
                 if (rawSequences.length === 0) return null;
                 if (newIds.length !== rawSequences.length) {
-                    showMsg(applyTip, 'The number of new IDs (' + newIds.length + ') does not match the number of old IDs (' + rawSequences.length + ').', 'error');
+                    showMsg(applyTip, 'Number of new IDs (' + newIds.length + ') does not match number of sequences (' + rawSequences.length + ').', 'error');
                     return null;
                 }
                 const lines = [];
                 for (let i = 0; i < rawSequences.length; i++) {
                     const seq = rawSequences[i];
                     const newId = newIds[i] || seq.id;
-                    let header = '>' + newId;
-                    if (seq.desc) header += ' ' + seq.desc;
-                    lines.push(header);
+                    lines.push('>' + newId);
                     lines.push(seq.seq);
                 }
                 return lines.join('\n');
@@ -176,18 +217,17 @@
                 try {
                     const seqs = parseFasta(text);
                     if (seqs.length === 0) {
-                        showMsg(msgTip, 'Failed to parse valid sequences. Please check your FASTA format.', 'error');
+                        showMsg(msgTip, 'No valid FASTA sequences parsed. Please check the format.', 'error');
                         return false;
                     }
                     rawSequences = seqs;
 
                     isLocked = false;
+                    userEdited = false;
                     idListText.disabled = false;
                     applyBtn.disabled = false;
 
-                    const lines = seqs.map(s => s.id + '\t' + s.id);
-                    idListText.value = lines.join('\n');
-                    idCount.textContent = seqs.length + ' entries';
+                    buildMappingList();
 
                     resultArea.style.display = 'none';
                     emptyResult.style.display = 'block';
@@ -195,23 +235,23 @@
                     applyTip.innerHTML = '';
                     resultTip.innerHTML = '';
 
-                    showMsg(msgTip, 'Successfully loaded ' + seqs.length + ' sequence(s).', 'success');
-                    toast('Loaded ' + seqs.length + ' sequence(s).');
+                    showMsg(msgTip, 'Successfully loaded ' + seqs.length + ' sequences.', 'success');
+                    toast('Loaded ' + seqs.length + ' sequences.');
                     return true;
                 } catch (e) {
-                    showMsg(msgTip, 'Parse error: ' + e.message, 'error');
+                    showMsg(msgTip, 'Parse failed: ' + e.message, 'error');
                     return false;
                 }
             }
 
             function applyNewIds() {
                 if (isLocked) {
-                    showMsg(applyTip, 'Locked. Click "Clear All" to re‑import if you need to modify.', 'warn');
+                    showMsg(applyTip, 'Locked. Click "Clear All" and re-import to modify.', 'warn');
                     return;
                 }
                 const text = idListText.value.trim();
                 if (!text) {
-                    showMsg(applyTip, 'The mapping table is empty. Please import sequences or paste new data.', 'error');
+                    showMsg(applyTip, 'Mapping table is empty. Import sequences first.', 'error');
                     return;
                 }
                 const lines = text.split(/\r?\n/).filter(s => s.trim() !== '');
@@ -222,7 +262,7 @@
 
                 const newIds = lines.map(line => extractNewIdFromLine(line));
                 if (newIds.some(id => id === null)) {
-                    showMsg(applyTip, 'Invalid line detected. Please ensure each line contains at least one ID.', 'error');
+                    showMsg(applyTip, 'Some lines are invalid. Each line must contain at least one ID.', 'error');
                     return;
                 }
 
@@ -233,26 +273,26 @@
                 isLocked = true;
                 idListText.disabled = true;
                 applyBtn.disabled = true;
-                idCount.textContent = newIds.length + ' Entries';
+                idCount.textContent = newIds.length + ' items';
 
                 resultArea.style.display = 'block';
                 emptyResult.style.display = 'none';
                 resultFastaPreview.value = newFastaContent;
 
-                showMsg(applyTip, 'Applied successfully! ' + rawSequences.length + ' sequence(s) processed.', 'success');
+                showMsg(applyTip, 'Applied successfully! ' + rawSequences.length + ' sequences.', 'success');
                 toast('New IDs applied.');
             }
 
             function copyIds() {
                 const text = idListText.value;
                 if (!text) {
-                    showMsg(applyTip, 'No content to copy.', 'error');
+                    showMsg(applyTip, 'Nothing to copy.', 'error');
                     return;
                 }
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(text).then(() => {
                         showMsg(applyTip, 'Mapping table copied.', 'success');
-                        toast('Copied.');
+                        toast('Copied');
                     }).catch(() => fallbackCopy(text, applyTip));
                 } else {
                     fallbackCopy(text, applyTip);
@@ -267,26 +307,27 @@
                 try {
                     document.execCommand('copy');
                     showMsg(tipEl, 'Mapping table copied.', 'success');
-                    toast('Copied.');
+                    toast('Copied');
                 } catch (e) {
                     showMsg(tipEl, 'Copy failed. Please copy manually.', 'error');
                 }
                 document.body.removeChild(ta);
             }
 
-function clearMapping() {
-    idListText.value = '';
-    idCount.textContent = (rawSequences.length ? rawSequences.length + ' entries' : '0 entries');
-    resultArea.style.display = 'none';
-    emptyResult.style.display = 'block';
-    newFastaContent = '';
-    isLocked = false;
-    idListText.disabled = false;
-    applyBtn.disabled = false;
-    applyTip.innerHTML = '';
-    resultTip.innerHTML = '';
-    toast('Table cleared.');
-}
+            function clearMapping() {
+                idListText.value = '';
+                idCount.textContent = (rawSequences.length ? rawSequences.length + ' items' : '0 items');
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                newFastaContent = '';
+                isLocked = false;
+                userEdited = false;
+                idListText.disabled = false;
+                applyBtn.disabled = false;
+                applyTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                toast('Mapping cleared.');
+            }
 
             function resetAll(silent = false) {
                 rawSequences = [];
@@ -294,10 +335,11 @@ function clearMapping() {
                 fastaFile.value = '';
                 fastaText.value = '';
                 idListText.value = '';
-                idCount.textContent = '0 entries';
+                idCount.textContent = '0 items';
                 resultArea.style.display = 'none';
                 emptyResult.style.display = 'block';
                 isLocked = false;
+                userEdited = false;
                 idListText.disabled = false;
                 applyBtn.disabled = true;
                 msgTip.innerHTML = '';
@@ -317,7 +359,7 @@ function clearMapping() {
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(newFastaContent).then(() => {
                         showMsg(resultTip, 'FASTA content copied.', 'success');
-                        toast('Copied.');
+                        toast('Copied');
                     }).catch(() => fallbackCopy(newFastaContent, resultTip));
                 } else {
                     fallbackCopy(newFastaContent, resultTip);
@@ -338,8 +380,8 @@ function clearMapping() {
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showMsg(resultTip, 'Downloaded renamed_sequences.fasta.', 'success');
-                toast('Downloaded.');
+                showMsg(resultTip, 'Downloaded renamed_sequences.fasta', 'success');
+                toast('Downloaded');
             }
 
             window.switchInputMode = function() {
@@ -395,11 +437,41 @@ ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
                 loadSequences(example);
             });
 
+            prefixInput.addEventListener('input', function() {
+                updateRuleHint();
+                if (rawSequences.length > 0 && !userEdited && !isLocked) {
+                    buildMappingList();
+                }
+            });
+
+            digitsInput.addEventListener('input', function() {
+                updateRuleHint();
+                if (rawSequences.length > 0 && !userEdited && !isLocked) {
+                    buildMappingList();
+                }
+            });
+
+            regenBtn.addEventListener('click', function() {
+                if (rawSequences.length === 0) {
+                    showMsg(applyTip, 'Please import sequences first.', 'error');
+                    return;
+                }
+                isLocked = false;
+                idListText.disabled = false;
+                applyBtn.disabled = false;
+                buildMappingList();
+                showMsg(applyTip, 'Mapping regenerated with current prefix and digit width.', 'success');
+            });
+
             copyIdBtn.addEventListener('click', copyIds);
             applyBtn.addEventListener('click', applyNewIds);
             resetBtn.addEventListener('click', clearMapping);
             downloadBtn.addEventListener('click', downloadFasta);
             copyResultBtn.addEventListener('click', copyResultFasta);
+
+            idListText.addEventListener('input', function() {
+                userEdited = true;
+            });
 
             idListText.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -412,6 +484,7 @@ ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
                 }
             });
 
+            updateRuleHint();
             resetAll(true);
             switchInputMode();
         })();

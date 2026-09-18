@@ -40,10 +40,9 @@ const toolConfig = [
 },
 
 {
-    toolName: "批量提取/修改FASTA序列ID",
-    toolDesc: "批量提取或修改FASTA序列的ID。",
-    toolIcon: "images/014.png",
-    link: "ch/014.Fasta_id_modify.html"
+    toolName: "FASTA序列按顺序重命名",
+    toolDesc: "导入FASTA序列，指定ID前缀与编号位数，按顺序生成新ID。",
+    link: "ch/014.Fasta_rename_by_order.html"
 },
 
 {
@@ -258,6 +257,12 @@ const toolConfig = [
     toolName: "表格列展开工具",
     toolDesc: "将指定列中的分隔值展开为多行，其余列自动填充。支持任意分隔符（分号、逗号、空格、斜杠等）。",
     link: "ch/031.Table_column_explode.html"
+},
+
+{
+    toolName: "物种注释格式转换",
+    toolDesc: "实现单列分类字符串（d__Bacteria;p__Proteobacteria;...）与多列等级表格（Domain、Kingdom、Phylum...）之间的互相转换。",
+    link: "ch/038.Taxonomy_format_converter.html"
 },
         ]
     },

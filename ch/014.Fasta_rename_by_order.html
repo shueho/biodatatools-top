@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>批量提取/修改FASTA序列ID - BioDataTools</title>
+    <title>FASTA序列按顺序重命名 - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
@@ -13,8 +13,8 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>批量提取/修改FASTA序列ID</h2>
-            <p>批量提取或修改FASTA序列的ID。</p>
+            <h2>FASTA序列按顺序重命名</h2>
+            <p>导入FASTA序列，指定ID前缀与编号位数，按顺序生成新ID。</p>
         </div>
 
         <div class="step-card">
@@ -37,10 +37,23 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">第二步：修改序列ID</div>
-            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:6px;">
+            <div class="step-title">第二步：设置命名规则与对照表</div>
+
+            <div class="filter-box" style="gap:20px;">
+                <label>ID 前缀：
+                    <input type="text" id="prefixInput" value="seq_" style="width:140px;">
+                </label>
+                <label>最少数字位数（不足位数的序号将使用0填充）：
+                    <input type="number" id="digitsInput" value="3" min="1" max="10" style="width:70px;">
+                </label>
+                <button class="btn btn-sm" id="regenBtn">重新生成</button>
+            </div>
+
+            <div id="ruleHint" class="tip-text" style="color:#1f4068; margin-top:6px;"></div>
+
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-top:12px; margin-bottom:6px;">
                 <span><strong>ID对照表</strong> <span class="tip-text" style="display:inline; margin-left:10px;" id="idCount">0条</span></span>
-                <span style="font-size:0.85rem; color:#888;">（导入序列后可以将旧序列名称复制到EXCEL中，修改第二列后重新导入“旧ID\t新ID”制表符分隔的两列表）</span>
+                <span style="font-size:0.85rem; color:#888;">（第一列为原始ID，第二列为新ID。可复制到EXCEL中修改第二列后粘贴回来，再点“应用修改”）</span>
             </div>
             <textarea id="idListText" placeholder="导入序列后，此处显示两列对照表（旧ID\t新ID），修改第二列后粘贴回来即可！"></textarea>
 
@@ -90,6 +103,11 @@
             const exampleBtn = document.getElementById('exampleBtn');
             const msgTip = document.getElementById('msgTip');
 
+            const prefixInput = document.getElementById('prefixInput');
+            const digitsInput = document.getElementById('digitsInput');
+            const regenBtn = document.getElementById('regenBtn');
+            const ruleHint = document.getElementById('ruleHint');
+
             const idListText = document.getElementById('idListText');
             const copyIdBtn = document.getElementById('copyIdBtn');
             const applyBtn = document.getElementById('applyBtn');
@@ -107,6 +125,7 @@
             let rawSequences = [];
             let newFastaContent = '';
             let isLocked = false;
+            let userEdited = false;
 
             function showMsg(el, msg, type) {
                 const prefix = type === 'success' ? '✅ ' : (type === 'error' ? '❌ ' : '');
@@ -123,33 +142,57 @@
             function parseFasta(text) {
                 const lines = text.split(/\r?\n/);
                 const seqs = [];
-                let name = '', desc = '', seq = '';
+                let header = '', seq = '';
                 for (const line of lines) {
                     const trimmed = line.trim();
                     if (!trimmed) continue;
                     if (trimmed.startsWith('>')) {
-                        if (name && seq) seqs.push({ id: name, desc: desc, seq: seq });
-                        const rest = trimmed.slice(1).trim();
-                        const spaceIdx = rest.indexOf(' ');
-                        if (spaceIdx > 0) {
-                            name = rest.substring(0, spaceIdx);
-                            desc = rest.substring(spaceIdx + 1);
-                        } else {
-                            name = rest;
-                            desc = '';
-                        }
+                        if (header && seq) seqs.push({ id: header, seq: seq });
+                        header = trimmed.slice(1).trim();
                         seq = '';
                     } else {
                         seq += trimmed;
                     }
                 }
-                if (name && seq) seqs.push({ id: name, desc: desc, seq: seq });
+                if (header && seq) seqs.push({ id: header, seq: seq });
                 return seqs;
+            }
+
+            function getDigits() {
+                const d = parseInt(digitsInput.value, 10);
+                return (isNaN(d) || d < 1) ? 1 : d;
+            }
+
+            function makeNewId(index) {
+                const prefix = prefixInput.value;
+                const d = getDigits();
+                return prefix + String(index + 1).padStart(d, '0');
+            }
+
+            function updateRuleHint() {
+                const d = getDigits();
+                const p = prefixInput.value;
+                const s1 = p + String(1).padStart(d, '0');
+                const s2 = p + String(2).padStart(d, '0');
+                ruleHint.textContent = '命名示例：' + s1 + ', ' + s2 + ', ...';
+            }
+
+            function buildMappingList() {
+                if (rawSequences.length === 0) return;
+                const lines = rawSequences.map((s, i) => s.id + '\t' + makeNewId(i));
+                idListText.value = lines.join('\n');
+                userEdited = false;
+                idCount.textContent = rawSequences.length + '条';
             }
 
             function extractNewIdFromLine(line) {
                 const trimmed = line.trim();
                 if (!trimmed) return null;
+                const tabParts = trimmed.split('\t');
+                if (tabParts.length >= 2) {
+                    const v = tabParts.slice(1).join('\t').trim();
+                    return v || null;
+                }
                 const tokens = trimmed.split(/\s+/);
                 return tokens[tokens.length - 1];
             }
@@ -164,9 +207,7 @@
                 for (let i = 0; i < rawSequences.length; i++) {
                     const seq = rawSequences[i];
                     const newId = newIds[i] || seq.id;
-                    let header = '>' + newId;
-                    if (seq.desc) header += ' ' + seq.desc;
-                    lines.push(header);
+                    lines.push('>' + newId);
                     lines.push(seq.seq);
                 }
                 return lines.join('\n');
@@ -182,12 +223,11 @@
                     rawSequences = seqs;
 
                     isLocked = false;
+                    userEdited = false;
                     idListText.disabled = false;
                     applyBtn.disabled = false;
 
-                    const lines = seqs.map(s => s.id + '\t' + s.id);
-                    idListText.value = lines.join('\n');
-                    idCount.textContent = seqs.length + '条';
+                    buildMappingList();
 
                     resultArea.style.display = 'none';
                     emptyResult.style.display = 'block';
@@ -274,19 +314,20 @@
                 document.body.removeChild(ta);
             }
 
-function clearMapping() {
-    idListText.value = '';
-    idCount.textContent = (rawSequences.length ? rawSequences.length + '条' : '0条');
-    resultArea.style.display = 'none';
-    emptyResult.style.display = 'block';
-    newFastaContent = '';
-    isLocked = false;
-    idListText.disabled = false;
-    applyBtn.disabled = false;
-    applyTip.innerHTML = '';
-    resultTip.innerHTML = '';
-    toast('已清空表格');
-}
+            function clearMapping() {
+                idListText.value = '';
+                idCount.textContent = (rawSequences.length ? rawSequences.length + '条' : '0条');
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                newFastaContent = '';
+                isLocked = false;
+                userEdited = false;
+                idListText.disabled = false;
+                applyBtn.disabled = false;
+                applyTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                toast('已清空表格');
+            }
 
             function resetAll(silent = false) {
                 rawSequences = [];
@@ -298,6 +339,7 @@ function clearMapping() {
                 resultArea.style.display = 'none';
                 emptyResult.style.display = 'block';
                 isLocked = false;
+                userEdited = false;
                 idListText.disabled = false;
                 applyBtn.disabled = true;
                 msgTip.innerHTML = '';
@@ -395,11 +437,41 @@ ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
                 loadSequences(example);
             });
 
+            prefixInput.addEventListener('input', function() {
+                updateRuleHint();
+                if (rawSequences.length > 0 && !userEdited && !isLocked) {
+                    buildMappingList();
+                }
+            });
+
+            digitsInput.addEventListener('input', function() {
+                updateRuleHint();
+                if (rawSequences.length > 0 && !userEdited && !isLocked) {
+                    buildMappingList();
+                }
+            });
+
+            regenBtn.addEventListener('click', function() {
+                if (rawSequences.length === 0) {
+                    showMsg(applyTip, '请先导入序列', 'error');
+                    return;
+                }
+                isLocked = false;
+                idListText.disabled = false;
+                applyBtn.disabled = false;
+                buildMappingList();
+                showMsg(applyTip, '已按当前前缀与位数重新生成对照表', 'success');
+            });
+
             copyIdBtn.addEventListener('click', copyIds);
             applyBtn.addEventListener('click', applyNewIds);
             resetBtn.addEventListener('click', clearMapping);
             downloadBtn.addEventListener('click', downloadFasta);
             copyResultBtn.addEventListener('click', copyResultFasta);
+
+            idListText.addEventListener('input', function() {
+                userEdited = true;
+            });
 
             idListText.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -412,6 +484,7 @@ ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
                 }
             });
 
+            updateRuleHint();
             resetAll(true);
             switchInputMode();
         })();

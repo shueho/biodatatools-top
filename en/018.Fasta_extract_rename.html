@@ -44,7 +44,7 @@
         <div class="step-card">
             <div class="step-title">Step 2: Select Mode and Input Sequence ID List</div>
 
-            <div class="radio-box" style="margin-bottom:8px;">
+            <div class="mode-tabs">
                 <label><input type="radio" name="mode" value="extract" checked onchange="onModeChange()">Extract Only</label>
                 <label><input type="radio" name="mode" value="rename" onchange="onModeChange()">Extract and Rename</label>
             </div>
@@ -118,6 +118,7 @@
 
             let sequences = [];
             let currentResult = '';
+            let userEditedList = false;
 
             function showMsg(el, msg, type) {
                 el.innerHTML = `<span class="${type}">${msg}</span>`;
@@ -172,23 +173,34 @@
                 return lines.map(line => line.split(/\t/)[0].trim()).join('\n');
             }
 
+            function autoFillIdList() {
+                if (sequences.length === 0) return;
+                const mode = getMode();
+                if (mode === 'extract') {
+                    idListText.value = sequences.map(s => s.id).join('\n');
+                } else {
+                    idListText.value = sequences.map(s => s.id + '\t' + s.id).join('\n');
+                }
+                userEditedList = false;
+            }
+
             function onModeChange() {
                 const mode = getMode();
                 const currentText = idListText.value;
 
                 if (mode === 'extract') {
-                    if (!isSingleColumn(currentText) && currentText.trim() !== '') {
-                        const newText = convertToSingleColumn(currentText);
-                        idListText.value = newText;
-                        showMsg(extractTip, 'Converted to single-column format (keeping original IDs).', 'success');
+                    if (sequences.length > 0 && !userEditedList) {
+                        autoFillIdList();
+                    } else if (!isSingleColumn(currentText) && currentText.trim() !== '') {
+                        idListText.value = convertToSingleColumn(currentText);
                     }
                     modeHint.innerHTML = 'Current mode: <strong>Extract Only</strong> — one sequence ID per line, extracts matching sequences from FASTA (keeps original IDs).';
                     idListText.placeholder = 'One sequence ID per line (Extract Only mode)';
                 } else {
-                    if (isSingleColumn(currentText) && currentText.trim() !== '') {
-                        const newText = convertToTwoColumn(currentText);
-                        idListText.value = newText;
-                        showMsg(extractTip, 'Converted to two-column format (original ID\tnew ID). Please edit the second column.', 'success');
+                    if (sequences.length > 0 && !userEditedList) {
+                        autoFillIdList();
+                    } else if (isSingleColumn(currentText) && currentText.trim() !== '') {
+                        idListText.value = convertToTwoColumn(currentText);
                     }
                     modeHint.innerHTML = 'Current mode: <strong>Extract and Rename</strong> — two columns per line (tab-separated): <strong>original sequence ID</strong> (first column) and <strong>new sequence ID</strong> (second column). You can paste two columns directly from Excel.';
                     idListText.placeholder = 'original ID\tnew ID\nseq1\tnew_name1\nseq2\tnew_name2';
@@ -341,11 +353,6 @@ ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
 ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG
 >seq5
 ATGGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAG`;
-                const exampleList = `seq1\tnew_gene1
-seq2\tnew_gene2
-seq3\tnew_gene3
-seq4\tnew_gene4
-seq5\tnew_gene5`;
 
                 const radio = document.querySelector('input[name="inputMode"][value="text"]');
                 if (radio) radio.checked = true;
@@ -353,7 +360,6 @@ seq5\tnew_gene5`;
                 fastaFile.value = '';
                 fastaText.disabled = false;
                 fastaText.value = exampleFasta;
-                idListText.value = exampleList;
 
                 const parsed = parseFasta(exampleFasta);
                 if (parsed.length > 0) {
@@ -362,12 +368,8 @@ seq5\tnew_gene5`;
                     toast('Example loaded');
                     extractBtn.disabled = false;
                     clearResults();
+                    autoFillIdList();
                     updateListStats();
-                    const renameRadio = document.querySelector('input[name="mode"][value="rename"]');
-                    if (renameRadio) {
-                        renameRadio.checked = true;
-                        onModeChange();
-                    }
                 }
             }
 
@@ -384,6 +386,7 @@ seq5\tnew_gene5`;
                     toast(`Loaded ${sequences.length} sequences.`);
                     extractBtn.disabled = false;
                     clearResults();
+                    autoFillIdList();
                     updateListStats();
                 };
                 reader.readAsText(file);
@@ -399,6 +402,7 @@ seq5\tnew_gene5`;
                 toast(`Loaded ${sequences.length} sequences.`);
                 extractBtn.disabled = false;
                 clearResults();
+                autoFillIdList();
                 updateListStats();
             }
 
@@ -418,6 +422,8 @@ seq5\tnew_gene5`;
                 clearResults();
                 msgTip.innerHTML = '';
                 extractTip.innerHTML = '';
+                idListText.value = '';
+                userEditedList = false;
                 updateListStats();
             };
 
@@ -446,6 +452,7 @@ seq5\tnew_gene5`;
                     toast(`✅ File ${file.name} loaded successfully.`);
                     extractBtn.disabled = false;
                     clearResults();
+                    autoFillIdList();
                     updateListStats();
                 };
                 reader.readAsText(file);
@@ -458,7 +465,10 @@ seq5\tnew_gene5`;
                 }
             });
 
-            idListText.addEventListener('input', updateListStats);
+            idListText.addEventListener('input', function() {
+                userEditedList = true;
+                updateListStats();
+            });
 
             sequences = [];
             extractBtn.disabled = true;
@@ -466,11 +476,10 @@ seq5\tnew_gene5`;
             msgTip.innerHTML = '';
             extractTip.innerHTML = '';
             idListText.value = '';
+            userEditedList = false;
             listStats.textContent = '';
             document.querySelector('input[name="mode"][value="extract"]').checked = true;
             onModeChange();
-
-            if (sequences.length > 0) extractBtn.disabled = false;
 
             window.onModeChange = onModeChange;
         })();
