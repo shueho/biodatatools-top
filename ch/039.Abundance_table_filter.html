@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>丰度表筛选与预处理 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>丰度表筛选与预处理</h2>
+            <p>对ASV/OTU/物种/基因丰度表进行筛选与预处理，支持按流行度阈值与相对丰度阈值进行筛选。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入丰度表格</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="dataFile" accept=".csv,.tsv,.txt,.tab" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="dataText" placeholder="粘贴丰度表格（制表符或逗号分隔，第一行为列名；前面若干列为分类注释信息，其余列为各样本的丰度数据）" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 第一行为列名；前若干列（如ASV_ID、Taxon等）为分类注释信息，不参与丰度计算；其余各列为样本的丰度数据。
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">导入数据</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="previewArea" style="display:none; margin-top:14px;">
+                <div style="font-weight:500; margin-bottom:6px;">
+                    数据预览 <span id="previewDim" class="tip-text" style="display:inline;"></span>
+                </div>
+                <div class="table-container">
+                    <table id="previewTable">
+                        <thead id="previewHead"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：参数设置</div>
+
+            <div class="param-group">
+                <label>筛选模式：
+                    <select id="filterMode" style="min-width:280px;">
+                        <option value="in">模式一：IN筛选</option>
+                        <option value="and">模式二：ADD筛选</option>
+                        <option value="or">模式三：OR筛选</option>
+                        <option value="zero">模式四：低丰度置零</option>
+                    </select>
+                </label>
+                <label>丰度矩阵起始列号（前边的列不参与计算）：
+                    <input type="number" id="startCol" value="3" min="2" step="1" style="width:80px;">
+                </label>
+                <label>输出数据类型：
+                    <select id="outType">
+                        <option value="count">原始计数</option>
+                        <option value="rel">相对丰度</option>
+                    </select>
+                </label>
+            </div>
+            <div class="param-group">
+                <label>流行度阈值：
+                    <input type="number" id="prevCutoff" value="0.2" step="0.01" min="0" max="1" style="width:90px;">
+                </label>
+                <label>相对丰度阈值：
+                    <input type="number" id="abundCutoff" value="0.0002" step="0.0001" min="0" style="width:110px;">
+                </label>
+                <button class="btn" id="runBtn" disabled>执行计算</button>
+            </div>
+
+            <div id="modeHintBox" class="info-box" style="margin-top:12px;"></div>
+
+            <div id="paramMsg" class="tip-text"></div>
+
+            <div class="ref-card">
+                <h4><strong>四种模式说明</strong></h4>
+                <p>
+                    <strong>模式一（IN筛选）</strong>：保留“相对丰度 > 相对丰度阈值”的样本比例 ≥ 流行度阈值的ASV/OTU/物种/基因。<br>
+                    <strong>模式二（ADD筛选）</strong>：保留检出流行度 ≥ 流行度阈值，<strong>且</strong>平均相对丰度 > 相对丰度阈值的ASV/OTU/物种/基因。<br>
+                    <strong>模式三（OR筛选）</strong>：保留检出流行度 ≥ 流行度阈值，<strong>或</strong>平均相对丰度 > 相对丰度阈值的ASV/OTU/物种/基因。<br>
+                    <strong>模式四（低丰度置零）</strong>：不做行筛选，将相对丰度小于阈值的丰度值定义为0。
+                </p>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：计算结果</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>复制结果</button>
+                <button class="btn" id="exportResultBtn" disabled>导出表格</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    结果预览 <span id="resultStats" class="tip-text" style="display:inline;"></span>
+                </div>
+                <div class="table-container">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">执行计算后，结果将在此处显示</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: '作者：地上飞猪',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const dataFile = document.getElementById('dataFile');
+            const dataText = document.getElementById('dataText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const previewArea = document.getElementById('previewArea');
+            const previewHead = document.getElementById('previewHead');
+            const previewBody = document.getElementById('previewBody');
+            const previewDim = document.getElementById('previewDim');
+
+            const startCol = document.getElementById('startCol');
+            const outType = document.getElementById('outType');
+            const filterMode = document.getElementById('filterMode');
+            const prevCutoff = document.getElementById('prevCutoff');
+            const abundCutoff = document.getElementById('abundCutoff');
+            const runBtn = document.getElementById('runBtn');
+            const paramMsg = document.getElementById('paramMsg');
+            const modeHintBox = document.getElementById('modeHintBox');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const resultStats = document.getElementById('resultStats');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportResultBtn = document.getElementById('exportResultBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            const EXAMPLE =
+                'ASV_ID\tTaxon\tS1\tS2\tS3\tS4\tS5\tS6\n' +
+                'ASV_1\td__Bacteria;p__Proteobacteria\t120\t135\t98\t110\t150\t142\n' +
+                'ASV_2\td__Bacteria;p__Firmicutes\t15\t18\t22\t0\t3\t25\n' +
+                'ASV_3\td__Bacteria;p__Actinobacteriota\t0\t2\t1\t0\t0\t3\n' +
+                'ASV_4\td__Bacteria;p__Bacteroidota\t88\t76\t91\t102\t69\t95\n' +
+                'ASV_5\td__Bacteria;p__Firmicutes\t0\t0\t0\t1\t0\t0\n' +
+                'ASV_6\td__Archaea;p__Halobacterota\t2\t0\t4\t0\t1\t0\n' +
+                'ASV_7\td__Bacteria;p__Proteobacteria\t64\t58\t72\t66\t80\t61\n' +
+                'ASV_8\td__Bacteria;p__Cyanobacteria\t0\t0\t1\t0\t0\t0';
+
+            let header = [];
+            let rows = [];
+            let resultHeader = [];
+            let resultRows = [];
+            let resultText = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = `<span class="${type}">${msg}</span>`;
+                if (el === msgTip || el === paramMsg || el === resultMsg) {
+                    setTimeout(() => {
+                        if (el.innerHTML === `<span class="${type}">${msg}</span>`) el.innerHTML = '';
+                    }, 6000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str).replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function detectDelim(text) {
+                const first = text.split(/\r?\n/).find(l => l.trim() !== '');
+                if (!first) return '\t';
+                if (first.includes('\t')) return '\t';
+                if (first.includes(',')) return ',';
+                return '\t';
+            }
+
+            function parseTable(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                if (lines.length < 2) return null;
+                const delim = detectDelim(text);
+                const raw = lines.map(l => l.split(delim).map(c => c.trim()));
+                let maxLen = 0;
+                raw.forEach(r => { if (r.length > maxLen) maxLen = r.length; });
+                raw.forEach(r => { while (r.length < maxLen) r.push(''); });
+                return { header: raw[0], rows: raw.slice(1) };
+            }
+
+            function fmtRel(v) {
+                if (!isFinite(v) || v === 0) return '0';
+                if (v < 1e-12) return v.toExponential(4);
+                let s = v.toFixed(12);
+                s = s.replace(/0+$/, '');
+                if (s.endsWith('.')) s = s.slice(0, -1);
+                return s;
+            }
+
+            function fmtCount(v) {
+                if (!isFinite(v)) return '0';
+                return String(v);
+            }
+
+            function toPercentStr(v) {
+                if (!isFinite(v) || v === 0) return '0%';
+                const p = v * 100;
+                if (p >= 100) return p.toFixed(0) + '%';
+                let s;
+                if (p >= 10) s = p.toFixed(2);
+                else if (p >= 1) s = p.toFixed(2);
+                else if (p >= 0.01) s = p.toFixed(4);
+                else s = p.toExponential(2);
+                s = s.replace(/\.?0+$/, '');
+                if (s === '') s = '0';
+                return s + '%';
+            }
+
+            function toPlainNumberStr(v) {
+                if (!isFinite(v)) return '0';
+                return String(v);
+            }
+
+            function calcNeedSamples(prevTh) {
+                if (rows.length === 0 || header.length === 0) return null;
+                if (isNaN(prevTh)) return null;
+                const sc = parseInt(startCol.value, 10);
+                if (isNaN(sc) || sc < 2 || sc > header.length) return null;
+                const nSample = header.length - (sc - 1);
+                if (nSample <= 0) return null;
+                return Math.ceil(prevTh * nSample);
+            }
+
+            function updateModeHint() {
+                const mode = filterMode.value;
+                const prevTh = parseFloat(prevCutoff.value);
+                const abundTh = parseFloat(abundCutoff.value);
+
+                const prevPct = isNaN(prevTh) ? '0%' : toPercentStr(prevTh);
+                const abundStr = isNaN(abundTh) ? '0' : toPlainNumberStr(abundTh);
+
+                const needCount = calcNeedSamples(prevTh);
+                let sampleText = '';
+                if (needCount !== null) {
+                    sampleText = `（至少${needCount}个样本）`;
+                }
+
+                let text = '';
+                if (mode === 'in') {
+                    text = `当前设置：将保留在至少 <strong>${prevPct}</strong> 的样本${sampleText}中相对丰度 &gt; <strong>${abundStr}</strong> 的 ASV/OTU/物种/基因。`;
+                } else if (mode === 'and') {
+                    text = `当前设置：将保留检出流行度 ≥ <strong>${prevPct}</strong>${sampleText} <strong>且</strong>平均相对丰度 &gt; <strong>${abundStr}</strong> 的 ASV/OTU/物种/基因。`;
+                } else if (mode === 'or') {
+                    text = `当前设置：将保留检出流行度 ≥ <strong>${prevPct}</strong>${sampleText} <strong>或</strong>平均相对丰度 &gt; <strong>${abundStr}</strong> 的 ASV/OTU/物种/基因。`;
+                } else if (mode === 'zero') {
+                    text = `当前设置：<strong>不进行行筛选</strong>；将相对丰度 &lt; <strong>${abundStr}</strong> 的丰度值定义为0。`;
+                }
+                modeHintBox.innerHTML = text;
+            }
+
+            function updateModeUI() {
+                const isZero = filterMode.value === 'zero';
+                prevCutoff.disabled = isZero;
+                updateModeHint();
+            }
+
+            function renderPreview() {
+                if (header.length === 0 || rows.length === 0) return;
+                previewArea.style.display = 'block';
+                previewDim.textContent = `（共 ${rows.length} 个项目）`;
+
+                let thead = '<tr>';
+                header.forEach(h => thead += `<th>${escapeHtml(h)}</th>`);
+                thead += '</tr>';
+                previewHead.innerHTML = thead;
+
+                const maxShow = Math.min(rows.length, 50);
+                let tbody = '';
+                for (let i = 0; i < maxShow; i++) {
+                    tbody += '<tr>';
+                    for (let j = 0; j < header.length; j++) {
+                        tbody += `<td>${escapeHtml(rows[i][j] !== undefined ? rows[i][j] : '')}</td>`;
+                    }
+                    tbody += '</tr>';
+                }
+                if (rows.length > maxShow) {
+                    tbody += `<tr><td colspan="${header.length}" style="color:#999;text-align:center;">... 仅预览前 ${maxShow} 行，完整数据仍会参与计算</td></tr>`;
+                }
+                previewBody.innerHTML = tbody;
+            }
+
+            function loadData(text) {
+                const parsed = parseTable(text);
+                if (!parsed) {
+                    showMsg(msgTip, '❌ 表格解析失败，请检查数据格式（至少需要表头 + 1 行数据）', 'error');
+                    return false;
+                }
+                header = parsed.header;
+                rows = parsed.rows;
+
+                const maxCol = header.length;
+                let sc = parseInt(startCol.value, 10);
+                if (isNaN(sc) || sc < 2) sc = 2;
+                if (sc > maxCol) sc = maxCol;
+                startCol.value = sc;
+
+                renderPreview();
+                clearResults();
+                runBtn.disabled = false;
+                updateModeHint();
+                showMsg(msgTip, `✅ 已加载 ${rows.length} 行 × ${header.length} 列`, 'success');
+                toast(`已加载 ${rows.length} 行数据`);
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = dataFile.files[0];
+                if (!file) { showMsg(msgTip, '❌ 请选择文件', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    dataText.value = e.target.result;
+                    loadData(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = dataText.value.trim();
+                if (!text) { showMsg(msgTip, '❌ 请粘贴表格数据', 'error'); return; }
+                loadData(text);
+            }
+
+            function loadExample() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInput();
+                dataText.value = EXAMPLE;
+                loadData(EXAMPLE);
+            }
+
+            function clearResults() {
+                resultHeader = [];
+                resultRows = [];
+                resultText = '';
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultHead.innerHTML = '';
+                resultBody.innerHTML = '';
+                resultStats.textContent = '';
+                copyResultBtn.disabled = true;
+                exportResultBtn.disabled = true;
+                resultMsg.innerHTML = '';
+            }
+
+            function doRun() {
+                clearResults();
+                paramMsg.innerHTML = '';
+
+                if (header.length === 0 || rows.length === 0) {
+                    showMsg(paramMsg, '❌ 请先导入数据', 'error');
+                    return;
+                }
+
+                const sc = parseInt(startCol.value, 10);
+                if (isNaN(sc) || sc < 2 || sc > header.length) {
+                    showMsg(paramMsg, '❌ 起始列号无效，请填写 2 ~ ' + header.length + ' 之间的整数', 'error');
+                    return;
+                }
+
+                const nSample = header.length - (sc - 1);
+                if (nSample < 1) {
+                    showMsg(paramMsg, '❌ 没有可用的样本丰度列，请检查起始列号', 'error');
+                    return;
+                }
+
+                const mode = filterMode.value;
+                const outMode = outType.value;
+
+                let prevTh = parseFloat(prevCutoff.value);
+                if (isNaN(prevTh) || prevTh < 0) prevTh = 0;
+                if (prevTh > 1) prevTh = 1;
+
+                let abundTh = parseFloat(abundCutoff.value);
+                if (isNaN(abundTh) || abundTh < 0) abundTh = 0;
+
+                const countMat = rows.map(r => {
+                    const arr = new Array(nSample);
+                    for (let j = 0; j < nSample; j++) {
+                        const v = parseFloat(r[sc - 1 + j]);
+                        arr[j] = isNaN(v) ? 0 : v;
+                    }
+                    return arr;
+                });
+
+                const colSums = new Array(nSample).fill(0);
+                for (let i = 0; i < countMat.length; i++) {
+                    for (let j = 0; j < nSample; j++) colSums[j] += countMat[i][j];
+                }
+
+                const relMat = countMat.map(row => {
+                    const arr = new Array(nSample);
+                    for (let j = 0; j < nSample; j++) {
+                        arr[j] = colSums[j] > 0 ? row[j] / colSums[j] : 0;
+                    }
+                    return arr;
+                });
+
+                const prevalenceArr = new Array(countMat.length);
+                const meanRelArr = new Array(countMat.length);
+                for (let i = 0; i < countMat.length; i++) {
+                    let detected = 0;
+                    let sumRel = 0;
+                    for (let j = 0; j < nSample; j++) {
+                        if (countMat[i][j] > 0) detected++;
+                        sumRel += relMat[i][j];
+                    }
+                    prevalenceArr[i] = detected / nSample;
+                    meanRelArr[i] = sumRel / nSample;
+                }
+
+                const keepIdx = [];
+                for (let i = 0; i < countMat.length; i++) {
+                    if (mode === 'zero') {
+                        keepIdx.push(i);
+                        continue;
+                    }
+                    if (mode === 'in') {
+                        let cnt = 0;
+                        for (let j = 0; j < nSample; j++) {
+                            if (relMat[i][j] > abundTh) cnt++;
+                        }
+                        if (cnt / nSample >= prevTh) keepIdx.push(i);
+                    } else if (mode === 'and') {
+                        if (prevalenceArr[i] >= prevTh && meanRelArr[i] > abundTh) keepIdx.push(i);
+                    } else if (mode === 'or') {
+                        if (prevalenceArr[i] >= prevTh || meanRelArr[i] > abundTh) keepIdx.push(i);
+                    }
+                }
+
+                if (keepIdx.length === 0) {
+                    showMsg(paramMsg, '⚠️ 按当前阈值筛选后没有保留任何行，请调整阈值后重试', 'warn');
+                    toast('筛选结果为空');
+                    return;
+                }
+
+                const taxCols = header.slice(0, sc - 1);
+                const sampleCols = header.slice(sc - 1);
+                resultHeader = taxCols.concat(sampleCols);
+
+                resultRows = keepIdx.map(function(i) {
+                    const taxVals = [];
+                    for (let j = 0; j < sc - 1; j++) {
+                        taxVals.push(rows[i][j] !== undefined ? rows[i][j] : '');
+                    }
+                    const valCols = [];
+                    for (let j = 0; j < nSample; j++) {
+                        if (outMode === 'rel') {
+                            let v = relMat[i][j];
+                            if (mode === 'zero' && v < abundTh) v = 0;
+                            valCols.push(fmtRel(v));
+                        } else {
+                            let v = countMat[i][j];
+                            if (mode === 'zero' && relMat[i][j] < abundTh) v = 0;
+                            valCols.push(fmtCount(v));
+                        }
+                    }
+                    return taxVals.concat(valCols);
+                });
+
+                renderResult();
+
+                const modeNames = {
+                    'in': '模式一',
+                    'and': '模式二',
+                    'or': '模式三',
+                    'zero': '模式四'
+                };
+
+                const prevPct = toPercentStr(prevTh);
+                const abundPct = toPercentStr(abundTh);
+
+                let detail = '';
+                if (mode === 'zero') {
+                    detail = `${modeNames[mode]}（不筛选，相对丰度 < ${abundPct} 置零）`;
+                } else {
+                    detail = `${modeNames[mode]}（流行度 ≥ ${prevPct}，相对丰度阈值 ${abundPct}）`;
+                }
+
+                showMsg(paramMsg,
+                    `✅ 计算完成：${detail}，输出 ${outMode === 'rel' ? '相对丰度' : '原始计数'}，保留 ${resultRows.length} / ${rows.length} 行`,
+                    'success');
+                toast(`计算完成，保留 ${resultRows.length} 行`);
+            }
+
+            function renderResult() {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                let thead = '<tr>';
+                resultHeader.forEach(h => thead += `<th>${escapeHtml(h)}</th>`);
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                const maxShow = Math.min(resultRows.length, 500);
+                let tbody = '';
+                for (let i = 0; i < maxShow; i++) {
+                    tbody += '<tr>';
+                    for (let j = 0; j < resultHeader.length; j++) {
+                        const v = resultRows[i][j];
+                        tbody += `<td>${escapeHtml(v !== undefined && v !== null ? v : '')}</td>`;
+                    }
+                    tbody += '</tr>';
+                }
+                if (resultRows.length > maxShow) {
+                    tbody += `<tr><td colspan="${resultHeader.length}" style="color:#999;text-align:center;">... 仅预览前 ${maxShow} 行，完整数据请复制或导出</td></tr>`;
+                }
+                resultBody.innerHTML = tbody;
+
+                resultStats.textContent = `（筛选前项目 ${rows.length} 项，筛选后 ${resultRows.length} 项）`;
+
+                const lines = [resultHeader.join('\t')];
+                for (let i = 0; i < resultRows.length; i++) {
+                    const line = [];
+                    for (let j = 0; j < resultHeader.length; j++) {
+                        const v = resultRows[i][j];
+                        line.push(v !== undefined && v !== null ? String(v) : '');
+                    }
+                    lines.push(line.join('\t'));
+                }
+                resultText = lines.join('\n');
+
+                copyResultBtn.disabled = false;
+                exportResultBtn.disabled = false;
+            }
+
+            function copyResult() {
+                if (!resultText) {
+                    showMsg(resultMsg, '❌ 无结果可复制', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText('\uFEFF' + resultText).then(() => {
+                        showMsg(resultMsg, '✅ 已复制结果（TSV格式）', 'success');
+                        toast('已复制');
+                    }).catch(() => fallbackCopy(resultText));
+                } else {
+                    fallbackCopy(resultText);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = '\uFEFF' + text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '✅ 已复制结果', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(resultMsg, '❌ 复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function exportResult() {
+                if (!resultText) {
+                    showMsg(resultMsg, '❌ 无结果可导出', 'error');
+                    return;
+                }
+                const csv = resultText.split('\n').map(line => line.split('\t').join(',')).join('\n');
+                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'abundance_filtered.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '✅ 表格已导出', 'success');
+                toast('已导出');
+            }
+
+            window.switchInput = function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    dataFile.disabled = false;
+                    dataText.disabled = true;
+                    dataText.value = '';
+                } else {
+                    dataFile.disabled = true;
+                    dataFile.value = '';
+                    dataText.disabled = false;
+                }
+                header = [];
+                rows = [];
+                previewArea.style.display = 'none';
+                previewHead.innerHTML = '';
+                previewBody.innerHTML = '';
+                previewDim.textContent = '';
+                runBtn.disabled = true;
+                msgTip.innerHTML = '';
+                paramMsg.innerHTML = '';
+                clearResults();
+                updateModeHint();
+            };
+
+            dataFile.addEventListener('change', function(e) {
+                if (!e.target.files || e.target.files.length === 0) return;
+                loadFromFile();
+            });
+
+            dataText.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function() {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!dataFile.files || dataFile.files.length === 0) {
+                        if (dataText.value.trim()) { loadFromText(); return; }
+                        showMsg(msgTip, '❌ 请选择文件或粘贴数据', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+            runBtn.addEventListener('click', doRun);
+            copyResultBtn.addEventListener('click', copyResult);
+            exportResultBtn.addEventListener('click', exportResult);
+
+            filterMode.addEventListener('change', updateModeUI);
+            prevCutoff.addEventListener('input', updateModeHint);
+            abundCutoff.addEventListener('input', updateModeHint);
+            startCol.addEventListener('input', updateModeHint);
+
+            window.switchInput();
+            updateModeUI();
+            clearResults();
+        })();
+    </script>
+</body>
+</html>

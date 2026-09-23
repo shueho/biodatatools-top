@@ -135,6 +135,12 @@ const toolConfig = [
     link: "ch/035.Taxonomy_abundance_parser.html"
 },
 
+{
+    toolName: "丰度表筛选与预处理",
+    toolDesc: "对ASV/OTU/物种/基因丰度表进行筛选与预处理，支持按流行度阈值与相对丰度阈值进行筛选。",
+    link: "ch/039.Abundance_table_filter.html"
+},
+
         ]
     },
     {

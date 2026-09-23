@@ -133,6 +133,12 @@ const toolConfig = [
     link: "en/035.Taxonomy_abundance_parser.html"
 },
 
+{
+    toolName: "Abundance Table Filtering & Preprocessing",
+    toolDesc: "Filter and preprocess ASV/OTU/species/gene abundance tables by prevalence threshold and relative abundance threshold.",
+    link: "en/039.Abundance_table_filter.html"
+},
+
         ]
     },
     {
