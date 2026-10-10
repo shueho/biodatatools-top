@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>华夫饼图 - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>华夫饼图</h2>
+            <p>用形状网格展示各类别占比，支持方形、圆形、菱形等自定义形状。</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：指定数据列</div>
+            <div class="param-group">
+                <label>分类列：</label>
+                <select id="catColSel" disabled><option>— 请先导入数据 —</option></select>
+                <label>数值列：</label>
+                <select id="valColSel" disabled><option>— 请先导入数据 —</option></select>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：选择色板与颜色</div>
+            <div class="param-group" style="margin-top:0;">
+                <label>排序依据：</label>
+                <select id="sortBy" disabled><option>— 请先导入数据 —</option></select>
+                <label>排序方向：</label>
+                <select id="sortDir">
+                    <option value="desc" selected>从大到小</option>
+                    <option value="asc">从小到大</option>
+                </select>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">分类色板</div>
+            <div id="paletteDropdownContainer"></div>
+            <div class="param-inline" style="margin-top:8px;">
+                <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+            </div>
+            <div id="colorAssignContainer" style="margin-top:16px;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：形状设置</div>
+            <div id="shapeSelectorContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：设置绘图参数</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">画布尺寸</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>宽度(px)</label><input type="number" id="chartWidth" value="700" min="300" data-redraw></div>
+                    <div class="param-item"><label>高度(px)</label><input type="number" id="chartHeight" value="600" min="300" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>显示画布边框</label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">字体样式</div>
+                <div class="font-row">
+                    <span class="font-label">字体</span>
+                    <select id="fontFamily" data-redraw>
+                        <option value="Times New Roman" selected>Times New Roman</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Microsoft YaHei">微软雅黑</option>
+                    </select>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">图例</span>
+                    <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>粗</label>
+                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>斜</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">图例标题</span>
+                    <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>粗</label>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>斜</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">标题</span>
+                    <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>粗</label>
+                    <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>斜</label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">组件控制</div>
+                <div class="font-row">
+                    <span class="font-label">图例</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>显示</label>
+                    <label>位置：
+                        <select id="legendPosition" data-redraw>
+                            <option value="right" selected>右侧</option>
+                            <option value="left">左侧</option>
+                            <option value="top">上方</option>
+                            <option value="bottom">下方</option>
+                        </select>
+                    </label>
+                    <label>间距(px)：
+                        <input type="number" id="legendGap" value="30" min="0" max="120" step="5" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">图例标题</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>显示</label>
+                    <label>内容：
+                        <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw>
+                    </label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">标题</span>
+                    <label class="mini-check"><input type="checkbox" id="showTitle" checked data-redraw>显示</label>
+                    <label>内容：
+                        <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw>
+                    </label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">标题间距</span>
+                    <input type="number" id="titleGap" value="15" min="0" max="200" step="5" data-redraw>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">华夫饼图设置</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>排布方向</label>
+                        <select id="waffleDirection">
+                            <option value="horizontal" selected>横向</option>
+                            <option value="vertical">纵向</option>
+                        </select>
+                    </div>
+
+                    <div class="param-item">
+                        <label>总格子数</label>
+                        <input type="number" id="waffleTotal" value="100" min="1" max="10000" step="1" data-redraw>
+                    </div>
+
+                    <div class="param-item" id="colsItem">
+                        <label>列数</label>
+                        <input type="number" id="waffleCols" value="10" min="1" max="200" data-redraw>
+                    </div>
+
+                    <div class="param-item hide" id="rowsItem">
+                        <label>行数</label>
+                        <input type="number" id="waffleRows" value="10" min="1" max="200" data-redraw>
+                    </div>
+
+                    <div class="param-item">
+                        <label>水平间隙(px)</label>
+                        <input type="number" id="waffleGapX" value="2" min="0" max="20" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>垂直间隙(px)</label>
+                        <input type="number" id="waffleGapY" value="2" min="0" max="20" step="0.5" data-redraw>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第六步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出 SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出 PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/plot-bootstrap.js"></script>
+    <script src="../COMMON/plot-header.js"></script>
+    <script src="../COMMON/plot-footer.js"></script>
+    <script src="../COMMON/plot-common.js"></script>
+    <script src="../COMMON/plot-shapes.js"></script>
+
+    <script>
+    PlotBootstrap.ensureD3().then(function () {
+        (function () {
+            'use strict';
+
+            const state = {
+                headers: [], data: [],
+                roles: { category: '', value: '' },
+                paletteName: 'tableau10',
+                reverse: false,
+                cycleColors: false,
+                customColors: {},
+                sortBy: '',
+                sortDir: 'desc',
+                legendTitleEdited: false,
+                shapeMode: 'uniform',
+                uniformShape: 'square',
+                categoryShapes: {},
+                currentSvg: null
+            };
+
+            const $ = id => document.getElementById(id);
+            const catColSel = $('catColSel');
+            const valColSel = $('valColSel');
+            const paletteDropdownContainer = $('paletteDropdownContainer');
+            const colorAssignContainer = $('colorAssignContainer');
+            const shapeSelectorContainer = $('shapeSelectorContainer');
+            const chartPreview = $('chartPreview');
+            const exportSvgBtn = $('exportSvgBtn');
+            const exportPngBtn = $('exportPngBtn');
+            const toolbarTip = $('toolbarTip');
+            const sortBySel = $('sortBy');
+            const sortDirSel = $('sortDir');
+            const legendTitleInput = $('legendTitle');
+
+            const EXAMPLE_DATA =
+                'Category\tValue\n' +
+                'A\t35\n' +
+                'B\t30\n' +
+                'C\t20\n' +
+                'D\t15\n';
+
+            legendTitleInput.addEventListener('input', () => {
+                state.legendTitleEdited = true;
+            });
+
+            function syncLegendTitle() {
+                if (!state.legendTitleEdited) {
+                    legendTitleInput.value = state.roles.category || '';
+                }
+            }
+
+            function onDataImported(res) {
+                state.headers = res.headers;
+                state.data = res.data;
+
+                const catCol = res.headers.find(h => res.columnTypes[h] === 'categorical') || res.headers[0];
+                const valCol = res.headers.find(h => res.columnTypes[h] === 'numeric') || res.headers[1] || res.headers[0];
+                state.roles = { category: catCol, value: valCol };
+                state.customColors = {};
+                state.categoryShapes = {};
+                state.sortBy = valCol;
+                state.sortDir = 'desc';
+                sortDirSel.value = 'desc';
+                syncLegendTitle();
+
+                fillRoleSelects();
+                fillSortBySelect();
+                refreshCategoryColors();
+                refreshShapeSelector();
+                resetChart();
+            }
+
+            function fillRoleSelects() {
+                if (!state.headers.length) {
+                    catColSel.innerHTML = '<option>— 请先导入数据 —</option>';
+                    valColSel.innerHTML = '<option>— 请先导入数据 —</option>';
+                    catColSel.disabled = true;
+                    valColSel.disabled = true;
+                    return;
+                }
+                catColSel.disabled = false;
+                valColSel.disabled = false;
+                const opts = (selVal) => state.headers.map(h =>
+                    `<option value="${PlotCommon.escapeHtml(h)}" ${h === selVal ? 'selected' : ''}>${PlotCommon.escapeHtml(h)}</option>`
+                ).join('');
+                catColSel.innerHTML = opts(state.roles.category);
+                valColSel.innerHTML = opts(state.roles.value);
+            }
+
+            function fillSortBySelect() {
+                state.sortBy = PlotCommon.fillSortBySelect(sortBySel, state.headers, state.sortBy);
+            }
+
+            catColSel.addEventListener('change', () => {
+                state.roles.category = catColSel.value;
+                state.customColors = {};
+                state.categoryShapes = {};
+                syncLegendTitle();
+                refreshCategoryColors();
+                refreshShapeSelector();
+                resetChart();
+            });
+            valColSel.addEventListener('change', () => {
+                state.roles.value = valColSel.value;
+                state.customColors = {};
+                state.sortBy = valColSel.value;
+                fillSortBySelect();
+                refreshCategoryColors();
+                refreshShapeSelector();
+                resetChart();
+            });
+
+            sortBySel.addEventListener('change', () => {
+                state.sortBy = sortBySel.value;
+                refreshCategoryColors();
+                refreshShapeSelector();
+                if (state.currentSvg) drawChart();
+            });
+            sortDirSel.addEventListener('change', () => {
+                state.sortDir = sortDirSel.value;
+                refreshCategoryColors();
+                refreshShapeSelector();
+                if (state.currentSvg) drawChart();
+            });
+
+            function initPaletteDropdown() {
+                PlotCommon.renderPaletteDropdown(paletteDropdownContainer, {
+                    type: 'categorical',
+                    selected: state.paletteName,
+                    previewCount: 8,
+                    onSelect: name => {
+                        state.paletteName = name;
+                        state.customColors = {};
+                        refreshCategoryColors();
+                        refreshShapeSelector();
+                        resetChart();
+                    }
+                });
+            }
+
+            function resolvePaletteColors(count) {
+                return PlotCommon.getCategoricalColors(state.paletteName, count, {
+                    reverse: state.reverse,
+                    cycle: state.cycleColors
+                });
+            }
+
+            function getCategoryItems() {
+                return PlotCommon.aggregateAndSort(state.data, {
+                    categoryKey: state.roles.category,
+                    valueKey: state.roles.value,
+                    sortBy: state.sortBy,
+                    sortDir: state.sortDir
+                });
+            }
+
+            function refreshCategoryColors() {
+                const items = getCategoryItems();
+                if (!items.length) {
+                    colorAssignContainer.innerHTML =
+                        '<div class="color-assign-empty">选择分类列后将在此处显示每个类别的颜色</div>';
+                    return;
+                }
+                const baseColors = resolvePaletteColors(items.length);
+                const displayItems = items.map((it, i) => ({
+                    name: it.name,
+                    color: state.customColors[it.name] || baseColors[i],
+                    percent: it.percent
+                }));
+
+                PlotCommon.renderColorAssignment(colorAssignContainer, {
+                    items: displayItems,
+                    onChange: (idx, newColor) => {
+                        state.customColors[items[idx].name] = newColor;
+                        refreshShapeSelector();
+                        if (state.currentSvg) drawChart();
+                    },
+                    onResetAll: () => {
+                        state.customColors = {};
+                        refreshCategoryColors();
+                        refreshShapeSelector();
+                        if (state.currentSvg) drawChart();
+                    }
+                });
+            }
+
+            function refreshShapeSelector() {
+                const items = getCategoryItems();
+                const baseColors = resolvePaletteColors(items.length);
+                const displayItems = items.map((it, i) => ({
+                    name: it.name,
+                    color: state.customColors[it.name] || baseColors[i]
+                }));
+
+                PlotShapes.renderShapeSelector(shapeSelectorContainer, {
+                    items: displayItems,
+                    state: state,
+                    onChange: () => {
+                        if (state.currentSvg) drawChart();
+                    }
+                });
+            }
+
+            $('reversePalette').addEventListener('change', e => {
+                state.reverse = e.target.checked;
+                state.customColors = {};
+                refreshCategoryColors();
+                refreshShapeSelector();
+                if (state.currentSvg) drawChart();
+            });
+
+            $('cycleColors').addEventListener('change', e => {
+                state.cycleColors = e.target.checked;
+                state.customColors = {};
+                refreshCategoryColors();
+                refreshShapeSelector();
+                if (state.currentSvg) drawChart();
+            });
+
+            $('drawBtn').addEventListener('click', drawChart);
+
+            function updateWaffleDirectionUI() {
+                const dir = $('waffleDirection').value;
+                if (dir === 'horizontal') {
+                    $('colsItem').classList.remove('hide');
+                    $('rowsItem').classList.add('hide');
+                } else {
+                    $('colsItem').classList.add('hide');
+                    $('rowsItem').classList.remove('hide');
+                }
+            }
+            $('waffleDirection').addEventListener('change', () => {
+                updateWaffleDirectionUI();
+                if (state.currentSvg) drawChart();
+            });
+
+            function num(id, fallback) {
+                const el = $(id);
+                if (!el) return fallback;
+                const v = parseFloat(el.value);
+                return isFinite(v) ? v : fallback;
+            }
+
+            function readParams() {
+                return {
+                    width: Math.max(200, num('chartWidth', 700)),
+                    height: Math.max(200, num('chartHeight', 600)),
+                    fontFamily: $('fontFamily').value || 'Times New Roman',
+                    legendFontSize: Math.max(6, num('legendFontSize', 15)),
+                    legendBold: $('legendBold').checked,
+                    legendItalic: $('legendItalic').checked,
+                    legendTitleFontSize: Math.max(6, num('legendTitleFontSize', 15)),
+                    legendTitleBold: $('legendTitleBold').checked,
+                    legendTitleItalic: $('legendTitleItalic').checked,
+                    titleFontSize: Math.max(6, num('titleFontSize', 22)),
+                    titleBold: $('titleBold').checked,
+                    titleItalic: $('titleItalic').checked,
+                    titleGap: Math.max(0, num('titleGap', 15)),
+                    showLegend: $('showLegend').checked,
+                    legendPosition: $('legendPosition').value || 'right',
+                    legendGap: Math.max(0, num('legendGap', 30)),
+                    showLegendTitle: $('showLegendTitle').checked,
+                    legendTitle: $('legendTitle').value || '',
+                    showTitle: $('showTitle').checked,
+                    chartTitle: $('chartTitle').value || '',
+                    showCanvasBorder: $('showCanvasBorder').checked,
+                    direction: $('waffleDirection').value || 'horizontal',
+                    total: Math.max(1, Math.round(num('waffleTotal', 100))),
+                    cols: Math.max(1, num('waffleCols', 10)),
+                    rows: Math.max(1, num('waffleRows', 10)),
+                    waffleGapX: Math.max(0, num('waffleGapX', 2)),
+                    waffleGapY: Math.max(0, num('waffleGapY', 2))
+                };
+            }
+
+            /* 网格：
+               - total 由用户指定
+               - 横向：列数指定 → rows = ceil(total / cols)
+               - 纵向：行数指定 → cols = ceil(total / rows) */
+            function getGrid(p) {
+                const total = p.total;
+                if (p.direction === 'horizontal') {
+                    const cols = Math.max(1, Math.round(p.cols));
+                    const rows = Math.max(1, Math.ceil(total / cols));
+                    return { rows, cols, total };
+                } else {
+                    const rows = Math.max(1, Math.round(p.rows));
+                    const cols = Math.max(1, Math.ceil(total / rows));
+                    return { rows, cols, total };
+                }
+            }
+
+            function buildCells(p) {
+                const items = getCategoryItems();
+                if (!items.length) return null;
+                const grid = getGrid(p);
+                const totalCells = grid.total;
+
+                const cells = [];
+                let remaining = totalCells;
+                items.forEach((it, idx) => {
+                    let count;
+                    if (idx === items.length - 1) {
+                        count = remaining;
+                    } else {
+                        count = Math.min(Math.round(it.percent * totalCells), remaining);
+                    }
+                    for (let i = 0; i < count; i++) cells.push({ category: it.name });
+                    remaining -= count;
+                });
+                return { cells, rows: grid.rows, cols: grid.cols };
+            }
+
+            function estTextWidth(str, fontSize) {
+                let w = 0;
+                for (const ch of str) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
+                return w * fontSize;
+            }
+
+            function drawShape(parent, shapeId, cx, cy, cellSize, fill) {
+                if (shapeId === 'square') {
+                    parent.append('rect')
+                        .attr('x', cx - cellSize / 2)
+                        .attr('y', cy - cellSize / 2)
+                        .attr('width', cellSize)
+                        .attr('height', cellSize)
+                        .attr('fill', fill);
+                    return;
+                }
+                const symType = PlotShapes.getSymbolType(shapeId);
+                const size = PlotShapes.getSymbolSize(shapeId, cellSize);
+                const pathData = d3.symbol().type(symType).size(size)();
+                parent.append('path')
+                    .attr('d', pathData)
+                    .attr('transform', `translate(${cx}, ${cy})`)
+                    .attr('fill', fill);
+            }
+
+            function drawChart() {
+                toolbarTip.textContent = '';
+                if (!state.data.length) {
+                    showTip('msgTip3', '❌ 请先导入数据', 'error');
+                    return;
+                }
+                if (!state.roles.category || !state.roles.value) {
+                    showTip('msgTip3', '❌ 请在第 2 步选择分类列和数值列', 'error');
+                    return;
+                }
+
+                const p = readParams();
+                const built = buildCells(p);
+                if (!built || !built.cells.length) {
+                    showTip('msgTip3', '❌ 未能生成有效绘图数据，请检查数值列', 'error');
+                    return;
+                }
+                const { cells, rows, cols } = built;
+
+                const items = getCategoryItems();
+                const allCatNames = items.map(x => x.name);
+                const allBaseColors = resolvePaletteColors(allCatNames.length);
+
+                const colorOf = name => {
+                    if (!name) return '#e8edf2';
+                    if (state.customColors[name]) return state.customColors[name];
+                    const idx = allCatNames.indexOf(name);
+                    return allBaseColors[idx] || '#cccccc';
+                };
+                const shapeOf = name => {
+                    if (!name) return 'square';
+                    if (state.shapeMode === 'uniform') return state.uniformShape;
+                    return state.categoryShapes[name] || 'square';
+                };
+
+                const width = p.width;
+                const height = p.height;
+
+                const titleH = (p.showTitle && p.chartTitle)
+                    ? p.titleFontSize + 10 + p.titleGap
+                    : 0;
+
+                const wantLegend = !!p.showLegend && items.length > 0;
+                const pos = p.legendPosition;
+                const isRight = wantLegend && pos === 'right';
+                const isLeft = wantLegend && pos === 'left';
+                const isTop = wantLegend && pos === 'top';
+                const isBottom = wantLegend && pos === 'bottom';
+
+                const legendColW = 200;
+                const legendRowH = p.legendFontSize + 10;
+                const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
+                const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
+                const legendInlineH = p.legendFontSize + 20 + legendTitleH;
+                const gap = p.legendGap;
+                const margin = 30;
+
+                let areaX = margin, areaY = margin;
+                let areaW = width - 2 * margin;
+                let areaH = height - 2 * margin;
+
+                if (isRight) {
+                    areaW = width - legendColW - gap - 2 * margin;
+                } else if (isLeft) {
+                    areaX = legendColW + gap + margin;
+                    areaW = width - legendColW - gap - 2 * margin;
+                } else if (isTop) {
+                    areaY = legendInlineH + gap + margin;
+                    areaH = height - legendInlineH - gap - 2 * margin;
+                } else if (isBottom) {
+                    areaH = height - legendInlineH - gap - 2 * margin;
+                }
+                areaW = Math.max(20, areaW);
+                areaH = Math.max(20, areaH);
+
+                const gridAreaH = Math.max(20, areaH - titleH);
+
+                const gx = p.waffleGapX;
+                const gy = p.waffleGapY;
+                const cellFromW = (areaW - gx * (cols - 1)) / cols;
+                const cellFromH = (gridAreaH - gy * (rows - 1)) / rows;
+                const cellSize = Math.max(1, Math.min(cellFromW, cellFromH));
+
+                /* 完整网格的视觉宽高（最后一行不满时也保留占位用于居中） */
+                const fullW = cellSize * cols + gx * (cols - 1);
+                const fullH = cellSize * rows + gy * (rows - 1);
+
+                const blockH = titleH + fullH;
+                const blockTop = areaY + (areaH - blockH) / 2;
+
+                const titleY = blockTop + 10 + p.titleFontSize;
+                const gridTop = blockTop + titleH;
+                const gridLeft = areaX + (areaW - fullW) / 2;
+
+                const svg = d3.select(chartPreview).html('')
+                    .append('svg')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .attr('viewBox', `0 0 ${width} ${height}`)
+                    .attr('xmlns', 'http://www.w3.org/2000/svg')
+                    .style('background', '#ffffff')
+                    .style('font-family', p.fontFamily);
+                state.currentSvg = svg.node();
+
+                if (p.showCanvasBorder) {
+                    svg.append('rect')
+                        .attr('class', 'canvas-border')
+                        .attr('x', 0.5).attr('y', 0.5)
+                        .attr('width', width - 1).attr('height', height - 1)
+                        .attr('fill', 'none')
+                        .attr('stroke', '#c0c8d4')
+                        .attr('stroke-width', 1)
+                        .attr('stroke-dasharray', '4 3')
+                        .attr('pointer-events', 'none');
+                }
+
+                if (p.showTitle && p.chartTitle) {
+                    svg.append('text')
+                        .attr('x', width / 2)
+                        .attr('y', titleY)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', p.titleFontSize)
+                        .attr('font-weight', p.titleBold ? 'bold' : 'normal')
+                        .attr('font-style', p.titleItalic ? 'italic' : 'normal')
+                        .attr('fill', '#1f4068')
+                        .text(p.chartTitle);
+                }
+
+                /* ---- 网格：只画 total 个格子 ---- */
+                const g = svg.append('g').attr('class', 'waffle-cells');
+                cells.forEach((cell, idx) => {
+                    let r, c;
+                    if (p.direction === 'horizontal') {
+                        r = Math.floor(idx / cols);
+                        c = idx % cols;
+                    } else {
+                        r = idx % rows;
+                        c = Math.floor(idx / rows);
+                    }
+                    const cx = gridLeft + c * (cellSize + gx) + cellSize / 2;
+                    const cy = gridTop + r * (cellSize + gy) + cellSize / 2;
+
+                    const shapeId = shapeOf(cell.category);
+                    const fill = colorOf(cell.category);
+
+                    drawShape(g, shapeId, cx, cy, cellSize, fill);
+                });
+
+                /* ---- 图例 ---- */
+                if (wantLegend) {
+                    const legendGroup = svg.append('g').attr('class', 'chart-legend');
+                    const markerSize = p.legendFontSize;
+                    const textGap = 8;
+                    const itemGap = 20;
+                    const legendWeight = p.legendBold ? 'bold' : 'normal';
+                    const legendStyle  = p.legendItalic ? 'italic' : 'normal';
+                    const ltitleWeight = p.legendTitleBold ? 'bold' : 'normal';
+                    const ltitleStyle  = p.legendTitleItalic ? 'italic' : 'normal';
+                    const labels = items.map(it => `${it.name} (${(it.percent * 100).toFixed(1)}%)`);
+
+                    if (isRight || isLeft) {
+                        const totalH = (hasLegendTitle ? legendTitleH : 0) + items.length * legendRowH;
+                        const startY2 = areaY + (areaH - totalH) / 2;
+                        const baseX = isRight ? (width - legendColW - gap + 12) : 12;
+
+                        if (hasLegendTitle) {
+                            legendGroup.append('text')
+                                .attr('x', baseX)
+                                .attr('y', startY2 + p.legendTitleFontSize / 2)
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendTitleFontSize)
+                                .attr('font-weight', ltitleWeight)
+                                .attr('font-style', ltitleStyle)
+                                .attr('fill', '#333')
+                                .text(p.legendTitle);
+                        }
+                        const itemsStartY = startY2 + (hasLegendTitle ? legendTitleH : 0);
+                        items.forEach((it, i) => {
+                            const y = itemsStartY + i * legendRowH;
+                            const markerCx = baseX + markerSize / 2;
+                            const markerCy = y + markerSize / 2;
+                            drawShape(legendGroup, shapeOf(it.name), markerCx, markerCy, markerSize, colorOf(it.name));
+                            legendGroup.append('text')
+                                .attr('x', baseX + markerSize + textGap)
+                                .attr('y', y + markerSize / 2)
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendFontSize)
+                                .attr('font-weight', legendWeight)
+                                .attr('font-style', legendStyle)
+                                .attr('fill', '#333')
+                                .text(labels[i]);
+                        });
+                    } else {
+                        const widths = labels.map(lb =>
+                            markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap
+                        );
+                        const totalW = widths.reduce((a, b) => a + b, 0) - itemGap;
+                        const startX2 = Math.max(10, (width - totalW) / 2);
+
+                        const legendY0 = isTop ? margin : (height - legendInlineH - margin);
+                        const itemsY = legendY0 + (hasLegendTitle ? legendTitleH : 0) + 6;
+
+                        if (hasLegendTitle) {
+                            legendGroup.append('text')
+                                .attr('x', width / 2)
+                                .attr('y', legendY0 + p.legendTitleFontSize / 2)
+                                .attr('text-anchor', 'middle')
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendTitleFontSize)
+                                .attr('font-weight', ltitleWeight)
+                                .attr('font-style', ltitleStyle)
+                                .attr('fill', '#333')
+                                .text(p.legendTitle);
+                        }
+                        let cursorX = startX2;
+                        items.forEach((it, i) => {
+                            const markerCx = cursorX + markerSize / 2;
+                            const markerCy = itemsY + markerSize / 2;
+                            drawShape(legendGroup, shapeOf(it.name), markerCx, markerCy, markerSize, colorOf(it.name));
+                            legendGroup.append('text')
+                                .attr('x', cursorX + markerSize + textGap)
+                                .attr('y', itemsY + markerSize / 2)
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendFontSize)
+                                .attr('font-weight', legendWeight)
+                                .attr('font-style', legendStyle)
+                                .attr('fill', '#333')
+                                .text(labels[i]);
+                            cursorX += widths[i];
+                        });
+                    }
+                }
+
+                exportSvgBtn.disabled = false;
+                exportPngBtn.disabled = false;
+                showTip('msgTip3', '✅ 图表绘制完成', 'success');
+            }
+
+            function getSvgWithoutBorder() {
+                if (!state.currentSvg) return null;
+                const clone = state.currentSvg.cloneNode(true);
+                clone.querySelectorAll('.canvas-border').forEach(el => el.remove());
+                return clone;
+            }
+
+            exportSvgBtn.addEventListener('click', () => {
+                const svg = getSvgWithoutBorder();
+                if (!svg) return;
+                PlotCommon.downloadSVG(svg, 'waffle_chart.svg');
+                toolbarTip.innerHTML = '<span class="success">✅ SVG 导出成功</span>';
+            });
+            exportPngBtn.addEventListener('click', () => {
+                const svg = getSvgWithoutBorder();
+                if (!svg) return;
+                PlotCommon.downloadPNG(svg, 'waffle_chart.png', 2, '#ffffff')
+                    .then(() => { toolbarTip.innerHTML = '<span class="success">✅ PNG 导出成功</span>'; })
+                    .catch(() => { toolbarTip.innerHTML = '<span class="error">❌ PNG 导出失败</span>'; });
+            });
+
+            function showTip(elId, msg, type) {
+                const el = $(elId);
+                el.className = 'tip-text ' + (type || '');
+                el.textContent = msg;
+                setTimeout(() => { el.textContent = ''; el.className = 'tip-text'; }, 3500);
+            }
+            function resetChart() {
+                chartPreview.innerHTML = '<div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>';
+                state.currentSvg = null;
+                exportSvgBtn.disabled = true;
+                exportPngBtn.disabled = true;
+                toolbarTip.textContent = '';
+                $('msgTip3').textContent = '';
+            }
+            function resetAll() {
+                state.headers = [];
+                state.data = [];
+                state.roles = { category: '', value: '' };
+                state.customColors = {};
+                state.categoryShapes = {};
+                state.sortBy = '';
+                state.sortDir = 'desc';
+                state.legendTitleEdited = false;
+                sortDirSel.value = 'desc';
+                legendTitleInput.value = '';
+                fillRoleSelects();
+                fillSortBySelect();
+                colorAssignContainer.innerHTML =
+                    '<div class="color-assign-empty">选择分类列后将在此处显示每个类别的颜色</div>';
+                refreshShapeSelector();
+                resetChart();
+            }
+
+            document.querySelectorAll('[data-redraw]').forEach(el => {
+                el.addEventListener('change', () => {
+                    if (state.currentSvg) drawChart();
+                });
+            });
+
+            function init() {
+                PlotCommon.renderImportPanel('importPanel', {
+                    title: '第一步：导入数据',
+                    infoBox: '需包含表头，且至少包含 <strong>分类列</strong> 和 <strong>数值列</strong>。可直接粘贴 Excel 内容。',
+                    exampleData: EXAMPLE_DATA,
+                    defaultMode: 'file',
+                    onImport: onDataImported,
+                    onReset: resetAll
+                });
+                initPaletteDropdown();
+                fillRoleSelects();
+                fillSortBySelect();
+                colorAssignContainer.innerHTML =
+                    '<div class="color-assign-empty">选择分类列后将在此处显示每个类别的颜色</div>';
+                updateWaffleDirectionUI();
+                refreshShapeSelector();
+                resetChart();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    }).catch(function (err) {
+        console.error(err);
+        const box = document.getElementById('chartPreview');
+        if (box) {
+            box.innerHTML = '<div class="placeholder" style="color:#c00;">❌ 无法加载 d3，请检查网络后刷新</div>';
+        }
+    });
+    </script>
+</body>
+</html>

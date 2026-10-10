@@ -1,86 +1,86 @@
-﻿/**
- * BioPlot Tool Configuration - Three-level classification
- * Now with real chart links
- */
+﻿
 const toolCategories = [
     {
-        name: "Basic Plots",
-        icon: "",
+        zh: '基础绘图',
+        en: 'Basic Plots',
         subcategories: [
             {
-                name: "Pie Chart",
-                icon: "",
+                zh: '饼图',
+                en: 'Pie Chart',
                 tools: [
-                    { name: "Pie / Donut Chart", icon: "1.svg", link: "plots/pie.html" }
+                    { id: '001', zh: '平面饼图/环形图', en: 'Flat Pie / Donut Chart' },
+                    { id: '002', zh: '华夫饼图', en: 'Waffle Chart' }
                 ]
             },
             {
-                name: "Bar Chart",
-                icon: "",
+                zh: '柱形图',
+                en: 'Bar Chart',
                 tools: [
-                    { name: "Grouped Bar Chart", icon: "", link: "plots/bar.html" },
-                    { name: "Stacked Bar Chart", icon: "", link: "plots/bar.html" }
+                    { id: 'xxx', zh: '分组柱形图', en: 'Grouped Bar Chart' },
+                    { id: 'xxx', zh: '堆叠柱形图', en: 'Stacked Bar Chart' }
                 ]
             },
             {
-                name: "Box Plot",
-                icon: "",
+                zh: '箱线图',
+                en: 'Box Plot',
                 tools: [
-                    { name: "Box Plot", icon: "", link: "plots/box.html" }
+                    { id: 'xxx', zh: '箱线图', en: 'Box Plot' }
                 ]
             },
             {
-                name: "Violin Plot",
-                icon: "",
+                zh: '小提琴图',
+                en: 'Violin Plot',
                 tools: [
-                    { name: "Violin Plot", icon: "", link: "plots/violin.html" }
+                    { id: '005', zh: '小提琴图', en: 'Violin Plot' }
                 ]
             },
             {
-                name: "Scatter Plot",
-                icon: "",
+                zh: '散点图',
+                en: 'Scatter Plot',
                 tools: [
-                    { name: "Scatter Plot", icon: "", link: "plots/scatter.html" }
+                    { id: '006', zh: '散点图', en: 'Scatter Plot' }
                 ]
             },
             {
-                name: "Line Chart",
-                icon: "",
+                zh: '折线图',
+                en: 'Line Chart',
                 tools: [
-                    { name: "Line Chart", icon: "", link: "plots/line.html" }
+                    { id: '007', zh: '折线图', en: 'Line Chart' }
                 ]
             }
         ]
     },
+
     {
-        name: "Transcriptome",
-        icon: "",
+        zh: '基础统计',
+        en: 'Basic Statistics',
         subcategories: [
             {
-                name: "Differential Expression",
-                icon: "",
+                zh: '差异表达',
+                en: 'Differential Expression',
                 tools: [
-                    { name: "Volcano Plot", icon: "", link: "plots/volcano.html" }
+                    { id: '008', zh: '火山图', en: 'Volcano Plot' }
                 ]
             },
             {
-                name: "Expression Matrix",
-                icon: "",
+                zh: '表达矩阵',
+                en: 'Expression Matrix',
                 tools: [
-                    { name: "Heatmap", icon: "", link: "plots/heatmap.html" }
+                    { id: '009', zh: '热图', en: 'Heatmap' }
                 ]
             }
         ]
     },
+
     {
-        name: "Set Operations",
-        icon: "",
+        zh: '其他分析',
+        en: 'Other Analysis',
         subcategories: [
             {
-                name: "Venn Diagram",
-                icon: "",
+                zh: '开发中',
+                en: 'NULL',
                 tools: [
-                    { name: "Venn Diagram", icon: "", link: "plots/venn.html" }
+                    { id: '010', zh: '开发中', en: 'NULL' }
                 ]
             }
         ]

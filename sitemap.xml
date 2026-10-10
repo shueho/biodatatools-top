@@ -29,6 +29,42 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- ========== BioStatPlot 首页（中文） ========== -->
+  <url>
+    <loc>https://www.biodatatools.top/BioStatPlot/home-ch.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- ========== BioStatPlot 中文工具页面（/BioStatPlot/ch/） ========== -->
+  <url>
+    <loc>https://www.biodatatools.top/BioStatPlot/ch/001.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/BioStatPlot/ch/002.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ========== BioStatPlot 英文工具页面（/BioStatPlot/en/） ========== -->
+  <url>
+    <loc>https://www.biodatatools.top/BioStatPlot/en/001.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/BioStatPlot/en/002.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
   <!-- ============================================================ -->
   <!-- ========== 英文工具页面（/en/） ========== -->
   <!-- ============================================================ -->
@@ -101,7 +137,7 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：Statistical Analysis (8个) ===== -->
+  <!-- ===== 分类：Statistical Analysis (9个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/en/002.RSCU.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -150,8 +186,14 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/039.Abundance_table_filter.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-  <!-- ===== 分类：Plotting & Visualization (5个，新增036,037) ===== -->
+  <!-- ===== 分类：Plotting & Visualization (5个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/en/003.RSCU_plot.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -361,7 +403,7 @@
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：统计分析 (8个) ===== -->
+  <!-- ===== 分类：统计分析 (9个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/ch/002.RSCU.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -410,8 +452,14 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/039.Abundance_table_filter.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
-  <!-- ===== 分类：绘图与美化 (5个，新增036,037) ===== -->
+  <!-- ===== 分类：绘图与美化 (5个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/ch/003.RSCU_plot.html</loc>
     <lastmod>2026-08-31</lastmod>

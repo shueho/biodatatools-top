@@ -1,0 +1,929 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平面饼图/环形图 - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>平面饼图/环形图</h2>
+            <p>绘制平面饼图或环形图，设置内半径即可绘制环形图。</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：指定数据列</div>
+            <div class="param-group">
+                <label>分类列：</label>
+                <select id="catColSel" disabled><option>— 请先导入数据 —</option></select>
+                <label>数值列：</label>
+                <select id="valColSel" disabled><option>— 请先导入数据 —</option></select>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：选择色板与颜色</div>
+
+            <div class="param-group" style="margin-top:0;">
+                <label>排序依据：</label>
+                <select id="sortBy" disabled><option>— 请先导入数据 —</option></select>
+                <label>排序方向：</label>
+                <select id="sortDir">
+                    <option value="desc" selected>从大到小</option>
+                    <option value="asc">从小到大</option>
+                </select>
+            </div>
+
+            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">分类色板</div>
+            <div id="paletteDropdownContainer"></div>
+            <div class="param-inline" style="margin-top:8px;">
+                <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+            </div>
+            <div id="colorAssignContainer" style="margin-top:16px;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：设置绘图参数</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">画布尺寸</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>宽度(px)</label><input type="number" id="chartWidth" value="700" min="300" data-redraw></div>
+                    <div class="param-item"><label>高度(px)</label><input type="number" id="chartHeight" value="600" min="300" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>显示画布边框</label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">字体样式</div>
+
+                <div class="font-row">
+                    <span class="font-label">字体</span>
+                    <select id="fontFamily" data-redraw>
+                        <option value="Times New Roman" selected>Times New Roman</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Microsoft YaHei">微软雅黑</option>
+                    </select>
+                </div>
+
+                <div class="font-row">
+                    <span class="font-label">标签</span>
+                    <input type="number" id="labelFontSize" value="16" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="labelBold" data-redraw>粗</label>
+                    <label class="mini-check"><input type="checkbox" id="labelItalic" data-redraw>斜</label>
+                </div>
+
+                <div class="font-row">
+                    <span class="font-label">图例</span>
+                    <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>粗</label>
+                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>斜</label>
+                </div>
+
+                <div class="font-row">
+                    <span class="font-label">图例标题</span>
+                    <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>粗</label>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>斜</label>
+                </div>
+
+                <div class="font-row">
+                    <span class="font-label">标题</span>
+                    <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>粗</label>
+                    <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>斜</label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">组件控制</div>
+
+                <div class="font-row">
+                    <span class="font-label">图例</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>显示</label>
+                    <label>位置：
+                        <select id="legendPosition" data-redraw>
+                            <option value="right" selected>右侧</option>
+                            <option value="left">左侧</option>
+                            <option value="top">上方</option>
+                            <option value="bottom">下方</option>
+                        </select>
+                    </label>
+                    <label>间距(px)：
+                        <input type="number" id="legendGap" value="30" min="0" max="120" step="5" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+
+                <div class="font-row">
+                    <span class="font-label">图例标题</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>显示</label>
+                    <label>内容：
+                        <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw>
+                    </label>
+                </div>
+
+                <div class="font-row">
+                    <span class="font-label">标题</span>
+                    <label class="mini-check"><input type="checkbox" id="showTitle" checked data-redraw>显示</label>
+                    <label>内容：
+                        <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw>
+                    </label>
+                </div>
+
+                <div class="font-row">
+                    <span class="font-label">分类名</span>
+                    <label>位置：
+                        <select id="namePosition" data-redraw>
+                            <option value="none">不显示</option>
+                            <option value="inside" selected>圆内</option>
+                            <option value="outside">圆外</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="font-row">
+                    <span class="font-label">值标签</span>
+                    <label>位置：
+                        <select id="valuePosition" data-redraw>
+                            <option value="none">不显示</option>
+                            <option value="inside" selected>圆内</option>
+                            <option value="outside">圆外</option>
+                        </select>
+                    </label>
+                    <label>内容：
+                        <select id="valueContent" data-redraw>
+                            <option value="pct" selected>百分比</option>
+                            <option value="value">原始值</option>
+                            <option value="pct_value">百分比 + 原始值</option>
+                        </select>
+                    </label>
+                    <label>圆外偏移(px)：
+                        <input type="number" id="labelOffset" value="20" min="0" max="200" step="5" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">饼图设置</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>外半径</label><input type="number" id="outerRadius" value="200" min="40" step="10" data-redraw></div>
+                    <div class="param-item"><label>内半径(0=饼图)</label><input type="number" id="innerRadius" value="0" min="0" step="10" data-redraw></div>
+                    <div class="param-item">
+                        <label>扇形方向</label>
+                        <select id="pieDirection" data-redraw>
+                            <option value="clockwise" selected>顺时针</option>
+                            <option value="counterclockwise">逆时针</option>
+                        </select>
+                    </div>
+                    <div class="param-item"><label>扇区描边</label><input type="color" id="sliceStroke" value="#ffffff" data-redraw></div>
+                    <div class="param-item"><label>描边宽度</label><input type="number" id="strokeWidth" value="1.5" min="0" max="6" step="0.5" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="mergeSmall" data-redraw>合并小扇形</label>
+                    <label>合并阈值(%)：
+                        <input type="number" id="mergeThreshold" value="3" min="0" max="30" step="0.5" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出 SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出 PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/plot-bootstrap.js"></script>
+    <script src="../COMMON/plot-header.js"></script>
+    <script src="../COMMON/plot-footer.js"></script>
+    <script src="../COMMON/plot-common.js"></script>
+
+    <script>
+    PlotBootstrap.ensureD3().then(function () {
+        (function () {
+            'use strict';
+
+            const state = {
+                headers: [], data: [],
+                roles: { category: '', value: '' },
+                paletteName: 'tableau10',
+                reverse: false,
+                cycleColors: false,
+                customColors: {},
+                sortBy: '',
+                sortDir: 'desc',
+                legendTitleEdited: false,
+                currentSvg: null
+            };
+
+            const $ = id => document.getElementById(id);
+            const catColSel = $('catColSel');
+            const valColSel = $('valColSel');
+            const paletteDropdownContainer = $('paletteDropdownContainer');
+            const colorAssignContainer = $('colorAssignContainer');
+            const chartPreview = $('chartPreview');
+            const exportSvgBtn = $('exportSvgBtn');
+            const exportPngBtn = $('exportPngBtn');
+            const toolbarTip = $('toolbarTip');
+            const sortBySel = $('sortBy');
+            const sortDirSel = $('sortDir');
+            const legendTitleInput = $('legendTitle');
+
+            const EXAMPLE_DATA =
+                'Category\tValue\n' +
+                'A\t320\n' + 'B\t180\n' + 'C\t120\n' +
+                'D\t75\n' + 'E\t42\n' + 'F\t20\n' + 'G\t8';
+
+            legendTitleInput.addEventListener('input', () => {
+                state.legendTitleEdited = true;
+            });
+
+            function syncLegendTitle() {
+                if (!state.legendTitleEdited) {
+                    legendTitleInput.value = state.roles.category || '';
+                }
+            }
+
+            function onDataImported(res) {
+                state.headers = res.headers;
+                state.data = res.data;
+
+                const catCol = res.headers.find(h => res.columnTypes[h] === 'categorical') || res.headers[0];
+                const valCol = res.headers.find(h => res.columnTypes[h] === 'numeric') || res.headers[1] || res.headers[0];
+                state.roles = { category: catCol, value: valCol };
+                state.customColors = {};
+                state.sortBy = valCol;
+                state.sortDir = 'desc';
+                sortDirSel.value = 'desc';
+
+                syncLegendTitle();
+
+                fillRoleSelects();
+                fillSortBySelect();
+                refreshCategoryColors();
+                resetChart();
+            }
+
+            function fillRoleSelects() {
+                if (!state.headers.length) {
+                    catColSel.innerHTML = '<option>— 请先导入数据 —</option>';
+                    valColSel.innerHTML = '<option>— 请先导入数据 —</option>';
+                    catColSel.disabled = true;
+                    valColSel.disabled = true;
+                    return;
+                }
+                catColSel.disabled = false;
+                valColSel.disabled = false;
+                const opts = (selVal) => state.headers.map(h =>
+                    `<option value="${PlotCommon.escapeHtml(h)}" ${h === selVal ? 'selected' : ''}>${PlotCommon.escapeHtml(h)}</option>`
+                ).join('');
+                catColSel.innerHTML = opts(state.roles.category);
+                valColSel.innerHTML = opts(state.roles.value);
+            }
+
+            function fillSortBySelect() {
+                state.sortBy = PlotCommon.fillSortBySelect(sortBySel, state.headers, state.sortBy);
+            }
+
+            catColSel.addEventListener('change', () => {
+                state.roles.category = catColSel.value;
+                state.customColors = {};
+                syncLegendTitle();
+                refreshCategoryColors();
+                resetChart();
+            });
+            valColSel.addEventListener('change', () => {
+                state.roles.value = valColSel.value;
+                state.customColors = {};
+                state.sortBy = valColSel.value;
+                fillSortBySelect();
+                refreshCategoryColors();
+                resetChart();
+            });
+
+            sortBySel.addEventListener('change', () => {
+                state.sortBy = sortBySel.value;
+                refreshCategoryColors();
+                if (state.currentSvg) drawChart();
+            });
+            sortDirSel.addEventListener('change', () => {
+                state.sortDir = sortDirSel.value;
+                refreshCategoryColors();
+                if (state.currentSvg) drawChart();
+            });
+
+            function initPaletteDropdown() {
+                PlotCommon.renderPaletteDropdown(paletteDropdownContainer, {
+                    type: 'categorical',
+                    selected: state.paletteName,
+                    previewCount: 8,
+                    onSelect: name => {
+                        state.paletteName = name;
+                        state.customColors = {};
+                        refreshCategoryColors();
+                        resetChart();
+                    }
+                });
+            }
+
+            function resolvePaletteColors(count) {
+                return PlotCommon.getCategoricalColors(state.paletteName, count, {
+                    reverse: state.reverse,
+                    cycle: state.cycleColors
+                });
+            }
+
+            function getCategoryItems() {
+                return PlotCommon.aggregateAndSort(state.data, {
+                    categoryKey: state.roles.category,
+                    valueKey: state.roles.value,
+                    sortBy: state.sortBy,
+                    sortDir: state.sortDir
+                });
+            }
+
+            function refreshCategoryColors() {
+                const items = getCategoryItems();
+                if (!items.length) {
+                    colorAssignContainer.innerHTML =
+                        '<div class="color-assign-empty">选择分类列后将在此处显示每个类别的颜色</div>';
+                    return;
+                }
+                const baseColors = resolvePaletteColors(items.length);
+                const displayItems = items.map((it, i) => ({
+                    name: it.name,
+                    color: state.customColors[it.name] || baseColors[i],
+                    percent: it.percent
+                }));
+
+                PlotCommon.renderColorAssignment(colorAssignContainer, {
+                    items: displayItems,
+                    onChange: (idx, newColor) => {
+                        state.customColors[items[idx].name] = newColor;
+                        if (state.currentSvg) drawChart();
+                    },
+                    onResetAll: () => {
+                        state.customColors = {};
+                        refreshCategoryColors();
+                        if (state.currentSvg) drawChart();
+                    }
+                });
+            }
+
+            $('reversePalette').addEventListener('change', e => {
+                state.reverse = e.target.checked;
+                state.customColors = {};
+                refreshCategoryColors();
+                if (state.currentSvg) drawChart();
+            });
+
+            $('cycleColors').addEventListener('change', e => {
+                state.cycleColors = e.target.checked;
+                state.customColors = {};
+                refreshCategoryColors();
+                if (state.currentSvg) drawChart();
+            });
+
+            $('drawBtn').addEventListener('click', drawChart);
+
+            function readParams() {
+                return {
+                    width: +$('chartWidth').value || 700,
+                    height: +$('chartHeight').value || 600,
+                    outerRadius: +$('outerRadius').value || 200,
+                    innerRadius: +$('innerRadius').value || 0,
+                    direction: $('pieDirection').value || 'clockwise',
+
+                    fontFamily: $('fontFamily').value || 'Times New Roman',
+
+                    labelFontSize: +$('labelFontSize').value || 16,
+                    labelBold: $('labelBold').checked,
+                    labelItalic: $('labelItalic').checked,
+
+                    legendFontSize: +$('legendFontSize').value || 15,
+                    legendBold: $('legendBold').checked,
+                    legendItalic: $('legendItalic').checked,
+
+                    legendTitleFontSize: +$('legendTitleFontSize').value || 15,
+                    legendTitleBold: $('legendTitleBold').checked,
+                    legendTitleItalic: $('legendTitleItalic').checked,
+
+                    titleFontSize: +$('titleFontSize').value || 22,
+                    titleBold: $('titleBold').checked,
+                    titleItalic: $('titleItalic').checked,
+
+                    namePosition: $('namePosition').value,
+                    valuePosition: $('valuePosition').value,
+                    valueContent: $('valueContent').value,
+                    labelOffset: +$('labelOffset').value || 0,
+
+                    showLegend: $('showLegend').checked,
+                    legendPosition: $('legendPosition').value,
+                    legendGap: +$('legendGap').value || 0,
+                    showLegendTitle: $('showLegendTitle').checked,
+                    legendTitle: $('legendTitle').value || '',
+                    showTitle: $('showTitle').checked,
+                    chartTitle: $('chartTitle').value || '',
+                    sliceStroke: $('sliceStroke').value || '#ffffff',
+                    strokeWidth: +$('strokeWidth').value || 0,
+                    mergeSmall: $('mergeSmall').checked,
+                    mergeThreshold: +$('mergeThreshold').value || 0,
+                    showCanvasBorder: $('showCanvasBorder').checked
+                };
+            }
+
+            function buildChartData() {
+                const items = getCategoryItems();
+                if (!items.length) return [];
+
+                const p = readParams();
+                if (p.mergeSmall && p.mergeThreshold > 0) {
+                    const big = [];
+                    let othersVal = 0;
+                    items.forEach(d => {
+                        const pct = d.percent * 100;
+                        if (pct < p.mergeThreshold) othersVal += d.value;
+                        else big.push(d);
+                    });
+                    if (othersVal > 0) big.push({ name: 'Other', value: othersVal, isOther: true });
+                    const sum = big.reduce((s, d) => s + d.value, 0);
+                    big.forEach(d => d.percent = d.value / sum);
+                    return big;
+                }
+                return items;
+            }
+
+            function polarXY(r, angle) {
+                return [r * Math.sin(angle), -r * Math.cos(angle)];
+            }
+
+            function estTextWidth(str, fontSize) {
+                let w = 0;
+                for (const ch of str) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
+                return w * fontSize;
+            }
+
+            function buildValueText(d, p) {
+                const pct = d.data.percent * 100;
+                switch (p.valueContent) {
+                    case 'pct':       return pct.toFixed(1) + '%';
+                    case 'value':     return String(d.data.value);
+                    case 'pct_value': return pct.toFixed(1) + '% (' + d.data.value + ')';
+                }
+                return '';
+            }
+
+
+            function computeLayout(p, itemCount) {
+                const width = p.width;
+                const height = p.height;
+                const titleH = (p.showTitle && p.chartTitle) ? p.titleFontSize + 50 : 0;
+
+                const legendColW = 200;
+                const legendRowH = p.legendFontSize + 10;
+                const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
+                const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
+                const legendInlineH = p.legendFontSize + 20 + legendTitleH;
+                const gap = p.legendGap;
+                const margin = 30;
+
+                const wantLegend = !!p.showLegend && itemCount > 0;
+                const pos = p.legendPosition || 'right';
+                const isRight  = wantLegend && pos === 'right';
+                const isLeft   = wantLegend && pos === 'left';
+                const isTop    = wantLegend && pos === 'top';
+                const isBottom = wantLegend && pos === 'bottom';
+                const vert  = isRight || isLeft;
+                const horiz = isTop || isBottom;
+
+                let maxR;
+                if (vert) {
+                    maxR = Math.min(
+                        (width - legendColW - gap - 2 * margin) / 2,
+                        (height - titleH - 2 * margin) / 2
+                    );
+                } else if (horiz) {
+                    maxR = Math.min(
+                        (width - 2 * margin) / 2,
+                        (height - titleH - legendInlineH - gap - 2 * margin) / 2
+                    );
+                } else {
+                    maxR = Math.min(
+                        (width - 2 * margin) / 2,
+                        (height - titleH - 2 * margin) / 2
+                    );
+                }
+                maxR = Math.max(40, maxR);
+
+                const outerR = Math.min(p.outerRadius, maxR);
+                const innerR = Math.min(p.innerRadius, outerR - 10);
+
+                let cx = width / 2;
+                let cy = 0;
+                let titleY = 0;
+                let legendArea = null;
+
+                if (vert || !wantLegend) {
+                    /* 侧图例或无图例：内容块 = 标题 + 饼图 */
+                    const blockH = titleH + outerR * 2;
+                    const blockTop = Math.max(0, (height - blockH) / 2);
+                    titleY = blockTop + p.titleFontSize + 10;
+                    cy = blockTop + titleH + outerR;
+
+                    if (isRight) {
+                        const totalW = outerR * 2 + gap + legendColW;
+                        const x0 = Math.max(margin, (width - totalW) / 2);
+                        cx = x0 + outerR;
+                        legendArea = { x: x0 + outerR * 2 + gap, y: blockTop + titleH, w: legendColW, h: outerR * 2 };
+                    } else if (isLeft) {
+                        const totalW = outerR * 2 + gap + legendColW;
+                        const x0 = Math.max(margin, (width - totalW) / 2);
+                        legendArea = { x: x0, y: blockTop + titleH, w: legendColW, h: outerR * 2 };
+                        cx = x0 + legendColW + gap + outerR;
+                    }
+                } else if (isTop) {
+                    /* 上方水平图例：内容块 = 标题 + 图例 + 饼图 */
+                    const blockH = titleH + legendInlineH + gap + outerR * 2;
+                    const blockTop = Math.max(0, (height - blockH) / 2);
+                    titleY = blockTop + p.titleFontSize + 10;
+                    cx = width / 2;
+                    legendArea = { x: 0, y: blockTop + titleH, w: width, h: legendInlineH };
+                    cy = blockTop + titleH + legendInlineH + gap + outerR;
+                } else if (isBottom) {
+                    /* 下方水平图例：内容块 = 标题 + 饼图 + 图例 */
+                    const blockH = titleH + outerR * 2 + gap + legendInlineH;
+                    const blockTop = Math.max(0, (height - blockH) / 2);
+                    titleY = blockTop + p.titleFontSize + 10;
+                    cx = width / 2;
+                    cy = blockTop + titleH + outerR;
+                    legendArea = { x: 0, y: blockTop + titleH + outerR * 2 + gap, w: width, h: legendInlineH };
+                }
+
+                return {
+                    cx, cy, outerR, innerR, legendArea,
+                    titleH, titleY, width, height,
+                    legendPos: pos,
+                    legendVertical: vert,
+                    legendHorizontal: horiz,
+                    legendRowH, legendInlineH,
+                    hasLegendTitle, legendTitleH
+                };
+            }
+
+            function drawChart() {
+                toolbarTip.textContent = '';
+                if (!state.data.length) {
+                    showTip('msgTip3', '❌ 请先导入数据', 'error');
+                    return;
+                }
+                if (!state.roles.category || !state.roles.value) {
+                    showTip('msgTip3', '❌ 请在第 2 步选择分类列和数值列', 'error');
+                    return;
+                }
+
+                const items = buildChartData();
+                if (!items.length) {
+                    showTip('msgTip3', '❌ 未能生成有效绘图数据，请检查数值列', 'error');
+                    return;
+                }
+
+                const p = readParams();
+
+                const allCatNames = getCategoryItems().map(x => x.name);
+                const allBaseColors = resolvePaletteColors(allCatNames.length);
+                const colors = items.map((it, i) => {
+                    if (state.customColors[it.name]) return state.customColors[it.name];
+                    const baseIdx = allCatNames.indexOf(it.name);
+                    if (baseIdx >= 0) return allBaseColors[baseIdx];
+                    return resolvePaletteColors(items.length)[i] || '#cccccc';
+                });
+
+                const L = computeLayout(p, items.length);
+                const {
+                    cx, cy, outerR, innerR, legendArea, titleH, titleY, width, height,
+                    legendVertical, legendHorizontal, legendRowH,
+                    hasLegendTitle, legendTitleH
+                } = L;
+
+                const svg = d3.select(chartPreview).html('')
+                    .append('svg')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .attr('viewBox', `0 0 ${width} ${height}`)
+                    .attr('xmlns', 'http://www.w3.org/2000/svg')
+                    .style('background', '#ffffff')
+                    .style('font-family', p.fontFamily);
+                state.currentSvg = svg.node();
+
+                if (p.showCanvasBorder) {
+                    svg.append('rect')
+                        .attr('class', 'canvas-border')
+                        .attr('x', 0.5).attr('y', 0.5)
+                        .attr('width', width - 1).attr('height', height - 1)
+                        .attr('fill', 'none')
+                        .attr('stroke', '#c0c8d4')
+                        .attr('stroke-width', 1)
+                        .attr('stroke-dasharray', '4 3')
+                        .attr('pointer-events', 'none');
+                }
+
+                /* 标题：位置随布局块走，间距恒定 */
+                if (p.showTitle && p.chartTitle) {
+                    svg.append('text')
+                        .attr('x', width / 2).attr('y', titleY)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', p.titleFontSize)
+                        .attr('font-weight', p.titleBold ? 'bold' : 'normal')
+                        .attr('font-style', p.titleItalic ? 'italic' : 'normal')
+                        .attr('fill', '#1f4068')
+                        .text(p.chartTitle);
+                }
+
+                const pieFn = d3.pie().value(d => d.value).sort(null);
+                if (p.direction === 'counterclockwise') {
+                    pieFn.startAngle(2 * Math.PI).endAngle(0);
+                }
+                const arcs = pieFn(items);
+                const arcGen = d3.arc().innerRadius(innerR).outerRadius(outerR);
+
+                const g = svg.append('g').attr('transform', `translate(${cx},${cy})`);
+
+                g.selectAll('path.slice')
+                    .data(arcs).enter()
+                    .append('path')
+                    .attr('class', 'slice')
+                    .attr('d', arcGen)
+                    .attr('fill', (d, i) => colors[i])
+                    .attr('stroke', p.sliceStroke)
+                    .attr('stroke-width', p.strokeWidth)
+                    .style('cursor', 'pointer')
+                    .on('mouseenter', function () {
+                        d3.select(this).transition().duration(120)
+                            .attr('d', d3.arc().innerRadius(innerR).outerRadius(outerR + 6)(d3.select(this).datum()));
+                    })
+                    .on('mouseleave', function () {
+                        d3.select(this).transition().duration(120)
+                            .attr('d', arcGen(d3.select(this).datum()));
+                    });
+
+                const innerLabels = g.append('g').attr('class', 'inner-labels');
+                const outerLabels = g.append('g').attr('class', 'outer-labels');
+
+                const labelWeight = p.labelBold ? 'bold' : 'normal';
+                const labelStyle  = p.labelItalic ? 'italic' : 'normal';
+                const namePos = p.namePosition;
+                const valPos = p.valuePosition;
+
+                arcs.forEach(d => {
+                    const valueText = (valPos === 'none') ? '' : buildValueText(d, p);
+                    const catName = d.data.name;
+                    const midAngle = (d.startAngle + d.endAngle) / 2;
+
+                    const inParts = [];
+                    if (namePos === 'inside') inParts.push(catName);
+                    if (valPos === 'inside') inParts.push(valueText);
+                    const inText = inParts.filter(Boolean).join(' ');
+                    if (inText) {
+                        const pos = arcGen.centroid(d);
+                        innerLabels.append('text')
+                            .attr('x', pos[0]).attr('y', pos[1])
+                            .attr('text-anchor', 'middle')
+                            .attr('dy', '0.35em')
+                            .attr('font-size', p.labelFontSize)
+                            .attr('font-weight', labelWeight)
+                            .attr('font-style', labelStyle)
+                            .attr('fill', '#333')
+                            .text(inText);
+                    }
+
+                    const outParts = [];
+                    if (namePos === 'outside') outParts.push(catName);
+                    if (valPos === 'outside') outParts.push(valueText);
+                    const outText = outParts.filter(Boolean).join(' ');
+                    if (outText) {
+                        const r = outerR + p.labelOffset;
+                        const [x, y] = polarXY(r, midAngle);
+                        outerLabels.append('text')
+                            .attr('x', x).attr('y', y)
+                            .attr('text-anchor', 'middle')
+                            .attr('dy', '0.35em')
+                            .attr('font-size', p.labelFontSize)
+                            .attr('font-weight', labelWeight)
+                            .attr('font-style', labelStyle)
+                            .attr('fill', '#333')
+                            .text(outText);
+                    }
+                });
+
+                if (legendArea && (legendVertical || legendHorizontal) && items.length) {
+                    const legendGroup = svg.append('g').attr('class', 'chart-legend');
+                    const markerSize = p.legendFontSize;
+                    const textGap = 8;
+                    const itemGap = 20;
+                    const legendWeight = p.legendBold ? 'bold' : 'normal';
+                    const legendStyle  = p.legendItalic ? 'italic' : 'normal';
+                    const ltitleWeight = p.legendTitleBold ? 'bold' : 'normal';
+                    const ltitleStyle  = p.legendTitleItalic ? 'italic' : 'normal';
+                    const labels = items.map(it => `${it.name} (${(it.percent * 100).toFixed(1)}%)`);
+
+                    if (legendVertical) {
+                        const totalH = (hasLegendTitle ? legendTitleH : 0) + items.length * legendRowH;
+                        const startY = legendArea.y + (legendArea.h - totalH) / 2;
+                        const baseX = legendArea.x + 12;
+
+                        if (hasLegendTitle) {
+                            legendGroup.append('text')
+                                .attr('x', baseX)
+                                .attr('y', startY + p.legendTitleFontSize / 2)
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendTitleFontSize)
+                                .attr('font-weight', ltitleWeight)
+                                .attr('font-style', ltitleStyle)
+                                .attr('fill', '#333')
+                                .text(p.legendTitle);
+                        }
+
+                        const itemsStartY = startY + (hasLegendTitle ? legendTitleH : 0);
+                        items.forEach((it, i) => {
+                            const y = itemsStartY + i * legendRowH;
+                            legendGroup.append('rect')
+                                .attr('x', baseX).attr('y', y)
+                                .attr('width', markerSize).attr('height', markerSize)
+                                .attr('rx', 2).attr('fill', colors[i]);
+                            legendGroup.append('text')
+                                .attr('x', baseX + markerSize + textGap)
+                                .attr('y', y + markerSize / 2)
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendFontSize)
+                                .attr('font-weight', legendWeight)
+                                .attr('font-style', legendStyle)
+                                .attr('fill', '#333')
+                                .text(labels[i]);
+                        });
+                    } else {
+                        const widths = labels.map(lb =>
+                            markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap
+                        );
+                        const totalW = widths.reduce((a, b) => a + b, 0) - itemGap;
+                        const startX = Math.max(10, legendArea.x + (legendArea.w - totalW) / 2);
+
+                        if (hasLegendTitle) {
+                            legendGroup.append('text')
+                                .attr('x', legendArea.x + legendArea.w / 2)
+                                .attr('y', legendArea.y + p.legendTitleFontSize / 2)
+                                .attr('text-anchor', 'middle')
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendTitleFontSize)
+                                .attr('font-weight', ltitleWeight)
+                                .attr('font-style', ltitleStyle)
+                                .attr('fill', '#333')
+                                .text(p.legendTitle);
+                        }
+
+                        const itemsY = legendArea.y + (hasLegendTitle ? legendTitleH : 0) +
+                            (legendArea.h - legendTitleH - markerSize) / 2;
+                        let cursorX = startX;
+
+                        items.forEach((it, i) => {
+                            legendGroup.append('rect')
+                                .attr('x', cursorX).attr('y', itemsY)
+                                .attr('width', markerSize).attr('height', markerSize)
+                                .attr('rx', 2).attr('fill', colors[i]);
+                            legendGroup.append('text')
+                                .attr('x', cursorX + markerSize + textGap)
+                                .attr('y', itemsY + markerSize / 2)
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendFontSize)
+                                .attr('font-weight', legendWeight)
+                                .attr('font-style', legendStyle)
+                                .attr('fill', '#333')
+                                .text(labels[i]);
+                            cursorX += widths[i];
+                        });
+                    }
+                }
+
+                exportSvgBtn.disabled = false;
+                exportPngBtn.disabled = false;
+                showTip('msgTip3', '✅ 图表绘制完成', 'success');
+            }
+
+            function getSvgWithoutBorder() {
+                if (!state.currentSvg) return null;
+                const clone = state.currentSvg.cloneNode(true);
+                clone.querySelectorAll('.canvas-border').forEach(el => el.remove());
+                return clone;
+            }
+
+            exportSvgBtn.addEventListener('click', () => {
+                const svg = getSvgWithoutBorder();
+                if (!svg) return;
+                PlotCommon.downloadSVG(svg, 'pie_chart.svg');
+                toolbarTip.innerHTML = '<span class="success">✅ SVG 导出成功</span>';
+            });
+            exportPngBtn.addEventListener('click', () => {
+                const svg = getSvgWithoutBorder();
+                if (!svg) return;
+                PlotCommon.downloadPNG(svg, 'pie_chart.png', 2, '#ffffff')
+                    .then(() => { toolbarTip.innerHTML = '<span class="success">✅ PNG 导出成功</span>'; })
+                    .catch(() => { toolbarTip.innerHTML = '<span class="error">❌ PNG 导出失败</span>'; });
+            });
+
+            function showTip(elId, msg, type) {
+                const el = $(elId);
+                el.className = 'tip-text ' + (type || '');
+                el.textContent = msg;
+                setTimeout(() => { el.textContent = ''; el.className = 'tip-text'; }, 3500);
+            }
+            function resetChart() {
+                chartPreview.innerHTML = '<div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>';
+                state.currentSvg = null;
+                exportSvgBtn.disabled = true;
+                exportPngBtn.disabled = true;
+                toolbarTip.textContent = '';
+                $('msgTip3').textContent = '';
+            }
+            function resetAll() {
+                state.headers = [];
+                state.data = [];
+                state.roles = { category: '', value: '' };
+                state.customColors = {};
+                state.sortBy = '';
+                state.sortDir = 'desc';
+                state.legendTitleEdited = false;
+                sortDirSel.value = 'desc';
+                legendTitleInput.value = '';
+                fillRoleSelects();
+                fillSortBySelect();
+                colorAssignContainer.innerHTML =
+                    '<div class="color-assign-empty">选择分类列后将在此处显示每个类别的颜色</div>';
+                resetChart();
+            }
+
+            document.querySelectorAll('[data-redraw]').forEach(el => {
+                el.addEventListener('change', () => {
+                    if (state.currentSvg) drawChart();
+                });
+            });
+
+            function init() {
+                PlotCommon.renderImportPanel('importPanel', {
+                    title: '第一步：导入数据',
+                    infoBox: '需包含表头，且至少包含 <strong>分类列</strong> 和 <strong>数值列</strong>。可直接粘贴 Excel 内容。',
+                    exampleData: EXAMPLE_DATA,
+                    defaultMode: 'file',
+                    onImport: onDataImported,
+                    onReset: resetAll
+                });
+                initPaletteDropdown();
+                fillRoleSelects();
+                fillSortBySelect();
+                colorAssignContainer.innerHTML =
+                    '<div class="color-assign-empty">选择分类列后将在此处显示每个类别的颜色</div>';
+                resetChart();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    }).catch(function (err) {
+        console.error(err);
+        const box = document.getElementById('chartPreview');
+        if (box) {
+            box.innerHTML = '<div class="placeholder" style="color:#c00;">❌ 无法加载 d3，请检查网络后刷新</div>';
+        }
+    });
+    </script>
+</body>
+</html>
