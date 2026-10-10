@@ -9,7 +9,8 @@ const toolCategories = [
                 en: 'Pie Chart',
                 tools: [
                     { id: '001', zh: '平面饼图/环形图', en: 'Flat Pie / Donut Chart' },
-                    { id: '002', zh: '华夫饼图', en: 'Waffle Chart' }
+                    { id: '002', zh: '华夫饼图', en: 'Waffle Chart' },
+                    { id: '003', zh: '雷达图', en: 'Radar Chart' },
                 ]
             },
             {
