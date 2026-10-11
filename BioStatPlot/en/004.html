@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petal Chart - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Petal Chart</h2>
+            <p>The angle and radius of each petal both encode its proportion, forming a flower-like layout.</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Assign Data Columns</div>
+            <div class="param-group">
+                <label>Category column:</label>
+                <select id="catColSel" disabled><option>— Please import data first —</option></select>
+                <label>Value column:</label>
+                <select id="valColSel" disabled><option>— Please import data first —</option></select>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Palette &amp; Colors</div>
+            <div class="param-group" style="margin-top:0;">
+                <label>Sort by:</label>
+                <select id="sortBy" disabled><option>— Please import data first —</option></select>
+                <label>Sort order:</label>
+                <select id="sortDir">
+                    <option value="desc" selected>Descending</option>
+                    <option value="asc">Ascending</option>
+                </select>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Categorical palette</div>
+            <div id="paletteDropdownContainer"></div>
+            <div class="param-inline" style="margin-top:8px;">
+                <label><input type="checkbox" id="reversePalette">Reverse palette</label>
+                <label><input type="checkbox" id="cycleColors">Cycle colors</label>
+            </div>
+            <div id="colorAssignContainer" style="margin-top:16px;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Chart Parameters</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Canvas size</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>Width (px)</label><input type="number" id="chartWidth" value="700" min="300" data-redraw></div>
+                    <div class="param-item"><label>Height (px)</label><input type="number" id="chartHeight" value="650" min="300" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>Show canvas border</label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Font styles</div>
+                <div class="font-row">
+                    <span class="font-label">Font</span>
+                    <select id="fontFamily" data-redraw>
+                        <option value="Times New Roman" selected>Times New Roman</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Microsoft YaHei">Microsoft YaHei</option>
+                    </select>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Labels</span>
+                    <input type="number" id="labelFontSize" value="14" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="labelBold" data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="labelItalic" data-redraw>Italic</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Scale labels</span>
+                    <input type="number" id="scaleFontSize" value="12" min="6" max="24" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="scaleBold" data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="scaleItalic" data-redraw>Italic</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Legend</span>
+                    <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>Italic</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Legend title</span>
+                    <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>Italic</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Title</span>
+                    <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>Italic</label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Components</div>
+                <div class="font-row">
+                    <span class="font-label">Legend</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>Show</label>
+                    <label>Position:
+                        <select id="legendPosition" data-redraw>
+                            <option value="right" selected>Right</option>
+                            <option value="left">Left</option>
+                            <option value="top">Top</option>
+                            <option value="bottom">Bottom</option>
+                        </select>
+                    </label>
+                    <label>Gap (px):
+                        <input type="number" id="legendGap" value="30" min="0" max="120" step="5" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Legend title</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>Show</label>
+                    <label>Text:
+                        <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw>
+                    </label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Title</span>
+                    <label class="mini-check"><input type="checkbox" id="showTitle" checked data-redraw>Show</label>
+                    <label>Text:
+                        <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw>
+                    </label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Title gap</span>
+                    <input type="number" id="titleGap" value="15" min="0" max="200" step="5" data-redraw>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Petal settings</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>Max radius</label><input type="number" id="outerRadius" value="220" min="40" max="1000" step="10" data-redraw></div>
+                    <div class="param-item"><label>Inner radius</label><input type="number" id="innerRadius" value="0" min="0" max="500" step="5" data-redraw></div>
+                    <div class="param-item">
+                        <label>Radius mode</label>
+                        <select id="radiusScale" data-redraw>
+                            <option value="linear" selected>Linear to percentage</option>
+                            <option value="sqrt">Sqrt-linear to percentage</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Angle mode</label>
+                        <select id="angleMode" data-redraw>
+                            <option value="proportional" selected>Linear to percentage</option>
+                            <option value="equal">Equal</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Direction</label>
+                        <select id="pieDirection" data-redraw>
+                            <option value="clockwise" selected>Clockwise</option>
+                            <option value="counterclockwise">Counter-clockwise</option>
+                        </select>
+                    </div>
+                    <div class="param-item"><label>Start angle (°)</label><input type="number" id="startAngle" value="0" min="0" max="360" step="5" data-redraw></div>
+                    <div class="param-item"><label>Petal gap (°)</label><input type="number" id="gapAngle" value="2" min="0" max="30" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>Petal stroke</label><input type="color" id="sliceStroke" value="#ffffff" data-redraw></div>
+                    <div class="param-item"><label>Stroke width</label><input type="number" id="strokeWidth" value="1.5" min="0" max="6" step="0.5" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="mergeSmall" data-redraw>Merge small petals</label>
+                    <label>Merge threshold (%):
+                        <input type="number" id="mergeThreshold" value="3" min="0" max="30" step="0.5" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Polar grid</div>
+
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Concentric rings</label>
+                        <select id="showRings" data-redraw>
+                            <option value="none" selected>None</option>
+                            <option value="all">Show</option>
+                        </select>
+                    </div>
+                    <div class="param-item"><label>Ring levels</label><input type="number" id="ringLevels" value="4" min="1" max="20" data-redraw></div>
+                    <div class="param-item"><label>Ring color</label><input type="color" id="ringColor" value="#d8e2ec" data-redraw></div>
+                    <div class="param-item"><label>Ring width</label><input type="number" id="ringWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
+                </div>
+
+                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Radial axis &amp; scale</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Radial axis</label>
+                        <select id="showRadial" data-redraw>
+                            <option value="none" selected>None</option>
+                            <option value="all">Show</option>
+                        </select>
+                    </div>
+                    <div class="param-item"><label>Axis color</label><input type="color" id="axisColor" value="#d8e2ec" data-redraw></div>
+                    <div class="param-item"><label>Axis width</label><input type="number" id="axisWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
+                    <div class="param-item">
+                        <label>Scale position</label>
+                        <select id="scalePos" data-redraw>
+                            <option value="none" selected>None</option>
+                            <option value="first">First axis only</option>
+                            <option value="all">All axes</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Scale content</label>
+                        <select id="scaleType" data-redraw>
+                            <option value="percent" selected>Percent (%)</option>
+                            <option value="original">Original value</option>
+                        </select>
+                    </div>
+                    <div class="param-item"><label>Decimals</label><input type="number" id="scaleDecimals" value="0" min="0" max="4" step="1" data-redraw></div>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Labels</div>
+                <div class="font-row">
+                    <span class="font-label">Category name</span>
+                    <label>Position:
+                        <select id="namePosition" data-redraw>
+                            <option value="none">None</option>
+                            <option value="inside" selected>Inside (on petal)</option>
+                            <option value="outside">Outside (beyond rings)</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Value labels</span>
+                    <label>Position:
+                        <select id="valuePosition" data-redraw>
+                            <option value="none" selected>None</option>
+                            <option value="inside">Inside (on petal)</option>
+                            <option value="outside">Outside (beyond rings)</option>
+                        </select>
+                    </label>
+                    <label>Content:
+                        <select id="valueContent" data-redraw>
+                            <option value="pct" selected>Percentage</option>
+                            <option value="value">Raw value</option>
+                            <option value="pct_value">Percentage + raw value</option>
+                        </select>
+                    </label>
+                    <label>Outside offset (px):
+                        <input type="number" id="labelOffset" value="20" min="0" max="200" step="5" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">Draw Chart</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 5: Preview &amp; Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">Import data and adjust settings, then click "Draw Chart" to preview.</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/plot-bootstrap.js"></script>
+    <script src="../COMMON/plot-header.js"></script>
+    <script src="../COMMON/plot-footer-en.js"></script>
+    <script src="../COMMON/plot-common.js"></script>
+
+    <script>
+    PlotBootstrap.ensureD3().then(function () {
+        (function () {
+            'use strict';
+
+            const state = {
+                headers: [], data: [],
+                roles: { category: '', value: '' },
+                paletteName: 'tableau10',
+                reverse: false,
+                cycleColors: false,
+                customColors: {},
+                sortBy: '',
+                sortDir: 'desc',
+                legendTitleEdited: false,
+                currentSvg: null
+            };
+
+            const $ = id => document.getElementById(id);
+            const catColSel = $('catColSel');
+            const valColSel = $('valColSel');
+            const paletteDropdownContainer = $('paletteDropdownContainer');
+            const colorAssignContainer = $('colorAssignContainer');
+            const chartPreview = $('chartPreview');
+            const exportSvgBtn = $('exportSvgBtn');
+            const exportPngBtn = $('exportPngBtn');
+            const toolbarTip = $('toolbarTip');
+            const sortBySel = $('sortBy');
+            const sortDirSel = $('sortDir');
+            const legendTitleInput = $('legendTitle');
+
+            const EXAMPLE_DATA =
+                'Category\tValue\n' +
+                'A\t320\n' + 'B\t280\n' + 'C\t240\n' +
+                'D\t200\n' + 'E\t160\n' + 'F\t120\n' + 'G\t80';
+
+            legendTitleInput.addEventListener('input', () => {
+                state.legendTitleEdited = true;
+            });
+
+            function syncLegendTitle() {
+                if (!state.legendTitleEdited) {
+                    legendTitleInput.value = state.roles.category || '';
+                }
+            }
+
+            function onDataImported(res) {
+                state.headers = res.headers;
+                state.data = res.data;
+
+                const catCol = res.headers.find(h => res.columnTypes[h] === 'categorical') || res.headers[0];
+                const valCol = res.headers.find(h => h !== catCol && res.columnTypes[h] === 'numeric') || res.headers[1] || res.headers[0];
+                state.roles = { category: catCol, value: valCol };
+                state.customColors = {};
+                state.sortBy = valCol;
+                state.sortDir = 'desc';
+                sortDirSel.value = 'desc';
+
+                syncLegendTitle();
+                fillRoleSelects();
+                fillSortBySelect();
+                refreshCategoryColors();
+                resetChart();
+            }
+
+            function fillRoleSelects() {
+                if (!state.headers.length) {
+                    catColSel.innerHTML = '<option>— Please import data first —</option>';
+                    valColSel.innerHTML = '<option>— Please import data first —</option>';
+                    catColSel.disabled = true;
+                    valColSel.disabled = true;
+                    return;
+                }
+                catColSel.disabled = false;
+                valColSel.disabled = false;
+                const opts = (selVal) => state.headers.map(h =>
+                    `<option value="${PlotCommon.escapeHtml(h)}" ${h === selVal ? 'selected' : ''}>${PlotCommon.escapeHtml(h)}</option>`
+                ).join('');
+                catColSel.innerHTML = opts(state.roles.category);
+                valColSel.innerHTML = opts(state.roles.value);
+            }
+
+            function fillSortBySelect() {
+                state.sortBy = PlotCommon.fillSortBySelect(sortBySel, state.headers, state.sortBy, {
+                    placeholder: '— Please import data first —',
+                    inputLabel: 'Input order'
+                });
+            }
+
+            catColSel.addEventListener('change', () => {
+                state.roles.category = catColSel.value;
+                state.customColors = {};
+                syncLegendTitle();
+                refreshCategoryColors();
+                resetChart();
+            });
+            valColSel.addEventListener('change', () => {
+                state.roles.value = valColSel.value;
+                state.customColors = {};
+                state.sortBy = valColSel.value;
+                fillSortBySelect();
+                refreshCategoryColors();
+                resetChart();
+            });
+
+            sortBySel.addEventListener('change', () => {
+                state.sortBy = sortBySel.value;
+                refreshCategoryColors();
+                if (state.currentSvg) drawChart();
+            });
+            sortDirSel.addEventListener('change', () => {
+                state.sortDir = sortDirSel.value;
+                refreshCategoryColors();
+                if (state.currentSvg) drawChart();
+            });
+
+            function initPaletteDropdown() {
+                PlotCommon.renderPaletteDropdown(paletteDropdownContainer, {
+                    type: 'categorical',
+                    selected: state.paletteName,
+                    previewCount: 8,
+                    onSelect: name => {
+                        state.paletteName = name;
+                        state.customColors = {};
+                        refreshCategoryColors();
+                        resetChart();
+                    }
+                });
+            }
+
+            function resolvePaletteColors(count) {
+                return PlotCommon.getCategoricalColors(state.paletteName, count, {
+                    reverse: state.reverse,
+                    cycle: state.cycleColors
+                });
+            }
+
+            function getCategoryItems() {
+                return PlotCommon.aggregateAndSort(state.data, {
+                    categoryKey: state.roles.category,
+                    valueKey: state.roles.value,
+                    sortBy: state.sortBy,
+                    sortDir: state.sortDir
+                });
+            }
+
+            function refreshCategoryColors() {
+                const items = getCategoryItems();
+                if (!items.length) {
+                    colorAssignContainer.innerHTML =
+                        '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
+                    return;
+                }
+                const baseColors = resolvePaletteColors(items.length);
+                const displayItems = items.map((it, i) => ({
+                    name: it.name,
+                    color: state.customColors[it.name] || baseColors[i],
+                    percent: it.percent
+                }));
+
+                PlotCommon.renderColorAssignment(colorAssignContainer, {
+                    items: displayItems,
+                    onChange: (idx, newColor) => {
+                        state.customColors[items[idx].name] = newColor;
+                        if (state.currentSvg) drawChart();
+                    },
+                    onResetAll: () => {
+                        state.customColors = {};
+                        refreshCategoryColors();
+                        if (state.currentSvg) drawChart();
+                    }
+                });
+            }
+
+            $('reversePalette').addEventListener('change', e => {
+                state.reverse = e.target.checked;
+                state.customColors = {};
+                refreshCategoryColors();
+                if (state.currentSvg) drawChart();
+            });
+
+            $('cycleColors').addEventListener('change', e => {
+                state.cycleColors = e.target.checked;
+                state.customColors = {};
+                refreshCategoryColors();
+                if (state.currentSvg) drawChart();
+            });
+
+            $('drawBtn').addEventListener('click', drawChart);
+
+            function num(id, fallback) {
+                const el = $(id);
+                if (!el) return fallback;
+                const v = parseFloat(el.value);
+                return isFinite(v) ? v : fallback;
+            }
+
+            function readParams() {
+                return {
+                    width: Math.max(200, num('chartWidth', 700)),
+                    height: Math.max(200, num('chartHeight', 650)),
+                    outerRadius: Math.max(40, num('outerRadius', 220)),
+                    innerRadius: Math.max(0, num('innerRadius', 0)),
+                    radiusScale: $('radiusScale').value || 'linear',
+                    angleMode: $('angleMode').value || 'proportional',
+                    direction: $('pieDirection').value || 'clockwise',
+                    startAngle: Math.max(0, num('startAngle', 0)),
+                    gapAngle: Math.max(0, num('gapAngle', 2)),
+
+                    fontFamily: $('fontFamily').value || 'Times New Roman',
+                    labelFontSize: Math.max(6, num('labelFontSize', 14)),
+                    labelBold: $('labelBold').checked,
+                    labelItalic: $('labelItalic').checked,
+                    scaleFontSize: Math.max(6, num('scaleFontSize', 12)),
+                    scaleBold: $('scaleBold').checked,
+                    scaleItalic: $('scaleItalic').checked,
+                    legendFontSize: Math.max(6, num('legendFontSize', 15)),
+                    legendBold: $('legendBold').checked,
+                    legendItalic: $('legendItalic').checked,
+                    legendTitleFontSize: Math.max(6, num('legendTitleFontSize', 15)),
+                    legendTitleBold: $('legendTitleBold').checked,
+                    legendTitleItalic: $('legendTitleItalic').checked,
+                    titleFontSize: Math.max(6, num('titleFontSize', 22)),
+                    titleBold: $('titleBold').checked,
+                    titleItalic: $('titleItalic').checked,
+                    titleGap: Math.max(0, num('titleGap', 15)),
+
+                    showLegend: $('showLegend').checked,
+                    legendPosition: $('legendPosition').value || 'right',
+                    legendGap: Math.max(0, num('legendGap', 30)),
+                    showLegendTitle: $('showLegendTitle').checked,
+                    legendTitle: $('legendTitle').value || '',
+                    showTitle: $('showTitle').checked,
+                    chartTitle: $('chartTitle').value || '',
+                    showCanvasBorder: $('showCanvasBorder').checked,
+
+                    sliceStroke: $('sliceStroke').value || '#ffffff',
+                    strokeWidth: Math.max(0, num('strokeWidth', 1.5)),
+                    mergeSmall: $('mergeSmall').checked,
+                    mergeThreshold: Math.max(0, num('mergeThreshold', 3)),
+
+                    showRings: $('showRings').value || 'none',
+                    ringLevels: Math.max(1, Math.round(num('ringLevels', 4))),
+                    ringColor: $('ringColor').value || '#d8e2ec',
+                    ringWidth: Math.max(0, num('ringWidth', 1)),
+                    showRadial: $('showRadial').value || 'none',
+                    axisColor: $('axisColor').value || '#d8e2ec',
+                    axisWidth: Math.max(0, num('axisWidth', 1)),
+                    scalePos: $('scalePos').value || 'none',
+                    scaleType: $('scaleType').value || 'percent',
+                    scaleDecimals: Math.max(0, Math.round(num('scaleDecimals', 0))),
+
+                    namePosition: $('namePosition').value || 'inside',
+                    valuePosition: $('valuePosition').value || 'none',
+                    valueContent: $('valueContent').value || 'pct',
+                    labelOffset: Math.max(0, num('labelOffset', 20))
+                };
+            }
+
+            function buildChartData(p) {
+                const items = getCategoryItems();
+                if (!items.length) return [];
+                if (p.mergeSmall && p.mergeThreshold > 0) {
+                    const big = [];
+                    let othersVal = 0;
+                    items.forEach(d => {
+                        const pct = d.percent * 100;
+                        if (pct < p.mergeThreshold) othersVal += d.value;
+                        else big.push(d);
+                    });
+                    if (othersVal > 0) big.push({ name: 'Other', value: othersVal });
+                    const sum = big.reduce((s, d) => s + d.value, 0);
+                    big.forEach(d => d.percent = d.value / sum);
+                    return big;
+                }
+                return items;
+            }
+
+            function polarXY(r, angle) {
+                return [r * Math.sin(angle), -r * Math.cos(angle)];
+            }
+
+            function estTextWidth(str, fontSize) {
+                let w = 0;
+                for (const ch of String(str)) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
+                return w * fontSize;
+            }
+
+            function buildValueText(item, p) {
+                const pct = item.percent * 100;
+                switch (p.valueContent) {
+                    case 'pct':       return pct.toFixed(1) + '%';
+                    case 'value':     return String(item.value);
+                    case 'pct_value': return pct.toFixed(1) + '% (' + item.value + ')';
+                }
+                return '';
+            }
+
+            /* Ring radius: t is the normalized fraction (0~1) represented by the ring.
+               Both modes place the ring between innerR and maxR. */
+            function ringRadius(t, innerR, maxR, mode) {
+                const f = mode === 'sqrt' ? Math.sqrt(t) : t;
+                return innerR + (maxR - innerR) * f;
+            }
+
+            /* Petal radius: ratio = petal fraction / max fraction */
+            function petalRadius(ratio, innerR, maxR, mode) {
+                const t = Math.max(0, Math.min(1, ratio));
+                const f = mode === 'sqrt' ? Math.sqrt(t) : t;
+                return Math.max(innerR + 2, innerR + (maxR - innerR) * f);
+            }
+
+            function computeLayout(p, itemCount) {
+                const width = p.width;
+                const height = p.height;
+                const titleH = (p.showTitle && p.chartTitle) ? p.titleFontSize + 10 + p.titleGap : 0;
+
+                const legendColW = 200;
+                const legendRowH = p.legendFontSize + 10;
+                const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
+                const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
+                const legendInlineH = p.legendFontSize + 20 + legendTitleH;
+                const gap = p.legendGap;
+                const margin = 30;
+
+                const wantLegend = !!p.showLegend && itemCount > 0;
+                const pos = p.legendPosition || 'right';
+                const isRight  = wantLegend && pos === 'right';
+                const isLeft   = wantLegend && pos === 'left';
+                const isTop    = wantLegend && pos === 'top';
+                const isBottom = wantLegend && pos === 'bottom';
+                const vert  = isRight || isLeft;
+
+                let areaX = margin, areaY = margin;
+                let areaW = width - 2 * margin;
+                let areaH = height - 2 * margin;
+
+                if (isRight) {
+                    areaW = width - legendColW - gap - 2 * margin;
+                } else if (isLeft) {
+                    areaX = legendColW + gap + margin;
+                    areaW = width - legendColW - gap - 2 * margin;
+                } else if (isTop) {
+                    areaY = legendInlineH + gap + margin;
+                    areaH = height - legendInlineH - gap - 2 * margin;
+                } else if (isBottom) {
+                    areaH = height - legendInlineH - gap - 2 * margin;
+                }
+                areaW = Math.max(20, areaW);
+                areaH = Math.max(20, areaH);
+
+                const gridAreaH = Math.max(20, areaH - titleH);
+                const labelSpace = p.labelOffset + p.labelFontSize;
+
+                const maxR = Math.max(20, Math.min(
+                    p.outerRadius,
+                    areaW / 2 - labelSpace,
+                    gridAreaH / 2 - labelSpace
+                ));
+
+                const blockH = titleH + maxR * 2 + labelSpace * 2;
+                const blockTop = areaY + Math.max(0, (areaH - blockH) / 2);
+
+                const titleY = blockTop + 10 + p.titleFontSize;
+                const cx = areaX + areaW / 2;
+                const cy = blockTop + titleH + labelSpace + maxR;
+
+                return {
+                    cx, cy, maxR, titleY, width, height,
+                    legendVertical: vert,
+                    legendRowH, legendInlineH,
+                    hasLegendTitle, legendTitleH,
+                    isRight, isTop,
+                    legendColW, areaY, areaH,
+                    margin, gap
+                };
+            }
+
+            function drawChart() {
+                toolbarTip.textContent = '';
+                if (!state.data.length) {
+                    showTip('msgTip3', '❌ Please import data first', 'error');
+                    return;
+                }
+                if (!state.roles.category || !state.roles.value) {
+                    showTip('msgTip3', '❌ Please select category and value columns in Step 2', 'error');
+                    return;
+                }
+
+                const p = readParams();
+                const items = buildChartData(p);
+                if (!items.length) {
+                    showTip('msgTip3', '❌ Failed to generate valid data. Please check the value column.', 'error');
+                    return;
+                }
+
+                const width = p.width;
+                const height = p.height;
+
+                const allCatNames = getCategoryItems().map(x => x.name);
+                const allBaseColors = resolvePaletteColors(allCatNames.length);
+                const colors = items.map((it, i) => {
+                    if (state.customColors[it.name]) return state.customColors[it.name];
+                    const idx = allCatNames.indexOf(it.name);
+                    return idx >= 0 ? allBaseColors[idx] : (resolvePaletteColors(items.length)[i] || '#ccc');
+                });
+
+                const L = computeLayout(p, items.length);
+                const {
+                    cx, cy, maxR, titleY,
+                    legendVertical,
+                    legendRowH, legendInlineH,
+                    hasLegendTitle, legendTitleH,
+                    isRight, isTop,
+                    legendColW, areaY, areaH,
+                    margin, gap
+                } = L;
+
+                const svg = d3.select(chartPreview).html('')
+                    .append('svg')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .attr('viewBox', `0 0 ${width} ${height}`)
+                    .attr('xmlns', 'http://www.w3.org/2000/svg')
+                    .style('background', '#ffffff')
+                    .style('font-family', p.fontFamily);
+                state.currentSvg = svg.node();
+
+                if (p.showCanvasBorder) {
+                    svg.append('rect')
+                        .attr('class', 'canvas-border')
+                        .attr('x', 0.5).attr('y', 0.5)
+                        .attr('width', width - 1).attr('height', height - 1)
+                        .attr('fill', 'none')
+                        .attr('stroke', '#c0c8d4')
+                        .attr('stroke-width', 1)
+                        .attr('stroke-dasharray', '4 3')
+                        .attr('pointer-events', 'none');
+                }
+
+                if (p.showTitle && p.chartTitle) {
+                    svg.append('text')
+                        .attr('x', width / 2).attr('y', titleY)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', p.titleFontSize)
+                        .attr('font-weight', p.titleBold ? 'bold' : 'normal')
+                        .attr('font-style', p.titleItalic ? 'italic' : 'normal')
+                        .attr('fill', '#1f4068')
+                        .text(p.chartTitle);
+                }
+
+                const g = svg.append('g').attr('transform', `translate(${cx},${cy})`);
+
+                if (p.showRings === 'all') {
+                    const ringGroup = g.append('g').attr('class', 'petal-rings');
+                    for (let lv = 1; lv <= p.ringLevels; lv++) {
+                        const t = lv / p.ringLevels;
+                        const r = ringRadius(t, p.innerRadius, maxR, p.radiusScale);
+                        ringGroup.append('circle')
+                            .attr('cx', 0).attr('cy', 0).attr('r', r)
+                            .attr('fill', 'none')
+                            .attr('stroke', p.ringColor)
+                            .attr('stroke-width', p.ringWidth);
+                    }
+                }
+
+                const N = items.length;
+                const startRad = p.startAngle * Math.PI / 180;
+                const gapRad = p.gapAngle * Math.PI / 180;
+                const ccw = p.direction === 'counterclockwise';
+
+                const sectors = [];
+                let cursor = startRad;
+
+                const maxPct = Math.max(...items.map(it => it.percent));
+                const maxValue = Math.max(...items.map(it => it.value));
+                const equalSpan = 2 * Math.PI / N;
+
+                items.forEach((it, i) => {
+                    const spanRad = p.angleMode === 'equal' ? equalSpan : 2 * Math.PI * it.percent;
+                    const gg = Math.min(gapRad, spanRad * 0.4);
+                    const sRaw = cursor + gg / 2;
+                    const eRaw = cursor + spanRad - gg / 2;
+                    cursor += spanRad;
+
+                    const ratio = it.percent / maxPct;
+                    const rOuter = petalRadius(ratio, p.innerRadius, maxR, p.radiusScale);
+
+                    sectors.push({
+                        name: it.name,
+                        value: it.value,
+                        percent: it.percent,
+                        color: colors[i],
+                        startAngle: ccw ? -eRaw : sRaw,
+                        endAngle: ccw ? -sRaw : eRaw,
+                        midAngleRaw: (sRaw + eRaw) / 2,
+                        outerR: rOuter
+                    });
+                });
+
+                if (p.showRadial === 'all') {
+                    const axisGroup = g.append('g').attr('class', 'petal-radial');
+                    sectors.forEach(s => {
+                        const [x, y] = polarXY(maxR, s.midAngleRaw);
+                        axisGroup.append('line')
+                            .attr('x1', 0).attr('y1', 0)
+                            .attr('x2', x).attr('y2', y)
+                            .attr('stroke', p.axisColor)
+                            .attr('stroke-width', p.axisWidth);
+                    });
+                }
+
+                if (p.scalePos !== 'none') {
+                    const scaleGroup = g.append('g').attr('class', 'petal-scale');
+                    const scaleWeight = p.scaleBold ? 'bold' : 'normal';
+                    const scaleStyle  = p.scaleItalic ? 'italic' : 'normal';
+                    const off = 6;
+
+                    sectors.forEach((s, i) => {
+                        if (p.scalePos === 'first' && i !== 0) return;
+
+                        const a = s.midAngleRaw;
+                        const ux = Math.sin(a);
+                        const uy = -Math.cos(a);
+                        const vx = Math.cos(a);
+                        const vy = Math.sin(a);
+                        const anchor = ux > 0.1 ? 'start' : (ux < -0.1 ? 'end' : 'start');
+
+                        for (let lv = 1; lv <= p.ringLevels; lv++) {
+                            const t = lv / p.ringLevels;
+                            const r = ringRadius(t, p.innerRadius, maxR, p.radiusScale);
+                            const lx = r * ux + vx * off;
+                            const ly = r * uy + vy * off;
+
+                            let label;
+                            if (p.scaleType === 'percent') {
+                                label = (t * 100).toFixed(p.scaleDecimals) + '%';
+                            } else {
+                                label = (t * maxValue).toFixed(p.scaleDecimals);
+                            }
+
+                            scaleGroup.append('text')
+                                .attr('x', lx).attr('y', ly)
+                                .attr('text-anchor', anchor)
+                                .attr('dominant-baseline', 'middle')
+                                .attr('font-size', p.scaleFontSize)
+                                .attr('font-weight', scaleWeight)
+                                .attr('font-style', scaleStyle)
+                                .attr('fill', '#888')
+                                .text(label);
+                        }
+                    });
+                }
+
+                const arcGen = d3.arc()
+                    .innerRadius(p.innerRadius)
+                    .outerRadius(d => d.outerR)
+                    .startAngle(d => d.startAngle)
+                    .endAngle(d => d.endAngle);
+
+                g.selectAll('path.petal')
+                    .data(sectors).enter()
+                    .append('path')
+                    .attr('class', 'petal')
+                    .attr('d', arcGen)
+                    .attr('fill', d => d.color)
+                    .attr('stroke', p.sliceStroke)
+                    .attr('stroke-width', p.strokeWidth)
+                    .style('cursor', 'pointer')
+                    .on('mouseenter', function () {
+                        d3.select(this).transition().duration(120).attr('transform', 'scale(1.03)');
+                    })
+                    .on('mouseleave', function () {
+                        d3.select(this).transition().duration(120).attr('transform', 'scale(1)');
+                    });
+
+                const labelGroup = g.append('g').attr('class', 'petal-labels');
+                const labelWeight = p.labelBold ? 'bold' : 'normal';
+                const labelStyle  = p.labelItalic ? 'italic' : 'normal';
+                const namePos = p.namePosition;
+                const valPos  = p.valuePosition;
+
+                sectors.forEach(d => {
+                    const midAngle = (d.startAngle + d.endAngle) / 2;
+                    const valueText = (valPos === 'none') ? '' : buildValueText(d, p);
+
+                    const inParts = [];
+                    if (namePos === 'inside') inParts.push(d.name);
+                    if (valPos === 'inside') inParts.push(valueText);
+                    const inText = inParts.filter(Boolean).join(' ');
+
+                    if (inText) {
+                        const rIn = Math.max(p.innerRadius + 2, d.outerR - p.labelFontSize * 0.7);
+                        const [x, y] = polarXY(rIn, midAngle);
+                        labelGroup.append('text')
+                            .attr('x', x).attr('y', y)
+                            .attr('text-anchor', 'middle')
+                            .attr('dy', '0.35em')
+                            .attr('font-size', p.labelFontSize)
+                            .attr('font-weight', labelWeight)
+                            .attr('font-style', labelStyle)
+                            .attr('fill', '#333')
+                            .text(inText);
+                    }
+
+                    const outParts = [];
+                    if (namePos === 'outside') outParts.push(d.name);
+                    if (valPos === 'outside') outParts.push(valueText);
+                    const outText = outParts.filter(Boolean).join(' ');
+
+                    if (outText) {
+                        const rOut = maxR + p.labelOffset;
+                        const [x, y] = polarXY(rOut, midAngle);
+                        const cosA = Math.cos(midAngle);
+                        const sinA = Math.sin(midAngle);
+                        let anchor = 'middle';
+                        if (cosA > 0.15 && sinA > 0.15) anchor = 'start';
+                        else if (cosA < -0.15 && sinA > 0.15) anchor = 'end';
+                        labelGroup.append('text')
+                            .attr('x', x).attr('y', y)
+                            .attr('text-anchor', anchor)
+                            .attr('dy', '0.35em')
+                            .attr('font-size', p.labelFontSize)
+                            .attr('font-weight', labelWeight)
+                            .attr('font-style', labelStyle)
+                            .attr('fill', '#333')
+                            .text(outText);
+                    }
+                });
+
+                if (p.showLegend && items.length) {
+                    const legendGroup = svg.append('g').attr('class', 'chart-legend');
+                    const markerSize = p.legendFontSize;
+                    const textGap = 8;
+                    const itemGap = 20;
+                    const legendWeight = p.legendBold ? 'bold' : 'normal';
+                    const legendStyle  = p.legendItalic ? 'italic' : 'normal';
+                    const ltitleWeight = p.legendTitleBold ? 'bold' : 'normal';
+                    const ltitleStyle  = p.legendTitleItalic ? 'italic' : 'normal';
+                    const labels = items.map(it => `${it.name} (${(it.percent * 100).toFixed(1)}%)`);
+
+                    if (legendVertical) {
+                        const totalH = (hasLegendTitle ? legendTitleH : 0) + items.length * legendRowH;
+                        const startY = areaY + (areaH - totalH) / 2;
+                        const baseX = isRight ? (width - legendColW - gap + 12) : 12;
+
+                        if (hasLegendTitle) {
+                            legendGroup.append('text')
+                                .attr('x', baseX)
+                                .attr('y', startY + p.legendTitleFontSize / 2)
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendTitleFontSize)
+                                .attr('font-weight', ltitleWeight)
+                                .attr('font-style', ltitleStyle)
+                                .attr('fill', '#333')
+                                .text(p.legendTitle);
+                        }
+                        const itemsStartY = startY + (hasLegendTitle ? legendTitleH : 0);
+                        items.forEach((it, i) => {
+                            const y = itemsStartY + i * legendRowH;
+                            legendGroup.append('rect')
+                                .attr('x', baseX).attr('y', y)
+                                .attr('width', markerSize).attr('height', markerSize)
+                                .attr('rx', 2).attr('fill', colors[i]);
+                            legendGroup.append('text')
+                                .attr('x', baseX + markerSize + textGap)
+                                .attr('y', y + markerSize / 2)
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendFontSize)
+                                .attr('font-weight', legendWeight)
+                                .attr('font-style', legendStyle)
+                                .attr('fill', '#333')
+                                .text(labels[i]);
+                        });
+                    } else {
+                        const widths = labels.map(lb =>
+                            markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap
+                        );
+                        const totalW = widths.reduce((a, b) => a + b, 0) - itemGap;
+                        const startX = Math.max(10, (width - totalW) / 2);
+
+                        const legendY0 = isTop ? margin : (height - legendInlineH - margin);
+                        const itemsY = legendY0 + (hasLegendTitle ? legendTitleH : 0) + 6;
+
+                        if (hasLegendTitle) {
+                            legendGroup.append('text')
+                                .attr('x', width / 2)
+                                .attr('y', legendY0 + p.legendTitleFontSize / 2)
+                                .attr('text-anchor', 'middle')
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendTitleFontSize)
+                                .attr('font-weight', ltitleWeight)
+                                .attr('font-style', ltitleStyle)
+                                .attr('fill', '#333')
+                                .text(p.legendTitle);
+                        }
+                        let cursorX = startX;
+                        items.forEach((it, i) => {
+                            legendGroup.append('rect')
+                                .attr('x', cursorX).attr('y', itemsY)
+                                .attr('width', markerSize).attr('height', markerSize)
+                                .attr('rx', 2).attr('fill', colors[i]);
+                            legendGroup.append('text')
+                                .attr('x', cursorX + markerSize + textGap)
+                                .attr('y', itemsY + markerSize / 2)
+                                .attr('dy', '0.35em')
+                                .attr('font-size', p.legendFontSize)
+                                .attr('font-weight', legendWeight)
+                                .attr('font-style', legendStyle)
+                                .attr('fill', '#333')
+                                .text(labels[i]);
+                            cursorX += widths[i];
+                        });
+                    }
+                }
+
+                exportSvgBtn.disabled = false;
+                exportPngBtn.disabled = false;
+                showTip('msgTip3', '✅ Chart rendered', 'success');
+            }
+
+            function getSvgWithoutBorder() {
+                if (!state.currentSvg) return null;
+                const clone = state.currentSvg.cloneNode(true);
+                clone.querySelectorAll('.canvas-border').forEach(el => el.remove());
+                return clone;
+            }
+
+            exportSvgBtn.addEventListener('click', () => {
+                const svg = getSvgWithoutBorder();
+                if (!svg) return;
+                PlotCommon.downloadSVG(svg, 'petal_chart.svg');
+                toolbarTip.innerHTML = '<span class="success">✅ SVG exported</span>';
+            });
+            exportPngBtn.addEventListener('click', () => {
+                const svg = getSvgWithoutBorder();
+                if (!svg) return;
+                PlotCommon.downloadPNG(svg, 'petal_chart.png', 2, '#ffffff')
+                    .then(() => { toolbarTip.innerHTML = '<span class="success">✅ PNG exported</span>'; })
+                    .catch(() => { toolbarTip.innerHTML = '<span class="error">❌ PNG export failed</span>'; });
+            });
+
+            function showTip(elId, msg, type) {
+                const el = $(elId);
+                el.className = 'tip-text ' + (type || '');
+                el.textContent = msg;
+                setTimeout(() => { el.textContent = ''; el.className = 'tip-text'; }, 3500);
+            }
+            function resetChart() {
+                chartPreview.innerHTML = '<div class="placeholder">Import data and adjust settings, then click "Draw Chart" to preview.</div>';
+                state.currentSvg = null;
+                exportSvgBtn.disabled = true;
+                exportPngBtn.disabled = true;
+                toolbarTip.textContent = '';
+                $('msgTip3').textContent = '';
+            }
+            function resetAll() {
+                state.headers = [];
+                state.data = [];
+                state.roles = { category: '', value: '' };
+                state.customColors = {};
+                state.sortBy = '';
+                state.sortDir = 'desc';
+                state.legendTitleEdited = false;
+                sortDirSel.value = 'desc';
+                legendTitleInput.value = '';
+                fillRoleSelects();
+                fillSortBySelect();
+                colorAssignContainer.innerHTML =
+                    '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
+                resetChart();
+            }
+
+            document.querySelectorAll('[data-redraw]').forEach(el => {
+                el.addEventListener('change', () => {
+                    if (state.currentSvg) drawChart();
+                });
+            });
+
+            function init() {
+                PlotCommon.renderImportPanel('importPanel', {
+                    title: 'Step 1: Import Data',
+                    infoBox: 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. You can paste directly from Excel.',
+                    exampleData: EXAMPLE_DATA,
+                    defaultMode: 'file',
+                    onImport: onDataImported,
+                    onReset: resetAll
+                });
+                initPaletteDropdown();
+                fillRoleSelects();
+                fillSortBySelect();
+                colorAssignContainer.innerHTML =
+                    '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
+                resetChart();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    }).catch(function (err) {
+        console.error(err);
+        const box = document.getElementById('chartPreview');
+        if (box) {
+            box.innerHTML = '<div class="placeholder" style="color:#c00;">❌ Failed to load d3. Please check your network and refresh.</div>';
+        }
+    });
+    </script>
+</body>
+</html>

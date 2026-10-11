@@ -1,4 +1,3 @@
-
 'use strict';
 
 /* ---------- 常量 ---------- */
@@ -42,11 +41,12 @@ function injectRotatorStyles() {
 }
 
 /* ============================================================
-   图标探测（按 id 前缀）
-   优先 images/001-1.svg, 001-2.svg ...
-   兜底 images/001.svg / png / jpg ...
+   图标探测
+   优先 images/<id>-1.svg, <id>-2.svg ...
+   兜底 images/<id>.svg / png / jpg ...
 ============================================================ */
-const iconFileCache = new Map();
+const iconFileCache      = new Map();  // id → 文件数组
+const iconLoadingPromises = new Map(); // id → Promise
 
 function probeImage(url) {
     return new Promise(resolve => {
@@ -85,12 +85,18 @@ async function preloadAllIcons() {
         });
     });
     await Promise.all(Array.from(ids).map(async id => {
-        iconFileCache.set(id, await resolveIconFiles(id));
+        if (iconFileCache.has(id)) return;
+        if (!iconLoadingPromises.has(id)) {
+            iconLoadingPromises.set(id, resolveIconFiles(id));
+        }
+        const files = await iconLoadingPromises.get(id);
+        iconFileCache.set(id, files);
     }));
 }
 
 /* ============================================================
-   图标渲染
+   图标渲染（占位符模式）
+   渲染阶段只插入空槽，等图标加载完再回填
 ============================================================ */
 function buildSlidesHtml(files) {
     return files.map((f, i) => {
@@ -99,39 +105,54 @@ function buildSlidesHtml(files) {
     }).join('');
 }
 
-// 侧边栏小图标
+// 侧边栏小图标（返回占位符）
 function renderIcon(id, size = 24) {
     if (!id) return '';
-    const files = iconFileCache.get(id) || [];
-    if (!files.length) return '';
-
-    if (files.length === 1) {
-        return `<img src="images/${files[0]}" alt="icon" class="icon-img"
-                     style="width:${size}px;height:${size}px;object-fit:contain;">`;
-    }
-
-    return `<span class="icon-rotator"
-                  data-icon-key="${id}" data-current="0"
-                  style="display:inline-block;width:${size}px;height:${size}px;">
-                ${buildSlidesHtml(files)}
-            </span>`;
+    return `<span class="icon-slot" data-icon-id="${id}" data-icon-size="${size}"
+                  data-icon-kind="nav"
+                  style="display:inline-block;width:${size}px;height:${size}px;vertical-align:middle;"></span>`;
 }
 
-// 工具卡片大图标
+// 工具卡片大图标（返回占位符）
 function buildCardIconHtml(id) {
-    const files = iconFileCache.get(id) || [];
-    if (!files.length) {
+    if (!id) {
         return `<div class="icon" style="width:100%;height:100%;"></div>`;
     }
-    if (files.length === 1) {
-        return `<img class="icon" src="images/${files[0]}" alt="icon"
-                     style="width:100%;height:100%;object-fit:contain;">`;
-    }
-    return `<span class="icon-rotator"
-                  data-icon-key="${id}" data-current="0"
-                  style="display:block;width:100%;height:100%;">
-                ${buildSlidesHtml(files)}
-            </span>`;
+    return `<span class="icon-slot" data-icon-id="${id}" data-icon-kind="card"
+                  style="display:block;width:100%;height:100%;"></span>`;
+}
+
+// 图标加载完成后，把所有占位符替换为真实内容
+function fillIconSlots() {
+    document.querySelectorAll('.icon-slot').forEach(slot => {
+        const id   = slot.dataset.iconId;
+        const kind = slot.dataset.iconKind;
+        const size = slot.dataset.iconSize;
+        const files = iconFileCache.get(id) || [];
+
+        let html = '';
+
+        if (!files.length) {
+            html = (kind === 'card')
+                ? `<div class="icon" style="width:100%;height:100%;"></div>`
+                : '';
+        } else if (files.length === 1) {
+            if (kind === 'card') {
+                html = `<img class="icon" src="images/${files[0]}" alt="icon"
+                             style="width:100%;height:100%;object-fit:contain;">`;
+            } else {
+                html = `<img src="images/${files[0]}" alt="icon" class="icon-img"
+                             style="width:${size}px;height:${size}px;object-fit:contain;">`;
+            }
+        } else {
+            html = `<span class="icon-rotator"
+                          data-icon-key="${id}" data-current="0"
+                          style="display:block;width:100%;height:100%;">
+                        ${buildSlidesHtml(files)}
+                    </span>`;
+        }
+        slot.outerHTML = html;
+    });
 }
 
 /* ============================================================
@@ -166,10 +187,12 @@ function slideNext(el) {
     el.dataset.current = next;
 }
 
+let iconRotatorTimer = null;
 function startIconRotators() {
     const rotators = document.querySelectorAll('.icon-rotator');
     if (!rotators.length) return;
 
+    // 预热所有轮换图
     const seen = new Set();
     rotators.forEach(el => {
         const files = iconFileCache.get(el.dataset.iconKey) || [];
@@ -181,7 +204,8 @@ function startIconRotators() {
         });
     });
 
-    setInterval(() => {
+    if (iconRotatorTimer) clearInterval(iconRotatorTimer);
+    iconRotatorTimer = setInterval(() => {
         document.querySelectorAll('.icon-rotator').forEach(el => slideNext(el));
     }, ICON_ROTATE_INTERVAL);
 }
@@ -238,8 +262,6 @@ function applyLanguage(lang) {
     }
 }
 
-
-
 function getToolUrl(tool) {
     const name = tool.file || tool.id;
     return `${TOOL_DIR}/${name}.html`;
@@ -263,7 +285,7 @@ function renderSideNav() {
         const li = document.createElement('li');
         li.innerHTML = `
             <a class="parent-item" onclick="toggleCategory('${catId}')">${cat[LANG] || ''}</a>
-            <ul class="sub-menu" id="${catId}"></ul>
+            <ul class="sub-menu open" id="${catId}"></ul>
         `;
         navList.appendChild(li);
 
@@ -397,23 +419,22 @@ function filterTools(keyword) {
 /* ============================================================
    初始化
 ============================================================ */
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
 
+    // 1. 立即注入样式 + 应用文案（不依赖图标）
     injectRotatorStyles();
     applyLanguage(LANG);
 
-    await preloadAllIcons();
-
+    // 2. 先渲染骨架，此时图标位置是空槽
     renderSideNav();
     renderToolCards();
-    startIconRotators();
 
+    // 3. 绑定交互（不依赖图标）
     const searchInput = document.getElementById('toolSearchInput');
     if (searchInput) {
         searchInput.addEventListener('input', e => filterTools(e.target.value));
     }
 
-    // 侧栏折叠
     const toggleSideBtn = document.getElementById('toggleSideBtn');
     const sideNav  = document.querySelector('.side-nav');
     const mainWrap = document.querySelector('.main');
@@ -448,4 +469,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         window.addEventListener('resize', updateNavPosition);
         setTimeout(updateNavPosition, 200);
     })();
+
+    // 4. 后台加载图标，加载完再回填 + 启动轮换
+    preloadAllIcons().then(() => {
+        fillIconSlots();
+        startIconRotators();
+    });
 });
