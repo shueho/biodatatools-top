@@ -33,21 +33,21 @@ const toolCategories = [
                 zh: '小提琴图',
                 en: 'Violin Plot',
                 tools: [
-                    { id: '005', zh: '小提琴图', en: 'Violin Plot' }
+                    { id: 'xxx', zh: '小提琴图', en: 'Violin Plot' }
                 ]
             },
             {
                 zh: '散点图',
                 en: 'Scatter Plot',
                 tools: [
-                    { id: '006', zh: '散点图', en: 'Scatter Plot' }
+                    { id: 'xxx', zh: '散点图', en: 'Scatter Plot' }
                 ]
             },
             {
                 zh: '折线图',
                 en: 'Line Chart',
                 tools: [
-                    { id: '007', zh: '折线图', en: 'Line Chart' }
+                    { id: 'xxx', zh: '折线图', en: 'Line Chart' }
                 ]
             }
         ]
@@ -61,14 +61,14 @@ const toolCategories = [
                 zh: '差异表达',
                 en: 'Differential Expression',
                 tools: [
-                    { id: '008', zh: '火山图', en: 'Volcano Plot' }
+                    { id: 'xxx', zh: '火山图', en: 'Volcano Plot' }
                 ]
             },
             {
                 zh: '表达矩阵',
                 en: 'Expression Matrix',
                 tools: [
-                    { id: '009', zh: '热图', en: 'Heatmap' }
+                    { id: 'xxx', zh: '热图', en: 'Heatmap' }
                 ]
             }
         ]
@@ -82,7 +82,7 @@ const toolCategories = [
                 zh: '开发中',
                 en: 'NULL',
                 tools: [
-                    { id: '010', zh: '开发中', en: 'NULL' }
+                    { id: 'xxx', zh: '开发中', en: 'NULL' }
                 ]
             }
         ]
