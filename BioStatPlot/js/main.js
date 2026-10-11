@@ -5,6 +5,10 @@ const ICON_ROTATE_INTERVAL = 5000;
 const ICON_PROBE_MAX       = 30;
 const ICON_SLIDE_DURATION  = 600;
 
+/* ---------- CDN & 本地路径 ---------- */
+const CDN_BASE   = 'https://cdn.jsdelivr.net/gh/shueho/biodatatools-top@main/BioStatPlot/images/';
+const LOCAL_BASE = 'images/';
+
 /* ---------- 当前语言 & 工具页目录 ---------- */
 const LANG     = window.location.pathname.includes('home-ch.html') ? 'zh' : 'en';
 const TOOL_DIR = LANG === 'zh' ? 'ch' : 'en';
@@ -41,12 +45,11 @@ function injectRotatorStyles() {
 }
 
 /* ============================================================
-   图标探测
-   优先 images/<id>-1.svg, <id>-2.svg ...
-   兜底 images/<id>.svg / png / jpg ...
+   图标探测：只探测本地，确定存在哪些文件
+   本地探测快且可靠，不会因为 CDN 不通而报一堆错误
 ============================================================ */
-const iconFileCache      = new Map();  // id → 文件数组
-const iconLoadingPromises = new Map(); // id → Promise
+const iconFileCache       = new Map();  // id → 文件名数组（如 ['001-1.svg', '001-2.svg']）
+const iconLoadingPromises = new Map();
 
 function probeImage(url) {
     return new Promise(resolve => {
@@ -60,17 +63,19 @@ function probeImage(url) {
 async function resolveIconFiles(id) {
     if (!id || typeof id !== 'string') return [];
 
+    // 1. 本地按序探测 <id>-1.svg, <id>-2.svg ...
     const files = [];
     for (let i = 1; i <= ICON_PROBE_MAX; i++) {
         const name = `${id}-${i}.svg`;
-        if (await probeImage(`images/${name}`)) files.push(name);
+        if (await probeImage(LOCAL_BASE + name)) files.push(name);
         else break;
     }
 
+    // 2. 没有序号文件时，本地兜底探测 <id>.svg / png / jpg ...
     if (!files.length) {
         for (const ext of ['svg', 'png', 'jpg', 'jpeg', 'gif', 'webp']) {
             const name = `${id}.${ext}`;
-            if (await probeImage(`images/${name}`)) { files.push(name); break; }
+            if (await probeImage(LOCAL_BASE + name)) { files.push(name); break; }
         }
     }
     return files;
@@ -95,17 +100,27 @@ async function preloadAllIcons() {
 }
 
 /* ============================================================
+   生成 <img> 标签：CDN 优先，失败自动回退本地
+============================================================ */
+function iconImgTag(filename, cls = '', style = '') {
+    const cdn   = CDN_BASE + filename;
+    const local = LOCAL_BASE + filename;
+    // onerror 里把 onerror 置空，避免回退失败后无限循环
+    return `<img src="${cdn}" class="${cls}" style="${style}"
+                 onerror="this.onerror=null;this.src='${local}';">`;
+}
+
+/* ============================================================
    图标渲染（占位符模式）
-   渲染阶段只插入空槽，等图标加载完再回填
 ============================================================ */
 function buildSlidesHtml(files) {
     return files.map((f, i) => {
         const state = (i === 0) ? 'icon-slide-in' : 'icon-slide-wait';
-        return `<img src="images/${f}" alt="" class="icon-slide ${state}">`;
+        return iconImgTag(f, `icon-slide ${state}`);
     }).join('');
 }
 
-// 侧边栏小图标（返回占位符）
+// 侧边栏小图标（占位符）
 function renderIcon(id, size = 24) {
     if (!id) return '';
     return `<span class="icon-slot" data-icon-id="${id}" data-icon-size="${size}"
@@ -113,7 +128,7 @@ function renderIcon(id, size = 24) {
                   style="display:inline-block;width:${size}px;height:${size}px;vertical-align:middle;"></span>`;
 }
 
-// 工具卡片大图标（返回占位符）
+// 工具卡片大图标（占位符）
 function buildCardIconHtml(id) {
     if (!id) {
         return `<div class="icon" style="width:100%;height:100%;"></div>`;
@@ -138,11 +153,11 @@ function fillIconSlots() {
                 : '';
         } else if (files.length === 1) {
             if (kind === 'card') {
-                html = `<img class="icon" src="images/${files[0]}" alt="icon"
-                             style="width:100%;height:100%;object-fit:contain;">`;
+                html = iconImgTag(files[0], 'icon',
+                                  'width:100%;height:100%;object-fit:contain;');
             } else {
-                html = `<img src="images/${files[0]}" alt="icon" class="icon-img"
-                             style="width:${size}px;height:${size}px;object-fit:contain;">`;
+                html = iconImgTag(files[0], 'icon-img',
+                                  `width:${size}px;height:${size}px;object-fit:contain;`);
             }
         } else {
             html = `<span class="icon-rotator"
@@ -191,18 +206,6 @@ let iconRotatorTimer = null;
 function startIconRotators() {
     const rotators = document.querySelectorAll('.icon-rotator');
     if (!rotators.length) return;
-
-    // 预热所有轮换图
-    const seen = new Set();
-    rotators.forEach(el => {
-        const files = iconFileCache.get(el.dataset.iconKey) || [];
-        files.forEach(f => {
-            if (seen.has(f)) return;
-            seen.add(f);
-            const img = new Image();
-            img.src = `images/${f}`;
-        });
-    });
 
     if (iconRotatorTimer) clearInterval(iconRotatorTimer);
     iconRotatorTimer = setInterval(() => {
@@ -421,15 +424,12 @@ function filterTools(keyword) {
 ============================================================ */
 document.addEventListener('DOMContentLoaded', function() {
 
-    // 1. 立即注入样式 + 应用文案（不依赖图标）
     injectRotatorStyles();
     applyLanguage(LANG);
 
-    // 2. 先渲染骨架，此时图标位置是空槽
     renderSideNav();
     renderToolCards();
 
-    // 3. 绑定交互（不依赖图标）
     const searchInput = document.getElementById('toolSearchInput');
     if (searchInput) {
         searchInput.addEventListener('input', e => filterTools(e.target.value));
@@ -445,7 +445,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 侧栏底部跟随页脚
     (function() {
         const sideNav2 = document.getElementById('sideNav');
         const footer   = document.querySelector('footer');
@@ -470,7 +469,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(updateNavPosition, 200);
     })();
 
-    // 4. 后台加载图标，加载完再回填 + 启动轮换
     preloadAllIcons().then(() => {
         fillIconSlots();
         startIconRotators();
