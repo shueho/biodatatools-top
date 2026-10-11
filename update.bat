@@ -1,3 +1,3 @@
 git add .
-git commit -a -m "update"
-git push --set-upstream origin main
+git commit -m "update"
+git push
