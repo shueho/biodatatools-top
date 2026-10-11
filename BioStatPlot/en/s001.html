@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistics Calculator - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Statistics Calculator</h2>
+            <p>Compute mean, standard deviation, standard error, skewness, kurtosis and other statistics for numeric columns grouped by group columns.</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Specify Group Columns and Value Columns</div>
+
+            <div class="info-box" style="margin-top:0;">
+                This page requires <strong>long-format data</strong> (one row per replicate). If your data is in wide format (one column per replicate), please use the
+                <a href="../../en/022.Wide_long_table_reshaping.html" target="_blank" style="color:#1f4068;font-weight:600;">Wide-to-Long Table Reshaping</a>
+                tool to convert it first.
+            </div>
+
+            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:18px 0 8px;">
+                Group columns (multiple selection allowed; leave empty to treat all data as one group)
+            </div>
+            <div id="groupColsBox" class="param-inline" style="gap:8px 20px;min-height:30px;">
+                <span style="color:#999;font-size:14px;">Select after importing data</span>
+            </div>
+
+            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:18px 0 8px;">
+                Value columns (multiple selection allowed)
+            </div>
+            <div id="valueColsBox" class="param-inline" style="gap:8px 20px;min-height:30px;">
+                <span style="color:#999;font-size:14px;">Select after importing data</span>
+            </div>
+
+            <div class="btn-group" style="margin-top:18px;">
+                <button class="btn" id="calcBtn">Calculate Statistics</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Results & Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportCsvBtn" disabled>Export Table</button>
+                <button class="btn" id="copyTableBtn" disabled>Copy Table</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+
+            <div class="info-box" style="margin-top:0;">
+                <strong>Statistics reference:</strong>
+                n = number of valid values; Sum = total sum; Mean = arithmetic mean;
+                SD = sample standard deviation (df = n−1); SD_Population = population standard deviation (df = n);
+                SEM = standard error of the mean; Median = median;
+                Min / Max = minimum / maximum; Range = max − min;
+                Q1 / Q3 = lower / upper quartile; IQR = interquartile range;
+                CV(%) = coefficient of variation; Skewness = sample skewness; SE_Skewness = standard error of skewness;
+                Kurtosis = sample excess kurtosis (Fisher); SE_Kurtosis = standard error of kurtosis;
+                CI95_Lower / CI95_Upper = lower / upper bound of 95% confidence interval.
+            </div>
+
+            <div class="table-wrap" id="resultTableWrap" style="max-height:560px;">
+                <div class="empty-tip">Results will be displayed here</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/plot-bootstrap.js"></script>
+    <script src="../COMMON/plot-header.js"></script>
+    <script src="../COMMON/plot-footer-en.js"></script>
+    <script src="../COMMON/plot-common.js"></script>
+
+    <script>
+    (function () {
+        'use strict';
+
+        const state = {
+            headers: [],
+            data: [],
+            columnTypes: {},
+            groupCols: [],
+            valueCols: [],
+            result: null
+        };
+
+        const $ = id => document.getElementById(id);
+        const groupColsBox = $('groupColsBox');
+        const valueColsBox = $('valueColsBox');
+        const resultTableWrap = $('resultTableWrap');
+        const exportCsvBtn = $('exportCsvBtn');
+        const copyTableBtn = $('copyTableBtn');
+        const toolbarTip = $('toolbarTip');
+
+        const EXAMPLE_DATA =
+            'Factor1\tFactor2\tValue1\tValue2\n' +
+            'A\ta\t85\t42\n' +
+            'A\ta\t88\t45\n' +
+            'A\ta\t82\t40\n' +
+            'A\ta\t86\t43\n' +
+            'A\ta\t84\t41\n' +
+            'A\tb\t78\t36\n' +
+            'A\tb\t80\t38\n' +
+            'A\tb\t75\t34\n' +
+            'A\tb\t79\t37\n' +
+            'A\tb\t77\t35\n' +
+            'A\tc\t70\t30\n' +
+            'A\tc\t72\t32\n' +
+            'A\tc\t68\t28\n' +
+            'A\tc\t71\t31\n' +
+            'A\tc\t69\t29\n' +
+            'B\ta\t90\t48\n' +
+            'B\ta\t92\t50\n' +
+            'B\ta\t88\t46\n' +
+            'B\ta\t91\t49\n' +
+            'B\ta\t89\t47\n' +
+            'B\tb\t82\t40\n' +
+            'B\tb\t84\t42\n' +
+            'B\tb\t80\t38\n' +
+            'B\tb\t83\t41\n' +
+            'B\tb\t81\t39\n' +
+            'B\tc\t75\t34\n' +
+            'B\tc\t77\t36\n' +
+            'B\tc\t73\t32\n' +
+            'B\tc\t76\t35\n' +
+            'B\tc\t74\t33\n' +
+            'C\ta\t95\t54\n' +
+            'C\ta\t97\t56\n' +
+            'C\ta\t93\t52\n' +
+            'C\ta\t96\t55\n' +
+            'C\ta\t94\t53\n' +
+            'C\tb\t88\t46\n' +
+            'C\tb\t90\t48\n' +
+            'C\tb\t86\t44\n' +
+            'C\tb\t89\t47\n' +
+            'C\tb\t87\t45\n' +
+            'C\tc\t80\t40\n' +
+            'C\tc\t82\t42\n' +
+            'C\tc\t78\t38\n' +
+            'C\tc\t81\t41\n' +
+            'C\tc\t79\t39';
+
+
+        function t95(df) {
+            if (df <= 0) return 0;
+            const table = {
+                1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
+                6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+                11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
+                16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
+                21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
+                26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042
+            };
+            return table[df] || 1.96;
+        }
+
+        function quantile(sorted, p) {
+            const n = sorted.length;
+            if (n === 0) return 0;
+            if (n === 1) return sorted[0];
+            const pos = (n - 1) * p;
+            const lo = Math.floor(pos);
+            const hi = Math.ceil(pos);
+            if (lo === hi) return sorted[lo];
+            const frac = pos - lo;
+            return sorted[lo] * (1 - frac) + sorted[hi] * frac;
+        }
+
+        function calcStats(values) {
+            const n = values.length;
+            if (n === 0) return null;
+
+            const sorted = values.slice().sort((a, b) => a - b);
+
+            let sum = 0;
+            for (const v of values) sum += v;
+            const mean = sum / n;
+
+            let ss = 0, m3 = 0, m4 = 0;
+            for (const v of values) {
+                const d = v - mean;
+                ss += d * d;
+                m3 += d * d * d;
+                m4 += d * d * d * d;
+            }
+
+            const sd = n > 1 ? Math.sqrt(ss / (n - 1)) : 0;
+            const sdPop = Math.sqrt(ss / n);
+            const sem = n > 1 ? sd / Math.sqrt(n) : 0;
+
+            const median = (n % 2 === 1)
+                ? sorted[(n - 1) / 2]
+                : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+
+            const min = sorted[0];
+            const max = sorted[n - 1];
+            const range = max - min;
+
+            const q1 = quantile(sorted, 0.25);
+            const q3 = quantile(sorted, 0.75);
+            const iqr = q3 - q1;
+
+            const cv = mean !== 0 ? (sd / Math.abs(mean)) * 100 : 0;
+
+            /* Skewness (adjusted Fisher-Pearson sample skewness) */
+            let skewness = null, seSkewness = null;
+            if (n > 2 && sd > 0) {
+                skewness = (n / ((n - 1) * (n - 2))) * (m3 / Math.pow(sd, 3));
+                seSkewness = Math.sqrt(6 * n * (n - 1) / ((n - 2) * (n + 1) * (n + 3)));
+            }
+
+            /* Kurtosis (sample excess kurtosis, Fisher) */
+            let kurtosis = null, seKurtosis = null;
+            if (n > 3 && sd > 0) {
+                kurtosis = (n * (n + 1) / ((n - 1) * (n - 2) * (n - 3))) * (m4 / Math.pow(sd, 4))
+                         - 3 * (n - 1) * (n - 1) / ((n - 2) * (n - 3));
+                seKurtosis = 2 * seSkewness * Math.sqrt((n * n - 1) / ((n - 3) * (n + 5)));
+            }
+
+            const tVal = t95(n - 1);
+            const ciHalf = tVal * sem;
+            const ciLower = mean - ciHalf;
+            const ciUpper = mean + ciHalf;
+
+            return {
+                n, sum, mean,
+                sd, sdPop, sem,
+                median,
+                min, max, range,
+                q1, q3, iqr,
+                cv,
+                skewness, seSkewness,
+                kurtosis, seKurtosis,
+                ciHalf, ciLower, ciUpper
+            };
+        }
+
+        function onDataImported(res) {
+            state.headers = res.headers;
+            state.data = res.data;
+            state.columnTypes = res.columnTypes || {};
+
+            const catCols = res.headers.filter(h =>
+                state.columnTypes[h] === 'categorical' || state.columnTypes[h] === 'date'
+            );
+            const numCols = res.headers.filter(h => state.columnTypes[h] === 'numeric');
+
+            state.groupCols = catCols.slice();
+            state.valueCols = numCols.slice();
+
+            renderColCheckboxes();
+            resetResults();
+        }
+
+        function renderColCheckboxes() {
+            if (!state.headers.length) {
+                groupColsBox.innerHTML = '<span style="color:#999;font-size:14px;">Select after importing data</span>';
+                valueColsBox.innerHTML = '<span style="color:#999;font-size:14px;">Select after importing data</span>';
+                return;
+            }
+
+            function makeHTML(cls, selected) {
+                return state.headers.map(h => {
+                    const t = state.columnTypes[h] || '';
+                    const tag = t ? `<span class="col-type-tag ${t}">${t}</span>` : '';
+                    const checked = selected.includes(h) ? 'checked' : '';
+                    return `<label><input type="checkbox" class="${cls}" value="${PlotCommon.escapeHtml(h)}" ${checked}> ${PlotCommon.escapeHtml(h)} ${tag}</label>`;
+                }).join('');
+            }
+
+            groupColsBox.innerHTML = makeHTML('group-col-cb', state.groupCols);
+            valueColsBox.innerHTML = makeHTML('value-col-cb', state.valueCols);
+
+            groupColsBox.querySelectorAll('.group-col-cb').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    state.groupCols = Array.from(
+                        groupColsBox.querySelectorAll('.group-col-cb:checked')
+                    ).map(x => x.value);
+                    resetResults();
+                });
+            });
+
+            valueColsBox.querySelectorAll('.value-col-cb').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    state.valueCols = Array.from(
+                        valueColsBox.querySelectorAll('.value-col-cb:checked')
+                    ).map(x => x.value);
+                    resetResults();
+                });
+            });
+        }
+
+
+        function compute() {
+            if (!state.data.length) {
+                showTip('msgTip3', '❌ Please import data first', 'error');
+                return;
+            }
+            if (!state.valueCols.length) {
+                showTip('msgTip3', '❌ Please select at least one value column', 'error');
+                return;
+            }
+
+            const groups = new Map();
+            state.data.forEach(row => {
+                const keyVals = state.groupCols.map(c => {
+                    const v = row[c];
+                    return (v === undefined || v === null) ? '' : String(v);
+                });
+                const key = keyVals.join('\u0001');
+                if (!groups.has(key)) {
+                    groups.set(key, { keyValues: keyVals, rows: [] });
+                }
+                groups.get(key).rows.push(row);
+            });
+
+            const sortedGroups = Array.from(groups.values()).sort((a, b) => {
+                for (let i = 0; i < a.keyValues.length; i++) {
+                    const cmp = String(a.keyValues[i]).localeCompare(String(b.keyValues[i]));
+                    if (cmp !== 0) return cmp;
+                }
+                return 0;
+            });
+
+            const resultHeaders = [
+                ...state.groupCols,
+                'Variable',
+                'n', 'Sum', 'Mean',
+                'SD', 'SD_Population', 'SEM',
+                'Median', 'Min', 'Max', 'Range',
+                'Q1', 'Q3', 'IQR',
+                'CV(%)',
+                'Skewness', 'SE_Skewness',
+                'Kurtosis', 'SE_Kurtosis',
+                'CI95_Lower', 'CI95_Upper'
+            ];
+
+            const resultRows = [];
+
+            sortedGroups.forEach(g => {
+                state.valueCols.forEach(valCol => {
+                    const values = g.rows
+                        .map(r => parseFloat(r[valCol]))
+                        .filter(v => isFinite(v));
+
+                    if (!values.length) return;
+
+                    const s = calcStats(values);
+                    if (!s) return;
+
+                    resultRows.push([
+                        ...g.keyValues,
+                        valCol,
+                        s.n,
+                        s.sum,
+                        s.mean,
+                        s.sd,
+                        s.sdPop,
+                        s.sem,
+                        s.median,
+                        s.min,
+                        s.max,
+                        s.range,
+                        s.q1,
+                        s.q3,
+                        s.iqr,
+                        s.cv,
+                        s.skewness,
+                        s.seSkewness,
+                        s.kurtosis,
+                        s.seKurtosis,
+                        s.ciLower,
+                        s.ciUpper
+                    ]);
+                });
+            });
+
+            if (!resultRows.length) {
+                showTip('msgTip3', '❌ No valid results. Please check the selected value columns.', 'error');
+                state.result = null;
+                renderResultTable();
+                return;
+            }
+
+            state.result = { headers: resultHeaders, rows: resultRows };
+            renderResultTable();
+
+            exportCsvBtn.disabled = false;
+            copyTableBtn.disabled = false;
+            showTip('msgTip3', '✅ Statistics computed (' + resultRows.length + ' rows)', 'success');
+        }
+
+        function formatNum(v) {
+            if (v === null || v === undefined) return '';
+            if (!isFinite(v)) return '';
+            if (Number.isInteger(v)) return String(v);
+            return parseFloat(v.toFixed(4)).toString();
+        }
+
+        function getDisplayRows() {
+            if (!state.result || !state.result.rows.length) return null;
+            const { headers, rows } = state.result;
+            const groupCount = state.groupCols.length;
+            const varColIdx = groupCount;
+
+            return rows.map(row => row.map((v, i) => {
+                if (i <= varColIdx) return String(v);
+                if (headers[i] === 'n') return String(v);
+                return formatNum(v);
+            }));
+        }
+
+        function renderResultTable() {
+            const displayRows = getDisplayRows();
+            if (!displayRows) {
+                resultTableWrap.innerHTML = '<div class="empty-tip">Results will be displayed here</div>';
+                return;
+            }
+
+            const { headers } = state.result;
+
+            const thead = '<tr>' + headers.map(h =>
+                `<th>${PlotCommon.escapeHtml(h)}</th>`
+            ).join('') + '</tr>';
+
+            const tbody = displayRows.map(row =>
+                '<tr>' + row.map(cell =>
+                    `<td>${PlotCommon.escapeHtml(cell)}</td>`
+                ).join('') + '</tr>'
+            ).join('');
+
+            resultTableWrap.innerHTML = `
+                <table>
+                    <thead>${thead}</thead>
+                    <tbody>${tbody}</tbody>
+                </table>`;
+        }
+
+        function resetResults() {
+            state.result = null;
+            exportCsvBtn.disabled = true;
+            copyTableBtn.disabled = true;
+            toolbarTip.textContent = '';
+            $('msgTip3').textContent = '';
+            renderResultTable();
+        }
+
+
+        function escapeCSV(v) {
+            const s = String(v);
+            if (/[",\n\r]/.test(s)) {
+                return '"' + s.replace(/"/g, '""') + '"';
+            }
+            return s;
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        exportCsvBtn.addEventListener('click', () => {
+            const displayRows = getDisplayRows();
+            if (!displayRows) return;
+
+            const { headers } = state.result;
+            const csvRows = [
+                headers.map(escapeCSV).join(','),
+                ...displayRows.map(row => row.map(escapeCSV).join(','))
+            ];
+
+            const csv = '\uFEFF' + csvRows.join('\r\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            downloadBlob(blob, 'statistics_summary.csv');
+            toolbarTip.innerHTML = '<span class="success">✅ Table exported successfully</span>';
+        });
+
+
+        copyTableBtn.addEventListener('click', () => {
+            const displayRows = getDisplayRows();
+            if (!displayRows) return;
+
+            const { headers } = state.result;
+            const tsvRows = [
+                headers.join('\t'),
+                ...displayRows.map(row => row.join('\t'))
+            ];
+            const tsv = tsvRows.join('\n');
+
+            function done() {
+                toolbarTip.innerHTML = '<span class="success">✅ Table copied to clipboard</span>';
+                setTimeout(() => { toolbarTip.textContent = ''; }, 2500);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(tsv).then(done).catch(() => fallbackCopy(tsv, done));
+            } else {
+                fallbackCopy(tsv, done);
+            }
+        });
+
+        function fallbackCopy(text, done) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                done();
+            } catch (e) {
+                toolbarTip.innerHTML = '<span class="error">❌ Copy failed. Please select the table manually.</span>';
+            }
+            document.body.removeChild(ta);
+        }
+
+
+        function showTip(elId, msg, type) {
+            const el = $(elId);
+            el.className = 'tip-text ' + (type || '');
+            el.textContent = msg;
+            setTimeout(() => { el.textContent = ''; el.className = 'tip-text'; }, 3500);
+        }
+
+
+        function init() {
+            PlotCommon.renderImportPanel('importPanel', {
+                title: 'Step 1: Import Data',
+                infoBox: 'Must include a header row. Multi-factor or multi-response tables are supported. You can paste directly from Excel. Example: <strong>Factor1 (A/B/C) × Factor2 (a/b/c)</strong> two-factor grouping, two value columns <strong>Value1 / Value2</strong>, 5 replicates each, 45 rows total.',
+                exampleData: EXAMPLE_DATA,
+                defaultMode: 'file',
+                onImport: onDataImported,
+                onReset: resetAll
+            });
+
+            $('calcBtn').addEventListener('click', compute);
+
+            renderColCheckboxes();
+            resetResults();
+        }
+
+        function resetAll() {
+            state.headers = [];
+            state.data = [];
+            state.columnTypes = {};
+            state.groupCols = [];
+            state.valueCols = [];
+            state.result = null;
+            renderColCheckboxes();
+            resetResults();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
+</body>
+</html>

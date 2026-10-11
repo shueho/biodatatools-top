@@ -45,10 +45,9 @@ function injectRotatorStyles() {
 }
 
 /* ============================================================
-   图标探测：只探测本地，确定存在哪些文件
-   本地探测快且可靠，不会因为 CDN 不通而报一堆错误
+   图标探测
 ============================================================ */
-const iconFileCache       = new Map();  // id → 文件名数组（如 ['001-1.svg', '001-2.svg']）
+const iconFileCache       = new Map();
 const iconLoadingPromises = new Map();
 
 function probeImage(url) {
@@ -63,7 +62,6 @@ function probeImage(url) {
 async function resolveIconFiles(id) {
     if (!id || typeof id !== 'string') return [];
 
-    // 1. 本地按序探测 <id>-1.svg, <id>-2.svg ...
     const files = [];
     for (let i = 1; i <= ICON_PROBE_MAX; i++) {
         const name = `${id}-${i}.svg`;
@@ -71,7 +69,6 @@ async function resolveIconFiles(id) {
         else break;
     }
 
-    // 2. 没有序号文件时，本地兜底探测 <id>.svg / png / jpg ...
     if (!files.length) {
         for (const ext of ['svg', 'png', 'jpg', 'jpeg', 'gif', 'webp']) {
             const name = `${id}.${ext}`;
@@ -85,6 +82,7 @@ async function preloadAllIcons() {
     if (typeof toolCategories === 'undefined') return;
     const ids = new Set();
     toolCategories.forEach(cat => {
+        (cat.tools || []).forEach(t => { if (t.id) ids.add(t.id); });
         (cat.subcategories || []).forEach(sub => {
             (sub.tools || []).forEach(t => { if (t.id) ids.add(t.id); });
         });
@@ -100,19 +98,15 @@ async function preloadAllIcons() {
 }
 
 /* ============================================================
-   生成 <img> 标签：CDN 优先，失败自动回退本地
+   图标渲染
 ============================================================ */
 function iconImgTag(filename, cls = '', style = '') {
     const cdn   = CDN_BASE + filename;
     const local = LOCAL_BASE + filename;
-    // onerror 里把 onerror 置空，避免回退失败后无限循环
     return `<img src="${cdn}" class="${cls}" style="${style}"
                  onerror="this.onerror=null;this.src='${local}';">`;
 }
 
-/* ============================================================
-   图标渲染（占位符模式）
-============================================================ */
 function buildSlidesHtml(files) {
     return files.map((f, i) => {
         const state = (i === 0) ? 'icon-slide-in' : 'icon-slide-wait';
@@ -120,7 +114,6 @@ function buildSlidesHtml(files) {
     }).join('');
 }
 
-// 侧边栏小图标（占位符）
 function renderIcon(id, size = 24) {
     if (!id) return '';
     return `<span class="icon-slot" data-icon-id="${id}" data-icon-size="${size}"
@@ -128,7 +121,6 @@ function renderIcon(id, size = 24) {
                   style="display:inline-block;width:${size}px;height:${size}px;vertical-align:middle;"></span>`;
 }
 
-// 工具卡片大图标（占位符）
 function buildCardIconHtml(id) {
     if (!id) {
         return `<div class="icon" style="width:100%;height:100%;"></div>`;
@@ -137,7 +129,6 @@ function buildCardIconHtml(id) {
                   style="display:block;width:100%;height:100%;"></span>`;
 }
 
-// 图标加载完成后，把所有占位符替换为真实内容
 function fillIconSlots() {
     document.querySelectorAll('.icon-slot').forEach(slot => {
         const id   = slot.dataset.iconId;
@@ -287,17 +278,29 @@ function renderSideNav() {
         const catId = `cat-${catIdx}`;
         const li = document.createElement('li');
         li.innerHTML = `
-            <a class="parent-item" onclick="toggleCategory('${catId}')">${cat[LANG] || ''}</a>
+            <a class="parent-item" onclick="toggleCategory('${catId}'); scrollToCategory(${catIdx});">${cat[LANG] || ''}</a>
             <ul class="sub-menu open" id="${catId}"></ul>
         `;
         navList.appendChild(li);
 
         const subMenu = document.getElementById(catId);
+
+        /* 情况一：类别直接包含 tools（无子类别） */
+        if (cat.tools && cat.tools.length) {
+            cat.tools.forEach(tool => {
+                const toolLi = document.createElement('li');
+                toolLi.innerHTML = `<a onclick="scrollToTool('${tool.id}')">${renderIcon(tool.id, 18)} ${tool[LANG] || ''}</a>`;
+                subMenu.appendChild(toolLi);
+            });
+            return;
+        }
+
+        /* 情况二：类别包含子类别 */
         (cat.subcategories || []).forEach((sub, subIdx) => {
             const subId = `sub-${catIdx}-${subIdx}`;
             const subLi = document.createElement('li');
             subLi.innerHTML = `
-                <a class="sub-parent" onclick="toggleSubCategory('${subId}')">${sub[LANG] || ''}</a>
+                <a class="sub-parent" onclick="toggleSubCategory('${subId}'); scrollToSubCategory(${catIdx}, ${subIdx});">${sub[LANG] || ''}</a>
                 <ul class="sub-sub-menu" id="${subId}"></ul>
             `;
             subMenu.appendChild(subLi);
@@ -322,8 +325,27 @@ window.toggleSubCategory = function(id) {
     if (el) el.classList.toggle('open');
 };
 
+/* 滚动到工具卡片 */
 window.scrollToTool = function(toolId) {
     const target = document.getElementById(`tool-${toolId}`);
+    if (!target) return;
+    const headerHeight = document.querySelector('header')?.offsetHeight || 100;
+    const offsetTop = target.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
+    window.scrollTo({ top: offsetTop, behavior: 'smooth' });
+};
+
+/* 滚动到类别区块 */
+window.scrollToCategory = function(catIdx) {
+    const target = document.getElementById(`cat-sec-${catIdx}`);
+    if (!target) return;
+    const headerHeight = document.querySelector('header')?.offsetHeight || 100;
+    const offsetTop = target.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
+    window.scrollTo({ top: offsetTop, behavior: 'smooth' });
+};
+
+/* 滚动到子类别区块 */
+window.scrollToSubCategory = function(catIdx, subIdx) {
+    const target = document.getElementById(`sub-sec-${catIdx}-${subIdx}`);
     if (!target) return;
     const headerHeight = document.querySelector('header')?.offsetHeight || 100;
     const offsetTop = target.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
@@ -333,6 +355,36 @@ window.scrollToTool = function(toolId) {
 /* ============================================================
    工具卡片
 ============================================================ */
+function makeToolCard(tool) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tool-item-wrapper';
+
+    const card = document.createElement('a');
+    card.className = 'plot-card';
+    card.id = `tool-${tool.id}`;
+    card.innerHTML = buildCardIconHtml(tool.id);
+
+    const nameSpan = document.createElement('div');
+    nameSpan.className = 'tool-name';
+    nameSpan.textContent = tool[LANG] || '';
+
+    const handleClick = () => {
+        if (!tool.id || tool.id === 'xxx') {
+            alert(langConfig[LANG].comingSoon);
+            return;
+        }
+        window.open(getToolUrl(tool), '_blank');
+    };
+    card.addEventListener('click', handleClick);
+    nameSpan.addEventListener('click', handleClick);
+    card.style.cursor = 'pointer';
+    nameSpan.style.cursor = 'pointer';
+
+    wrapper.appendChild(card);
+    wrapper.appendChild(nameSpan);
+    return wrapper;
+}
+
 function renderToolCards() {
     const container = document.getElementById('toolList');
     if (!container) return;
@@ -343,15 +395,28 @@ function renderToolCards() {
         return;
     }
 
-    toolCategories.forEach(cat => {
+    toolCategories.forEach((cat, catIdx) => {
         const catDiv = document.createElement('div');
         catDiv.className = 'tool-category';
+        catDiv.id = `cat-sec-${catIdx}`;
         catDiv.innerHTML = `<h2 class="category-title">${cat[LANG] || ''}</h2>`;
         container.appendChild(catDiv);
 
-        (cat.subcategories || []).forEach(sub => {
+        /* 情况一：类别直接包含 tools */
+        if (cat.tools && cat.tools.length) {
+            const grid = document.createElement('div');
+            grid.className = 'sub-tool-grid';
+            grid.style.marginTop = '10px';
+            catDiv.appendChild(grid);
+            cat.tools.forEach(tool => grid.appendChild(makeToolCard(tool)));
+            return;
+        }
+
+        /* 情况二：类别包含子类别 */
+        (cat.subcategories || []).forEach((sub, subIdx) => {
             const subDiv = document.createElement('div');
             subDiv.className = 'sub-category';
+            subDiv.id = `sub-sec-${catIdx}-${subIdx}`;
             subDiv.innerHTML = `<h3 class="sub-title">${sub[LANG] || ''}</h3>`;
             catDiv.appendChild(subDiv);
 
@@ -359,35 +424,7 @@ function renderToolCards() {
             grid.className = 'sub-tool-grid';
             subDiv.appendChild(grid);
 
-            (sub.tools || []).forEach(tool => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'tool-item-wrapper';
-
-                const card = document.createElement('a');
-                card.className = 'plot-card';
-                card.id = `tool-${tool.id}`;
-                card.innerHTML = buildCardIconHtml(tool.id);
-
-                const nameSpan = document.createElement('div');
-                nameSpan.className = 'tool-name';
-                nameSpan.textContent = tool[LANG] || '';
-
-                const handleClick = () => {
-                    if (!tool.id) {
-                        alert(langConfig[LANG].comingSoon);
-                        return;
-                    }
-                    window.open(getToolUrl(tool), '_blank');
-                };
-                card.addEventListener('click', handleClick);
-                nameSpan.addEventListener('click', handleClick);
-                card.style.cursor = 'pointer';
-                nameSpan.style.cursor = 'pointer';
-
-                wrapper.appendChild(card);
-                wrapper.appendChild(nameSpan);
-                grid.appendChild(wrapper);
-            });
+            (sub.tools || []).forEach(tool => grid.appendChild(makeToolCard(tool)));
         });
     });
 }
@@ -397,7 +434,7 @@ function renderToolCards() {
 ============================================================ */
 function filterTools(keyword) {
     const kw = keyword.trim().toLowerCase();
-    const wrappers     = document.querySelectorAll('.tool-item-wrapper');
+    const wrappers      = document.querySelectorAll('.tool-item-wrapper');
     const subCategories = document.querySelectorAll('.sub-category');
     const categories    = document.querySelectorAll('.tool-category');
 
@@ -413,9 +450,11 @@ function filterTools(keyword) {
     });
 
     categories.forEach(cat => {
-        const anyVisible = Array.from(cat.querySelectorAll('.sub-category'))
+        const anyVisibleSub = Array.from(cat.querySelectorAll('.sub-category'))
             .some(sub => sub.style.display !== 'none');
-        cat.style.display = anyVisible ? '' : 'none';
+        const anyVisibleTool = Array.from(cat.querySelectorAll('.tool-item-wrapper'))
+            .some(w => w.style.display !== 'none');
+        cat.style.display = (anyVisibleSub || anyVisibleTool) ? '' : 'none';
     });
 }
 

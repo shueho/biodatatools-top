@@ -1,5 +1,4 @@
-﻿
-const toolCategories = [
+﻿const toolCategories = [
     {
         zh: '基础绘图',
         en: 'Basic Plots',
@@ -12,6 +11,7 @@ const toolCategories = [
                     { id: '002', zh: '华夫饼图', en: 'Waffle Chart' },
                     { id: '003', zh: '雷达图', en: 'Radar Chart' },
                     { id: '004', zh: '花瓣图', en: 'Petal Chart' },
+                    { id: '006', zh: '同心环图', en: 'Concentric Ring Chart' }
                 ]
             },
             {
@@ -19,35 +19,29 @@ const toolCategories = [
                 en: 'Bar Chart',
                 tools: [
                     { id: '005', zh: '径向条形图', en: 'Radial Bar Chart' },
-                    { id: 'xxx', zh: '堆叠柱形图', en: 'Stacked Bar Chart' }
+                    { id: 'xxx', zh: '开发中', en: 'NULL' }
                 ]
             },
             {
                 zh: '箱线图',
                 en: 'Box Plot',
                 tools: [
-                    { id: 'xxx', zh: '箱线图', en: 'Box Plot' }
+                    { id: 'xxx', zh: '开发中', en: 'NULL' }
                 ]
             },
-            {
-                zh: '小提琴图',
-                en: 'Violin Plot',
-                tools: [
-                    { id: 'xxx', zh: '小提琴图', en: 'Violin Plot' }
-                ]
-            },
+
             {
                 zh: '散点图',
                 en: 'Scatter Plot',
                 tools: [
-                    { id: 'xxx', zh: '散点图', en: 'Scatter Plot' }
+                    { id: 'xxx', zh: '开发中', en: 'NULL' }
                 ]
             },
             {
                 zh: '折线图',
                 en: 'Line Chart',
                 tools: [
-                    { id: 'xxx', zh: '折线图', en: 'Line Chart' }
+                    { id: 'xxx', zh: '开发中', en: 'NULL' }
                 ]
             }
         ]
@@ -56,21 +50,9 @@ const toolCategories = [
     {
         zh: '基础统计',
         en: 'Basic Statistics',
-        subcategories: [
-            {
-                zh: '差异表达',
-                en: 'Differential Expression',
-                tools: [
-                    { id: 'xxx', zh: '火山图', en: 'Volcano Plot' }
-                ]
-            },
-            {
-                zh: '表达矩阵',
-                en: 'Expression Matrix',
-                tools: [
-                    { id: 'xxx', zh: '热图', en: 'Heatmap' }
-                ]
-            }
+        tools: [
+            { id: 's001', zh: '统计量计算器', en: 'Statistics Calculator' },
+            { id: 'xxx', zh: '开发中', en: 'NULL' }
         ]
     },
 
