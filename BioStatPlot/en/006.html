@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>树轮图 - BioDataTools</title>
+    <title>Concentric Ring Chart - BioDataTools</title>
     <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/plot-common.css">
 </head>
@@ -13,189 +13,189 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>树轮图</h2>
-            <p>每个类别占据一个同心圆环，环的厚度按占比绘制，像树轮一样从内向外层层包裹。</p>
+            <h2>Concentric Ring Chart</h2>
+            <p>Each category occupies a concentric ring; ring thickness is drawn proportionally to its share, wrapping from inner to outer like tree rings.</p>
         </div>
 
         <div id="importPanel"></div>
 
         <div class="step-card">
-            <div class="step-title">第二步：指定数据列</div>
+            <div class="step-title">Step 2: Specify Data Columns</div>
             <div class="param-group">
-                <label>分类列：</label>
-                <select id="catColSel" disabled><option>— 请先导入数据 —</option></select>
-                <label>数值列：</label>
-                <select id="valColSel" disabled><option>— 请先导入数据 —</option></select>
+                <label>Category column:</label>
+                <select id="catColSel" disabled><option>— Please import data first —</option></select>
+                <label>Value column:</label>
+                <select id="valColSel" disabled><option>— Please import data first —</option></select>
             </div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第三步：选择色板与颜色</div>
+            <div class="step-title">Step 3: Choose Palette & Colors</div>
             <div class="param-group" style="margin-top:0;">
-                <label>排序依据：</label>
-                <select id="sortBy" disabled><option>— 请先导入数据 —</option></select>
-                <label>排序方向：</label>
+                <label>Sort by:</label>
+                <select id="sortBy" disabled><option>— Please import data first —</option></select>
+                <label>Sort direction:</label>
                 <select id="sortDir">
-                    <option value="asc" selected>正序</option>
-                    <option value="desc">倒序</option>
+                    <option value="asc" selected>Ascending</option>
+                    <option value="desc">Descending</option>
                 </select>
             </div>
-            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">分类色板</div>
+            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Categorical Palette</div>
             <div id="paletteDropdownContainer"></div>
             <div class="param-inline" style="margin-top:8px;">
-                <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
-                <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+                <label><input type="checkbox" id="reversePalette">Reverse palette order</label>
+                <label><input type="checkbox" id="cycleColors">Cycle palette colors</label>
             </div>
             <div id="colorAssignContainer" style="margin-top:16px;"></div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第四步：设置绘图参数</div>
+            <div class="step-title">Step 4: Set Plot Parameters</div>
 
             <div class="param-panel">
-                <div class="param-panel-title">画布尺寸</div>
+                <div class="param-panel-title">Canvas Size</div>
                 <div class="param-grid cols-4">
-                    <div class="param-item"><label>宽度(px)</label><input type="number" id="chartWidth" value="760" min="300" data-redraw></div>
-                    <div class="param-item"><label>高度(px)</label><input type="number" id="chartHeight" value="680" min="300" data-redraw></div>
+                    <div class="param-item"><label>Width (px)</label><input type="number" id="chartWidth" value="760" min="300" data-redraw></div>
+                    <div class="param-item"><label>Height (px)</label><input type="number" id="chartHeight" value="680" min="300" data-redraw></div>
                 </div>
                 <div class="param-inline" style="margin-top:8px;">
-                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>显示画布边框</label>
+                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>Show canvas border</label>
                 </div>
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">字体样式</div>
+                <div class="param-panel-title">Font Styles</div>
                 <div class="font-row">
-                    <span class="font-label">字体</span>
+                    <span class="font-label">Font</span>
                     <select id="fontFamily" data-redraw>
                         <option value="Times New Roman" selected>Times New Roman</option>
                         <option value="Arial">Arial</option>
                         <option value="Calibri">Calibri</option>
                         <option value="Helvetica">Helvetica</option>
-                        <option value="Microsoft YaHei">微软雅黑</option>
+                        <option value="Microsoft YaHei">Microsoft YaHei</option>
                     </select>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">标签</span>
+                    <span class="font-label">Label</span>
                     <input type="number" id="labelFontSize" value="13" min="6" max="36" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="labelBold" data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="labelItalic" data-redraw>斜</label>
+                    <label class="mini-check"><input type="checkbox" id="labelBold" data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="labelItalic" data-redraw>Italic</label>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">图例</span>
+                    <span class="font-label">Legend</span>
                     <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>斜</label>
+                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>Italic</label>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">图例标题</span>
+                    <span class="font-label">Legend Title</span>
                     <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>斜</label>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>Italic</label>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">标题</span>
+                    <span class="font-label">Title</span>
                     <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>斜</label>
+                    <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>Italic</label>
                 </div>
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">组件控制</div>
+                <div class="param-panel-title">Component Control</div>
                 <div class="font-row">
-                    <span class="font-label">图例</span>
-                    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>显示</label>
-                    <label>位置：
+                    <span class="font-label">Legend</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>Show</label>
+                    <label>Position:
                         <select id="legendPosition" data-redraw>
-                            <option value="right" selected>右侧</option>
-                            <option value="left">左侧</option>
-                            <option value="top">上方</option>
-                            <option value="bottom">下方</option>
+                            <option value="right" selected>Right</option>
+                            <option value="left">Left</option>
+                            <option value="top">Top</option>
+                            <option value="bottom">Bottom</option>
                         </select>
                     </label>
-                    <label>间距(px)：
+                    <label>Gap (px):
                         <input type="number" id="legendGap" value="30" min="0" max="120" step="5" style="width:70px;" data-redraw>
                     </label>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">图例标题</span>
-                    <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>显示</label>
-                    <label>内容：
+                    <span class="font-label">Legend Title</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>Show</label>
+                    <label>Content:
                         <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw>
                     </label>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">标题</span>
-                    <label class="mini-check"><input type="checkbox" id="showTitle" checked data-redraw>显示</label>
-                    <label>内容：
+                    <span class="font-label">Title</span>
+                    <label class="mini-check"><input type="checkbox" id="showTitle" checked data-redraw>Show</label>
+                    <label>Content:
                         <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw>
                     </label>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">标题间距</span>
+                    <span class="font-label">Title Gap</span>
                     <input type="number" id="titleGap" value="15" min="0" max="200" step="5" data-redraw>
                 </div>
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">树轮设置</div>
+                <div class="param-panel-title">Concentric Ring Settings</div>
                 <div class="param-grid cols-4">
-                    <div class="param-item"><label>内半径</label><input type="number" id="innerRadius" value="40" min="0" max="600" step="5" data-redraw></div>
-                    <div class="param-item"><label>外半径</label><input type="number" id="outerRadius" value="250" min="60" max="1000" step="10" data-redraw></div>
-                    <div class="param-item"><label>环间隙(px)</label><input type="number" id="ringGap" value="3" min="0" max="40" step="0.5" data-redraw></div>
-                    <div class="param-item"><label>起始角度(°)</label><input type="number" id="startAngle" value="0" min="-360" max="720" step="5" data-redraw></div>
-                    <div class="param-item"><label>终止角度(°)</label><input type="number" id="endAngle" value="360" min="-360" max="720" step="5" data-redraw></div>
+                    <div class="param-item"><label>Inner Radius</label><input type="number" id="innerRadius" value="40" min="0" max="600" step="5" data-redraw></div>
+                    <div class="param-item"><label>Outer Radius</label><input type="number" id="outerRadius" value="280" min="60" max="1000" step="10" data-redraw></div>
+                    <div class="param-item"><label>Ring Gap (px)</label><input type="number" id="ringGap" value="3" min="0" max="40" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>Start Angle (°)</label><input type="number" id="startAngle" value="0" min="-360" max="720" step="5" data-redraw></div>
+                    <div class="param-item"><label>End Angle (°)</label><input type="number" id="endAngle" value="360" min="-360" max="720" step="5" data-redraw></div>
                     <div class="param-item">
-                        <label>环顺序</label>
+                        <label>Ring Order</label>
                         <select id="ringOrder" data-redraw>
-                            <option value="inner" selected>第一项在最内圈</option>
-                            <option value="outer">第一项在最外圈</option>
+                            <option value="inner" selected>First item innermost</option>
+                            <option value="outer">First item outermost</option>
                         </select>
                     </div>
                 </div>
                 <div class="param-inline" style="margin-top:10px;">
-                    <label><input type="checkbox" id="showRingStroke" checked data-redraw>显示环描边</label>
-                    <label>描边色：<input type="color" id="ringStrokeColor" value="#ffffff" data-redraw></label>
-                    <label>描边宽度：<input type="number" id="ringStrokeWidth" value="1" min="0" max="6" step="0.5" style="width:70px;" data-redraw></label>
+                    <label><input type="checkbox" id="showRingStroke" checked data-redraw>Show ring outline</label>
+                    <label>Outline color: <input type="color" id="ringStrokeColor" value="#ffffff" data-redraw></label>
+                    <label>Outline width: <input type="number" id="ringStrokeWidth" value="1" min="0" max="6" step="0.5" style="width:70px;" data-redraw></label>
                 </div>
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">标签</div>
+                <div class="param-panel-title">Labels</div>
                 <div class="font-row">
-                    <span class="font-label">标签</span>
-                    <label>内容：
+                    <span class="font-label">Label</span>
+                    <label>Content:
                         <select id="labelContent" data-redraw>
-                            <option value="none" selected>不显示</option>
-                            <option value="name">类别名</option>
-                            <option value="value">原始值</option>
-                            <option value="pct">百分比</option>
-                            <option value="name_pct">类别名 + 百分比</option>
+                            <option value="none" selected>None</option>
+                            <option value="name">Category name</option>
+                            <option value="value">Raw value</option>
+                            <option value="pct">Percentage</option>
+                            <option value="name_pct">Name + Percentage</option>
                         </select>
                     </label>
-                    <label>小数位：
+                    <label>Decimals:
                         <input type="number" id="labelDecimals" value="1" min="0" max="4" step="1" style="width:70px;" data-redraw>
                     </label>
                 </div>
             </div>
 
             <div class="btn-group">
-                <button class="btn" id="drawBtn">绘制图表</button>
+                <button class="btn" id="drawBtn">Draw Chart</button>
             </div>
             <div id="msgTip3" class="tip-text"></div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第五步：预览与导出</div>
+            <div class="step-title">Step 5: Preview & Export</div>
             <div class="result-toolbar">
-                <button class="btn" id="exportSvgBtn" disabled>导出 SVG</button>
-                <button class="btn" id="exportPngBtn" disabled>导出 PNG</button>
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
                 <span class="spacer"></span>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div class="chart-preview" id="chartPreview">
-                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+                <div class="placeholder">After importing data and completing settings, click "Draw Chart" to view results.</div>
             </div>
         </div>
     </div>
@@ -204,7 +204,7 @@
 
     <script src="../COMMON/plot-bootstrap.js"></script>
     <script src="../COMMON/plot-header.js"></script>
-    <script src="../COMMON/plot-footer.js"></script>
+    <script src="../COMMON/plot-footer-en.js"></script>
     <script src="../COMMON/plot-common.js"></script>
 
     <script>
@@ -240,13 +240,13 @@
 
             const EXAMPLE_DATA =
                 'Category\tValue\n' +
-                'A\t180\n' +
-                'B\t320\n' +
-                'C\t75\n' +
-                'D\t240\n' +
-                'E\t50\n' +
-                'F\t150\n' +
-                'G\t290';
+                'A\t420\n' +
+                'B\t120\n' +
+                'C\t300\n' +
+                'D\t80\n' +
+                'E\t380\n' +
+                'F\t160\n' +
+                'G\t240';
 
             legendTitleInput.addEventListener('input', () => {
                 state.legendTitleEdited = true;
@@ -280,8 +280,8 @@
 
             function fillRoleSelects() {
                 if (!state.headers.length) {
-                    catColSel.innerHTML = '<option>— 请先导入数据 —</option>';
-                    valColSel.innerHTML = '<option>— 请先导入数据 —</option>';
+                    catColSel.innerHTML = '<option>— Please import data first —</option>';
+                    valColSel.innerHTML = '<option>— Please import data first —</option>';
                     catColSel.disabled = true;
                     valColSel.disabled = true;
                     return;
@@ -297,7 +297,7 @@
 
             function fillSortBySelect() {
                 state.sortBy = PlotCommon.fillSortBySelect(sortBySel, state.headers, state.sortBy, {
-                    inputLabel: '输入顺序'
+                    inputLabel: 'Input order'
                 });
             }
 
@@ -363,7 +363,7 @@
                 const items = getCategoryItems();
                 if (!items.length) {
                     colorAssignContainer.innerHTML =
-                        '<div class="color-assign-empty">选择分类列后将在此处显示每个类别的颜色</div>';
+                        '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
                     return;
                 }
                 const baseColors = resolvePaletteColors(items.length);
@@ -416,7 +416,7 @@
                     height: Math.max(200, num('chartHeight', 680)),
 
                     innerRadius: Math.max(0, num('innerRadius', 40)),
-                    outerRadius: Math.max(60, num('outerRadius', 250)),
+                    outerRadius: Math.max(60, num('outerRadius', 280)),
                     ringGap: Math.max(0, num('ringGap', 3)),
                     startAngle: num('startAngle', 0),
                     endAngle: num('endAngle', 360),
@@ -555,17 +555,17 @@
                 toolbarTip.textContent = '';
 
                 if (!state.data.length) {
-                    showTip('msgTip3', '❌ 请先导入数据', 'error');
+                    showTip('msgTip3', '❌ Please import data first', 'error');
                     return;
                 }
                 if (!state.roles.category || !state.roles.value) {
-                    showTip('msgTip3', '❌ 请在第 2 步选择分类列和数值列', 'error');
+                    showTip('msgTip3', '❌ Please select category and value columns in Step 2', 'error');
                     return;
                 }
 
                 const items = getCategoryItems();
                 if (!items.length) {
-                    showTip('msgTip3', '❌ 未能生成有效绘图数据，请检查数值列', 'error');
+                    showTip('msgTip3', '❌ No valid data to plot. Please check the value column.', 'error');
                     return;
                 }
 
@@ -585,17 +585,8 @@
                     wantLegend
                 } = L;
 
-                /* ============================================================
-                   径向分配：环厚度 ∝ 占比
-                   - 总径向空间 = outerR - innerR
-                   - 总间隙 = gap × (N-1)
-                   - 可用空间 = 总空间 - 总间隙
-                   - 每个环的厚度 = 占比 × 可用空间
-                   - 顺序：ringOrder = 'inner' → 第一项在最内；'outer' → 第一项在最外
-                   ============================================================ */
                 const totalSpace = outerR - innerR;
 
-                /* 自动压缩间隙，避免空间不够 */
                 let gapPx = p.ringGap;
                 const maxGapPerRing = (N > 1) ? (totalSpace / (N * 3)) : 0;
                 if (gapPx > maxGapPerRing) gapPx = maxGapPerRing;
@@ -603,36 +594,28 @@
                 const totalGap = (N > 1) ? gapPx * (N - 1) : 0;
                 const usableSpace = Math.max(1, totalSpace - totalGap);
 
-                /* 按顺序排列后计算每个环的 rIn / rOut */
                 const ordered = (p.ringOrder === 'outer') ? items.slice().reverse() : items.slice();
-                /* ordered[0] 在内，ordered[N-1] 在外 */
                 let cursor = innerR;
                 ordered.forEach((it, idx) => {
                     const thickness = it.percent * usableSpace;
                     it.rIn = cursor;
                     it.rOut = cursor + thickness;
                     it.midR = (it.rIn + it.rOut) / 2;
-                    it._orderIdx = idx;
                     cursor = it.rOut + (idx < N - 1 ? gapPx : 0);
                 });
 
-                /* 颜色索引：与 items 数组保持一致 */
                 items.forEach((it, i) => { it._colorIdx = i; });
 
-                /* ---- 角度 ---- */
+                /* Angles */
                 let startDeg = p.startAngle;
                 let endDeg = p.endAngle;
                 if (endDeg <= startDeg) endDeg += 360;
-                if (endDeg - startDeg >= 359.5) {
-                    /* 完整圆 */
-                    endDeg = startDeg + 360;
-                }
+                const isFullCircle = (endDeg - startDeg) >= 359.5;
+                if (isFullCircle) endDeg = startDeg + 360;
+
                 const startRad = startDeg * Math.PI / 180;
                 const endRad = endDeg * Math.PI / 180;
-                const spanRad = endRad - startRad;
-                const isFullCircle = spanRad >= 2 * Math.PI - 0.01;
 
-                /* ---- SVG ---- */
                 const svg = d3.select(chartPreview).html('')
                     .append('svg')
                     .attr('width', width)
@@ -669,18 +652,17 @@
 
                 const g = svg.append('g').attr('transform', `translate(${cx},${cy})`);
 
-                /* ---- 环 ---- */
+                /* Rings */
                 const arcGen = d3.arc()
                     .innerRadius(d => d.rIn)
                     .outerRadius(d => d.rOut)
                     .startAngle(startRad)
                     .endAngle(endRad);
 
-                /* ordered 已按内→外排列，绘制时按此顺序（外圈后绘制，覆盖边缘） */
-                g.selectAll('path.tree-ring')
+                g.selectAll('path.concentric-ring')
                     .data(ordered).enter()
                     .append('path')
-                    .attr('class', 'tree-ring')
+                    .attr('class', 'concentric-ring')
                     .attr('d', arcGen)
                     .attr('fill', d => colors[d._colorIdx])
                     .attr('stroke', p.showRingStroke ? p.ringStrokeColor : 'none')
@@ -695,15 +677,19 @@
                             .attr('transform', 'scale(1)');
                     });
 
-                /* ---- 标签 ---- */
+                /* Labels */
                 if (p.labelContent !== 'none') {
                     const labelWeight = p.labelBold ? 'bold' : 'normal';
                     const labelStyle = p.labelItalic ? 'italic' : 'normal';
-                    /* 弧中点（钟面角，0 = 顶部，顺时针） */
-                    const midDeg = startDeg + (endDeg - startDeg) / 2;
+                    const midDeg = isFullCircle
+                        ? startDeg
+                        : startDeg + (endDeg - startDeg) / 2;
                     const midRad = midDeg * Math.PI / 180;
 
                     ordered.forEach(d => {
+                        const thickness = d.rOut - d.rIn;
+                        if (thickness < 6) return;
+
                         let txt = '';
                         switch (p.labelContent) {
                             case 'name':
@@ -721,16 +707,13 @@
                         }
                         if (!txt) return;
 
-                        /* 钟面角 → SVG 坐标：x = r·sin(θ), y = -r·cos(θ) */
+                        let fs = p.labelFontSize;
+                        if (thickness < fs * 1.1) {
+                            fs = Math.max(6, thickness * 0.85);
+                        }
+
                         const lx = d.midR * Math.sin(midRad);
                         const ly = -d.midR * Math.cos(midRad);
-
-                        /* 若环太薄，标签字号自动缩小 */
-                        const ringThickness = d.rOut - d.rIn;
-                        let fs = p.labelFontSize;
-                        if (ringThickness < fs * 1.1) {
-                            fs = Math.max(6, ringThickness * 0.85);
-                        }
 
                         g.append('text')
                             .attr('x', lx)
@@ -746,7 +729,7 @@
                     });
                 }
 
-                /* ---- 图例 ---- */
+                /* Legend */
                 if (wantLegend) {
                     const legendGroup = svg.append('g').attr('class', 'chart-legend');
                     const markerSize = p.legendFontSize;
@@ -837,7 +820,7 @@
 
                 exportSvgBtn.disabled = false;
                 exportPngBtn.disabled = false;
-                showTip('msgTip3', '✅ 图表绘制完成', 'success');
+                showTip('msgTip3', '✅ Chart drawn successfully', 'success');
             }
 
             function getSvgWithoutBorder() {
@@ -850,16 +833,16 @@
             exportSvgBtn.addEventListener('click', () => {
                 const svg = getSvgWithoutBorder();
                 if (!svg) return;
-                PlotCommon.downloadSVG(svg, 'tree_ring_chart.svg');
-                toolbarTip.innerHTML = '<span class="success">✅ SVG 导出成功</span>';
+                PlotCommon.downloadSVG(svg, 'concentric_ring_chart.svg');
+                toolbarTip.innerHTML = '<span class="success">✅ SVG exported successfully</span>';
             });
 
             exportPngBtn.addEventListener('click', () => {
                 const svg = getSvgWithoutBorder();
                 if (!svg) return;
-                PlotCommon.downloadPNG(svg, 'tree_ring_chart.png', 2, '#ffffff')
-                    .then(() => { toolbarTip.innerHTML = '<span class="success">✅ PNG 导出成功</span>'; })
-                    .catch(() => { toolbarTip.innerHTML = '<span class="error">❌ PNG 导出失败</span>'; });
+                PlotCommon.downloadPNG(svg, 'concentric_ring_chart.png', 2, '#ffffff')
+                    .then(() => { toolbarTip.innerHTML = '<span class="success">✅ PNG exported successfully</span>'; })
+                    .catch(() => { toolbarTip.innerHTML = '<span class="error">❌ PNG export failed</span>'; });
             });
 
             function showTip(elId, msg, type) {
@@ -870,7 +853,7 @@
             }
 
             function resetChart() {
-                chartPreview.innerHTML = '<div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>';
+                chartPreview.innerHTML = '<div class="placeholder">After importing data and completing settings, click "Draw Chart" to view results.</div>';
                 state.currentSvg = null;
                 exportSvgBtn.disabled = true;
                 exportPngBtn.disabled = true;
@@ -891,7 +874,7 @@
                 fillRoleSelects();
                 fillSortBySelect();
                 colorAssignContainer.innerHTML =
-                    '<div class="color-assign-empty">选择分类列后将在此处显示每个类别的颜色</div>';
+                    '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
                 resetChart();
             }
 
@@ -903,8 +886,8 @@
 
             function init() {
                 PlotCommon.renderImportPanel('importPanel', {
-                    title: '第一步：导入数据',
-                    infoBox: '需包含表头，且至少包含 <strong>分类列</strong> 和 <strong>数值列</strong>。可直接粘贴 Excel 内容。',
+                    title: 'Step 1: Import Data',
+                    infoBox: 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. You can paste directly from Excel.',
                     exampleData: EXAMPLE_DATA,
                     defaultMode: 'file',
                     onImport: onDataImported,
@@ -914,7 +897,7 @@
                 fillRoleSelects();
                 fillSortBySelect();
                 colorAssignContainer.innerHTML =
-                    '<div class="color-assign-empty">选择分类列后将在此处显示每个类别的颜色</div>';
+                    '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
                 resetChart();
             }
 
@@ -928,7 +911,7 @@
         console.error(err);
         const box = document.getElementById('chartPreview');
         if (box) {
-            box.innerHTML = '<div class="placeholder" style="color:#c00;">❌ 无法加载 d3，请检查网络后刷新</div>';
+            box.innerHTML = '<div class="placeholder" style="color:#c00;">❌ Failed to load d3. Please check your network and refresh.</div>';
         }
     });
     </script>
