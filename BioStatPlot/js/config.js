@@ -18,7 +18,7 @@ const toolCategories = [
                 zh: '柱形图',
                 en: 'Bar Chart',
                 tools: [
-                    { id: 'xxx', zh: '分组柱形图', en: 'Grouped Bar Chart' },
+                    { id: '005', zh: '径向条形图', en: 'Radial Bar Chart' },
                     { id: 'xxx', zh: '堆叠柱形图', en: 'Stacked Bar Chart' }
                 ]
             },

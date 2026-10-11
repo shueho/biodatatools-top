@@ -932,14 +932,14 @@
             exportSvgBtn.addEventListener('click', () => {
                 const svg = getSvgWithoutBorder();
                 if (!svg) return;
-                PlotCommon.downloadSVG(svg, 'orbit_chart.svg');
+                PlotCommon.downloadSVG(svg, 'bar_chart.svg');
                 toolbarTip.innerHTML = '<span class="success">✅ SVG 导出成功</span>';
             });
 
             exportPngBtn.addEventListener('click', () => {
                 const svg = getSvgWithoutBorder();
                 if (!svg) return;
-                PlotCommon.downloadPNG(svg, 'orbit_chart.png', 2, '#ffffff')
+                PlotCommon.downloadPNG(svg, 'bar_chart.png', 2, '#ffffff')
                     .then(() => { toolbarTip.innerHTML = '<span class="success">✅ PNG 导出成功</span>'; })
                     .catch(() => { toolbarTip.innerHTML = '<span class="error">❌ PNG 导出失败</span>'; });
             });
