@@ -14,7 +14,7 @@
     <div class="main">
         <div class="page-intro">
             <h2>Radial Bar Chart</h2>
-            <p>Each category occupies a concentric track; arc length is drawn proportionally to value, with optional full-circle reference and error bars.</p>
+            <p>Each category occupies a concentric orbit, with arc length drawn proportionally to the value. You can specify a full-circle reference value and add error bars.</p>
         </div>
 
         <div id="importPanel"></div>
@@ -30,17 +30,17 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 3: Choose Palette & Colors</div>
+            <div class="step-title">Step 3: Choose Palette and Colors</div>
             <div class="param-group" style="margin-top:0;">
                 <label>Sort by:</label>
                 <select id="sortBy" disabled><option>— Please import data first —</option></select>
-                <label>Sort direction:</label>
+                <label>Sort order:</label>
                 <select id="sortDir">
                     <option value="desc" selected>Descending</option>
                     <option value="asc">Ascending</option>
                 </select>
             </div>
-            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Categorical Palette</div>
+            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Category Palette</div>
             <div id="paletteDropdownContainer"></div>
             <div class="param-inline" style="margin-top:8px;">
                 <label><input type="checkbox" id="reversePalette">Reverse palette order</label>
@@ -64,7 +64,7 @@
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">Font Styles</div>
+                <div class="param-panel-title">Font Style</div>
                 <div class="font-row">
                     <span class="font-label">Font</span>
                     <select id="fontFamily" data-redraw>
@@ -76,7 +76,7 @@
                     </select>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">Label</span>
+                    <span class="font-label">Labels</span>
                     <input type="number" id="labelFontSize" value="13" min="6" max="36" data-redraw>
                     <label class="mini-check"><input type="checkbox" id="labelBold" data-redraw>Bold</label>
                     <label class="mini-check"><input type="checkbox" id="labelItalic" data-redraw>Italic</label>
@@ -98,6 +98,19 @@
                     <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
                     <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>Bold</label>
                     <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>Italic</label>
+                    <label>Position:
+                        <select id="titlePosition" data-redraw>
+                            <option value="top-center" selected>Top Center</option>
+                            <option value="top-left">Top Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="middle-center">Middle Center</option>
+                            <option value="middle-left">Middle Left</option>
+                            <option value="middle-right">Middle Right</option>
+                            <option value="bottom-center">Bottom Center</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="bottom-right">Bottom Right</option>
+                        </select>
+                    </label>
                 </div>
             </div>
 
@@ -121,25 +134,21 @@
                 <div class="font-row">
                     <span class="font-label">Legend Title</span>
                     <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>Show</label>
-                    <label>Content:
+                    <label>Text:
                         <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw>
                     </label>
                 </div>
                 <div class="font-row">
                     <span class="font-label">Title</span>
                     <label class="mini-check"><input type="checkbox" id="showTitle" checked data-redraw>Show</label>
-                    <label>Content:
+                    <label>Text:
                         <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw>
                     </label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">Title Gap</span>
-                    <input type="number" id="titleGap" value="15" min="0" max="200" step="5" data-redraw>
                 </div>
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">Track Settings</div>
+                <div class="param-panel-title">Orbit Settings</div>
                 <div class="param-grid cols-4">
                     <div class="param-item"><label>Inner Radius</label><input type="number" id="innerRadius" value="50" min="0" max="600" step="5" data-redraw></div>
                     <div class="param-item"><label>Outer Radius</label><input type="number" id="outerRadius" value="230" min="60" max="1000" step="10" data-redraw></div>
@@ -155,16 +164,20 @@
                     <div class="param-item">
                         <label>Ring Order</label>
                         <select id="ringOrder" data-redraw>
-                            <option value="inner" selected>First item innermost</option>
-                            <option value="outer">First item outermost</option>
+                            <option value="inner" selected>First item at innermost</option>
+                            <option value="outer">First item at outermost</option>
                         </select>
                     </div>
                 </div>
                 <div class="param-inline" style="margin-top:10px;">
                     <label><input type="checkbox" id="showTrackBg" checked data-redraw>Show track background</label>
-                    <label>Background: <input type="color" id="trackBgColor" value="#eef2f7" data-redraw></label>
+                    <label>Background:
+                        <input type="color" id="trackBgColor" value="#eef2f7" data-redraw>
+                    </label>
                     <label><input type="checkbox" id="showTrackStroke" checked data-redraw>Show track outline</label>
-                    <label>Outline color: <input type="color" id="trackStrokeColor" value="#d0d8e2" data-redraw></label>
+                    <label>Outline:
+                        <input type="color" id="trackStrokeColor" value="#d0d8e2" data-redraw>
+                    </label>
                     <label><input type="checkbox" id="roundCap" checked data-redraw>Round caps</label>
                 </div>
             </div>
@@ -173,13 +186,13 @@
                 <div class="param-panel-title">Full-circle Reference</div>
                 <div class="param-grid cols-4">
                     <div class="param-item">
-                        <label>Reference mode</label>
+                        <label>Reference Mode</label>
                         <select id="refMode" data-redraw>
                             <option value="max" selected>Max value as full circle</option>
                             <option value="custom">Custom full-circle value</option>
                         </select>
                     </div>
-                    <div class="param-item"><label>Full-circle value</label><input type="number" id="refValue" value="1" min="0.0001" step="1" data-redraw></div>
+                    <div class="param-item"><label>Full-circle Value</label><input type="number" id="refValue" value="1" min="0.0001" step="1" data-redraw></div>
                 </div>
             </div>
 
@@ -189,11 +202,11 @@
                     <span class="font-label">Label</span>
                     <label>Content:
                         <select id="labelContent" data-redraw>
-                            <option value="none" selected>None</option>
+                            <option value="none" selected>Hide</option>
                             <option value="name">Category name</option>
                             <option value="value">Raw value</option>
                             <option value="pct">Percentage</option>
-                            <option value="name_pct">Name + Percentage</option>
+                            <option value="name_pct">Category name + Percentage</option>
                         </select>
                     </label>
                     <label>Decimals:
@@ -211,7 +224,7 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 5: Preview & Export</div>
+            <div class="step-title">Step 5: Preview and Export</div>
             <div class="result-toolbar">
                 <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
                 <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
@@ -219,937 +232,24 @@
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div class="chart-preview" id="chartPreview">
-                <div class="placeholder">After importing data and completing settings, click "Draw Chart" to view results.</div>
+                <div class="placeholder">Import data and finish the settings, then click "Draw Chart" to see the result</div>
             </div>
         </div>
     </div>
 
     <div id="common-footer"></div>
 
-    <script src="../COMMON/plot-bootstrap.js"></script>
-    <script src="../COMMON/plot-header.js"></script>
-    <script src="../COMMON/plot-footer-en.js"></script>
-    <script src="../COMMON/plot-common.js"></script>
-    <script src="../COMMON/plot-errorbar.js"></script>
-
-    <script>
-    PlotBootstrap.ensureD3().then(function () {
-        (function () {
-            'use strict';
-
-            const state = {
-                headers: [], data: [],
-                roles: { category: '', value: '' },
-                paletteName: 'tableau10',
-                reverse: false,
-                cycleColors: false,
-                customColors: {},
-                sortBy: '',
-                sortDir: 'desc',
-                legendTitleEdited: false,
-                refValueEdited: false,
-                errBar: {
-                    mode: 'none',
-                    lowerCol: '',
-                    upperCol: '',
-                    errCol: '',
-                    showWhich: 'both',
-                    colorMode: 'uniform',
-                    errColor: '#e67700',
-                    errWidth: 3
-                },
-                currentSvg: null
-            };
-
-            const $ = id => document.getElementById(id);
-            const catColSel = $('catColSel');
-            const valColSel = $('valColSel');
-            const paletteDropdownContainer = $('paletteDropdownContainer');
-            const colorAssignContainer = $('colorAssignContainer');
-            const chartPreview = $('chartPreview');
-            const exportSvgBtn = $('exportSvgBtn');
-            const exportPngBtn = $('exportPngBtn');
-            const toolbarTip = $('toolbarTip');
-            const sortBySel = $('sortBy');
-            const sortDirSel = $('sortDir');
-            const legendTitleInput = $('legendTitle');
-            const refModeSel = $('refMode');
-            const refValueInput = $('refValue');
-            const errorBarPanelContainer = $('errorBarPanelContainer');
-
-            const EX_NO_ERR =
-                'Category\tValue\n' +
-                'A\t180\n' +
-                'B\t320\n' +
-                'C\t75\n' +
-                'D\t240\n' +
-                'E\t50\n' +
-                'F\t150\n' +
-                'G\t290';
-
-            const EX_RANGE =
-                'Category\tValue\tLower\tUpper\n' +
-                'A\t180\t160\t200\n' +
-                'B\t320\t290\t350\n' +
-                'C\t75\t60\t90\n' +
-                'D\t240\t215\t265\n' +
-                'E\t50\t40\t60\n' +
-                'F\t150\t130\t170\n' +
-                'G\t290\t265\t315';
-
-            const EX_ERRVAL =
-                'Category\tValue\tError\n' +
-                'A\t180\t20\n' +
-                'B\t320\t30\n' +
-                'C\t75\t15\n' +
-                'D\t240\t25\n' +
-                'E\t50\t10\n' +
-                'F\t150\t20\n' +
-                'G\t290\t25';
-
-            function num(id, fallback) {
-                const el = $(id);
-                if (!el) return fallback;
-                const v = parseFloat(el.value);
-                return isFinite(v) ? v : fallback;
-            }
-
-            function estTextWidth(str, fontSize) {
-                let w = 0;
-                for (const ch of String(str)) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
-                return w * fontSize;
-            }
-
-            function fmtNum(v, d) {
-                if (!isFinite(v)) return '';
-                if (Number.isInteger(v)) return String(v);
-                return Number(v).toFixed(d);
-            }
-
-            function textColorOn(bg) {
-                const rgb = PlotCommon.hexToRgb(bg);
-                const lum = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
-                return lum > 165 ? '#333333' : '#ffffff';
-            }
-
-            legendTitleInput.addEventListener('input', () => {
-                state.legendTitleEdited = true;
-            });
-
-            refValueInput.addEventListener('input', () => {
-                state.refValueEdited = true;
-            });
-
-            function syncLegendTitle() {
-                if (!state.legendTitleEdited) {
-                    legendTitleInput.value = state.roles.category || '';
-                }
-            }
-
-            function getMaxValue() {
-                const items = getCategoryItems();
-                if (!items.length) return 1;
-                const mx = Math.max.apply(null, items.map(d => d.value));
-                return (isFinite(mx) && mx > 0) ? mx : 1;
-            }
-
-            function updateRefModeUI() {
-                const isCustom = refModeSel.value === 'custom';
-                refValueInput.disabled = !isCustom;
-                refValueInput.style.opacity = isCustom ? '1' : '.5';
-                if (!state.refValueEdited) {
-                    refValueInput.value = getMaxValue();
-                }
-            }
-
-            function onDataImported(res) {
-                state.headers = res.headers;
-                state.data = res.data;
-
-                const catCol = res.headers.find(h => res.columnTypes[h] === 'categorical') || res.headers[0];
-                const valCol = res.headers.find(h => h !== catCol && res.columnTypes[h] === 'numeric')
-                    || res.headers[1] || res.headers[0];
-                state.roles = { category: catCol, value: valCol };
-                state.customColors = {};
-                state.sortBy = valCol;
-                state.sortDir = 'desc';
-                state.refValueEdited = false;
-                sortDirSel.value = 'desc';
-
-                state.errBar.lowerCol = '';
-                state.errBar.upperCol = '';
-                state.errBar.errCol = '';
-                state.errBar.mode = 'none';
-
-                syncLegendTitle();
-                fillRoleSelects();
-                fillSortBySelect();
-                refreshCategoryColors();
-                updateRefModeUI();
-                refreshErrorBarPanel();
-                resetChart();
-            }
-
-            function fillRoleSelects() {
-                if (!state.headers.length) {
-                    catColSel.innerHTML = '<option>— Please import data first —</option>';
-                    valColSel.innerHTML = '<option>— Please import data first —</option>';
-                    catColSel.disabled = true;
-                    valColSel.disabled = true;
-                    return;
-                }
-                catColSel.disabled = false;
-                valColSel.disabled = false;
-                const opts = (selVal) => state.headers.map(h =>
-                    `<option value="${PlotCommon.escapeHtml(h)}" ${h === selVal ? 'selected' : ''}>${PlotCommon.escapeHtml(h)}</option>`
-                ).join('');
-                catColSel.innerHTML = opts(state.roles.category);
-                valColSel.innerHTML = opts(state.roles.value);
-            }
-
-            function fillSortBySelect() {
-                state.sortBy = PlotCommon.fillSortBySelect(sortBySel, state.headers, state.sortBy, {
-                    inputLabel: 'Input order'
-                });
-            }
-
-            catColSel.addEventListener('change', () => {
-                state.roles.category = catColSel.value;
-                state.customColors = {};
-                state.refValueEdited = false;
-                syncLegendTitle();
-                refreshCategoryColors();
-                updateRefModeUI();
-                resetChart();
-            });
-
-            valColSel.addEventListener('change', () => {
-                state.roles.value = valColSel.value;
-                state.customColors = {};
-                state.sortBy = valColSel.value;
-                state.refValueEdited = false;
-                fillSortBySelect();
-                refreshCategoryColors();
-                updateRefModeUI();
-                if (state.currentSvg) drawChart();
-            });
-
-            sortBySel.addEventListener('change', () => {
-                state.sortBy = sortBySel.value;
-                refreshCategoryColors();
-                if (state.currentSvg) drawChart();
-            });
-
-            sortDirSel.addEventListener('change', () => {
-                state.sortDir = sortDirSel.value;
-                refreshCategoryColors();
-                if (state.currentSvg) drawChart();
-            });
-
-            refModeSel.addEventListener('change', () => {
-                updateRefModeUI();
-                if (state.currentSvg) drawChart();
-            });
-
-            function initPaletteDropdown() {
-                PlotCommon.renderPaletteDropdown(paletteDropdownContainer, {
-                    type: 'categorical',
-                    selected: state.paletteName,
-                    previewCount: 8,
-                    onSelect: name => {
-                        state.paletteName = name;
-                        state.customColors = {};
-                        refreshCategoryColors();
-                        resetChart();
-                    }
-                });
-            }
-
-            function resolvePaletteColors(count) {
-                return PlotCommon.getCategoricalColors(state.paletteName, count, {
-                    reverse: state.reverse,
-                    cycle: state.cycleColors
-                });
-            }
-
-            function getCategoryItems() {
-                return PlotCommon.aggregateAndSort(state.data, {
-                    categoryKey: state.roles.category,
-                    valueKey: state.roles.value,
-                    sortBy: state.sortBy,
-                    sortDir: state.sortDir
-                });
-            }
-
-            function getItemsWithRows() {
-                const items = getCategoryItems();
-                const catKey = state.roles.category;
-                const rowMap = new Map();
-                state.data.forEach(row => {
-                    const k = String(row[catKey]);
-                    if (!rowMap.has(k)) rowMap.set(k, row);
-                });
-                return items.map(it => ({
-                    ...it,
-                    _firstRow: rowMap.get(it.name) || {}
-                }));
-            }
-
-            function refreshCategoryColors() {
-                const items = getCategoryItems();
-                if (!items.length) {
-                    colorAssignContainer.innerHTML =
-                        '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
-                    return;
-                }
-                const baseColors = resolvePaletteColors(items.length);
-                const displayItems = items.map((it, i) => ({
-                    name: it.name,
-                    color: state.customColors[it.name] || baseColors[i],
-                    percent: it.percent
-                }));
-
-                PlotCommon.renderColorAssignment(colorAssignContainer, {
-                    items: displayItems,
-                    onChange: (idx, newColor) => {
-                        state.customColors[items[idx].name] = newColor;
-                        if (state.currentSvg) drawChart();
-                    },
-                    onResetAll: () => {
-                        state.customColors = {};
-                        refreshCategoryColors();
-                        if (state.currentSvg) drawChart();
-                    }
-                });
-            }
-
-            $('reversePalette').addEventListener('change', e => {
-                state.reverse = e.target.checked;
-                state.customColors = {};
-                refreshCategoryColors();
-                if (state.currentSvg) drawChart();
-            });
-
-            $('cycleColors').addEventListener('change', e => {
-                state.cycleColors = e.target.checked;
-                state.customColors = {};
-                refreshCategoryColors();
-                if (state.currentSvg) drawChart();
-            });
-
-            function refreshErrorBarPanel() {
-                PlotErrorBar.renderErrorBarConfig(errorBarPanelContainer, {
-                    headers: state.headers,
-                    state: state.errBar,
-                    onChange: () => {
-                        if (state.currentSvg) drawChart();
-                    }
-                });
-            }
-
-            $('drawBtn').addEventListener('click', drawChart);
-
-            function readParams() {
-                return {
-                    width: Math.max(200, num('chartWidth', 760)),
-                    height: Math.max(200, num('chartHeight', 680)),
-
-                    innerRadius: Math.max(0, num('innerRadius', 50)),
-                    outerRadius: Math.max(60, num('outerRadius', 230)),
-                    ringGap: Math.max(0, num('ringGap', 8)),
-                    startAngle: num('startAngle', 0),
-                    direction: $('orbitDirection').value || 'clockwise',
-                    ringOrder: $('ringOrder').value || 'inner',
-
-                    refMode: $('refMode').value || 'max',
-                    refValue: num('refValue', 1),
-
-                    showTrackBg: $('showTrackBg').checked,
-                    trackBgColor: $('trackBgColor').value || '#eef2f7',
-                    showTrackStroke: $('showTrackStroke').checked,
-                    trackStrokeColor: $('trackStrokeColor').value || '#d0d8e2',
-                    roundCap: $('roundCap').checked,
-
-                    fontFamily: $('fontFamily').value || 'Times New Roman',
-
-                    labelContent: $('labelContent').value || 'none',
-                    labelDecimals: Math.max(0, Math.round(num('labelDecimals', 1))),
-                    labelFontSize: Math.max(6, num('labelFontSize', 13)),
-                    labelBold: $('labelBold').checked,
-                    labelItalic: $('labelItalic').checked,
-
-                    legendFontSize: Math.max(6, num('legendFontSize', 15)),
-                    legendBold: $('legendBold').checked,
-                    legendItalic: $('legendItalic').checked,
-                    legendTitleFontSize: Math.max(6, num('legendTitleFontSize', 15)),
-                    legendTitleBold: $('legendTitleBold').checked,
-                    legendTitleItalic: $('legendTitleItalic').checked,
-
-                    titleFontSize: Math.max(6, num('titleFontSize', 22)),
-                    titleBold: $('titleBold').checked,
-                    titleItalic: $('titleItalic').checked,
-                    titleGap: Math.max(0, num('titleGap', 15)),
-
-                    showLegend: $('showLegend').checked,
-                    legendPosition: $('legendPosition').value || 'right',
-                    legendGap: Math.max(0, num('legendGap', 30)),
-                    showLegendTitle: $('showLegendTitle').checked,
-                    legendTitle: $('legendTitle').value || '',
-                    showTitle: $('showTitle').checked,
-                    chartTitle: $('chartTitle').value || '',
-                    showCanvasBorder: $('showCanvasBorder').checked
-                };
-            }
-
-            function computeLayout(p, itemCount) {
-                const width = p.width;
-                const height = p.height;
-
-                const titleH = (p.showTitle && p.chartTitle)
-                    ? p.titleFontSize + 10 + p.titleGap
-                    : 0;
-
-                const legendColW = 200;
-                const legendRowH = p.legendFontSize + 10;
-                const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
-                const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
-                const legendInlineH = p.legendFontSize + 20 + legendTitleH;
-                const gap = p.legendGap;
-                const margin = 30;
-
-                const wantLegend = !!p.showLegend && itemCount > 0;
-                const pos = p.legendPosition || 'right';
-                const isRight = wantLegend && pos === 'right';
-                const isLeft = wantLegend && pos === 'left';
-                const isTop = wantLegend && pos === 'top';
-                const isBottom = wantLegend && pos === 'bottom';
-                const vert = isRight || isLeft;
-
-                let areaX = margin, areaY = margin;
-                let areaW = width - 2 * margin;
-                let areaH = height - 2 * margin;
-
-                if (isRight) {
-                    areaW = width - legendColW - gap - 2 * margin;
-                } else if (isLeft) {
-                    areaX = legendColW + gap + margin;
-                    areaW = width - legendColW - gap - 2 * margin;
-                } else if (isTop) {
-                    areaY = legendInlineH + gap + margin;
-                    areaH = height - legendInlineH - gap - 2 * margin;
-                } else if (isBottom) {
-                    areaH = height - legendInlineH - gap - 2 * margin;
-                }
-                areaW = Math.max(20, areaW);
-                areaH = Math.max(20, areaH);
-
-                const gridAreaH = Math.max(20, areaH - titleH);
-                const availR = Math.max(20, Math.min(areaW / 2, gridAreaH / 2));
-
-                let outerR = Math.max(p.innerRadius + 20, p.outerRadius);
-                let innerR = Math.max(0, p.innerRadius);
-
-                if (outerR > availR) {
-                    const k = availR / outerR;
-                    outerR *= k;
-                    innerR *= k;
-                }
-                innerR = Math.min(innerR, outerR - 10);
-
-                const blockH = titleH + outerR * 2;
-                const blockTop = areaY + Math.max(0, (areaH - blockH) / 2);
-
-                const titleY = blockTop + 10 + p.titleFontSize;
-                const cx = areaX + areaW / 2;
-                const cy = blockTop + titleH + outerR;
-
-                return {
-                    width, height,
-                    cx, cy,
-                    innerR, outerR,
-                    titleY,
-                    legendVertical: vert,
-                    legendColW, legendRowH,
-                    legendInlineH, legendTitleH, hasLegendTitle,
-                    isRight, isTop,
-                    areaY, areaH, margin, gap,
-                    wantLegend
-                };
-            }
-
-            function drawChart() {
-                toolbarTip.textContent = '';
-
-                if (!state.data.length) {
-                    showTip('msgTip3', '❌ Please import data first', 'error');
-                    return;
-                }
-                if (!state.roles.category || !state.roles.value) {
-                    showTip('msgTip3', '❌ Please select category and value columns in Step 2', 'error');
-                    return;
-                }
-
-                const items = getItemsWithRows();
-                if (!items.length) {
-                    showTip('msgTip3', '❌ No valid data to plot. Please check the value column.', 'error');
-                    return;
-                }
-
-                const p = readParams();
-                const N = items.length;
-
-                const baseColors = resolvePaletteColors(N);
-                const colors = items.map((it, i) => state.customColors[it.name] || baseColors[i]);
-
-                const maxValue = Math.max.apply(null, items.map(d => d.value));
-                let ref = (p.refMode === 'max') ? maxValue : p.refValue;
-                if (!isFinite(ref) || ref <= 0) ref = maxValue;
-                if (!isFinite(ref) || ref <= 0) ref = 1;
-
-                const L = computeLayout(p, N);
-                const {
-                    width, height, cx, cy, innerR, outerR, titleY,
-                    legendVertical, legendColW, legendRowH,
-                    legendInlineH, legendTitleH, hasLegendTitle,
-                    isRight, isTop,
-                    areaY, areaH, margin, gap,
-                    wantLegend
-                } = L;
-
-                const spanR = Math.max(10, outerR - innerR);
-                let ringGap = p.ringGap;
-                let ringW = (N === 1)
-                    ? spanR
-                    : (spanR - ringGap * (N - 1)) / N;
-
-                if (ringW < 2) {
-                    ringW = Math.max(1, spanR / N);
-                    ringGap = (N > 1) ? Math.max(0, (spanR - ringW * N) / (N - 1)) : 0;
-                }
-
-                function rMidOf(i) {
-                    const idx = (p.ringOrder === 'outer') ? (N - 1 - i) : i;
-                    return innerR + idx * (ringW + ringGap) + ringW / 2;
-                }
-
-                const startDeg = p.startAngle;
-                const isCCW = p.direction === 'counterclockwise';
-                const startRad = startDeg * Math.PI / 180;
-
-                function angleAt(t) {
-                    return isCCW
-                        ? (startRad - t * 2 * Math.PI)
-                        : (startRad + t * 2 * Math.PI);
-                }
-                function pointAt(r, t) {
-                    const a = angleAt(t);
-                    return [r * Math.sin(a), -r * Math.cos(a)];
-                }
-
-                const svg = d3.select(chartPreview).html('')
-                    .append('svg')
-                    .attr('width', width)
-                    .attr('height', height)
-                    .attr('viewBox', `0 0 ${width} ${height}`)
-                    .attr('xmlns', 'http://www.w3.org/2000/svg')
-                    .style('background', '#ffffff')
-                    .style('font-family', p.fontFamily);
-                state.currentSvg = svg.node();
-
-                if (p.showCanvasBorder) {
-                    svg.append('rect')
-                        .attr('class', 'canvas-border')
-                        .attr('x', 0.5).attr('y', 0.5)
-                        .attr('width', width - 1).attr('height', height - 1)
-                        .attr('fill', 'none')
-                        .attr('stroke', '#c0c8d4')
-                        .attr('stroke-width', 1)
-                        .attr('stroke-dasharray', '4 3')
-                        .attr('pointer-events', 'none');
-                }
-
-                if (p.showTitle && p.chartTitle) {
-                    svg.append('text')
-                        .attr('x', width / 2)
-                        .attr('y', titleY)
-                        .attr('text-anchor', 'middle')
-                        .attr('font-size', p.titleFontSize)
-                        .attr('font-weight', p.titleBold ? 'bold' : 'normal')
-                        .attr('font-style', p.titleItalic ? 'italic' : 'normal')
-                        .attr('fill', '#1f4068')
-                        .text(p.chartTitle);
-                }
-
-                const g = svg.append('g').attr('transform', `translate(${cx},${cy})`);
-
-                if (p.showTrackBg || p.showTrackStroke) {
-                    const bgGroup = g.append('g').attr('class', 'orbit-tracks');
-                    items.forEach((it, i) => {
-                        const rMid = rMidOf(i);
-                        if (p.showTrackBg) {
-                            bgGroup.append('circle')
-                                .attr('cx', 0).attr('cy', 0)
-                                .attr('r', rMid)
-                                .attr('fill', 'none')
-                                .attr('stroke', p.trackBgColor)
-                                .attr('stroke-width', ringW);
-                        }
-                        if (p.showTrackStroke) {
-                            const rOuter = rMid + ringW / 2;
-                            const rInner = rMid - ringW / 2;
-                            if (rOuter > 1) {
-                                bgGroup.append('circle')
-                                    .attr('cx', 0).attr('cy', 0)
-                                    .attr('r', rOuter)
-                                    .attr('fill', 'none')
-                                    .attr('stroke', p.trackStrokeColor)
-                                    .attr('stroke-width', 1);
-                            }
-                            if (rInner > 1) {
-                                bgGroup.append('circle')
-                                    .attr('cx', 0).attr('cy', 0)
-                                    .attr('r', rInner)
-                                    .attr('fill', 'none')
-                                    .attr('stroke', p.trackStrokeColor)
-                                    .attr('stroke-width', 1);
-                            }
-                        }
-                    });
-                }
-
-                const arcGroup = g.append('g').attr('class', 'orbit-arcs');
-                const errGroup = g.append('g').attr('class', 'orbit-error-bars');
-                const labelGroup = g.append('g').attr('class', 'orbit-labels');
-
-                const labelWeight = p.labelBold ? 'bold' : 'normal';
-                const labelStyle = p.labelItalic ? 'italic' : 'normal';
-
-                items.forEach((it, i) => {
-                    const rMid = rMidOf(i);
-                    const C = 2 * Math.PI * rMid;
-
-                    const frac = Math.max(0, Math.min(1, it.value / ref));
-                    const arcDeg = frac * 360;
-                    const dashLen = Math.min(C, frac * C);
-
-                    const rotDeg = startDeg - 90;
-
-                    if (dashLen > 0) {
-                        const circleEl = arcGroup.append('circle')
-                            .attr('cx', 0).attr('cy', 0)
-                            .attr('r', rMid)
-                            .attr('fill', 'none')
-                            .attr('stroke', colors[i])
-                            .attr('stroke-width', ringW)
-                            .attr('stroke-dasharray', `${dashLen} ${C}`)
-                            .attr('stroke-linecap', p.roundCap ? 'round' : 'butt')
-                            .style('cursor', 'pointer');
-
-                        if (isCCW) {
-                            circleEl.attr('transform', `rotate(${rotDeg}) scale(1,-1)`);
-                        } else {
-                            circleEl.attr('transform', `rotate(${rotDeg})`);
-                        }
-
-                        circleEl
-                            .on('mouseenter', function () {
-                                d3.select(this).transition().duration(120)
-                                    .attr('stroke-width', ringW * 1.18);
-                            })
-                            .on('mouseleave', function () {
-                                d3.select(this).transition().duration(120)
-                                    .attr('stroke-width', ringW);
-                            });
-                    }
-
-                    if (state.errBar.mode !== 'none') {
-                        const ext = PlotErrorBar.computeErrorExtent(
-                            it._firstRow, it.value, state.errBar
-                        );
-                        if (ext) {
-                            let t1 = ext.lower / ref;
-                            let t2 = ext.upper / ref;
-                            t1 = Math.max(0, Math.min(1, t1));
-                            t2 = Math.max(0, Math.min(1, t2));
-                            if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
-
-                            if (t2 - t1 > 0.0005) {
-                                const [x1, y1] = pointAt(rMid, t1);
-                                const [x2, y2] = pointAt(rMid, t2);
-                                const sweep = isCCW ? 0 : 1;
-                                const largeArc = (t2 - t1) > 0.5 ? 1 : 0;
-
-                                const errColor = PlotErrorBar.resolveErrorColor(state.errBar, colors[i]);
-
-                                errGroup.append('path')
-                                    .attr('d', `M ${x1} ${y1} A ${rMid} ${rMid} 0 ${largeArc} ${sweep} ${x2} ${y2}`)
-                                    .attr('fill', 'none')
-                                    .attr('stroke', errColor)
-                                    .attr('stroke-width', state.errBar.errWidth)
-                                    .attr('stroke-linecap', 'butt')
-                                    .attr('pointer-events', 'none');
-
-                                const capLen = Math.max(6, ringW * 0.7);
-                                [t1, t2].forEach(t => {
-                                    const a = angleAt(t);
-                                    const ux = Math.sin(a);
-                                    const uy = -Math.cos(a);
-                                    const r1 = rMid - capLen / 2;
-                                    const r2 = rMid + capLen / 2;
-                                    errGroup.append('line')
-                                        .attr('x1', r1 * ux).attr('y1', r1 * uy)
-                                        .attr('x2', r2 * ux).attr('y2', r2 * uy)
-                                        .attr('stroke', errColor)
-                                        .attr('stroke-width', state.errBar.errWidth)
-                                        .attr('stroke-linecap', 'round')
-                                        .attr('pointer-events', 'none');
-                                });
-                            }
-                        }
-                    }
-
-                    if (p.labelContent === 'none' || arcDeg <= 0) return;
-
-                    let midClock;
-                    if (isCCW) midClock = startDeg - arcDeg / 2;
-                    else midClock = startDeg + arcDeg / 2;
-
-                    const scrRad = (midClock - 90) * Math.PI / 180;
-                    const lx = rMid * Math.cos(scrRad);
-                    const ly = rMid * Math.sin(scrRad);
-
-                    let txt = '';
-                    switch (p.labelContent) {
-                        case 'name':
-                            txt = it.name;
-                            break;
-                        case 'value':
-                            txt = fmtNum(it.value, p.labelDecimals);
-                            break;
-                        case 'pct':
-                            txt = (it.percent * 100).toFixed(p.labelDecimals) + '%';
-                            break;
-                        case 'name_pct':
-                            txt = it.name + ' (' + (it.percent * 100).toFixed(p.labelDecimals) + '%)';
-                            break;
-                    }
-                    if (!txt) return;
-
-                    const arcPx = (arcDeg / 360) * C;
-                    const needPx = estTextWidth(txt, p.labelFontSize);
-                    if (arcPx < needPx * 0.85) return;
-
-                    labelGroup.append('text')
-                        .attr('x', lx)
-                        .attr('y', ly)
-                        .attr('text-anchor', 'middle')
-                        .attr('dominant-baseline', 'middle')
-                        .attr('font-size', p.labelFontSize)
-                        .attr('font-weight', labelWeight)
-                        .attr('font-style', labelStyle)
-                        .attr('fill', textColorOn(colors[i]))
-                        .attr('pointer-events', 'none')
-                        .text(txt);
-                });
-
-                if (wantLegend) {
-                    const legendGroup = svg.append('g').attr('class', 'chart-legend');
-                    const markerSize = p.legendFontSize;
-                    const textGap = 8;
-                    const itemGap = 20;
-                    const legendWeight = p.legendBold ? 'bold' : 'normal';
-                    const legendStyle = p.legendItalic ? 'italic' : 'normal';
-                    const ltitleWeight = p.legendTitleBold ? 'bold' : 'normal';
-                    const ltitleStyle = p.legendTitleItalic ? 'italic' : 'normal';
-                    const labels = items.map(it => `${it.name} (${(it.percent * 100).toFixed(1)}%)`);
-
-                    if (legendVertical) {
-                        const totalH = (hasLegendTitle ? legendTitleH : 0) + items.length * legendRowH;
-                        const startY = areaY + (areaH - totalH) / 2;
-                        const baseX = isRight ? (width - legendColW - gap + 12) : 12;
-
-                        if (hasLegendTitle) {
-                            legendGroup.append('text')
-                                .attr('x', baseX)
-                                .attr('y', startY + p.legendTitleFontSize / 2)
-                                .attr('dy', '0.35em')
-                                .attr('font-size', p.legendTitleFontSize)
-                                .attr('font-weight', ltitleWeight)
-                                .attr('font-style', ltitleStyle)
-                                .attr('fill', '#333')
-                                .text(p.legendTitle);
-                        }
-
-                        const itemsStartY = startY + (hasLegendTitle ? legendTitleH : 0);
-                        items.forEach((it, i) => {
-                            const y = itemsStartY + i * legendRowH;
-                            legendGroup.append('rect')
-                                .attr('x', baseX).attr('y', y)
-                                .attr('width', markerSize).attr('height', markerSize)
-                                .attr('rx', 2).attr('fill', colors[i]);
-                            legendGroup.append('text')
-                                .attr('x', baseX + markerSize + textGap)
-                                .attr('y', y + markerSize / 2)
-                                .attr('dy', '0.35em')
-                                .attr('font-size', p.legendFontSize)
-                                .attr('font-weight', legendWeight)
-                                .attr('font-style', legendStyle)
-                                .attr('fill', '#333')
-                                .text(labels[i]);
-                        });
-                    } else {
-                        const widths = labels.map(lb =>
-                            markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap
-                        );
-                        const totalW = widths.reduce((a, b) => a + b, 0) - itemGap;
-                        const startX = Math.max(10, (width - totalW) / 2);
-
-                        const legendY0 = isTop ? margin : (height - legendInlineH - margin);
-                        const itemsY = legendY0 + (hasLegendTitle ? legendTitleH : 0) + 6;
-
-                        if (hasLegendTitle) {
-                            legendGroup.append('text')
-                                .attr('x', width / 2)
-                                .attr('y', legendY0 + p.legendTitleFontSize / 2)
-                                .attr('text-anchor', 'middle')
-                                .attr('dy', '0.35em')
-                                .attr('font-size', p.legendTitleFontSize)
-                                .attr('font-weight', ltitleWeight)
-                                .attr('font-style', ltitleStyle)
-                                .attr('fill', '#333')
-                                .text(p.legendTitle);
-                        }
-
-                        let cursorX = startX;
-                        items.forEach((it, i) => {
-                            legendGroup.append('rect')
-                                .attr('x', cursorX).attr('y', itemsY)
-                                .attr('width', markerSize).attr('height', markerSize)
-                                .attr('rx', 2).attr('fill', colors[i]);
-                            legendGroup.append('text')
-                                .attr('x', cursorX + markerSize + textGap)
-                                .attr('y', itemsY + markerSize / 2)
-                                .attr('dy', '0.35em')
-                                .attr('font-size', p.legendFontSize)
-                                .attr('font-weight', legendWeight)
-                                .attr('font-style', legendStyle)
-                                .attr('fill', '#333')
-                                .text(labels[i]);
-                            cursorX += widths[i];
-                        });
-                    }
-                }
-
-                exportSvgBtn.disabled = false;
-                exportPngBtn.disabled = false;
-                showTip('msgTip3', '✅ Chart drawn successfully', 'success');
-            }
-
-            function getSvgWithoutBorder() {
-                if (!state.currentSvg) return null;
-                const clone = state.currentSvg.cloneNode(true);
-                clone.querySelectorAll('.canvas-border').forEach(el => el.remove());
-                return clone;
-            }
-
-            exportSvgBtn.addEventListener('click', () => {
-                const svg = getSvgWithoutBorder();
-                if (!svg) return;
-                PlotCommon.downloadSVG(svg, 'radial_bar_chart.svg');
-                toolbarTip.innerHTML = '<span class="success">✅ SVG exported successfully</span>';
-            });
-
-            exportPngBtn.addEventListener('click', () => {
-                const svg = getSvgWithoutBorder();
-                if (!svg) return;
-                PlotCommon.downloadPNG(svg, 'radial_bar_chart.png', 2, '#ffffff')
-                    .then(() => { toolbarTip.innerHTML = '<span class="success">✅ PNG exported successfully</span>'; })
-                    .catch(() => { toolbarTip.innerHTML = '<span class="error">❌ PNG export failed</span>'; });
-            });
-
-            function showTip(elId, msg, type) {
-                const el = $(elId);
-                el.className = 'tip-text ' + (type || '');
-                el.textContent = msg;
-                setTimeout(() => { el.textContent = ''; el.className = 'tip-text'; }, 3500);
-            }
-
-            function resetChart() {
-                chartPreview.innerHTML = '<div class="placeholder">After importing data and completing settings, click "Draw Chart" to view results.</div>';
-                state.currentSvg = null;
-                exportSvgBtn.disabled = true;
-                exportPngBtn.disabled = true;
-                toolbarTip.textContent = '';
-                $('msgTip3').textContent = '';
-            }
-
-            function resetAll() {
-                state.headers = [];
-                state.data = [];
-                state.roles = { category: '', value: '' };
-                state.customColors = {};
-                state.sortBy = '';
-                state.sortDir = 'desc';
-                state.legendTitleEdited = false;
-                state.refValueEdited = false;
-                state.errBar.mode = 'none';
-                state.errBar.lowerCol = '';
-                state.errBar.upperCol = '';
-                state.errBar.errCol = '';
-                state.errBar.colorMode = 'uniform';
-                sortDirSel.value = 'desc';
-                legendTitleInput.value = '';
-                fillRoleSelects();
-                fillSortBySelect();
-                colorAssignContainer.innerHTML =
-                    '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
-                updateRefModeUI();
-                refreshErrorBarPanel();
-                resetChart();
-            }
-
-            document.querySelectorAll('[data-redraw]').forEach(el => {
-                el.addEventListener('change', () => {
-                    if (state.currentSvg) drawChart();
-                });
-            });
-
-            function init() {
-                PlotCommon.renderImportPanel('importPanel', {
-                    title: 'Step 1: Import Data',
-                    infoBox: 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. You can paste directly from Excel. Three example datasets are provided: no error bar, range error bar (lower/upper), and error-value error bar.',
-                    examples: [
-                        { label: 'Example: No error bar', data: EX_NO_ERR },
-                        { label: 'Example: Range bar', data: EX_RANGE },
-                        { label: 'Example: Error-value bar', data: EX_ERRVAL }
-                    ],
-                    defaultMode: 'file',
-                    onImport: onDataImported,
-                    onReset: resetAll
-                });
-                initPaletteDropdown();
-                fillRoleSelects();
-                fillSortBySelect();
-                updateRefModeUI();
-                refreshErrorBarPanel();
-                colorAssignContainer.innerHTML =
-                    '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
-                resetChart();
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
-            }
-        })();
-    }).catch(function (err) {
-        console.error(err);
-        const box = document.getElementById('chartPreview');
-        if (box) {
-            box.innerHTML = '<div class="placeholder" style="color:#c00;">❌ Failed to load d3. Please check your network and refresh.</div>';
-        }
-    });
-    </script>
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer-en.js"></script>
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-errorbar.js"></script>
+
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-title.js"></script>
+    <script src="../COMMON/script/plot-legend.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/005.js"></script>
 </body>
 </html>

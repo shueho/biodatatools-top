@@ -14,13 +14,13 @@
     <div class="main">
         <div class="page-intro">
             <h2>Waffle Chart</h2>
-            <p>Display category proportions as a grid of shapes — square, circle, diamond, and more.</p>
+            <p>Display category proportions using a grid of shapes. Supports square, circle, diamond, and other custom shapes.</p>
         </div>
 
         <div id="importPanel"></div>
 
         <div class="step-card">
-            <div class="step-title">Step 2: Assign Data Columns</div>
+            <div class="step-title">Step 2: Specify Data Columns</div>
             <div class="param-group">
                 <label>Category column:</label>
                 <select id="catColSel" disabled><option>— Please import data first —</option></select>
@@ -30,7 +30,7 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 3: Palette &amp; Colors</div>
+            <div class="step-title">Step 3: Choose Palette and Colors</div>
             <div class="param-group" style="margin-top:0;">
                 <label>Sort by:</label>
                 <select id="sortBy" disabled><option>— Please import data first —</option></select>
@@ -40,11 +40,11 @@
                     <option value="asc">Ascending</option>
                 </select>
             </div>
-            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Categorical palette</div>
+            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Category Palette</div>
             <div id="paletteDropdownContainer"></div>
             <div class="param-inline" style="margin-top:8px;">
-                <label><input type="checkbox" id="reversePalette">Reverse palette</label>
-                <label><input type="checkbox" id="cycleColors">Cycle colors</label>
+                <label><input type="checkbox" id="reversePalette">Reverse palette order</label>
+                <label><input type="checkbox" id="cycleColors">Cycle palette colors</label>
             </div>
             <div id="colorAssignContainer" style="margin-top:16px;"></div>
         </div>
@@ -55,10 +55,10 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 5: Chart Parameters</div>
+            <div class="step-title">Step 5: Set Plot Parameters</div>
 
             <div class="param-panel">
-                <div class="param-panel-title">Canvas size</div>
+                <div class="param-panel-title">Canvas Size</div>
                 <div class="param-grid cols-4">
                     <div class="param-item"><label>Width (px)</label><input type="number" id="chartWidth" value="700" min="300" data-redraw></div>
                     <div class="param-item"><label>Height (px)</label><input type="number" id="chartHeight" value="600" min="300" data-redraw></div>
@@ -69,7 +69,7 @@
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">Font styles</div>
+                <div class="param-panel-title">Font Style</div>
                 <div class="font-row">
                     <span class="font-label">Font</span>
                     <select id="fontFamily" data-redraw>
@@ -87,7 +87,7 @@
                     <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>Italic</label>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">Legend title</span>
+                    <span class="font-label">Legend Title</span>
                     <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
                     <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>Bold</label>
                     <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>Italic</label>
@@ -97,11 +97,24 @@
                     <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
                     <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>Bold</label>
                     <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>Italic</label>
+                    <label>Position:
+                        <select id="titlePosition" data-redraw>
+                            <option value="top-center" selected>Top Center</option>
+                            <option value="top-left">Top Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="middle-center">Middle Center</option>
+                            <option value="middle-left">Middle Left</option>
+                            <option value="middle-right">Middle Right</option>
+                            <option value="bottom-center">Bottom Center</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="bottom-right">Bottom Right</option>
+                        </select>
+                    </label>
                 </div>
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">Components</div>
+                <div class="param-panel-title">Component Control</div>
                 <div class="font-row">
                     <span class="font-label">Legend</span>
                     <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>Show</label>
@@ -118,7 +131,7 @@
                     </label>
                 </div>
                 <div class="font-row">
-                    <span class="font-label">Legend title</span>
+                    <span class="font-label">Legend Title</span>
                     <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>Show</label>
                     <label>Text:
                         <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw>
@@ -131,14 +144,10 @@
                         <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw>
                     </label>
                 </div>
-                <div class="font-row">
-                    <span class="font-label">Title gap</span>
-                    <input type="number" id="titleGap" value="15" min="0" max="200" step="5" data-redraw>
-                </div>
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">Waffle settings</div>
+                <div class="param-panel-title">Waffle Settings</div>
                 <div class="param-grid cols-4">
                     <div class="param-item">
                         <label>Direction</label>
@@ -181,7 +190,7 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 6: Preview &amp; Export</div>
+            <div class="step-title">Step 6: Preview and Export</div>
             <div class="result-toolbar">
                 <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
                 <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
@@ -189,692 +198,23 @@
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div class="chart-preview" id="chartPreview">
-                <div class="placeholder">Import data and adjust settings, then click "Draw Chart" to preview.</div>
+                <div class="placeholder">Import data and finish the settings, then click "Draw Chart" to see the result</div>
             </div>
         </div>
     </div>
 
     <div id="common-footer"></div>
 
-    <script src="../COMMON/plot-bootstrap.js"></script>
-    <script src="../COMMON/plot-header.js"></script>
-    <script src="../COMMON/plot-footer-en.js"></script>
-    <script src="../COMMON/plot-common.js"></script>
-    <script src="../COMMON/plot-shapes.js"></script>
-
-    <script>
-    PlotBootstrap.ensureD3().then(function () {
-        (function () {
-            'use strict';
-
-            const state = {
-                headers: [], data: [],
-                roles: { category: '', value: '' },
-                paletteName: 'tableau10',
-                reverse: false,
-                cycleColors: false,
-                customColors: {},
-                sortBy: '',
-                sortDir: 'desc',
-                legendTitleEdited: false,
-                shapeMode: 'uniform',
-                uniformShape: 'square',
-                categoryShapes: {},
-                currentSvg: null
-            };
-
-            const $ = id => document.getElementById(id);
-            const catColSel = $('catColSel');
-            const valColSel = $('valColSel');
-            const paletteDropdownContainer = $('paletteDropdownContainer');
-            const colorAssignContainer = $('colorAssignContainer');
-            const shapeSelectorContainer = $('shapeSelectorContainer');
-            const chartPreview = $('chartPreview');
-            const exportSvgBtn = $('exportSvgBtn');
-            const exportPngBtn = $('exportPngBtn');
-            const toolbarTip = $('toolbarTip');
-            const sortBySel = $('sortBy');
-            const sortDirSel = $('sortDir');
-            const legendTitleInput = $('legendTitle');
-
-            const EXAMPLE_DATA =
-                'Category\tValue\n' +
-                'A\t35\n' +
-                'B\t30\n' +
-                'C\t20\n' +
-                'D\t15\n';
-
-            legendTitleInput.addEventListener('input', () => {
-                state.legendTitleEdited = true;
-            });
-
-            function syncLegendTitle() {
-                if (!state.legendTitleEdited) {
-                    legendTitleInput.value = state.roles.category || '';
-                }
-            }
-
-            function onDataImported(res) {
-                state.headers = res.headers;
-                state.data = res.data;
-
-                const catCol = res.headers.find(h => res.columnTypes[h] === 'categorical') || res.headers[0];
-                const valCol = res.headers.find(h => res.columnTypes[h] === 'numeric') || res.headers[1] || res.headers[0];
-                state.roles = { category: catCol, value: valCol };
-                state.customColors = {};
-                state.categoryShapes = {};
-                state.sortBy = valCol;
-                state.sortDir = 'desc';
-                sortDirSel.value = 'desc';
-                syncLegendTitle();
-
-                fillRoleSelects();
-                fillSortBySelect();
-                refreshCategoryColors();
-                refreshShapeSelector();
-                resetChart();
-            }
-
-            function fillRoleSelects() {
-                if (!state.headers.length) {
-                    catColSel.innerHTML = '<option>— Please import data first —</option>';
-                    valColSel.innerHTML = '<option>— Please import data first —</option>';
-                    catColSel.disabled = true;
-                    valColSel.disabled = true;
-                    return;
-                }
-                catColSel.disabled = false;
-                valColSel.disabled = false;
-                const opts = (selVal) => state.headers.map(h =>
-                    `<option value="${PlotCommon.escapeHtml(h)}" ${h === selVal ? 'selected' : ''}>${PlotCommon.escapeHtml(h)}</option>`
-                ).join('');
-                catColSel.innerHTML = opts(state.roles.category);
-                valColSel.innerHTML = opts(state.roles.value);
-            }
-
-            function fillSortBySelect() {
-                state.sortBy = PlotCommon.fillSortBySelect(sortBySel, state.headers, state.sortBy, {
-                    placeholder: '— Please import data first —',
-                    inputLabel: 'Input order'
-                });
-            }
-
-            catColSel.addEventListener('change', () => {
-                state.roles.category = catColSel.value;
-                state.customColors = {};
-                state.categoryShapes = {};
-                syncLegendTitle();
-                refreshCategoryColors();
-                refreshShapeSelector();
-                resetChart();
-            });
-            valColSel.addEventListener('change', () => {
-                state.roles.value = valColSel.value;
-                state.customColors = {};
-                state.sortBy = valColSel.value;
-                fillSortBySelect();
-                refreshCategoryColors();
-                refreshShapeSelector();
-                resetChart();
-            });
-
-            sortBySel.addEventListener('change', () => {
-                state.sortBy = sortBySel.value;
-                refreshCategoryColors();
-                refreshShapeSelector();
-                if (state.currentSvg) drawChart();
-            });
-            sortDirSel.addEventListener('change', () => {
-                state.sortDir = sortDirSel.value;
-                refreshCategoryColors();
-                refreshShapeSelector();
-                if (state.currentSvg) drawChart();
-            });
-
-            function initPaletteDropdown() {
-                PlotCommon.renderPaletteDropdown(paletteDropdownContainer, {
-                    type: 'categorical',
-                    selected: state.paletteName,
-                    previewCount: 8,
-                    onSelect: name => {
-                        state.paletteName = name;
-                        state.customColors = {};
-                        refreshCategoryColors();
-                        refreshShapeSelector();
-                        resetChart();
-                    }
-                });
-            }
-
-            function resolvePaletteColors(count) {
-                return PlotCommon.getCategoricalColors(state.paletteName, count, {
-                    reverse: state.reverse,
-                    cycle: state.cycleColors
-                });
-            }
-
-            function getCategoryItems() {
-                return PlotCommon.aggregateAndSort(state.data, {
-                    categoryKey: state.roles.category,
-                    valueKey: state.roles.value,
-                    sortBy: state.sortBy,
-                    sortDir: state.sortDir
-                });
-            }
-
-            function refreshCategoryColors() {
-                const items = getCategoryItems();
-                if (!items.length) {
-                    colorAssignContainer.innerHTML =
-                        '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
-                    return;
-                }
-                const baseColors = resolvePaletteColors(items.length);
-                const displayItems = items.map((it, i) => ({
-                    name: it.name,
-                    color: state.customColors[it.name] || baseColors[i],
-                    percent: it.percent
-                }));
-
-                PlotCommon.renderColorAssignment(colorAssignContainer, {
-                    items: displayItems,
-                    onChange: (idx, newColor) => {
-                        state.customColors[items[idx].name] = newColor;
-                        refreshShapeSelector();
-                        if (state.currentSvg) drawChart();
-                    },
-                    onResetAll: () => {
-                        state.customColors = {};
-                        refreshCategoryColors();
-                        refreshShapeSelector();
-                        if (state.currentSvg) drawChart();
-                    }
-                });
-            }
-
-            function refreshShapeSelector() {
-                const items = getCategoryItems();
-                const baseColors = resolvePaletteColors(items.length);
-                const displayItems = items.map((it, i) => ({
-                    name: it.name,
-                    color: state.customColors[it.name] || baseColors[i]
-                }));
-
-                PlotShapes.renderShapeSelector(shapeSelectorContainer, {
-                    items: displayItems,
-                    state: state,
-                    onChange: () => {
-                        if (state.currentSvg) drawChart();
-                    }
-                });
-            }
-
-            $('reversePalette').addEventListener('change', e => {
-                state.reverse = e.target.checked;
-                state.customColors = {};
-                refreshCategoryColors();
-                refreshShapeSelector();
-                if (state.currentSvg) drawChart();
-            });
-
-            $('cycleColors').addEventListener('change', e => {
-                state.cycleColors = e.target.checked;
-                state.customColors = {};
-                refreshCategoryColors();
-                refreshShapeSelector();
-                if (state.currentSvg) drawChart();
-            });
-
-            $('drawBtn').addEventListener('click', drawChart);
-
-            function updateWaffleDirectionUI() {
-                const dir = $('waffleDirection').value;
-                if (dir === 'horizontal') {
-                    $('colsItem').classList.remove('hide');
-                    $('rowsItem').classList.add('hide');
-                } else {
-                    $('colsItem').classList.add('hide');
-                    $('rowsItem').classList.remove('hide');
-                }
-            }
-            $('waffleDirection').addEventListener('change', () => {
-                updateWaffleDirectionUI();
-                if (state.currentSvg) drawChart();
-            });
-
-            function num(id, fallback) {
-                const el = $(id);
-                if (!el) return fallback;
-                const v = parseFloat(el.value);
-                return isFinite(v) ? v : fallback;
-            }
-
-            function readParams() {
-                return {
-                    width: Math.max(200, num('chartWidth', 700)),
-                    height: Math.max(200, num('chartHeight', 600)),
-                    fontFamily: $('fontFamily').value || 'Times New Roman',
-                    legendFontSize: Math.max(6, num('legendFontSize', 15)),
-                    legendBold: $('legendBold').checked,
-                    legendItalic: $('legendItalic').checked,
-                    legendTitleFontSize: Math.max(6, num('legendTitleFontSize', 15)),
-                    legendTitleBold: $('legendTitleBold').checked,
-                    legendTitleItalic: $('legendTitleItalic').checked,
-                    titleFontSize: Math.max(6, num('titleFontSize', 22)),
-                    titleBold: $('titleBold').checked,
-                    titleItalic: $('titleItalic').checked,
-                    titleGap: Math.max(0, num('titleGap', 15)),
-                    showLegend: $('showLegend').checked,
-                    legendPosition: $('legendPosition').value || 'right',
-                    legendGap: Math.max(0, num('legendGap', 30)),
-                    showLegendTitle: $('showLegendTitle').checked,
-                    legendTitle: $('legendTitle').value || '',
-                    showTitle: $('showTitle').checked,
-                    chartTitle: $('chartTitle').value || '',
-                    showCanvasBorder: $('showCanvasBorder').checked,
-                    direction: $('waffleDirection').value || 'horizontal',
-                    total: Math.max(1, Math.round(num('waffleTotal', 100))),
-                    cols: Math.max(1, num('waffleCols', 10)),
-                    rows: Math.max(1, num('waffleRows', 10)),
-                    waffleGapX: Math.max(0, num('waffleGapX', 2)),
-                    waffleGapY: Math.max(0, num('waffleGapY', 2))
-                };
-            }
-
-            /* Grid:
-               - total is user-defined
-               - Horizontal: columns user-defined → rows = ceil(total / cols)
-               - Vertical:   rows user-defined   → cols = ceil(total / rows) */
-            function getGrid(p) {
-                const total = p.total;
-                if (p.direction === 'horizontal') {
-                    const cols = Math.max(1, Math.round(p.cols));
-                    const rows = Math.max(1, Math.ceil(total / cols));
-                    return { rows, cols, total };
-                } else {
-                    const rows = Math.max(1, Math.round(p.rows));
-                    const cols = Math.max(1, Math.ceil(total / rows));
-                    return { rows, cols, total };
-                }
-            }
-
-            function buildCells(p) {
-                const items = getCategoryItems();
-                if (!items.length) return null;
-                const grid = getGrid(p);
-                const totalCells = grid.total;
-
-                const cells = [];
-                let remaining = totalCells;
-                items.forEach((it, idx) => {
-                    let count;
-                    if (idx === items.length - 1) {
-                        count = remaining;
-                    } else {
-                        count = Math.min(Math.round(it.percent * totalCells), remaining);
-                    }
-                    for (let i = 0; i < count; i++) cells.push({ category: it.name });
-                    remaining -= count;
-                });
-                return { cells, rows: grid.rows, cols: grid.cols };
-            }
-
-            function estTextWidth(str, fontSize) {
-                let w = 0;
-                for (const ch of str) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
-                return w * fontSize;
-            }
-
-            function drawShape(parent, shapeId, cx, cy, cellSize, fill) {
-                if (shapeId === 'square') {
-                    parent.append('rect')
-                        .attr('x', cx - cellSize / 2)
-                        .attr('y', cy - cellSize / 2)
-                        .attr('width', cellSize)
-                        .attr('height', cellSize)
-                        .attr('fill', fill);
-                    return;
-                }
-                const symType = PlotShapes.getSymbolType(shapeId);
-                const size = PlotShapes.getSymbolSize(shapeId, cellSize);
-                const pathData = d3.symbol().type(symType).size(size)();
-                parent.append('path')
-                    .attr('d', pathData)
-                    .attr('transform', `translate(${cx}, ${cy})`)
-                    .attr('fill', fill);
-            }
-
-            function drawChart() {
-                toolbarTip.textContent = '';
-                if (!state.data.length) {
-                    showTip('msgTip3', '❌ Please import data first', 'error');
-                    return;
-                }
-                if (!state.roles.category || !state.roles.value) {
-                    showTip('msgTip3', '❌ Please select category and value columns in Step 2', 'error');
-                    return;
-                }
-
-                const p = readParams();
-                const built = buildCells(p);
-                if (!built || !built.cells.length) {
-                    showTip('msgTip3', '❌ Failed to generate valid data. Please check the value column.', 'error');
-                    return;
-                }
-                const { cells, rows, cols } = built;
-
-                const items = getCategoryItems();
-                const allCatNames = items.map(x => x.name);
-                const allBaseColors = resolvePaletteColors(allCatNames.length);
-
-                const colorOf = name => {
-                    if (!name) return '#e8edf2';
-                    if (state.customColors[name]) return state.customColors[name];
-                    const idx = allCatNames.indexOf(name);
-                    return allBaseColors[idx] || '#cccccc';
-                };
-                const shapeOf = name => {
-                    if (!name) return 'square';
-                    if (state.shapeMode === 'uniform') return state.uniformShape;
-                    return state.categoryShapes[name] || 'square';
-                };
-
-                const width = p.width;
-                const height = p.height;
-
-                const titleH = (p.showTitle && p.chartTitle)
-                    ? p.titleFontSize + 10 + p.titleGap
-                    : 0;
-
-                const wantLegend = !!p.showLegend && items.length > 0;
-                const pos = p.legendPosition;
-                const isRight = wantLegend && pos === 'right';
-                const isLeft = wantLegend && pos === 'left';
-                const isTop = wantLegend && pos === 'top';
-                const isBottom = wantLegend && pos === 'bottom';
-
-                const legendColW = 200;
-                const legendRowH = p.legendFontSize + 10;
-                const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
-                const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
-                const legendInlineH = p.legendFontSize + 20 + legendTitleH;
-                const gap = p.legendGap;
-                const margin = 30;
-
-                let areaX = margin, areaY = margin;
-                let areaW = width - 2 * margin;
-                let areaH = height - 2 * margin;
-
-                if (isRight) {
-                    areaW = width - legendColW - gap - 2 * margin;
-                } else if (isLeft) {
-                    areaX = legendColW + gap + margin;
-                    areaW = width - legendColW - gap - 2 * margin;
-                } else if (isTop) {
-                    areaY = legendInlineH + gap + margin;
-                    areaH = height - legendInlineH - gap - 2 * margin;
-                } else if (isBottom) {
-                    areaH = height - legendInlineH - gap - 2 * margin;
-                }
-                areaW = Math.max(20, areaW);
-                areaH = Math.max(20, areaH);
-
-                const gridAreaH = Math.max(20, areaH - titleH);
-
-                const gx = p.waffleGapX;
-                const gy = p.waffleGapY;
-                const cellFromW = (areaW - gx * (cols - 1)) / cols;
-                const cellFromH = (gridAreaH - gy * (rows - 1)) / rows;
-                const cellSize = Math.max(1, Math.min(cellFromW, cellFromH));
-
-                /* Full grid visual width/height (used for centering even when the
-                   last row/column is not fully filled) */
-                const fullW = cellSize * cols + gx * (cols - 1);
-                const fullH = cellSize * rows + gy * (rows - 1);
-
-                const blockH = titleH + fullH;
-                const blockTop = areaY + (areaH - blockH) / 2;
-
-                const titleY = blockTop + 10 + p.titleFontSize;
-                const gridTop = blockTop + titleH;
-                const gridLeft = areaX + (areaW - fullW) / 2;
-
-                const svg = d3.select(chartPreview).html('')
-                    .append('svg')
-                    .attr('width', width)
-                    .attr('height', height)
-                    .attr('viewBox', `0 0 ${width} ${height}`)
-                    .attr('xmlns', 'http://www.w3.org/2000/svg')
-                    .style('background', '#ffffff')
-                    .style('font-family', p.fontFamily);
-                state.currentSvg = svg.node();
-
-                if (p.showCanvasBorder) {
-                    svg.append('rect')
-                        .attr('class', 'canvas-border')
-                        .attr('x', 0.5).attr('y', 0.5)
-                        .attr('width', width - 1).attr('height', height - 1)
-                        .attr('fill', 'none')
-                        .attr('stroke', '#c0c8d4')
-                        .attr('stroke-width', 1)
-                        .attr('stroke-dasharray', '4 3')
-                        .attr('pointer-events', 'none');
-                }
-
-                if (p.showTitle && p.chartTitle) {
-                    svg.append('text')
-                        .attr('x', width / 2)
-                        .attr('y', titleY)
-                        .attr('text-anchor', 'middle')
-                        .attr('font-size', p.titleFontSize)
-                        .attr('font-weight', p.titleBold ? 'bold' : 'normal')
-                        .attr('font-style', p.titleItalic ? 'italic' : 'normal')
-                        .attr('fill', '#1f4068')
-                        .text(p.chartTitle);
-                }
-
-                /* ---- Grid: draw only `total` cells ---- */
-                const g = svg.append('g').attr('class', 'waffle-cells');
-                cells.forEach((cell, idx) => {
-                    let r, c;
-                    if (p.direction === 'horizontal') {
-                        r = Math.floor(idx / cols);
-                        c = idx % cols;
-                    } else {
-                        r = idx % rows;
-                        c = Math.floor(idx / rows);
-                    }
-                    const cx = gridLeft + c * (cellSize + gx) + cellSize / 2;
-                    const cy = gridTop + r * (cellSize + gy) + cellSize / 2;
-
-                    const shapeId = shapeOf(cell.category);
-                    const fill = colorOf(cell.category);
-
-                    drawShape(g, shapeId, cx, cy, cellSize, fill);
-                });
-
-                /* ---- Legend ---- */
-                if (wantLegend) {
-                    const legendGroup = svg.append('g').attr('class', 'chart-legend');
-                    const markerSize = p.legendFontSize;
-                    const textGap = 8;
-                    const itemGap = 20;
-                    const legendWeight = p.legendBold ? 'bold' : 'normal';
-                    const legendStyle  = p.legendItalic ? 'italic' : 'normal';
-                    const ltitleWeight = p.legendTitleBold ? 'bold' : 'normal';
-                    const ltitleStyle  = p.legendTitleItalic ? 'italic' : 'normal';
-                    const labels = items.map(it => `${it.name} (${(it.percent * 100).toFixed(1)}%)`);
-
-                    if (isRight || isLeft) {
-                        const totalH = (hasLegendTitle ? legendTitleH : 0) + items.length * legendRowH;
-                        const startY2 = areaY + (areaH - totalH) / 2;
-                        const baseX = isRight ? (width - legendColW - gap + 12) : 12;
-
-                        if (hasLegendTitle) {
-                            legendGroup.append('text')
-                                .attr('x', baseX)
-                                .attr('y', startY2 + p.legendTitleFontSize / 2)
-                                .attr('dy', '0.35em')
-                                .attr('font-size', p.legendTitleFontSize)
-                                .attr('font-weight', ltitleWeight)
-                                .attr('font-style', ltitleStyle)
-                                .attr('fill', '#333')
-                                .text(p.legendTitle);
-                        }
-                        const itemsStartY = startY2 + (hasLegendTitle ? legendTitleH : 0);
-                        items.forEach((it, i) => {
-                            const y = itemsStartY + i * legendRowH;
-                            const markerCx = baseX + markerSize / 2;
-                            const markerCy = y + markerSize / 2;
-                            drawShape(legendGroup, shapeOf(it.name), markerCx, markerCy, markerSize, colorOf(it.name));
-                            legendGroup.append('text')
-                                .attr('x', baseX + markerSize + textGap)
-                                .attr('y', y + markerSize / 2)
-                                .attr('dy', '0.35em')
-                                .attr('font-size', p.legendFontSize)
-                                .attr('font-weight', legendWeight)
-                                .attr('font-style', legendStyle)
-                                .attr('fill', '#333')
-                                .text(labels[i]);
-                        });
-                    } else {
-                        const widths = labels.map(lb =>
-                            markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap
-                        );
-                        const totalW = widths.reduce((a, b) => a + b, 0) - itemGap;
-                        const startX2 = Math.max(10, (width - totalW) / 2);
-
-                        const legendY0 = isTop ? margin : (height - legendInlineH - margin);
-                        const itemsY = legendY0 + (hasLegendTitle ? legendTitleH : 0) + 6;
-
-                        if (hasLegendTitle) {
-                            legendGroup.append('text')
-                                .attr('x', width / 2)
-                                .attr('y', legendY0 + p.legendTitleFontSize / 2)
-                                .attr('text-anchor', 'middle')
-                                .attr('dy', '0.35em')
-                                .attr('font-size', p.legendTitleFontSize)
-                                .attr('font-weight', ltitleWeight)
-                                .attr('font-style', ltitleStyle)
-                                .attr('fill', '#333')
-                                .text(p.legendTitle);
-                        }
-                        let cursorX = startX2;
-                        items.forEach((it, i) => {
-                            const markerCx = cursorX + markerSize / 2;
-                            const markerCy = itemsY + markerSize / 2;
-                            drawShape(legendGroup, shapeOf(it.name), markerCx, markerCy, markerSize, colorOf(it.name));
-                            legendGroup.append('text')
-                                .attr('x', cursorX + markerSize + textGap)
-                                .attr('y', itemsY + markerSize / 2)
-                                .attr('dy', '0.35em')
-                                .attr('font-size', p.legendFontSize)
-                                .attr('font-weight', legendWeight)
-                                .attr('font-style', legendStyle)
-                                .attr('fill', '#333')
-                                .text(labels[i]);
-                            cursorX += widths[i];
-                        });
-                    }
-                }
-
-                exportSvgBtn.disabled = false;
-                exportPngBtn.disabled = false;
-                showTip('msgTip3', '✅ Chart rendered', 'success');
-            }
-
-            function getSvgWithoutBorder() {
-                if (!state.currentSvg) return null;
-                const clone = state.currentSvg.cloneNode(true);
-                clone.querySelectorAll('.canvas-border').forEach(el => el.remove());
-                return clone;
-            }
-
-            exportSvgBtn.addEventListener('click', () => {
-                const svg = getSvgWithoutBorder();
-                if (!svg) return;
-                PlotCommon.downloadSVG(svg, 'waffle_chart.svg');
-                toolbarTip.innerHTML = '<span class="success">✅ SVG exported</span>';
-            });
-            exportPngBtn.addEventListener('click', () => {
-                const svg = getSvgWithoutBorder();
-                if (!svg) return;
-                PlotCommon.downloadPNG(svg, 'waffle_chart.png', 2, '#ffffff')
-                    .then(() => { toolbarTip.innerHTML = '<span class="success">✅ PNG exported</span>'; })
-                    .catch(() => { toolbarTip.innerHTML = '<span class="error">❌ PNG export failed</span>'; });
-            });
-
-            function showTip(elId, msg, type) {
-                const el = $(elId);
-                el.className = 'tip-text ' + (type || '');
-                el.textContent = msg;
-                setTimeout(() => { el.textContent = ''; el.className = 'tip-text'; }, 3500);
-            }
-            function resetChart() {
-                chartPreview.innerHTML = '<div class="placeholder">Import data and adjust settings, then click "Draw Chart" to preview.</div>';
-                state.currentSvg = null;
-                exportSvgBtn.disabled = true;
-                exportPngBtn.disabled = true;
-                toolbarTip.textContent = '';
-                $('msgTip3').textContent = '';
-            }
-            function resetAll() {
-                state.headers = [];
-                state.data = [];
-                state.roles = { category: '', value: '' };
-                state.customColors = {};
-                state.categoryShapes = {};
-                state.sortBy = '';
-                state.sortDir = 'desc';
-                state.legendTitleEdited = false;
-                sortDirSel.value = 'desc';
-                legendTitleInput.value = '';
-                fillRoleSelects();
-                fillSortBySelect();
-                colorAssignContainer.innerHTML =
-                    '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
-                refreshShapeSelector();
-                resetChart();
-            }
-
-            document.querySelectorAll('[data-redraw]').forEach(el => {
-                el.addEventListener('change', () => {
-                    if (state.currentSvg) drawChart();
-                });
-            });
-
-            function init() {
-                PlotCommon.renderImportPanel('importPanel', {
-                    title: 'Step 1: Import Data',
-                    infoBox: 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. You can paste directly from Excel.',
-                    exampleData: EXAMPLE_DATA,
-                    defaultMode: 'file',
-                    onImport: onDataImported,
-                    onReset: resetAll
-                });
-                initPaletteDropdown();
-                fillRoleSelects();
-                fillSortBySelect();
-                colorAssignContainer.innerHTML =
-                    '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
-                updateWaffleDirectionUI();
-                refreshShapeSelector();
-                resetChart();
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
-            }
-        })();
-    }).catch(function (err) {
-        console.error(err);
-        const box = document.getElementById('chartPreview');
-        if (box) {
-            box.innerHTML = '<div class="placeholder" style="color:#c00;">❌ Failed to load d3. Please check your network and refresh.</div>';
-        }
-    });
-    </script>
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer-en.js"></script>
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-shapes.js"></script>
+
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-title.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/002.js"></script>
 </body>
 </html>

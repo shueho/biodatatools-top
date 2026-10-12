@@ -758,3 +758,38 @@ input[type="color"] {
     color: var(--primary);
     font-size: 14px;
 }
+
+/* ============================================================
+   坐标轴设置面板（plot-axis.js 专用）
+============================================================ */
+.axis-group {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    background: #fbfcfe;
+}
+.axis-group > summary {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 14px;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.axis-group > summary::before {
+    content: "▶";
+    font-size: 10px;
+    transition: transform .2s;
+}
+.axis-group[open] > summary::before {
+    transform: rotate(90deg);
+}
+.axis-group[open] > summary {
+    border-bottom: 1px solid var(--border);
+}
+.axis-group .font-row {
+    padding: 6px 14px;
+}
