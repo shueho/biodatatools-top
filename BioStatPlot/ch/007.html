@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分组柱形图 - BioDataTools</title>
+    <title>分组柱形图（竖直） - BioDataTools</title>
     <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/plot-common.css">
 </head>
@@ -13,7 +13,7 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>分组柱形图</h2>
+            <h2>分组柱形图（竖直）</h2>
             <p>按自变量绘制柱形图，可选用分组变量并排展示，支持范围棒与误差值棒。</p>
         </div>
 
@@ -65,21 +65,6 @@
                 </div>
                 <div class="param-inline" style="margin-top:8px;">
                     <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>显示画布边框</label>
-                </div>
-            </div>
-
-            <div class="param-panel">
-                <div class="param-panel-title">柱形设置</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item"><label>同组柱间距</label><input type="number" id="barInnerGap" value="0.15" min="0" max="0.9" step="0.05" data-redraw></div>
-                    <div class="param-item"><label>组间距</label><input type="number" id="barOuterGap" value="0.3" min="0" max="0.9" step="0.05" data-redraw></div>
-                    <div class="param-item"><label>柱宽比例</label><input type="number" id="barWidthScale" value="1" min="0.2" max="1" step="0.05" data-redraw></div>
-                    <div class="param-item"><label>柱描边宽度</label><input type="number" id="barStrokeWidth" value="0" min="0" max="4" step="0.5" data-redraw></div>
-                    <div class="param-item"><label>柱描边色</label><input type="color" id="barStrokeColor" value="#ffffff" data-redraw></div>
-                </div>
-                <div class="param-inline" style="margin-top:8px;">
-                    <label><input type="checkbox" id="barShowValue" data-redraw>在柱顶显示数值</label>
-                    <label>字号：<input type="number" id="barValueFontSize" value="12" min="6" max="24" style="width:60px;" data-redraw></label>
                 </div>
             </div>
 
@@ -171,6 +156,21 @@
             </div>
 
             <div id="axisPanelContainer"></div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">柱形设置</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>同组柱间距</label><input type="number" id="barInnerGap" value="0.15" min="0" max="0.9" step="0.05" data-redraw></div>
+                    <div class="param-item"><label>组间距</label><input type="number" id="barOuterGap" value="0.3" min="0" max="0.9" step="0.05" data-redraw></div>
+                    <div class="param-item"><label>柱宽比例</label><input type="number" id="barWidthScale" value="1" min="0.2" max="1" step="0.05" data-redraw></div>
+                    <div class="param-item"><label>柱描边宽度</label><input type="number" id="barStrokeWidth" value="0" min="0" max="4" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>柱描边色</label><input type="color" id="barStrokeColor" value="#ffffff" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="barShowValue" data-redraw>在柱顶显示数值</label>
+                    <label>字号：<input type="number" id="barValueFontSize" value="12" min="6" max="24" style="width:60px;" data-redraw></label>
+                </div>
+            </div>
 
             <div id="errorBarPanelContainer"></div>
 

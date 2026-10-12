@@ -4,8 +4,8 @@
     const EN = PlotI18N.lang() === 'en';
     const T = {
         importInfo: EN
-            ? 'Must include a header row with at least an <strong>X (independent) column</strong> and a <strong>Y (dependent) column</strong>. Three examples are provided: no grouping (range bars), grouped (error-value bars), and grouped (range bars).'
-            : '需包含表头，且至少包含 <strong>自变量列</strong> 和 <strong>因变量列</strong>。示例提供三个版本：无分组（带范围棒）、有分组（误差值棒）、有分组（范围棒）。',
+            ? 'Must include a header row with at least an <strong>X (independent) column</strong> and a <strong>Y (dependent) column</strong>. Two examples are provided: no grouping (range bars) and grouped (error-value bars).'
+            : '需包含表头，且至少包含 <strong>自变量列</strong> 和 <strong>因变量列</strong>。示例提供两个版本：无分组（带范围棒）、有分组（误差值棒）。',
         noData: EN ? '❌ Please import data first' : '❌ 请先导入数据',
         selectCols: EN ? '❌ Please select the X (independent) and Y (dependent) columns' : '❌ 请选择自变量（X）与因变量（Y）',
         noValid: EN ? '❌ Could not generate valid plot data. Please check the Y column' : '❌ 未能生成有效绘图数据，请检查因变量列',
@@ -15,7 +15,6 @@
 
     const EX_PLAIN = 'X\tValue\tLower\tUpper\nA\t18\t15\t21\nB\t32\t28\t36\nC\t12\t10\t14\nD\t24\t21\t27\nE\t8\t6\t10';
     const EX_ERRVAL = 'X\tGroup\tValue\tError\nA\tCtrl\t20\t2\nA\tTrt1\t25\t3\nB\tCtrl\t30\t4\nB\tTrt1\t35\t5\nC\tCtrl\t18\t2\nC\tTrt1\t24\t3';
-    const EX_RANGE = 'X\tGroup\tValue\tLower\tUpper\nA\tCtrl\t20\t17\t23\nA\tTrt1\t25\t22\t28\nB\tCtrl\t30\t27\t33\nB\tTrt1\t35\t31\t39\nC\tCtrl\t18\t15\t21\nC\tTrt1\t24\t21\t27';
 
     function num(app, id, fallback) {
         const el = app.$(id);
@@ -595,9 +594,8 @@
         exportName: 'grouped_bar_chart',
         importInfo: T.importInfo,
         examples: [
-            { label: EN ? 'Example: no group + range bars' : '示例：无分组+范围棒', data: EX_PLAIN },
-            { label: EN ? 'Example: group + error-value bars' : '示例：分组+误差值棒', data: EX_ERRVAL },
-            { label: EN ? 'Example: group + range bars' : '示例：分组+范围棒', data: EX_RANGE }
+            { label: EN ? 'Example: no group' : '示例：无分组', data: EX_PLAIN },
+            { label: EN ? 'Example: grouped with error bars' : '示例：分组含误差棒', data: EX_ERRVAL }
         ],
         stateExtra: {
             roles: { x: '', group: '', y: '' },

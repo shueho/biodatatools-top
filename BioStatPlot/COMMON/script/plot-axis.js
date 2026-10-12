@@ -137,7 +137,7 @@
             domainAuto: true,
             domainMin: 0,
             domainMax: 100,
-            domainPad: 5,
+            domainPad: 0,
 
             breakEnable: false,
             breakFrom: 0,

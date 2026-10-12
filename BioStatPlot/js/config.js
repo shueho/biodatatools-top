@@ -19,7 +19,7 @@
                 en: 'Bar Chart',
                 tools: [
                     { id: '005', zh: '径向条形图', en: 'Radial Bar Chart' },
-                    { id: 'xxx', zh: '开发中', en: 'NULL' }
+                    { id: '007', zh: '分组柱形图（竖直）', en: 'Grouped Bar Chart (Vertical)' }
                 ]
             },
             {
