@@ -417,6 +417,8 @@
 
     /* ============================================================
        8. 第一步：导入数据面板（中英文自动）
+       opts.examples: [{ label: '示例1', data: '...' }, ...]
+       opts.exampleData: 兼容旧版本，等价于 examples: [{ label: L().exampleBtn, data }]
     ============================================================ */
     function renderImportPanel(containerOrId, opts) {
         opts = opts || {};
@@ -428,8 +430,20 @@
         const L10n = L();
         const title = opts.title || L10n.importTitle;
         const infoHtml = opts.infoBox || L10n.importInfo;
-        const exampleData = opts.exampleData || '';
         const defaultMode = opts.defaultMode || 'file';
+
+        /* 统一构造 examples 数组 */
+        let examples = [];
+        if (Array.isArray(opts.examples) && opts.examples.length) {
+            examples = opts.examples
+                .filter(ex => ex && ex.data)
+                .map(ex => ({
+                    label: ex.label || L10n.exampleBtn,
+                    data: ex.data
+                }));
+        } else if (opts.exampleData) {
+            examples = [{ label: L10n.exampleBtn, data: opts.exampleData }];
+        }
 
         container.className = 'step-card';
         container.innerHTML = `
@@ -447,7 +461,9 @@
             <div class="info-box">${infoHtml}</div>
             <div class="btn-group">
                 <button class="btn import-btn">${L10n.importBtn}</button>
-                <button class="btn import-example-btn">${L10n.exampleBtn}</button>
+                ${examples.map((ex, i) =>
+                    `<button class="btn import-example-btn" data-example-idx="${i}">${escapeHtml(ex.label)}</button>`
+                ).join('')}
             </div>
             <div class="import-msg tip-text"></div>
             <div class="import-origin-wrap hide" style="margin-top:14px;">
@@ -465,7 +481,6 @@
         const originTable = container.querySelector('.import-origin-table');
         const originCount = container.querySelector('.import-origin-count');
         const importBtn = container.querySelector('.import-btn');
-        const exampleBtn = container.querySelector('.import-example-btn');
 
         function showMsg(msg, type) {
             msgEl.className = 'import-msg tip-text ' + (type || '');
@@ -537,13 +552,18 @@
         }
 
         importBtn.addEventListener('click', importData);
-        exampleBtn.addEventListener('click', () => {
-            if (!exampleData) return;
-            const r = container.querySelector('input[name="inputMode"][value="text"]');
-            r.checked = true;
-            setMode('text');
-            textArea.value = exampleData;
-            importData();
+
+        container.querySelectorAll('.import-example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.exampleIdx, 10);
+                const ex = examples[idx];
+                if (!ex || !ex.data) return;
+                const r = container.querySelector('input[name="inputMode"][value="text"]');
+                r.checked = true;
+                setMode('text');
+                textArea.value = ex.data;
+                importData();
+            });
         });
 
         setMode(defaultMode);

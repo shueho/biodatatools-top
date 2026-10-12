@@ -289,7 +289,7 @@ function renderSideNav() {
         if (cat.tools && cat.tools.length) {
             cat.tools.forEach(tool => {
                 const toolLi = document.createElement('li');
-                toolLi.innerHTML = `<a onclick="scrollToTool('${tool.id}')">${renderIcon(tool.id, 18)} ${tool[LANG] || ''}</a>`;
+                toolLi.innerHTML = `<a onclick="scrollToTool('${tool.id}')">${tool[LANG] || ''}</a>`;
                 subMenu.appendChild(toolLi);
             });
             return;
@@ -308,7 +308,7 @@ function renderSideNav() {
             const subSubMenu = document.getElementById(subId);
             (sub.tools || []).forEach(tool => {
                 const toolLi = document.createElement('li');
-                toolLi.innerHTML = `<a onclick="scrollToTool('${tool.id}')">${renderIcon(tool.id, 18)} ${tool[LANG] || ''}</a>`;
+                toolLi.innerHTML = `<a onclick="scrollToTool('${tool.id}')">${tool[LANG] || ''}</a>`;
                 subSubMenu.appendChild(toolLi);
             });
         });

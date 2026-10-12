@@ -14,7 +14,7 @@
     <div class="main">
         <div class="page-intro">
             <h2>Radial Bar Chart</h2>
-            <p>Each category occupies a concentric track; arc length is drawn proportionally to value. A full-circle reference value can be specified.</p>
+            <p>Each category occupies a concentric track; arc length is drawn proportionally to value, with optional full-circle reference and error bars.</p>
         </div>
 
         <div id="importPanel"></div>
@@ -202,6 +202,8 @@
                 </div>
             </div>
 
+            <div id="errorBarPanelContainer"></div>
+
             <div class="btn-group">
                 <button class="btn" id="drawBtn">Draw Chart</button>
             </div>
@@ -228,6 +230,7 @@
     <script src="../COMMON/plot-header.js"></script>
     <script src="../COMMON/plot-footer-en.js"></script>
     <script src="../COMMON/plot-common.js"></script>
+    <script src="../COMMON/plot-errorbar.js"></script>
 
     <script>
     PlotBootstrap.ensureD3().then(function () {
@@ -245,6 +248,16 @@
                 sortDir: 'desc',
                 legendTitleEdited: false,
                 refValueEdited: false,
+                errBar: {
+                    mode: 'none',
+                    lowerCol: '',
+                    upperCol: '',
+                    errCol: '',
+                    showWhich: 'both',
+                    colorMode: 'uniform',
+                    errColor: '#e67700',
+                    errWidth: 3
+                },
                 currentSvg: null
             };
 
@@ -262,16 +275,62 @@
             const legendTitleInput = $('legendTitle');
             const refModeSel = $('refMode');
             const refValueInput = $('refValue');
+            const errorBarPanelContainer = $('errorBarPanelContainer');
 
-            const EXAMPLE_DATA =
+            const EX_NO_ERR =
                 'Category\tValue\n' +
-                'A\t320\n' +
-                'C\t200\n' +
-                'E\t110\n' +
-                'B\t260\n' +
-                'G\t40\n' +
-                'D\t150\n' +
-                'F\t70';
+                'A\t180\n' +
+                'B\t320\n' +
+                'C\t75\n' +
+                'D\t240\n' +
+                'E\t50\n' +
+                'F\t150\n' +
+                'G\t290';
+
+            const EX_RANGE =
+                'Category\tValue\tLower\tUpper\n' +
+                'A\t180\t160\t200\n' +
+                'B\t320\t290\t350\n' +
+                'C\t75\t60\t90\n' +
+                'D\t240\t215\t265\n' +
+                'E\t50\t40\t60\n' +
+                'F\t150\t130\t170\n' +
+                'G\t290\t265\t315';
+
+            const EX_ERRVAL =
+                'Category\tValue\tError\n' +
+                'A\t180\t20\n' +
+                'B\t320\t30\n' +
+                'C\t75\t15\n' +
+                'D\t240\t25\n' +
+                'E\t50\t10\n' +
+                'F\t150\t20\n' +
+                'G\t290\t25';
+
+            function num(id, fallback) {
+                const el = $(id);
+                if (!el) return fallback;
+                const v = parseFloat(el.value);
+                return isFinite(v) ? v : fallback;
+            }
+
+            function estTextWidth(str, fontSize) {
+                let w = 0;
+                for (const ch of String(str)) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
+                return w * fontSize;
+            }
+
+            function fmtNum(v, d) {
+                if (!isFinite(v)) return '';
+                if (Number.isInteger(v)) return String(v);
+                return Number(v).toFixed(d);
+            }
+
+            function textColorOn(bg) {
+                const rgb = PlotCommon.hexToRgb(bg);
+                const lum = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+                return lum > 165 ? '#333333' : '#ffffff';
+            }
 
             legendTitleInput.addEventListener('input', () => {
                 state.legendTitleEdited = true;
@@ -317,11 +376,17 @@
                 state.refValueEdited = false;
                 sortDirSel.value = 'desc';
 
+                state.errBar.lowerCol = '';
+                state.errBar.upperCol = '';
+                state.errBar.errCol = '';
+                state.errBar.mode = 'none';
+
                 syncLegendTitle();
                 fillRoleSelects();
                 fillSortBySelect();
                 refreshCategoryColors();
                 updateRefModeUI();
+                refreshErrorBarPanel();
                 resetChart();
             }
 
@@ -343,7 +408,9 @@
             }
 
             function fillSortBySelect() {
-                state.sortBy = PlotCommon.fillSortBySelect(sortBySel, state.headers, state.sortBy);
+                state.sortBy = PlotCommon.fillSortBySelect(sortBySel, state.headers, state.sortBy, {
+                    inputLabel: 'Input order'
+                });
             }
 
             catColSel.addEventListener('change', () => {
@@ -364,7 +431,7 @@
                 fillSortBySelect();
                 refreshCategoryColors();
                 updateRefModeUI();
-                resetChart();
+                if (state.currentSvg) drawChart();
             });
 
             sortBySel.addEventListener('change', () => {
@@ -414,6 +481,20 @@
                 });
             }
 
+            function getItemsWithRows() {
+                const items = getCategoryItems();
+                const catKey = state.roles.category;
+                const rowMap = new Map();
+                state.data.forEach(row => {
+                    const k = String(row[catKey]);
+                    if (!rowMap.has(k)) rowMap.set(k, row);
+                });
+                return items.map(it => ({
+                    ...it,
+                    _firstRow: rowMap.get(it.name) || {}
+                }));
+            }
+
             function refreshCategoryColors() {
                 const items = getCategoryItems();
                 if (!items.length) {
@@ -456,14 +537,17 @@
                 if (state.currentSvg) drawChart();
             });
 
-            $('drawBtn').addEventListener('click', drawChart);
-
-            function num(id, fallback) {
-                const el = $(id);
-                if (!el) return fallback;
-                const v = parseFloat(el.value);
-                return isFinite(v) ? v : fallback;
+            function refreshErrorBarPanel() {
+                PlotErrorBar.renderErrorBarConfig(errorBarPanelContainer, {
+                    headers: state.headers,
+                    state: state.errBar,
+                    onChange: () => {
+                        if (state.currentSvg) drawChart();
+                    }
+                });
             }
+
+            $('drawBtn').addEventListener('click', drawChart);
 
             function readParams() {
                 return {
@@ -517,24 +601,6 @@
                 };
             }
 
-            function estTextWidth(str, fontSize) {
-                let w = 0;
-                for (const ch of String(str)) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
-                return w * fontSize;
-            }
-
-            function fmtNum(v, d) {
-                if (!isFinite(v)) return '';
-                if (Number.isInteger(v)) return String(v);
-                return Number(v).toFixed(d);
-            }
-
-            function textColorOn(bg) {
-                const rgb = PlotCommon.hexToRgb(bg);
-                const lum = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
-                return lum > 165 ? '#333333' : '#ffffff';
-            }
-
             function computeLayout(p, itemCount) {
                 const width = p.width;
                 const height = p.height;
@@ -578,7 +644,6 @@
                 areaH = Math.max(20, areaH);
 
                 const gridAreaH = Math.max(20, areaH - titleH);
-
                 const availR = Math.max(20, Math.min(areaW / 2, gridAreaH / 2));
 
                 let outerR = Math.max(p.innerRadius + 20, p.outerRadius);
@@ -624,7 +689,7 @@
                     return;
                 }
 
-                const items = getCategoryItems();
+                const items = getItemsWithRows();
                 if (!items.length) {
                     showTip('msgTip3', '❌ No valid data to plot. Please check the value column.', 'error');
                     return;
@@ -669,6 +734,17 @@
 
                 const startDeg = p.startAngle;
                 const isCCW = p.direction === 'counterclockwise';
+                const startRad = startDeg * Math.PI / 180;
+
+                function angleAt(t) {
+                    return isCCW
+                        ? (startRad - t * 2 * Math.PI)
+                        : (startRad + t * 2 * Math.PI);
+                }
+                function pointAt(r, t) {
+                    const a = angleAt(t);
+                    return [r * Math.sin(a), -r * Math.cos(a)];
+                }
 
                 const svg = d3.select(chartPreview).html('')
                     .append('svg')
@@ -742,6 +818,7 @@
                 }
 
                 const arcGroup = g.append('g').attr('class', 'orbit-arcs');
+                const errGroup = g.append('g').attr('class', 'orbit-error-bars');
                 const labelGroup = g.append('g').attr('class', 'orbit-labels');
 
                 const labelWeight = p.labelBold ? 'bold' : 'normal';
@@ -783,6 +860,52 @@
                                 d3.select(this).transition().duration(120)
                                     .attr('stroke-width', ringW);
                             });
+                    }
+
+                    if (state.errBar.mode !== 'none') {
+                        const ext = PlotErrorBar.computeErrorExtent(
+                            it._firstRow, it.value, state.errBar
+                        );
+                        if (ext) {
+                            let t1 = ext.lower / ref;
+                            let t2 = ext.upper / ref;
+                            t1 = Math.max(0, Math.min(1, t1));
+                            t2 = Math.max(0, Math.min(1, t2));
+                            if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+
+                            if (t2 - t1 > 0.0005) {
+                                const [x1, y1] = pointAt(rMid, t1);
+                                const [x2, y2] = pointAt(rMid, t2);
+                                const sweep = isCCW ? 0 : 1;
+                                const largeArc = (t2 - t1) > 0.5 ? 1 : 0;
+
+                                const errColor = PlotErrorBar.resolveErrorColor(state.errBar, colors[i]);
+
+                                errGroup.append('path')
+                                    .attr('d', `M ${x1} ${y1} A ${rMid} ${rMid} 0 ${largeArc} ${sweep} ${x2} ${y2}`)
+                                    .attr('fill', 'none')
+                                    .attr('stroke', errColor)
+                                    .attr('stroke-width', state.errBar.errWidth)
+                                    .attr('stroke-linecap', 'butt')
+                                    .attr('pointer-events', 'none');
+
+                                const capLen = Math.max(6, ringW * 0.7);
+                                [t1, t2].forEach(t => {
+                                    const a = angleAt(t);
+                                    const ux = Math.sin(a);
+                                    const uy = -Math.cos(a);
+                                    const r1 = rMid - capLen / 2;
+                                    const r2 = rMid + capLen / 2;
+                                    errGroup.append('line')
+                                        .attr('x1', r1 * ux).attr('y1', r1 * uy)
+                                        .attr('x2', r2 * ux).attr('y2', r2 * uy)
+                                        .attr('stroke', errColor)
+                                        .attr('stroke-width', state.errBar.errWidth)
+                                        .attr('stroke-linecap', 'round')
+                                        .attr('pointer-events', 'none');
+                                });
+                            }
+                        }
                     }
 
                     if (p.labelContent === 'none' || arcDeg <= 0) return;
@@ -932,14 +1055,14 @@
             exportSvgBtn.addEventListener('click', () => {
                 const svg = getSvgWithoutBorder();
                 if (!svg) return;
-                PlotCommon.downloadSVG(svg, 'bar_chart.svg');
+                PlotCommon.downloadSVG(svg, 'radial_bar_chart.svg');
                 toolbarTip.innerHTML = '<span class="success">✅ SVG exported successfully</span>';
             });
 
             exportPngBtn.addEventListener('click', () => {
                 const svg = getSvgWithoutBorder();
                 if (!svg) return;
-                PlotCommon.downloadPNG(svg, 'bar_chart.png', 2, '#ffffff')
+                PlotCommon.downloadPNG(svg, 'radial_bar_chart.png', 2, '#ffffff')
                     .then(() => { toolbarTip.innerHTML = '<span class="success">✅ PNG exported successfully</span>'; })
                     .catch(() => { toolbarTip.innerHTML = '<span class="error">❌ PNG export failed</span>'; });
             });
@@ -969,6 +1092,11 @@
                 state.sortDir = 'desc';
                 state.legendTitleEdited = false;
                 state.refValueEdited = false;
+                state.errBar.mode = 'none';
+                state.errBar.lowerCol = '';
+                state.errBar.upperCol = '';
+                state.errBar.errCol = '';
+                state.errBar.colorMode = 'uniform';
                 sortDirSel.value = 'desc';
                 legendTitleInput.value = '';
                 fillRoleSelects();
@@ -976,6 +1104,7 @@
                 colorAssignContainer.innerHTML =
                     '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
                 updateRefModeUI();
+                refreshErrorBarPanel();
                 resetChart();
             }
 
@@ -988,8 +1117,12 @@
             function init() {
                 PlotCommon.renderImportPanel('importPanel', {
                     title: 'Step 1: Import Data',
-                    infoBox: 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. You can paste directly from Excel.',
-                    exampleData: EXAMPLE_DATA,
+                    infoBox: 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. You can paste directly from Excel. Three example datasets are provided: no error bar, range error bar (lower/upper), and error-value error bar.',
+                    examples: [
+                        { label: 'Example: No error bar', data: EX_NO_ERR },
+                        { label: 'Example: Range bar', data: EX_RANGE },
+                        { label: 'Example: Error-value bar', data: EX_ERRVAL }
+                    ],
                     defaultMode: 'file',
                     onImport: onDataImported,
                     onReset: resetAll
@@ -998,6 +1131,7 @@
                 fillRoleSelects();
                 fillSortBySelect();
                 updateRefModeUI();
+                refreshErrorBarPanel();
                 colorAssignContainer.innerHTML =
                     '<div class="color-assign-empty">Category colors will be shown here after selecting a category column</div>';
                 resetChart();
