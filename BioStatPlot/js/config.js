@@ -20,7 +20,7 @@
                 tools: [
                     { id: '005', zh: '径向条形图', en: 'Radial Bar Chart' },
                     { id: '007', zh: '分组柱状图', en: 'Grouped Bar Chart' },
-                    { id: '007', zh: '分类柱状图', en: 'Grouped Bar Chart' },
+                    { id: '008', zh: '分类柱状图', en: 'Grouped Bar Chart' },
 
                 ]
             },
