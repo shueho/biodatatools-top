@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stacked Bar Chart - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Stacked Bar Chart</h2>
+            <p>Multiple stack series are stacked bottom-up within each category. Supports absolute and percentage stacking, vertical / horizontal orientation, and error bars (range or error value).</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Select Columns</div>
+            <div class="param-group">
+                <label>Category:</label>
+                <select id="xColSel" disabled><option>— Please import data first —</option></select>
+                <label>Stack series:</label>
+                <select id="groupColSel" disabled><option>— Please import data first —</option></select>
+                <label>Value:</label>
+                <select id="yColSel" disabled><option>— Please import data first —</option></select>
+            </div>
+            <div class="tip-text" style="font-size:13px;color:#999;margin-top:8px;">
+                Multiple rows with the same category and stack series are averaged before stacking. Chart orientation (vertical / horizontal) is switched in Step 4 via the axis panel.
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Palette &amp; Colors</div>
+            <div class="param-group" style="margin-top:0;">
+                <label>Sort by:</label>
+                <select id="sortBy" disabled><option>— Please import data first —</option></select>
+                <label>Direction:</label>
+                <select id="sortDir">
+                    <option value="asc" selected>Ascending</option>
+                    <option value="desc">Descending</option>
+                </select>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Categorical palette (colored by stack series)</div>
+            <div id="paletteDropdownContainer"></div>
+            <div class="param-inline" style="margin-top:8px;">
+                <label><input type="checkbox" id="reversePalette">Reverse palette</label>
+                <label><input type="checkbox" id="cycleColors">Cycle colors</label>
+            </div>
+            <div id="colorAssignContainer" style="margin-top:16px;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Plot Parameters</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Canvas Size</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>Width (px)</label><input type="number" id="chartWidth" value="760" min="300" data-redraw></div>
+                    <div class="param-item"><label>Height (px)</label><input type="number" id="chartHeight" value="600" min="300" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>Show canvas border</label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Font Style</div>
+                <div class="font-row">
+                    <span class="font-label">Font</span>
+                    <select id="fontFamily" data-redraw>
+                        <option value="Times New Roman" selected>Times New Roman</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Calibri">Calibri</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Microsoft YaHei">Microsoft YaHei</option>
+                    </select>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Axis ticks</span>
+                    <input type="number" id="axisTickFontSize" value="14" min="6" max="36">
+                    <label class="mini-check"><input type="checkbox" id="axisTickBold">B</label>
+                    <label class="mini-check"><input type="checkbox" id="axisTickItalic">I</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Axis titles</span>
+                    <input type="number" id="axisTitleFontSize" value="16" min="6" max="48">
+                    <label class="mini-check"><input type="checkbox" id="axisTitleBold">B</label>
+                    <label class="mini-check"><input type="checkbox" id="axisTitleItalic">I</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Legend</span>
+                    <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>B</label>
+                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>I</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Legend title</span>
+                    <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>B</label>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>I</label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Title</span>
+                    <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
+                    <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>B</label>
+                    <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>I</label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Components</div>
+                <div class="font-row">
+                    <span class="font-label">Legend</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>Show</label>
+                    <input type="hidden" id="legendPosition" value="right">
+                    <label>Items per row:
+                        <input type="number" id="legendMaxPerLine" value="1" min="1" max="50" step="1" style="width:60px;" data-redraw>
+                    </label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Legend title</span>
+                    <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>Show</label>
+                    <label>Text: <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw></label>
+                </div>
+                <div class="font-row">
+                    <span class="font-label">Title</span>
+                    <label class="mini-check"><input type="checkbox" id="showTitle" data-redraw>Show</label>
+                    <label>Position:
+                        <select id="titlePosition" data-redraw>
+                            <option value="top-center" selected>Top center</option>
+                            <option value="top-left">Top left</option>
+                            <option value="top-right">Top right</option>
+                            <option value="middle-center">Middle center</option>
+                            <option value="middle-left">Middle left</option>
+                            <option value="middle-right">Middle right</option>
+                            <option value="bottom-center">Bottom center</option>
+                            <option value="bottom-left">Bottom left</option>
+                            <option value="bottom-right">Bottom right</option>
+                        </select>
+                    </label>
+                    <label>Text: <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw></label>
+                    <label>Spacing (px):
+                        <input type="number" id="titleSpacing" value="30" min="0" max="200" step="5" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+            </div>
+
+            <div id="axisPanelContainer"></div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Stack Settings</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Stack mode</label>
+                        <select id="stackMode" data-redraw>
+                            <option value="absolute" selected>Absolute</option>
+                            <option value="percent">Percentage (100%)</option>
+                        </select>
+                    </div>
+                    <div class="param-item"><label>Total font size</label><input type="number" id="stackTotalFontSize" value="12" min="6" max="28" data-redraw></div>
+                    <div class="param-item"><label>Total decimals</label><input type="number" id="stackTotalDecimals" value="1" min="0" max="4" step="1" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showStackTotal" data-redraw>Show total on top</label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Bar Settings</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>Outer gap</label><input type="number" id="barOuterGap" value="0.3" min="0" max="0.9" step="0.05" data-redraw></div>
+                    <div class="param-item"><label>Bar width scale</label><input type="number" id="barWidthScale" value="0.7" min="0.2" max="1" step="0.05" data-redraw></div>
+                    <div class="param-item"><label>Segment stroke width</label><input type="number" id="barStrokeWidth" value="1" min="0" max="4" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>Segment stroke color</label><input type="color" id="barStrokeColor" value="#ffffff" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="barShowValue" data-redraw>Show value inside segment</label>
+                    <label>Font size: <input type="number" id="barValueFontSize" value="12" min="6" max="24" style="width:60px;" data-redraw></label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Stack Order</div>
+                <div class="font-row">
+                    <span class="font-label">Sort mode</span>
+                    <select id="groupOrderMode" data-redraw style="min-width:200px;">
+                        <option value="input" selected>Input order</option>
+                        <option value="absAsc">Absolute ascending</option>
+                        <option value="absDesc">Absolute descending</option>
+                        <option value="pctAsc">Percentage ascending</option>
+                        <option value="pctDesc">Percentage descending</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                    <input type="text" id="groupOrder" value=""
+                           placeholder="e.g. B,A,C" style="flex:1;min-width:200px;" disabled>
+                </div>
+                <div class="font-row">
+                    <span id="groupOrderHint" style="font-size:12px;color:#999;padding-left:70px;">
+                        In the order they first appear in the data.
+                    </span>
+                </div>
+            </div>
+
+            <div id="errorBarPanelContainer"></div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">Draw Chart</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 5: Preview &amp; Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">Import data and complete settings, then click "Draw Chart" to see the result</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer-en.js"></script>
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-axis.js"></script>
+    <script src="../COMMON/script/plot-errorbar.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-title.js"></script>
+    <script src="../COMMON/script/plot-legend.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/bar-common.js"></script>
+    <script src="../COMMON/script/009.js"></script>
+</body>
+</html>
