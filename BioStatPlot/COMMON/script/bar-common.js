@@ -47,7 +47,8 @@
             return html;
         };
         xSel.innerHTML = opts(state.roles.x, false);
-        gSel.innerHTML = opts(state.roles.group, true);
+const allowEmptyGroup = !!(noGroupLabel && noGroupLabel.trim());
+gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         ySel.innerHTML = opts(state.roles.y, false);
     }
 
