@@ -23,6 +23,7 @@
             colorModeBar: '与柱子同色',
             errColor: '误差棒颜色',
             errWidth: '误差棒线宽',
+            capWidth: '误差棒帽宽',
             guide: '需要计算上下限或误差值？可使用 <a href="s001.html" target="_blank" style="color:#1f4068;font-weight:600;">统计量计算器</a> 计算均值与标准差 / 标准误，将结果作为上下限或误差值使用。',
             noCol: '— 请选择 —',
             placeholder: '— 请先导入数据 —'
@@ -45,6 +46,7 @@
             colorModeBar: 'Same as bar',
             errColor: 'Error bar color',
             errWidth: 'Error bar width',
+            capWidth: 'Error cap width',
             guide: 'Need to compute bounds or error values? Use the <a href="s001.html" target="_blank" style="color:#1f4068;font-weight:600;">Statistics Calculator</a> to compute mean and SD (or SEM), then use the results as upper/lower bounds or error values.',
             noCol: '— Select —',
             placeholder: '— Please import data first —'
@@ -92,6 +94,7 @@
         if (!st.colorMode) st.colorMode = 'uniform';
         if (!st.errColor) st.errColor = '#e67700';
         if (!st.errWidth) st.errWidth = 3;
+        if (st.capWidth == null) st.capWidth = 8;
 
         container.className = 'param-panel';
         container.innerHTML = `
@@ -140,6 +143,10 @@
                     <label>${L10n.errWidth}</label>
                     <input type="number" class="eb-width" value="${st.errWidth}" min="0.5" max="12" step="0.5">
                 </div>
+                <div class="param-item eb-style-opt">
+                    <label>${L10n.capWidth}</label>
+                    <input type="number" class="eb-cap-w" value="${st.capWidth}" min="0" max="40" step="1">
+                </div>
             </div>
             <div class="info-box" style="margin-top:10px;">${L10n.guide}</div>
         `;
@@ -156,7 +163,6 @@
             rangeOpts.forEach(el => { el.style.display = mode === 'range' ? '' : 'none'; });
             valueOpts.forEach(el => { el.style.display = mode === 'value' ? '' : 'none'; });
             styleOpts.forEach(el => { el.style.display = mode === 'none' ? 'none' : ''; });
-            /* 统一颜色模式下才显示颜色选择器 */
             if (colorOpt) {
                 const showColor = (mode !== 'none') && (st.colorMode === 'uniform');
                 colorOpt.style.display = showColor ? '' : 'none';
@@ -212,64 +218,57 @@
             opts.onChange && opts.onChange();
         });
 
+        const capWInput = container.querySelector('.eb-cap-w');
+        if (capWInput) capWInput.addEventListener('change', function () {
+            const v = parseFloat(this.value);
+            st.capWidth = isFinite(v) && v >= 0 ? v : 8;
+            opts.onChange && opts.onChange();
+        });
+
         updateVisibility();
     }
 
-    /**
-     * 计算一行数据的误差棒区间
-     * @param {object} row 当前行
-     * @param {number} value 主值（如均值或求和）
-     * @param {object} config { mode, lowerCol, upperCol, errCol, showWhich }
-     * @returns {null|{lower:number, upper:number}}
-     */
     function computeErrorExtent(row, value, config) {
-    if (!config || config.mode === 'none') return null;
+        if (!config || config.mode === 'none') return null;
 
-    const v = parseFloat(value);
-    if (!isFinite(v)) return null;
+        const v = parseFloat(value);
+        if (!isFinite(v)) return null;
 
-    if (config.mode === 'range') {
-        const hasLower = !!(config.lowerCol);
-        const hasUpper = !!(config.upperCol);
-        if (!hasLower && !hasUpper) return null;
+        if (config.mode === 'range') {
+            const hasLower = !!(config.lowerCol);
+            const hasUpper = !!(config.upperCol);
+            if (!hasLower && !hasUpper) return null;
 
-        let lower = null, upper = null;
+            let lower = null, upper = null;
 
-        if (hasLower) {
-            const lv = parseFloat(row[config.lowerCol]);
-            if (isFinite(lv)) lower = lv;
+            if (hasLower) {
+                const lv = parseFloat(row[config.lowerCol]);
+                if (isFinite(lv)) lower = lv;
+            }
+            if (hasUpper) {
+                const uv = parseFloat(row[config.upperCol]);
+                if (isFinite(uv)) upper = uv;
+            }
+
+            if (lower === null && upper === null) return null;
+
+            if (lower === null) lower = v;
+            if (upper === null) upper = v;
+
+            return { lower: Math.min(lower, upper), upper: Math.max(lower, upper) };
         }
-        if (hasUpper) {
-            const uv = parseFloat(row[config.upperCol]);
-            if (isFinite(uv)) upper = uv;
+
+        if (config.mode === 'value') {
+            const err = parseFloat(row[config.errCol]);
+            if (!isFinite(err) || err < 0) return null;
+            if (config.showWhich === 'upper') return { lower: v, upper: v + err };
+            if (config.showWhich === 'lower') return { lower: v - err, upper: v };
+            return { lower: v - err, upper: v + err };
         }
 
-        /* 两列都填了但都无效 → 不画 */
-        if (lower === null && upper === null) return null;
-
-        /* 只填一列时，另一侧用主值补齐，实现"只画下限 / 只画上限" */
-        if (lower === null) lower = v;
-        if (upper === null) upper = v;
-
-        return { lower: Math.min(lower, upper), upper: Math.max(lower, upper) };
+        return null;
     }
 
-    if (config.mode === 'value') {
-        const err = parseFloat(row[config.errCol]);
-        if (!isFinite(err) || err < 0) return null;
-        if (config.showWhich === 'upper') return { lower: v, upper: v + err };
-        if (config.showWhich === 'lower') return { lower: v - err, upper: v };
-        return { lower: v - err, upper: v + err };
-    }
-
-    return null;
-}
-
-    /**
-     * 根据模式返回某一条误差棒的颜色
-     * @param {object} config state.errBar
-     * @param {string} barColor 对应柱/环的填充色
-     */
     function resolveErrorColor(config, barColor) {
         if (!config) return '#e67700';
         if (config.colorMode === 'sameAsBar') return barColor || '#e67700';

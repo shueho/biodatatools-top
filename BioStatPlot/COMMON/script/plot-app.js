@@ -10,6 +10,7 @@
         - 重绘监听、绘制按钮
         - 画布创建（PlotCanvas）、标题绘制（PlotTitle）
         - SVG / PNG 导出、提示、重置
+        - 样式导入 / 导出（JSON 文件）
    页面只需要通过 PlotApp.create(config) 提供：
         exportName, exampleData, importInfo, stateExtra,
         readParams, buildData, computeLayout, draw
@@ -60,6 +61,16 @@
             exportPngBtn: exportPngBtn,
             toolbarTip: toolbarTip,
             legendTitleInput: legendTitleInput
+        };
+
+        /* ---------- 语言与文案 ---------- */
+        const isEn = PlotI18N.lang() === 'en';
+        const TXT = {
+            loadStyle:   isEn ? 'Load Style'           : '加载样式',
+            exportStyle: isEn ? 'Export Style'         : '导出样式',
+            styleOk:     isEn ? '✅ Style loaded'      : '✅ 样式已恢复',
+            styleExport: isEn ? '✅ Style exported'    : '✅ 样式已导出',
+            styleBad:    isEn ? '❌ Invalid style file': '❌ 样式文件无效'
         };
 
         /* ---------- 图例标题同步 ---------- */
@@ -114,7 +125,7 @@
                     state.paletteName = name;
                     state.customColors = {};
                     refreshColors(app);
-                    resetChart();
+                    if (state.currentSvg) drawChart();
                     if (cfg.onPaletteChanged) cfg.onPaletteChanged(app);
                 }
             });
@@ -237,7 +248,13 @@
             fillRoleSelects();
             fillSortBySelect();
             refreshColors(app);
-            resetChart();
+
+            /* 导入后直接出图 */
+            if (state.data.length) {
+                setTimeout(function () { drawChart(); }, 0);
+            } else {
+                resetChart();
+            }
         }
 
         /* ---------- 事件 ---------- */
@@ -390,7 +407,7 @@
             const titleInput = document.getElementById('chartTitle');
             if (!titleInput || !titleInput.parentNode) return;
             const label = document.createElement('label');
-            label.textContent = PlotI18N.lang() === 'en' ? 'Spacing (px): ' : '间距(px)：';
+            label.textContent = isEn ? 'Spacing (px): ' : '间距(px)：';
             const input = document.createElement('input');
             input.type = 'number';
             input.id = 'titleSpacing';
@@ -405,9 +422,165 @@
             titleInput.parentNode.parentNode.insertBefore(label, titleInput.parentNode.nextSibling);
         }
 
+        /* ============================================================
+           样式导入 / 导出（JSON 文件，不写 cookie / localStorage）
+        ============================================================ */
+        function collectFormState() {
+            const out = {};
+            document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+                if (el.closest('#importPanel')) return;      // 跳过导入面板
+                if (el.id === 'importStateFile') return;
+                if (el.type === 'file') return;
+                if (el.type === 'radio') {
+                    if (el.checked) out[el.id] = true;
+                    return;
+                }
+                if (el.type === 'checkbox') {
+                    out[el.id] = !!el.checked;
+                } else {
+                    out[el.id] = el.value;
+                }
+            });
+            return out;
+        }
+
+        function applyFormState(form) {
+            if (!form) return;
+            Object.keys(form).forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const v = form[id];
+                if (el.type === 'checkbox' || el.type === 'radio') el.checked = !!v;
+                else el.value = v;
+            });
+        }
+
+        function collectState() {
+            const stateCopy = {};
+            Object.keys(state).forEach(k => {
+                if (k === 'currentSvg') return;
+                try {
+                    stateCopy[k] = JSON.parse(JSON.stringify(state[k]));
+                } catch (e) {
+                    /* 忽略不可序列化的字段 */
+                }
+            });
+            return {
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                exportName: cfg.exportName || 'chart',
+                form: collectFormState(),
+                state: stateCopy
+            };
+        }
+
+        function exportStateToFile() {
+            const data = collectState();
+            const blob = new Blob([JSON.stringify(data, null, 2)],
+                { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (cfg.exportName || 'chart') + '_style.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            if (toolbarTip) toolbarTip.innerHTML = '<span class="success">' + TXT.styleExport + '</span>';
+        }
+
+        function applyState(data) {
+            if (!data || typeof data !== 'object' || !data.state) {
+                throw new Error('invalid style file');
+            }
+            Object.keys(data.state).forEach(k => {
+                if (k === 'currentSvg') return;
+                state[k] = data.state[k];
+            });
+            applyFormState(data.form);
+
+            /* 给 003 / 005 / 007 一个机会重新渲染各自的自定义面板 */
+            if (cfg.onStateRestored) {
+                try { cfg.onStateRestored(app); } catch (e) { console.warn(e); }
+            }
+
+            /* 通用部分：重新填下拉框 + 色板组件 + 颜色分配 */
+            fillRoleSelects();
+            fillSortBySelect();
+            initPaletteDropdown();
+            if (refreshColors) refreshColors(app);
+
+            if (legendTitleInput && data.state.legendTitle !== undefined) {
+                legendTitleInput.value = data.state.legendTitle;
+            }
+
+            /* 恢复完直接画 */
+            if (state.data && state.data.length) {
+                setTimeout(function () { drawChart(); }, 0);
+            } else {
+                resetChart();
+            }
+            if (toolbarTip) toolbarTip.innerHTML = '<span class="success">' + TXT.styleOk + '</span>';
+        }
+
+        function handleImportStateFile(e) {
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                try {
+                    applyState(JSON.parse(ev.target.result));
+                } catch (err) {
+                    console.error(err);
+                    if (toolbarTip) toolbarTip.innerHTML = '<span class="error">' + TXT.styleBad + '</span>';
+                }
+            };
+            reader.readAsText(f);
+            e.target.value = '';    // 允许重复选同一文件
+        }
+
+        function injectStateButtons() {
+            /* 第一步面板里 → “加载样式”按钮，放进 “导入并预览 / 加载示例” 同一行 */
+            const importPanel = document.getElementById('importPanel');
+            if (importPanel && !document.getElementById('importStateBtn')) {
+                const btnGroup = importPanel.querySelector('.btn-group');
+                if (btnGroup) {
+                    // 隐藏的文件选择器（放到 btn-group 外面，避免影响 flex 布局）
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.id = 'importStateFile';
+                    fileInput.accept = '.json,application/json';
+                    fileInput.style.display = 'none';
+                    fileInput.addEventListener('change', handleImportStateFile);
+                    btnGroup.parentNode.appendChild(fileInput);
+
+                    // 按钮
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn';
+                    btn.id = 'importStateBtn';
+                    btn.textContent = TXT.loadStyle;
+                    btn.addEventListener('click', () => fileInput.click());
+                    btnGroup.appendChild(btn);
+                }
+            }
+
+            /* 最后一步工具栏里 → “导出样式”（紧跟在导出 PNG 后面） */
+            if (exportPngBtn && !document.getElementById('exportStateBtn')) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn';
+                btn.id = 'exportStateBtn';
+                btn.textContent = TXT.exportStyle;
+                btn.addEventListener('click', exportStateToFile);
+                exportPngBtn.parentNode.insertBefore(btn, exportPngBtn.nextSibling);
+            }
+        }
+
         /* ---------- 初始化 ---------- */
         function init() {
             ensureTitleSpacingInput();
+
             PlotCommon.renderImportPanel('importPanel', {
                 title: cfg.importTitle || PlotI18N.t('importTitle'),
                 infoBox: cfg.importInfo || PlotI18N.t('importInfo'),
@@ -417,11 +590,14 @@
                 onImport: onDataImported,
                 onReset: resetAll
             });
-    PlotBootstrap.ensureD3().then(function () {
-        initPaletteDropdown();
-    }).catch(function () {
-        initPaletteDropdown();
-    });
+
+            injectStateButtons();
+
+            PlotBootstrap.ensureD3().then(function () {
+                initPaletteDropdown();
+            }).catch(function () {
+                initPaletteDropdown();
+            });
             if (cfg.setup) cfg.setup(app);
             fillRoleSelects();
             fillSortBySelect();
@@ -441,6 +617,8 @@
         app.showTip = showTip;
         app.resetChart = resetChart;
         app.drawChart = drawChart;
+        app.exportStateToFile = exportStateToFile;
+        app.applyState = applyState;
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);

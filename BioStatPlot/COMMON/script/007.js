@@ -337,10 +337,11 @@
         let areaW = width - 2 * margin;
         let areaH = height - 2 * margin;
 
-        if (isRight) areaW = width - legendColW - gap - 2 * margin;
-        else if (isLeft) { areaX = legendColW + gap + margin; areaW = width - legendColW - gap - 2 * margin; }
-        else if (isTop) { areaY = legendInlineH + gap + margin; areaH = height - legendInlineH - gap - 2 * margin; }
-        else if (isBottom) areaH = height - legendInlineH - gap - 2 * margin;
+        /* 图形大小不受 gap 影响 */
+        if (isRight) areaW = width - legendColW - 2 * margin;
+        else if (isLeft) { areaX = legendColW + 2 * margin; areaW = width - legendColW - 2 * margin; }
+        else if (isTop) { areaY = legendInlineH + 2 * margin; areaH = height - legendInlineH - 2 * margin; }
+        else if (isBottom) areaH = height - legendInlineH - 2 * margin;
         areaW = Math.max(20, areaW);
         areaH = Math.max(20, areaH);
 
@@ -472,7 +473,10 @@
                 const yLo = yScale(cell.ext.lower);
                 if (!isFinite(yHi) || !isFinite(yLo)) return;
                 const cxBar = barX + barW / 2;
-                const capHalf = Math.min(barW * 0.35, 8);
+                /* 帽宽：优先用配置值，否则回退到老逻辑 */
+                const capHalf = (state.errBar.capWidth != null)
+                    ? state.errBar.capWidth / 2
+                    : Math.min(barW * 0.35, 8);
 
                 barsG.append('line')
                     .attr('x1', cxBar).attr('y1', yHi)
@@ -557,13 +561,22 @@
 
         if (wantLegend) {
             let legendArea, orientation;
+            const gapShift = Math.max(0, gap);
+
             if (vert) {
                 orientation = 'vertical';
-                legendArea = { x: isRight ? (width - legendColW - gap) : 0, y: areaY, w: legendColW, h: areaH };
+                const legendX = isRight
+                    ? Math.max(margin, width - margin - legendColW - gapShift)
+                    : Math.min(width - margin - legendColW, margin + gapShift);
+                legendArea = { x: legendX, y: areaY, w: legendColW, h: areaH };
             } else {
                 orientation = 'horizontal';
-                legendArea = { x: 0, y: isTop ? margin : (height - legendInlineH - margin), w: width, h: legendInlineH };
+                const legendY = isTop
+                    ? Math.min(height - margin - legendInlineH, margin + gapShift)
+                    : Math.max(margin, height - margin - legendInlineH - gapShift);
+                legendArea = { x: 0, y: legendY, w: width, h: legendInlineH };
             }
+
             PlotLegend.draw(svg, {
                 orientation: orientation,
                 area: legendArea,
@@ -611,7 +624,7 @@
             errBar: {
                 mode: 'none', lowerCol: '', upperCol: '', errCol: '',
                 showWhich: 'both', colorMode: 'uniform',
-                errColor: '#e67700', errWidth: 3
+                errColor: '#e67700', errWidth: 3, capWidth: 8
             }
         },
 
@@ -715,6 +728,14 @@
             syncGlobalAxisFontToUI(app);
             refreshAxisPanel(app);
             refreshErrorBarPanel(app);
+        },
+
+        onStateRestored: function (app) {
+            fillRoleSelects(app);
+            syncGlobalAxisFontToUI(app);
+            refreshAxisPanel(app);
+            refreshErrorBarPanel(app);
+            refreshGroupColors(app);
         },
 
         refreshColors: function (app) {

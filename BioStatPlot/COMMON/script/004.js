@@ -154,15 +154,15 @@
             let areaH = height - 2 * margin;
 
             if (isRight) {
-                areaW = width - legendColW - gap - 2 * margin;
+                areaW = width - legendColW  - 2 * margin;
             } else if (isLeft) {
                 areaX = legendColW + gap + margin;
-                areaW = width - legendColW - gap - 2 * margin;
+                areaW = width - legendColW - 2 * margin;
             } else if (isTop) {
-                areaY = legendInlineH + gap + margin;
-                areaH = height - legendInlineH - gap - 2 * margin;
+                areaY = legendInlineH + margin;
+                areaH = height - legendInlineH - 2 * margin;
             } else if (isBottom) {
-                areaH = height - legendInlineH - gap - 2 * margin;
+                areaH = height - legendInlineH - 2 * margin;
             }
             areaW = Math.max(20, areaW);
             areaH = Math.max(20, areaH);

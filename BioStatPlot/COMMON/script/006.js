@@ -115,16 +115,17 @@
             let areaW = width - 2 * margin;
             let areaH = height - 2 * margin;
 
+            /* 图形大小不受 gap 影响 */
             if (isRight) {
-                areaW = width - legendColW - gap - 2 * margin;
+                areaW = width - legendColW - 2 * margin;
             } else if (isLeft) {
-                areaX = legendColW + gap + margin;
-                areaW = width - legendColW - gap - 2 * margin;
+                areaX = legendColW + 2 * margin;
+                areaW = width - legendColW - 2 * margin;
             } else if (isTop) {
-                areaY = legendInlineH + gap + margin;
-                areaH = height - legendInlineH - gap - 2 * margin;
+                areaY = legendInlineH + 2 * margin;
+                areaH = height - legendInlineH - 2 * margin;
             } else if (isBottom) {
-                areaH = height - legendInlineH - gap - 2 * margin;
+                areaH = height - legendInlineH - 2 * margin;
             }
             areaW = Math.max(20, areaW);
             areaH = Math.max(20, areaH);
@@ -151,15 +152,17 @@
                 innerR: innerR, outerR: outerR,
                 legendVertical: vert, legendColW: legendColW,
                 legendInlineH: legendInlineH, hasLegendTitle: hasLegendTitle,
-                isRight: isRight, isTop: isTop,
-                areaY: areaY, areaH: areaH, margin: margin, gap: gap
+                isRight: isRight, isLeft: isLeft, isTop: isTop, isBottom: isBottom,
+                areaX: areaX, areaY: areaY, areaW: areaW, areaH: areaH,
+                margin: margin, gap: gap
             };
         },
 
         draw: function (ctx) {
             const { root, p, data: items, layout: L, colors } = ctx;
             const { width, height, cx, cy, innerR, outerR, legendVertical, legendColW,
-                    legendInlineH, hasLegendTitle, isRight, isTop, areaY, areaH, margin, gap } = L;
+                    legendInlineH, hasLegendTitle, isRight, isLeft, isTop, isBottom,
+                    areaY, areaH, margin, gap } = L;
             const N = items.length;
 
             let gapPx = p.ringGap;
@@ -251,15 +254,35 @@
                 });
             }
 
+
             if (p.showLegend && items.length) {
                 let legendArea, orientation;
+                const gapShift = Math.max(0, gap);
+
                 if (legendVertical) {
                     orientation = 'vertical';
-                    legendArea = { x: isRight ? (width - legendColW - gap) : 0, y: areaY, w: legendColW, h: areaH };
+                    const legendX = isRight
+                        ? Math.max(margin, width - margin - legendColW - gapShift)
+                        : Math.min(width - margin - legendColW, margin + gapShift);
+                    legendArea = {
+                        x: legendX,
+                        y: areaY,
+                        w: legendColW,
+                        h: areaH
+                    };
                 } else {
                     orientation = 'horizontal';
-                    legendArea = { x: 0, y: isTop ? margin : (height - legendInlineH - margin), w: width, h: legendInlineH };
+                    const legendY = isTop
+                        ? Math.min(height - margin - legendInlineH, margin + gapShift)
+                        : Math.max(margin, height - margin - legendInlineH - gapShift);
+                    legendArea = {
+                        x: 0,
+                        y: legendY,
+                        w: width,
+                        h: legendInlineH
+                    };
                 }
+
                 PlotLegend.draw(root, {
                     orientation: orientation,
                     area: legendArea,
