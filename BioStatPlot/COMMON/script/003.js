@@ -66,7 +66,8 @@
                     .map(x => x.value);
                 state.customColors = {};
                 app.refreshColors();
-                app.resetChart();
+                /* 换了样本后自动重绘 */
+                if (state.data.length) app.drawChart();
             });
         });
     }
@@ -232,13 +233,14 @@
         let areaW = width - 2 * margin;
         let areaH = height - 2 * margin;
 
+        /* 图形大小不受 gap 影响 */
         if (isRight) {
             areaW = width - legendColW - 2 * margin;
         } else if (isLeft) {
-            areaX = legendColW + gap + margin;
+            areaX = legendColW + 2 * margin;
             areaW = width - legendColW - 2 * margin;
         } else if (isTop) {
-            areaY = legendInlineH + margin;
+            areaY = legendInlineH + 2 * margin;
             areaH = height - legendInlineH - 2 * margin;
         } else if (isBottom) {
             areaH = height - legendInlineH - 2 * margin;
@@ -401,13 +403,22 @@
 
         if (wantLegend) {
             let legendArea, orientation;
-            if (isRight) legendArea = { x: width - legendColW - gap, y: areaY, w: legendColW, h: areaH };
-            else if (isLeft) legendArea = { x: 0, y: areaY, w: legendColW, h: areaH };
-            if (isRight || isLeft) orientation = 'vertical';
-            else {
+            const gapShift = Math.max(0, gap);
+
+            if (isRight || isLeft) {
+                orientation = 'vertical';
+                const legendX = isRight
+                    ? Math.max(margin, width - margin - legendColW - gapShift)
+                    : Math.min(width - margin - legendColW, margin + gapShift);
+                legendArea = { x: legendX, y: areaY, w: legendColW, h: areaH };
+            } else {
                 orientation = 'horizontal';
-                legendArea = { x: 0, y: (isTop ? margin : height - legendInlineH - margin), w: width, h: legendInlineH };
+                const legendY = isTop
+                    ? Math.min(height - margin - legendInlineH, margin + gapShift)
+                    : Math.max(margin, height - margin - legendInlineH - gapShift);
+                legendArea = { x: 0, y: legendY, w: width, h: legendInlineH };
             }
+
             PlotLegend.draw(svg, {
                 orientation: orientation,
                 area: legendArea,
@@ -454,7 +465,7 @@
                 state.customColors = {};
                 renderSampleCols(app);
                 app.refreshColors();
-                app.resetChart();
+                if (state.data.length) app.drawChart();
             });
             refreshSampleColors(app);
         },
@@ -472,11 +483,11 @@
             fillAxisSelect(app);
             renderSampleCols(app);
         },
-onStateRestored: function (app) {
-    fillAxisSelect(app);
-    renderSampleCols(app);
-    refreshSampleColors(app);
-},
+        onStateRestored: function (app) {
+            fillAxisSelect(app);
+            renderSampleCols(app);
+            refreshSampleColors(app);
+        },
         refreshColors: function (app) {
             refreshSampleColors(app);
         },

@@ -1,7 +1,7 @@
 /* ============================================================
    BioDataTools 右下角悬浮预览窗口
    用途：在页面右下角显示当前图表的实时缩略预览，
-        可拖动、可折叠，页面滚动时保持固定位置。
+        可拖动、可折叠、可手动刷新，页面滚动时保持固定位置。
    用法：在图表页面（除 s001 等数据表页面）引入：
         <script src="../COMMON/script/plot-mini-preview.js"></script>
 ============================================================ */
@@ -13,13 +13,17 @@
             title: '图表预览',
             empty: '绘制图表后将在此处显示缩略图',
             collapse: '折叠',
-            expand: '展开'
+            expand: '展开',
+            refresh: '刷新',
+            hint: '调整参数后，建议点击右上角 ⟳ 刷新预览'
         },
         en: {
             title: 'Preview',
             empty: 'The chart preview will appear here',
             collapse: 'Collapse',
-            expand: 'Expand'
+            expand: 'Expand',
+            refresh: 'Refresh',
+            hint: 'After adjusting parameters, click ⟳ (top right) to refresh the preview'
         }
     };
 
@@ -33,7 +37,6 @@
         return STR[lang()] || STR.zh;
     }
 
-    /* ---------------- 样式 ---------------- */
     function injectStyle() {
         if (document.getElementById('plot-mini-preview-style')) return;
         const s = document.createElement('style');
@@ -97,9 +100,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background .15s;
+    transition: background .15s, transform .15s;
 }
 .mini-preview-btn:hover { background: rgba(255, 255, 255, .35); }
+.mini-preview-btn:active { transform: scale(.92); }
+.mini-preview-btn.spin {
+    animation: mini-preview-spin .5s ease;
+}
+@keyframes mini-preview-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
 .mini-preview-body {
     height: 420px;
     background: #f7fafd;
@@ -123,20 +134,34 @@
     padding: 0 16px;
     user-select: none;
 }
+.mini-preview-hint {
+    padding: 6px 10px;
+    background: #fdecea;
+    border-top: 1px solid #f5c2c0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #d93025;
+    text-align: center;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .mini-preview.collapsed {
     width: auto;
     min-width: 110px;
 }
-.mini-preview.collapsed .mini-preview-body { display: none; }
+.mini-preview.collapsed .mini-preview-body,
+.mini-preview.collapsed .mini-preview-hint { display: none; }
 @media (max-width: 640px) {
     .mini-preview { width: 200px; right: 10px; bottom: 10px; }
     .mini-preview-body { height: 150px; }
+    .mini-preview-hint { font-size: 10px; padding: 4px 6px; }
 }
 `;
         document.head.appendChild(s);
     }
 
-    /* ---------------- 构建 DOM ---------------- */
     function buildRoot() {
         const root = document.createElement('div');
         root.id = 'plotMiniPreview';
@@ -145,21 +170,24 @@
             '<div class="mini-preview-header">',
             '  <span class="mini-preview-title"></span>',
             '  <div class="mini-preview-actions">',
+            '    <button type="button" class="mini-preview-btn" data-act="refresh"></button>',
             '    <button type="button" class="mini-preview-btn" data-act="toggle"></button>',
             '  </div>',
             '</div>',
             '<div class="mini-preview-body">',
             '  <div class="mini-preview-empty"></div>',
-            '</div>'
+            '</div>',
+            '<div class="mini-preview-hint"></div>'
         ].join('');
         return root;
     }
 
-    /* ---------------- 主逻辑 ---------------- */
     let rootEl = null;
     let bodyEl = null;
     let titleEl = null;
     let toggleBtn = null;
+    let refreshBtn = null;
+    let hintEl = null;
     let observer = null;
     let refreshTimer = null;
     let collapsed = false;
@@ -170,12 +198,14 @@
         titleEl.textContent = t.title;
         toggleBtn.title = collapsed ? t.expand : t.collapse;
         toggleBtn.textContent = collapsed ? '+' : '−';
+        refreshBtn.title = t.refresh;
+        refreshBtn.textContent = '⟳';
+        hintEl.textContent = t.hint;
         if (!bodyEl.querySelector('svg')) {
             bodyEl.innerHTML = '<div class="mini-preview-empty">' + t.empty + '</div>';
         }
     }
 
-    /* ------- 刷新缩略图 ------- */
     function doRefresh() {
         const preview = document.getElementById('chartPreview');
         if (!preview || !bodyEl) return;
@@ -207,7 +237,26 @@
         refreshTimer = setTimeout(doRefresh, 80);
     }
 
-    /* ------- 折叠 / 展开 ------- */
+function manualRefresh() {
+    clearTimeout(refreshTimer);
+
+    const drawBtn = document.getElementById('drawBtn');
+    if (drawBtn) {
+        drawBtn.click();
+    } else {
+        doRefresh();
+    }
+
+    if (refreshBtn) {
+        refreshBtn.classList.remove('spin');
+        void refreshBtn.offsetWidth;
+        refreshBtn.classList.add('spin');
+        setTimeout(function () {
+            refreshBtn.classList.remove('spin');
+        }, 520);
+    }
+}
+
     function setCollapsed(flag) {
         collapsed = !!flag;
         rootEl.classList.toggle('collapsed', collapsed);
@@ -222,7 +271,6 @@
         const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
         const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
 
-        // 只有被拖动过（left/top 已设置）才需要钳制
         if (rootEl.style.left) {
             const l = Math.min(Math.max(8, parseFloat(rootEl.style.left) || 0), maxLeft);
             rootEl.style.left = l + 'px';
@@ -286,7 +334,6 @@
         header.addEventListener('pointerup', endDrag);
         header.addEventListener('pointercancel', endDrag);
 
-        // 纯点击（未拖动）→ 切换折叠
         header.addEventListener('click', function (e) {
             if (e.target.closest('.mini-preview-btn')) return;
             if (moved) { moved = false; return; }
@@ -294,10 +341,9 @@
         });
     }
 
-    /* ---------------- 初始化 ---------------- */
     function init() {
         const preview = document.getElementById('chartPreview');
-        if (!preview) return;                       // 非绘图页，跳过
+        if (!preview) return;                       
         if (document.getElementById('plotMiniPreview')) return;
 
         injectStyle();
@@ -308,6 +354,8 @@
         bodyEl = rootEl.querySelector('.mini-preview-body');
         titleEl = rootEl.querySelector('.mini-preview-title');
         toggleBtn = rootEl.querySelector('[data-act="toggle"]');
+        refreshBtn = rootEl.querySelector('[data-act="refresh"]');
+        hintEl = rootEl.querySelector('.mini-preview-hint');
 
         updateTexts();
         bindDrag(rootEl.querySelector('.mini-preview-header'));
@@ -317,7 +365,11 @@
             setCollapsed(!collapsed);
         });
 
-        // 监听 chartPreview 内部结构变化
+        refreshBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            manualRefresh();
+        });
+
         observer = new MutationObserver(scheduleRefresh);
         observer.observe(preview, { childList: true, subtree: true });
 
@@ -332,7 +384,7 @@
     }
 
     global.PlotMiniPreview = {
-        refresh: scheduleRefresh,
+        refresh: manualRefresh,
         collapse: function () { setCollapsed(true); },
         expand: function () { setCollapsed(false); },
         toggle: function () { setCollapsed(!collapsed); }

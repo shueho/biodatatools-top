@@ -90,7 +90,6 @@
             }
         }
 
-        /* ---------- 角色选择 ---------- */
         function fillRoleSelects() {
             if (!catColSel || !valColSel) return;
             if (!state.headers.length) {
@@ -114,7 +113,6 @@
             state.sortBy = PlotCommon.fillSortBySelect(sortBySel, state.headers, state.sortBy);
         }
 
-        /* ---------- 色板与颜色 ---------- */
         function initPaletteDropdown() {
             if (!paletteDropdownContainer) return;
             PlotCommon.renderPaletteDropdown(paletteDropdownContainer, {
@@ -189,7 +187,6 @@
             });
         }
 
-        /* ---------- 提示 / 重置 ---------- */
         function showTip(elId, msg, type) {
             const el = $(elId);
             if (!el) return;
@@ -232,7 +229,6 @@
             resetChart();
         }
 
-        /* ---------- 数据导入 ---------- */
         function onDataImported(res) {
             state.headers = res.headers;
             state.data = res.data;
@@ -249,7 +245,6 @@
             fillSortBySelect();
             refreshColors(app);
 
-            /* 导入后直接出图 */
             if (state.data.length) {
                 setTimeout(function () { drawChart(); }, 0);
             } else {
@@ -257,7 +252,6 @@
             }
         }
 
-        /* ---------- 事件 ---------- */
         if (catColSel) {
             catColSel.addEventListener('change', () => {
                 state.roles.category = catColSel.value;
@@ -265,7 +259,7 @@
                 syncLegendTitle();
                 if (cfg.onRoleChanged) cfg.onRoleChanged(app);
                 refreshColors(app);
-                resetChart();
+                if (state.data.length) drawChart();
             });
         }
         if (valColSel) {
@@ -276,7 +270,7 @@
                 fillSortBySelect();
                 if (cfg.onRoleChanged) cfg.onRoleChanged(app);
                 refreshColors(app);
-                resetChart();
+                if (state.data.length) drawChart();
             });
         }
         if (sortBySel) {
@@ -326,7 +320,6 @@
             });
         });
 
-        /* ---------- 导出 ---------- */
         if (exportSvgBtn) {
             exportSvgBtn.addEventListener('click', () => {
                 const svg = getSvgWithoutBorder();
@@ -401,7 +394,6 @@
             });
         }
 
-        /* ---------- 标题间距控件 ---------- */
         function ensureTitleSpacingInput() {
             if (document.getElementById('titleSpacing')) return;
             const titleInput = document.getElementById('chartTitle');
@@ -422,13 +414,11 @@
             titleInput.parentNode.parentNode.insertBefore(label, titleInput.parentNode.nextSibling);
         }
 
-        /* ============================================================
-           样式导入 / 导出（JSON 文件，不写 cookie / localStorage）
-        ============================================================ */
+
         function collectFormState() {
             const out = {};
             document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
-                if (el.closest('#importPanel')) return;      // 跳过导入面板
+                if (el.closest('#importPanel')) return;
                 if (el.id === 'importStateFile') return;
                 if (el.type === 'file') return;
                 if (el.type === 'radio') {
@@ -462,7 +452,6 @@
                 try {
                     stateCopy[k] = JSON.parse(JSON.stringify(state[k]));
                 } catch (e) {
-                    /* 忽略不可序列化的字段 */
                 }
             });
             return {
@@ -499,12 +488,10 @@
             });
             applyFormState(data.form);
 
-            /* 给 003 / 005 / 007 一个机会重新渲染各自的自定义面板 */
             if (cfg.onStateRestored) {
                 try { cfg.onStateRestored(app); } catch (e) { console.warn(e); }
             }
 
-            /* 通用部分：重新填下拉框 + 色板组件 + 颜色分配 */
             fillRoleSelects();
             fillSortBySelect();
             initPaletteDropdown();
@@ -514,7 +501,6 @@
                 legendTitleInput.value = data.state.legendTitle;
             }
 
-            /* 恢复完直接画 */
             if (state.data && state.data.length) {
                 setTimeout(function () { drawChart(); }, 0);
             } else {
@@ -536,16 +522,14 @@
                 }
             };
             reader.readAsText(f);
-            e.target.value = '';    // 允许重复选同一文件
+            e.target.value = '';
         }
 
         function injectStateButtons() {
-            /* 第一步面板里 → “加载样式”按钮，放进 “导入并预览 / 加载示例” 同一行 */
             const importPanel = document.getElementById('importPanel');
             if (importPanel && !document.getElementById('importStateBtn')) {
                 const btnGroup = importPanel.querySelector('.btn-group');
                 if (btnGroup) {
-                    // 隐藏的文件选择器（放到 btn-group 外面，避免影响 flex 布局）
                     const fileInput = document.createElement('input');
                     fileInput.type = 'file';
                     fileInput.id = 'importStateFile';
@@ -554,7 +538,6 @@
                     fileInput.addEventListener('change', handleImportStateFile);
                     btnGroup.parentNode.appendChild(fileInput);
 
-                    // 按钮
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'btn';
@@ -565,7 +548,6 @@
                 }
             }
 
-            /* 最后一步工具栏里 → “导出样式”（紧跟在导出 PNG 后面） */
             if (exportPngBtn && !document.getElementById('exportStateBtn')) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
@@ -577,7 +559,6 @@
             }
         }
 
-        /* ---------- 初始化 ---------- */
         function init() {
             ensureTitleSpacingInput();
 

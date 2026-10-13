@@ -78,6 +78,46 @@
         return out;
     }
 
+    /* 按"排序依据 / 排序方向"给 X 值排序 */
+    function sortXValues(app, xVals) {
+        const state = app.state;
+        const sortBy = state.sortBy;
+        const dir = (state.sortDir === 'asc') ? 1 : -1;
+
+        if (!sortBy || sortBy === '__input__') return xVals;
+
+        const keyMap = new Map();
+        xVals.forEach(x => {
+            let key = null;
+            if (sortBy === state.roles.y) {
+                /* 按 Y 列均值排 */
+                const vals = state.data
+                    .filter(r => String(r[state.roles.x]) === x)
+                    .map(r => parseFloat(r[state.roles.y]))
+                    .filter(v => isFinite(v));
+                key = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+            } else {
+                /* 按某一列的第一个值排 */
+                const row = state.data.find(r => String(r[state.roles.x]) === x);
+                if (row) {
+                    const v = row[sortBy];
+                    const n = parseFloat(v);
+                    key = isFinite(n) ? n : String(v == null ? '' : v);
+                }
+            }
+            keyMap.set(x, key);
+        });
+
+        return xVals.slice().sort((a, b) => {
+            const ka = keyMap.get(a);
+            const kb = keyMap.get(b);
+            const na = parseFloat(ka);
+            const nb = parseFloat(kb);
+            if (!isNaN(na) && !isNaN(nb)) return (na - nb) * dir;
+            return String(ka).localeCompare(String(kb)) * dir;
+        });
+    }
+
     function getGroupValues(app) {
         if (!app.state.roles.group) return [];
         const seen = new Set();
@@ -92,34 +132,48 @@
     }
 
     function getColorKeys(app) {
-        return app.state.roles.group ? getGroupValues(app) : getXValues(app);
-    }
+    if (app.state.roles.group) return getGroupValues(app);
+    return sortXValues(app, getXValues(app));
+}
 
     function refreshGroupColors(app) {
-        const container = app.$('colorAssignContainer');
-        const keys = getColorKeys(app);
-        if (!keys.length) {
-            container.innerHTML = '<div class="color-assign-empty">' + T.colorEmpty + '</div>';
-            return;
-        }
-        const baseColors = app.resolvePaletteColors(keys.length);
-        const displayItems = keys.map((k, i) => ({
-            name: k,
-            color: app.state.customColors[k] || baseColors[i]
-        }));
-        PlotCommon.renderColorAssignment(container, {
-            items: displayItems,
-            onChange: (idx, c) => {
-                app.state.customColors[keys[idx]] = c;
-                if (app.state.currentSvg) app.drawChart();
-            },
-            onResetAll: () => {
-                app.state.customColors = {};
-                refreshGroupColors(app);
-                if (app.state.currentSvg) app.drawChart();
-            }
-        });
+    const container = app.$('colorAssignContainer');
+
+    const colorKeyOrder = getColorKeys(app);
+
+    const displayKeys = app.state.roles.group
+        ? colorKeyOrder
+        : sortXValues(app, getXValues(app));
+
+    if (!colorKeyOrder.length) {
+        container.innerHTML = '<div class="color-assign-empty">' + T.colorEmpty + '</div>';
+        return;
     }
+
+    const baseColors = app.resolvePaletteColors(colorKeyOrder.length);
+
+    const displayItems = displayKeys.map(k => {
+        const idx = colorKeyOrder.indexOf(k);
+        return {
+            name: k,
+            color: app.state.customColors[k] || baseColors[idx] || '#cccccc'
+        };
+    });
+
+    PlotCommon.renderColorAssignment(container, {
+        items: displayItems,
+        onChange: (idx, c) => {
+            const key = displayKeys[idx];
+            app.state.customColors[key] = c;
+            if (app.state.currentSvg) app.drawChart();
+        },
+        onResetAll: () => {
+            app.state.customColors = {};
+            refreshGroupColors(app);
+            if (app.state.currentSvg) app.drawChart();
+        }
+    });
+}
 
     function syncAxisTitles(app) {
         const state = app.state;
@@ -277,7 +331,8 @@
         axisCfg.x.fontFamily = p.fontFamily;
         axisCfg.y.fontFamily = p.fontFamily;
 
-        const xVals = getXValues(app);
+        /* 关键：xVals 经过排序 */
+        const xVals = sortXValues(app, getXValues(app));
         const groupVals = getGroupValues(app);
         const hasGroup = groupVals.length > 0;
 
@@ -337,7 +392,6 @@
         let areaW = width - 2 * margin;
         let areaH = height - 2 * margin;
 
-        /* 图形大小不受 gap 影响 */
         if (isRight) areaW = width - legendColW - 2 * margin;
         else if (isLeft) { areaX = legendColW + 2 * margin; areaW = width - legendColW - 2 * margin; }
         else if (isTop) { areaY = legendInlineH + 2 * margin; areaH = height - legendInlineH - 2 * margin; }
@@ -473,7 +527,6 @@
                 const yLo = yScale(cell.ext.lower);
                 if (!isFinite(yHi) || !isFinite(yLo)) return;
                 const cxBar = barX + barW / 2;
-                /* 帽宽：优先用配置值，否则回退到老逻辑 */
                 const capHalf = (state.errBar.capWidth != null)
                     ? state.errBar.capWidth / 2
                     : Math.min(barW * 0.35, 8);
@@ -651,14 +704,14 @@
                     if (input) input.value = state.axis.x.titleContent;
                 }
                 app.refreshColors();
-                app.resetChart();
+                if (app.state.data.length) app.drawChart();
             });
             app.$('groupColSel').addEventListener('change', () => {
                 app.state.roles.group = app.$('groupColSel').value;
                 app.state.customColors = {};
                 app.syncLegendTitle();
                 app.refreshColors();
-                app.resetChart();
+                if (app.state.data.length) app.drawChart();
             });
             app.$('yColSel').addEventListener('change', () => {
                 app.state.roles.y = app.$('yColSel').value;
@@ -668,7 +721,7 @@
                     const input = app.$('axisPanelContainer').querySelector('.ax-y-title');
                     if (input) input.value = app.state.axis.y.titleContent;
                 }
-                if (app.state.currentSvg) app.drawChart();
+                if (app.state.data.length) app.drawChart();
             });
 
             ['axisTickFontSize', 'axisTitleFontSize'].forEach(id => {
