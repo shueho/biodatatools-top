@@ -793,3 +793,35 @@ input[type="color"] {
 .axis-group .font-row {
     padding: 6px 14px;
 }
+.plot-margin-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+}
+.plot-margin-rect {
+    position: absolute;
+    border: 1px dashed rgba(31, 64, 104, .45);
+    background: rgba(31, 64, 104, .03);
+    pointer-events: none;
+    transition: all .04s linear;
+}
+.plot-margin-handle {
+    position: absolute;
+    background: transparent;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+.plot-margin-handle-left,
+.plot-margin-handle-right {
+    top: 0; bottom: 0; width: 12px; cursor: ew-resize;
+}
+.plot-margin-handle-top,
+.plot-margin-handle-bottom {
+    left: 0; right: 0; height: 12px; cursor: ns-resize;
+}
+.plot-margin-handle:hover {
+    background: rgba(31, 64, 104, .06);
+}
