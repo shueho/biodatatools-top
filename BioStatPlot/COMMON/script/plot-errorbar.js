@@ -68,15 +68,16 @@
             .replace(/'/g, '&#39;');
     }
 
-    function renderColOptions(headers, current, placeholderText) {
-        if (!headers || !headers.length) {
-            return `<option>${placeholderText}</option>`;
-        }
-        const noCol = `<option value="">— 请选择 —</option>`;
-        return noCol + headers.map(h =>
-            `<option value="${escapeHtml(h)}" ${h === current ? 'selected' : ''}>${escapeHtml(h)}</option>`
-        ).join('');
+function renderColOptions(headers, current, placeholderText) {
+    const L10n = L();
+    if (!headers || !headers.length) {
+        return `<option>${placeholderText}</option>`;
     }
+    const noCol = `<option value="">${L10n.noCol}</option>`;
+    return noCol + headers.map(h =>
+        `<option value="${escapeHtml(h)}" ${h === current ? 'selected' : ''}>${escapeHtml(h)}</option>`
+    ).join('');
+}
 
     function renderErrorBarConfig(containerOrId, opts) {
         opts = opts || {};

@@ -7,6 +7,12 @@
     const I18N = {
         zh: {
             panelTitle: '坐标轴设置',
+
+            directionGroup: '图表方向',
+            directionVertical: '竖向',
+            directionHorizontal: '横向',
+            directionTip: '切换柱形朝向（轴身份自动调整）',
+
             xAxis: 'X 轴',
             yAxis: 'Y 轴',
             typeNumeric: '数字轴',
@@ -29,6 +35,8 @@
             scaleLinear: '线性',
             scaleLog: '对数',
             scaleLogTip: '对数轴不能有 0 或负数，也不能与"轴截断"同时使用',
+            logBase: '底数',
+            logBaseTip: '常用 2 / e / 10',
 
             breakGroup: '轴截断',
             breakEnable: '启用',
@@ -71,12 +79,16 @@
             crossMax: '轴最大值',
             crossCustom: '自定义',
             crossValue: '数值',
-            crossTip: '决定另一条轴（主轴线）绘制的像素位置',
-logBase: '底数',
-logBaseTip: '常用 2 / e / 10'
+            crossTip: '决定另一条轴（主轴线）绘制的像素位置'
         },
         en: {
             panelTitle: 'Axis Settings',
+
+            directionGroup: 'Chart Direction',
+            directionVertical: 'Vertical',
+            directionHorizontal: 'Horizontal',
+            directionTip: 'Switch bar orientation (axis roles auto-adjust)',
+
             xAxis: 'X Axis',
             yAxis: 'Y Axis',
             typeNumeric: 'Numeric',
@@ -99,6 +111,8 @@ logBaseTip: '常用 2 / e / 10'
             scaleLinear: 'Linear',
             scaleLog: 'Log',
             scaleLogTip: 'Log axis cannot contain 0 or negative values, and cannot be combined with "Axis Break"',
+            logBase: 'Base',
+            logBaseTip: 'Common: 2 / e / 10',
 
             breakGroup: 'Axis Break',
             breakEnable: 'Enable',
@@ -141,9 +155,7 @@ logBaseTip: '常用 2 / e / 10'
             crossMax: 'Axis maximum',
             crossCustom: 'Custom',
             crossValue: 'Value',
-            crossTip: 'Determines the pixel position where the other axis (main axis) is drawn',
-logBase: 'Base',
-logBaseTip: 'Common: 2 / e / 10',
+            crossTip: 'Determines the pixel position where the other axis (main axis) is drawn'
         }
     };
 
@@ -163,29 +175,24 @@ logBaseTip: 'Common: 2 / e / 10',
     function singleAxisDefault() {
         return {
             fontFamily: 'Times New Roman',
-
             titleShow: true,
             titleContent: '',
             titleFontSize: 16,
             titleBold: false,
             titleItalic: false,
-
             domainAuto: true,
             domainMin: 0,
             domainMax: 100,
             domainPad: 0,
-
             scaleType: 'linear',
-logBase: 10,
+            logBase: 10,
             breakEnable: false,
             breakFrom: 0,
             breakTo: 0,
-
             tickShow: true,
             tickDir: 'out',
             tickLength: 6,
             tickWidth: 1,
-
             tickValueShow: true,
             tickValueAuto: true,
             tickValueCustom: '',
@@ -193,15 +200,12 @@ logBase: 10,
             tickBold: false,
             tickItalic: false,
             tickRotate: 0,
-
             gridShow: false,
             gridColor: '#e8edf2',
             gridDash: '3 3',
-
             lineShow: true,
             lineWidth: 1,
             lineColor: '#333333',
-
             crossMode: 'auto',
             crossValue: 0
         };
@@ -227,6 +231,10 @@ logBase: 10,
     border-radius: 6px;
 }
 .axis-block:last-child { margin-bottom: 0; }
+.axis-direction-block {
+    background: #f6fbfd;
+    border-color: #c5dce6;
+}
 .axis-block-title {
     font-size: 14px;
     font-weight: 700;
@@ -258,8 +266,40 @@ logBase: 10,
     color: #999;
     line-height: 1.5;
 }
+.axis-direction-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 16px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #1f4068;
+}
 `;
         document.head.appendChild(s);
+    }
+
+    function directionPanelHTML(t, currentDir) {
+        return `
+        <div class="axis-block axis-direction-block">
+            <div class="axis-block-title">
+                <span>${t.directionGroup}</span>
+            </div>
+            <div class="font-row">
+                <label class="axis-direction-radio">
+                    <input type="radio" name="axisDirection" value="vertical"
+                           ${currentDir === 'vertical' ? 'checked' : ''}>
+                    ${t.directionVertical}
+                </label>
+                <label class="axis-direction-radio">
+                    <input type="radio" name="axisDirection" value="horizontal"
+                           ${currentDir === 'horizontal' ? 'checked' : ''}>
+                    ${t.directionHorizontal}
+                </label>
+                <span class="axis-tip" style="margin-left:10px;">${t.directionTip}</span>
+            </div>
+        </div>
+        `;
     }
 
     function axisPanelHTML(key, cfg, t, axisType) {
@@ -268,7 +308,6 @@ logBase: 10,
 
         let html = `<div class="axis-block">`;
 
-        /* 顶部标题 */
         html += `
             <div class="axis-block-title">
                 <span>${isX ? t.xAxis : t.yAxis}</span>
@@ -305,18 +344,18 @@ logBase: 10,
                     </label>
                 </div>
 
-<div class="axis-subsection">${t.scaleGroup}</div>
-<div class="font-row">
-    <select class="ax-${key}-scale-type">
-        <option value="linear" ${cfg.scaleType === 'linear' ? 'selected' : ''}>${t.scaleLinear}</option>
-        <option value="log" ${cfg.scaleType === 'log' ? 'selected' : ''}>${t.scaleLog}</option>
-    </select>
-    <label class="ax-${key}-logbase-wrap" style="display:${cfg.scaleType === 'log' ? '' : 'none'};">
-        ${t.logBase}
-        <input type="number" class="ax-${key}-log-base" value="${cfg.logBase || 10}" min="0.0001" step="0.1" style="width:70px;">
-    </label>
-    <span class="axis-tip">${t.logBaseTip}</span>
-</div>
+                <div class="axis-subsection">${t.scaleGroup}</div>
+                <div class="font-row">
+                    <select class="ax-${key}-scale-type">
+                        <option value="linear" ${cfg.scaleType === 'linear' ? 'selected' : ''}>${t.scaleLinear}</option>
+                        <option value="log" ${cfg.scaleType === 'log' ? 'selected' : ''}>${t.scaleLog}</option>
+                    </select>
+                    <label class="ax-${key}-logbase-wrap" style="display:${cfg.scaleType === 'log' ? '' : 'none'};">
+                        ${t.logBase}
+                        <input type="number" class="ax-${key}-log-base" value="${cfg.logBase || 10}" min="0.0001" step="0.1" style="width:70px;">
+                        <span class="axis-tip" style="margin-left:8px;">${t.logBaseTip}</span>
+                    </label>
+                </div>
 
                 <div class="axis-subsection">${t.breakGroup}</div>
                 <div class="font-row">
@@ -462,8 +501,9 @@ logBase: 10,
             if (pad !== undefined) cfg.domainPad = Math.max(0, pad);
 
             setIf(cfg, 'scaleType', val(g, 'scale-type'));
-const lb = num(g, 'log-base', 10);
-if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
+            const lb = num(g, 'log-base', 10);
+            if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
+
             setIf(cfg, 'breakEnable', chk(g, 'break-en'));
             setIf(cfg, 'breakFrom', num(g, 'break-from', 0));
             setIf(cfg, 'breakTo', num(g, 'break-to', 0));
@@ -498,6 +538,11 @@ if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
         });
     }
 
+    function getAxisTypesForDirection(direction) {
+        if (direction === 'horizontal') return { x: 'numeric', y: 'category' };
+        return { x: 'category', y: 'numeric' };
+    }
+
     function render(containerOrId, opts) {
         opts = opts || {};
         const container = typeof containerOrId === 'string'
@@ -512,23 +557,42 @@ if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
         if (!st.x) st.x = singleAxisDefault();
         if (!st.y) st.y = singleAxisDefault();
 
-        const axisTypes = opts.axisTypes || { x: 'numeric', y: 'numeric' };
+        let currentDirection = opts.direction || 'vertical';
 
-        container.className = 'param-panel';
-        container.innerHTML = `
-            <div class="param-panel-title">${t.panelTitle}</div>
-            ${axisPanelHTML('x', st.x, t, axisTypes.x)}
-            ${axisPanelHTML('y', st.y, t, axisTypes.y)}
-        `;
-['x', 'y'].forEach(key => {
-    const sel = container.querySelector(`.ax-${key}-scale-type`);
-    const wrap = container.querySelector(`.ax-${key}-logbase-wrap`);
-    if (sel && wrap) {
-        const update = () => { wrap.style.display = (sel.value === 'log') ? '' : 'none'; };
-        sel.addEventListener('change', update);
-        update();
-    }
-});
+        function build() {
+            const axisTypes = getAxisTypesForDirection(currentDirection);
+            container.className = 'param-panel';
+            container.innerHTML = `
+                <div class="param-panel-title">${t.panelTitle}</div>
+                ${directionPanelHTML(t, currentDirection)}
+                ${axisPanelHTML('x', st.x, t, axisTypes.x)}
+                ${axisPanelHTML('y', st.y, t, axisTypes.y)}
+            `;
+
+            container.querySelectorAll('input[name="axisDirection"]').forEach(r => {
+                r.addEventListener('change', () => {
+                    const newDir = container.querySelector('input[name="axisDirection"]:checked').value;
+                    if (newDir === currentDirection) return;
+                    readFromDOM(container, st);
+                    currentDirection = newDir;
+                    if (opts.onDirectionChange) opts.onDirectionChange(newDir);
+                    build();
+                });
+            });
+
+            ['x', 'y'].forEach(key => {
+                const sel = container.querySelector(`.ax-${key}-scale-type`);
+                const wrap = container.querySelector(`.ax-${key}-logbase-wrap`);
+                if (sel && wrap) {
+                    const update = () => { wrap.style.display = (sel.value === 'log') ? '' : 'none'; };
+                    sel.addEventListener('change', update);
+                    update();
+                }
+            });
+        }
+
+        build();
+
         let raf = null;
         const onChange = () => {
             if (raf) return;
@@ -558,14 +622,11 @@ if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
 
         let v1 = 0, v2 = 0;
         if (cfg.tickDir === 'out') {
-            v1 = 0;
-            v2 = outwardSign * len;
+            v1 = 0; v2 = outwardSign * len;
         } else if (cfg.tickDir === 'in') {
-            v1 = 0;
-            v2 = -outwardSign * len;
+            v1 = 0; v2 = -outwardSign * len;
         } else {
-            v1 = -outwardSign * len;
-            v2 = outwardSign * len;
+            v1 = -outwardSign * len; v2 = outwardSign * len;
         }
 
         axisG.selectAll('.tick line')
@@ -574,13 +635,9 @@ if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
             .attr('stroke-width', cfg.tickWidth);
 
         if (horiz) {
-            axisG.selectAll('.tick line')
-                .attr('y1', v1)
-                .attr('y2', v2);
+            axisG.selectAll('.tick line').attr('y1', v1).attr('y2', v2);
         } else {
-            axisG.selectAll('.tick line')
-                .attr('x1', v1)
-                .attr('x2', v2);
+            axisG.selectAll('.tick line').attr('x1', v1).attr('x2', v2);
         }
 
         axisG.selectAll('.tick text')
@@ -595,46 +652,31 @@ if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
                 .attr('transform', `rotate(${cfg.tickRotate})`)
                 .style('text-anchor', cfg.tickRotate < 0 ? 'end' : 'start');
         } else {
-            axisG.selectAll('.tick text')
-                .attr('transform', null)
-                .style('text-anchor', null);
+            axisG.selectAll('.tick text').attr('transform', null).style('text-anchor', null);
         }
 
         axisG.selectAll('.axis-break-mark').remove();
         if (cfg.breakEnable && isFinite(breakPos)) {
-            const s = 5;
-            const d = 4;
+            const s = 5, d = 4;
             const strokeW = Math.max(1.5, cfg.lineWidth);
             if (horiz) {
-                axisG.append('line')
-                    .attr('class', 'axis-break-mark')
+                axisG.append('line').attr('class', 'axis-break-mark')
                     .attr('x1', breakPos - d).attr('y1', s)
                     .attr('x2', breakPos).attr('y2', -s)
-                    .attr('stroke', cfg.lineColor)
-                    .attr('stroke-width', strokeW)
-                    .attr('stroke-linecap', 'round');
-                axisG.append('line')
-                    .attr('class', 'axis-break-mark')
+                    .attr('stroke', cfg.lineColor).attr('stroke-width', strokeW).attr('stroke-linecap', 'round');
+                axisG.append('line').attr('class', 'axis-break-mark')
                     .attr('x1', breakPos).attr('y1', s)
                     .attr('x2', breakPos + d).attr('y2', -s)
-                    .attr('stroke', cfg.lineColor)
-                    .attr('stroke-width', strokeW)
-                    .attr('stroke-linecap', 'round');
+                    .attr('stroke', cfg.lineColor).attr('stroke-width', strokeW).attr('stroke-linecap', 'round');
             } else {
-                axisG.append('line')
-                    .attr('class', 'axis-break-mark')
+                axisG.append('line').attr('class', 'axis-break-mark')
                     .attr('x1', -s).attr('y1', breakPos - d)
                     .attr('x2', s).attr('y2', breakPos)
-                    .attr('stroke', cfg.lineColor)
-                    .attr('stroke-width', strokeW)
-                    .attr('stroke-linecap', 'round');
-                axisG.append('line')
-                    .attr('class', 'axis-break-mark')
+                    .attr('stroke', cfg.lineColor).attr('stroke-width', strokeW).attr('stroke-linecap', 'round');
+                axisG.append('line').attr('class', 'axis-break-mark')
                     .attr('x1', -s).attr('y1', breakPos)
                     .attr('x2', s).attr('y2', breakPos + d)
-                    .attr('stroke', cfg.lineColor)
-                    .attr('stroke-width', strokeW)
-                    .attr('stroke-linecap', 'round');
+                    .attr('stroke', cfg.lineColor).attr('stroke-width', strokeW).attr('stroke-linecap', 'round');
             }
         }
     }
@@ -643,7 +685,6 @@ if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
         if (!dataExtent || dataExtent.length < 2) return [0, 1];
         let [lo, hi] = dataExtent;
         if (!isFinite(lo) || !isFinite(hi)) return [0, 1];
-
         if (cfg.domainAuto) {
             if (lo === hi) {
                 const pad = Math.abs(lo) * 0.1 || 1;
@@ -659,29 +700,24 @@ if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
         if (!cfg || !cfg.breakEnable) return scale;
         if (!isFinite(cfg.breakFrom) || !isFinite(cfg.breakTo)) return scale;
         if (cfg.breakTo <= cfg.breakFrom) return scale;
-
         const domain = scale.domain();
         if (!Array.isArray(domain) || domain.length !== 2) return scale;
         const [dMin, dMax] = domain;
         if (!isFinite(dMin) || !isFinite(dMax)) return scale;
         if (cfg.breakFrom <= dMin || cfg.breakTo >= dMax) return scale;
-
         const range = scale.range();
         const [r0, r1] = range;
         const dataBelow = cfg.breakFrom - dMin;
         const dataAbove = dMax - cfg.breakTo;
         const totalData = dataBelow + dataAbove;
         if (totalData <= 0) return scale;
-
         const totalPx = Math.abs(r1 - r0);
         const gapPx = 14;
         const availPx = totalPx - gapPx;
         if (availPx <= 0) return scale;
-
         const belowPx = (dataBelow / totalData) * availPx;
         const abovePx = (dataAbove / totalData) * availPx;
         const sign = r1 > r0 ? 1 : -1;
-
         return d3.scaleLinear()
             .domain([dMin, cfg.breakFrom, cfg.breakTo, dMax])
             .range([
@@ -705,9 +741,7 @@ if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
         if (cfg.tickValueAuto) return null;
         const raw = String(cfg.tickValueCustom || '').trim();
         if (!raw) return null;
-        const arr = raw.split(/[,，;\s]+/)
-            .map(s => parseFloat(s))
-            .filter(v => isFinite(v));
+        const arr = raw.split(/[,，;\s]+/).map(s => parseFloat(s)).filter(v => isFinite(v));
         return arr.length ? arr : null;
     }
 
@@ -730,38 +764,29 @@ if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
         const { x, y, w, h } = plotRect;
 
         if (axis === 'x') {
-            grid.selectAll('line')
-                .data(ticks).enter()
-                .append('line')
+            grid.selectAll('line').data(ticks).enter().append('line')
                 .attr('x1', d => scale(d) + (scale.bandwidth ? scale.bandwidth() / 2 : 0))
                 .attr('x2', d => scale(d) + (scale.bandwidth ? scale.bandwidth() / 2 : 0))
                 .attr('y1', y).attr('y2', y + h)
-                .attr('stroke', cfg.gridColor)
-                .attr('stroke-dasharray', cfg.gridDash)
-                .attr('stroke-width', 1);
+                .attr('stroke', cfg.gridColor).attr('stroke-dasharray', cfg.gridDash).attr('stroke-width', 1);
         } else {
-            grid.selectAll('line')
-                .data(ticks).enter()
-                .append('line')
+            grid.selectAll('line').data(ticks).enter().append('line')
                 .attr('x1', x).attr('x2', x + w)
-                .attr('y1', d => scale(d))
-                .attr('y2', d => scale(d))
-                .attr('stroke', cfg.gridColor)
-                .attr('stroke-dasharray', cfg.gridDash)
-                .attr('stroke-width', 1);
+                .attr('y1', d => scale(d)).attr('y2', d => scale(d))
+                .attr('stroke', cfg.gridColor).attr('stroke-dasharray', cfg.gridDash).attr('stroke-width', 1);
         }
     }
 
     function applyFontFamily(target, family) {
         if (!target || !family) return;
-        const sel = (target.node && typeof target.node === 'function')
-            ? target
-            : d3.select(target);
+        const sel = (target.node && typeof target.node === 'function') ? target : d3.select(target);
         sel.selectAll('text').style('font-family', family);
     }
 
     global.PlotAxis = {
         defaultState,
+        singleAxisDefault,
+        getAxisTypesForDirection,
         render,
         applyAxis,
         applyBreak,

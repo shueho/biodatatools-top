@@ -15,11 +15,11 @@
                 ]
             },
             {
-                zh: '柱形图',
+                zh: '柱状图',
                 en: 'Bar Chart',
                 tools: [
                     { id: '005', zh: '径向条形图', en: 'Radial Bar Chart' },
-                    { id: '007', zh: '分组柱形图（竖直）', en: 'Grouped Bar Chart (Vertical)' }
+                    { id: '007', zh: '分组柱状图', en: 'Grouped Bar Chart' }
                 ]
             },
             {

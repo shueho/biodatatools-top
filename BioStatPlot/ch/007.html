@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分组柱形图（竖直） - BioDataTools</title>
+    <title>分组柱状图 - BioDataTools</title>
     <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/plot-common.css">
 </head>
@@ -13,8 +13,8 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>分组柱形图（竖直）</h2>
-            <p>按自变量绘制柱形图，可选用分组变量并排展示，支持范围棒与误差值棒。</p>
+            <h2>分组柱状图</h2>
+            <p>按分类绘制柱状图，可选用分组变量并排展示，支持竖向 / 横向切换，支持范围棒与误差值棒。</p>
         </div>
 
         <div id="importPanel"></div>
@@ -22,15 +22,15 @@
         <div class="step-card">
             <div class="step-title">第二步：指定数据列</div>
             <div class="param-group">
-                <label>自变量（X）：</label>
+                <label>分类列：</label>
                 <select id="xColSel" disabled><option>— 请先导入数据 —</option></select>
                 <label>分组列：</label>
                 <select id="groupColSel" disabled><option>— 请先导入数据 —</option></select>
-                <label>因变量（Y）：</label>
+                <label>数值列：</label>
                 <select id="yColSel" disabled><option>— 请先导入数据 —</option></select>
             </div>
             <div class="tip-text" style="font-size:13px;color:#999;margin-top:8px;">
-                分组列可留空，留空时即为普通柱形图。
+                分组列可留空，留空时即为普通柱形图。图表方向（竖向 / 横向）在第四步的坐标轴设置中切换。
             </div>
         </div>
 
@@ -157,6 +157,7 @@
                 </div>
             </div>
 
+            <!-- 坐标轴设置（含"图表方向"）由 plot-axis.js 动态生成 -->
             <div id="axisPanelContainer"></div>
 
             <div class="param-panel">
@@ -171,6 +172,12 @@
                 <div class="param-inline" style="margin-top:8px;">
                     <label><input type="checkbox" id="barShowValue" data-redraw>在柱顶显示数值</label>
                     <label>字号：<input type="number" id="barValueFontSize" value="12" min="6" max="24" style="width:60px;" data-redraw></label>
+                </div>
+                <div class="font-row" style="margin-top:8px;">
+                    <span class="font-label">分组顺序</span>
+                    <input type="text" id="groupOrder" value=""
+                           placeholder="如 B,A,C" style="flex:1;min-width:220px;">
+                    <span style="font-size:12px;color:#999;">留空则按出现顺序；未列出的附后</span>
                 </div>
             </div>
 
@@ -211,6 +218,7 @@
     <script src="../COMMON/script/plot-i18n.js"></script>
     <script src="../COMMON/script/plot-app.js"></script>
     <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/bar-common.js"></script>
     <script src="../COMMON/script/007.js"></script>
 </body>
 </html>
