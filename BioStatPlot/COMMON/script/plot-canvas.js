@@ -12,6 +12,9 @@
         const background = opts.background || '#ffffff';
         const showBorder = opts.border !== false;
 
+        const app = global.PlotApp && global.PlotApp.current;
+        const saved = (app && app.state && app.state.canvasView) || null;
+
         const svg = d3.select(container).html('')
             .append('svg')
             .attr('width', width)
@@ -36,13 +39,25 @@
                 .attr('pointer-events', 'none');
         }
 
-        // 所有图形都画在这个 g 里，缩放/平移只作用于内容，不作用于边框
         const root = svg.append('g').attr('class', 'viewport');
 
-        const view = { x: 0, y: 0, k: 1, minK: 0.2, maxK: 8 };
+        const view = {
+            x: saved ? (saved.x || 0) : 0,
+            y: saved ? (saved.y || 0) : 0,
+            k: saved ? (saved.k || 1) : 1,
+            minK: 0.2,
+            maxK: 8
+        };
+
+        function persist() {
+            if (app && app.state) {
+                app.state.canvasView = { x: view.x, y: view.y, k: view.k };
+            }
+        }
 
         function applyView() {
             root.attr('transform', `translate(${view.x},${view.y}) scale(${view.k})`);
+            persist();
         }
 
         function resetView() {
@@ -62,7 +77,6 @@
             applyView();
         }
 
-        // 滚轮缩放：以鼠标所在点为锚点
         svg.on('wheel.zoom', function (event) {
             event.preventDefault();
             const rect = this.getBoundingClientRect();
@@ -72,7 +86,6 @@
             zoomAt(px, py, factor);
         });
 
-        // 拖拽平移：仅在空白画布上拖动时生效，避免影响扇区/柱子的悬停交互
         let dragStart = null;
         const drag = d3.drag()
             .filter(function (event) {
@@ -94,7 +107,6 @@
             });
         svg.call(drag);
 
-        // 双击复位视图
         svg.on('dblclick.reset', function () {
             resetView();
         });
@@ -102,8 +114,8 @@
         applyView();
 
         return {
-            svg: svg,          // 外层 svg selection
-            root: root,        // 内容层 g selection
+            svg: svg,
+            root: root,
             node: svg.node(),
             view: view,
             resetView: resetView,

@@ -1,19 +1,5 @@
 ﻿/* ============================================================
    BioDataTools 图表应用外壳
-   把每个图表页面都会重复的部分集中到这里：
-        - state / DOM 引用
-        - 数据导入面板
-        - 分类列、数值列选择
-        - 排序选择
-        - 色板下拉、颜色分配
-        - 反转色板 / 颜色循环
-        - 重绘监听、绘制按钮
-        - 画布创建（PlotCanvas）、标题绘制（PlotTitle）
-        - SVG / PNG 导出、提示、重置
-        - 样式导入 / 导出（JSON 文件）
-   页面只需要通过 PlotApp.create(config) 提供：
-        exportName, exampleData, importInfo, stateExtra,
-        readParams, buildData, computeLayout, draw
 ============================================================ */
 (function (global) {
     'use strict';
@@ -63,7 +49,6 @@
             legendTitleInput: legendTitleInput
         };
 
-        /* ---------- 语言与文案 ---------- */
         const isEn = PlotI18N.lang() === 'en';
         const TXT = {
             loadStyle:   isEn ? 'Load Style'           : '加载样式',
@@ -73,7 +58,6 @@
             styleBad:    isEn ? '❌ Invalid style file': '❌ 样式文件无效'
         };
 
-        /* ---------- 图例标题同步 ---------- */
         if (legendTitleInput) {
             legendTitleInput.addEventListener('input', () => { state.legendTitleEdited = true; });
         }
@@ -88,6 +72,14 @@
             } else {
                 defaultSyncLegendTitle();
             }
+        }
+
+        function syncLegendPosition() {
+            const maxEl = document.getElementById('legendMaxPerLine');
+            const posEl = document.getElementById('legendPosition');
+            if (!maxEl || !posEl) return;
+            const v = parseInt(maxEl.value, 10);
+            posEl.value = (isFinite(v) && v > 3) ? 'bottom' : 'right';
         }
 
         function fillRoleSelects() {
@@ -379,6 +371,8 @@
         }
 
         function drawChart() {
+            syncLegendPosition();
+
             PlotBootstrap.ensureD3().then(function () {
                 if (cfg.drawChart) {
                     cfg.drawChart(app);
@@ -413,7 +407,6 @@
             label.appendChild(input);
             titleInput.parentNode.parentNode.insertBefore(label, titleInput.parentNode.nextSibling);
         }
-
 
         function collectFormState() {
             const out = {};
@@ -451,8 +444,7 @@
                 if (k === 'currentSvg') return;
                 try {
                     stateCopy[k] = JSON.parse(JSON.stringify(state[k]));
-                } catch (e) {
-                }
+                } catch (e) {}
             });
             return {
                 version: 1,
@@ -562,6 +554,15 @@
         function init() {
             ensureTitleSpacingInput();
 
+            (function () {
+                const maxEl = document.getElementById('legendMaxPerLine');
+                if (maxEl) {
+                    maxEl.addEventListener('input', syncLegendPosition);
+                    maxEl.addEventListener('change', syncLegendPosition);
+                }
+                syncLegendPosition();
+            })();
+
             PlotCommon.renderImportPanel('importPanel', {
                 title: cfg.importTitle || PlotI18N.t('importTitle'),
                 infoBox: cfg.importInfo || PlotI18N.t('importInfo'),
@@ -587,6 +588,7 @@
         }
 
         app.syncLegendTitle = syncLegendTitle;
+        app.syncLegendPosition = syncLegendPosition;
         app.fillRoleSelects = fillRoleSelects;
         app.fillSortBySelect = fillSortBySelect;
         app.initPaletteDropdown = initPaletteDropdown;
@@ -607,8 +609,10 @@
             init();
         }
 
+        global.PlotApp.current = app;
+
         return app;
     }
 
-    global.PlotApp = { create: create };
+    global.PlotApp = { create: create, current: null };
 })(window);

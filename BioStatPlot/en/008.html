@@ -114,21 +114,15 @@
 
             <div class="param-panel">
                 <div class="param-panel-title">Component Controls</div>
-                <div class="font-row">
-                    <span class="font-label">Legend</span>
-                    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>Show</label>
-                    <label>Position:
-                        <select id="legendPosition" data-redraw>
-                            <option value="right" selected>Right</option>
-                            <option value="left">Left</option>
-                            <option value="top">Top</option>
-                            <option value="bottom">Bottom</option>
-                        </select>
-                    </label>
-                    <label>Spacing (px):
-                        <input type="number" id="legendGap" value="30" min="0" max="120" step="5" style="width:70px;" data-redraw>
-                    </label>
-                </div>
+<div class="font-row">
+    <span class="font-label">Legend</span>
+    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>Show</label>
+    <input type="hidden" id="legendPosition" value="right">
+    <label>Per row:
+        <input type="number" id="legendMaxPerLine" value="1" min="1" max="50" step="1" style="width:60px;" data-redraw>
+    </label>
+</div>
+
                 <div class="font-row">
                     <span class="font-label">Legend Title</span>
                     <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>Show</label>

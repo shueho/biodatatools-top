@@ -14,6 +14,13 @@
         return w * fontSize;
     }
 
+    function getMaxPerLine() {
+        const el = document.getElementById('legendMaxPerLine');
+        if (!el) return 1;
+        const v = parseInt(el.value, 10);
+        return (isFinite(v) && v > 0) ? v : 1;
+    }
+
     function drawShape(parent, shapeId, cx, cy, cellSize, fill) {
         if (shapeId === 'square') {
             parent.append('rect')
@@ -207,6 +214,7 @@
             const legendInlineH = p.legendFontSize + 20 + legendTitleH;
             const gap = p.legendGap;
             const margin = 30;
+            const maxPerLine = getMaxPerLine();
 
             let areaX = margin, areaY = margin;
             let areaW = width - 2 * margin;
@@ -266,46 +274,117 @@
                 const labels = items.map(it => `${it.name} (${(it.percent * 100).toFixed(1)}%)`);
 
                 if (isRight || isLeft) {
-                    const totalH = (hasLegendTitle ? legendTitleH : 0) + items.length * legendRowH;
-                    const startY2 = areaY + (areaH - totalH) / 2;
                     const baseX = isRight ? (width - legendColW - gap + 12) : 12;
-                    if (hasLegendTitle) {
-                        legendGroup.append('text').attr('x', baseX).attr('y', startY2 + p.legendTitleFontSize / 2)
-                            .attr('dy', '0.35em').attr('font-size', p.legendTitleFontSize)
-                            .attr('font-weight', ltitleWeight).attr('font-style', ltitleStyle)
-                            .attr('fill', '#333').text(p.legendTitle);
+
+                    if (maxPerLine > 1 && items.length > maxPerLine) {
+                        const rowCount = Math.ceil(items.length / maxPerLine);
+
+                        const colWidths = [];
+                        for (let c = 0; c < maxPerLine; c++) {
+                            let w = 0;
+                            for (let r = 0; r < rowCount; r++) {
+                                const idx = r * maxPerLine + c;
+                                if (idx >= items.length) break;
+                                const lw = markerSize + textGap + estTextWidth(labels[idx], p.legendFontSize) + itemGap;
+                                w = Math.max(w, lw);
+                            }
+                            if (w > 0) colWidths.push(w);
+                        }
+
+                        const totalH = (hasLegendTitle ? legendTitleH : 0) + rowCount * legendRowH;
+                        const startY2 = areaY + (areaH - totalH) / 2;
+                        if (hasLegendTitle) {
+                            legendGroup.append('text').attr('x', baseX).attr('y', startY2 + p.legendTitleFontSize / 2)
+                                .attr('dy', '0.35em').attr('font-size', p.legendTitleFontSize)
+                                .attr('font-weight', ltitleWeight).attr('font-style', ltitleStyle)
+                                .attr('fill', '#333').text(p.legendTitle);
+                        }
+                        const itemsStartY = startY2 + (hasLegendTitle ? legendTitleH : 0);
+
+                        items.forEach((it, i) => {
+                            const r = Math.floor(i / maxPerLine);
+                            const c = i % maxPerLine;
+                            let colX = baseX;
+                            for (let ci = 0; ci < c; ci++) colX += colWidths[ci];
+                            const y = itemsStartY + r * legendRowH;
+                            drawShape(legendGroup, shapeOf(it.name), colX + markerSize / 2, y + markerSize / 2, markerSize, colorOf(it.name));
+                            legendGroup.append('text').attr('x', colX + markerSize + textGap).attr('y', y + markerSize / 2)
+                                .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
+                                .attr('font-weight', legendWeight).attr('font-style', legendStyle)
+                                .attr('fill', '#333').text(labels[i]);
+                        });
+                    } else {
+                        const totalH = (hasLegendTitle ? legendTitleH : 0) + items.length * legendRowH;
+                        const startY2 = areaY + (areaH - totalH) / 2;
+                        if (hasLegendTitle) {
+                            legendGroup.append('text').attr('x', baseX).attr('y', startY2 + p.legendTitleFontSize / 2)
+                                .attr('dy', '0.35em').attr('font-size', p.legendTitleFontSize)
+                                .attr('font-weight', ltitleWeight).attr('font-style', ltitleStyle)
+                                .attr('fill', '#333').text(p.legendTitle);
+                        }
+                        const itemsStartY = startY2 + (hasLegendTitle ? legendTitleH : 0);
+                        items.forEach((it, i) => {
+                            const y = itemsStartY + i * legendRowH;
+                            drawShape(legendGroup, shapeOf(it.name), baseX + markerSize / 2, y + markerSize / 2, markerSize, colorOf(it.name));
+                            legendGroup.append('text').attr('x', baseX + markerSize + textGap).attr('y', y + markerSize / 2)
+                                .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
+                                .attr('font-weight', legendWeight).attr('font-style', legendStyle)
+                                .attr('fill', '#333').text(labels[i]);
+                        });
                     }
-                    const itemsStartY = startY2 + (hasLegendTitle ? legendTitleH : 0);
-                    items.forEach((it, i) => {
-                        const y = itemsStartY + i * legendRowH;
-                        drawShape(legendGroup, shapeOf(it.name), baseX + markerSize / 2, y + markerSize / 2, markerSize, colorOf(it.name));
-                        legendGroup.append('text').attr('x', baseX + markerSize + textGap).attr('y', y + markerSize / 2)
-                            .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
-                            .attr('font-weight', legendWeight).attr('font-style', legendStyle)
-                            .attr('fill', '#333').text(labels[i]);
-                    });
                 } else {
-                    const widths = labels.map(lb => markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap);
-                    const totalW = widths.reduce((a, b) => a + b, 0) - itemGap;
-                    const startX2 = Math.max(10, (width - totalW) / 2);
                     const legendY0 = isTop ? margin : (height - legendInlineH - margin);
-                    const itemsY = legendY0 + (hasLegendTitle ? legendTitleH : 0) + 6;
+                    const itemsY0 = legendY0 + (hasLegendTitle ? legendTitleH : 0) + 6;
+
                     if (hasLegendTitle) {
                         legendGroup.append('text').attr('x', width / 2).attr('y', legendY0 + p.legendTitleFontSize / 2)
                             .attr('text-anchor', 'middle').attr('dy', '0.35em').attr('font-size', p.legendTitleFontSize)
                             .attr('font-weight', ltitleWeight).attr('font-style', ltitleStyle)
                             .attr('fill', '#333').text(p.legendTitle);
                     }
-                    let cursorX = startX2;
-                    items.forEach((it, i) => {
-                        drawShape(legendGroup, shapeOf(it.name), cursorX + markerSize / 2, itemsY + markerSize / 2, markerSize, colorOf(it.name));
-                        legendGroup.append('text').attr('x', cursorX + markerSize + textGap).attr('y', itemsY + markerSize / 2)
-                            .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
-                            .attr('font-weight', legendWeight).attr('font-style', legendStyle)
-                            .attr('fill', '#333').text(labels[i]);
-                        cursorX += widths[i];
-                    });
+
+                    if (maxPerLine > 1 && items.length > maxPerLine) {
+                        const rowCount = Math.ceil(items.length / maxPerLine);
+                        for (let r = 0; r < rowCount; r++) {
+                            const startIdx = r * maxPerLine;
+                            const rowItems = items.slice(startIdx, startIdx + maxPerLine);
+                            const rowLabels = rowItems.map((it, i) => labels[startIdx + i]);
+                            const rowWidths = rowLabels.map(lb => markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap);
+                            const totalW = rowWidths.reduce((a, b) => a + b, 0) - itemGap;
+                            const startX2 = Math.max(10, (width - totalW) / 2);
+                            const rowY = itemsY0 + r * legendRowH;
+
+                            let cursorX = startX2;
+                            rowItems.forEach((it, i) => {
+                                drawShape(legendGroup, shapeOf(it.name), cursorX + markerSize / 2, rowY + markerSize / 2, markerSize, colorOf(it.name));
+                                legendGroup.append('text').attr('x', cursorX + markerSize + textGap).attr('y', rowY + markerSize / 2)
+                                    .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
+                                    .attr('font-weight', legendWeight).attr('font-style', legendStyle)
+                                    .attr('fill', '#333').text(rowLabels[i]);
+                                cursorX += rowWidths[i];
+                            });
+                        }
+                    } else {
+                        const widths = labels.map(lb => markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap);
+                        const totalW = widths.reduce((a, b) => a + b, 0) - itemGap;
+                        const startX2 = Math.max(10, (width - totalW) / 2);
+                        let cursorX = startX2;
+                        items.forEach((it, i) => {
+                            drawShape(legendGroup, shapeOf(it.name), cursorX + markerSize / 2, itemsY0 + markerSize / 2, markerSize, colorOf(it.name));
+                            legendGroup.append('text').attr('x', cursorX + markerSize + textGap).attr('y', itemsY0 + markerSize / 2)
+                                .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
+                                .attr('font-weight', legendWeight).attr('font-style', legendStyle)
+                                .attr('fill', '#333').text(labels[i]);
+                            cursorX += widths[i];
+                        });
+                    }
                 }
+
+                const off = PlotLegend.getLegendOffset();
+                if (off.dx || off.dy) {
+                    legendGroup.attr('transform', 'translate(' + off.dx + ',' + off.dy + ')');
+                }
+                PlotLegend.attachDrag(legendGroup);
             }
 
             exportSvgBtn.disabled = false;
