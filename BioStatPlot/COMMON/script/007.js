@@ -35,6 +35,7 @@
         return Number(v).toFixed(d);
     }
 
+    /* ---------------- 角色下拉 ---------------- */
     function fillRoleSelects(app) {
         const state = app.state;
         const xSel = app.$('xColSel');
@@ -66,6 +67,7 @@
         ySel.innerHTML = opts(state.roles.y, false);
     }
 
+    /* ---------------- X 值获取与排序 ---------------- */
     function getXValues(app) {
         const seen = new Set();
         const out = [];
@@ -78,7 +80,6 @@
         return out;
     }
 
-    /* 按"排序依据 / 排序方向"给 X 值排序 */
     function sortXValues(app, xVals) {
         const state = app.state;
         const sortBy = state.sortBy;
@@ -90,14 +91,12 @@
         xVals.forEach(x => {
             let key = null;
             if (sortBy === state.roles.y) {
-                /* 按 Y 列均值排 */
                 const vals = state.data
                     .filter(r => String(r[state.roles.x]) === x)
                     .map(r => parseFloat(r[state.roles.y]))
                     .filter(v => isFinite(v));
                 key = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
             } else {
-                /* 按某一列的第一个值排 */
                 const row = state.data.find(r => String(r[state.roles.x]) === x);
                 if (row) {
                     const v = row[sortBy];
@@ -118,6 +117,7 @@
         });
     }
 
+    /* ---------------- 分组 / 颜色 ---------------- */
     function getGroupValues(app) {
         if (!app.state.roles.group) return [];
         const seen = new Set();
@@ -131,50 +131,39 @@
         return out;
     }
 
+    /* 有分组→按分组；无分组→跟随 X 排序 */
     function getColorKeys(app) {
-    if (app.state.roles.group) return getGroupValues(app);
-    return sortXValues(app, getXValues(app));
-}
-
-    function refreshGroupColors(app) {
-    const container = app.$('colorAssignContainer');
-
-    const colorKeyOrder = getColorKeys(app);
-
-    const displayKeys = app.state.roles.group
-        ? colorKeyOrder
-        : sortXValues(app, getXValues(app));
-
-    if (!colorKeyOrder.length) {
-        container.innerHTML = '<div class="color-assign-empty">' + T.colorEmpty + '</div>';
-        return;
+        if (app.state.roles.group) return getGroupValues(app);
+        return sortXValues(app, getXValues(app));
     }
 
-    const baseColors = app.resolvePaletteColors(colorKeyOrder.length);
-
-    const displayItems = displayKeys.map(k => {
-        const idx = colorKeyOrder.indexOf(k);
-        return {
-            name: k,
-            color: app.state.customColors[k] || baseColors[idx] || '#cccccc'
-        };
-    });
-
-    PlotCommon.renderColorAssignment(container, {
-        items: displayItems,
-        onChange: (idx, c) => {
-            const key = displayKeys[idx];
-            app.state.customColors[key] = c;
-            if (app.state.currentSvg) app.drawChart();
-        },
-        onResetAll: () => {
-            app.state.customColors = {};
-            refreshGroupColors(app);
-            if (app.state.currentSvg) app.drawChart();
+    function refreshGroupColors(app) {
+        const container = app.$('colorAssignContainer');
+        const keys = getColorKeys(app);
+        if (!keys.length) {
+            container.innerHTML = '<div class="color-assign-empty">' + T.colorEmpty + '</div>';
+            return;
         }
-    });
-}
+        const baseColors = app.resolvePaletteColors(keys.length);
+        const displayItems = keys.map((k, i) => ({
+            name: k,
+            color: app.state.customColors[k] || baseColors[i]
+        }));
+        PlotCommon.renderColorAssignment(container, {
+            items: displayItems,
+            onChange: (idx, c) => {
+                app.state.customColors[keys[idx]] = c;
+                if (app.state.currentSvg) app.drawChart();
+            },
+            onResetAll: () => {
+                app.state.customColors = {};
+                refreshGroupColors(app);
+                if (app.state.currentSvg) app.drawChart();
+            }
+        });
+    }
 
+    /* ---------------- 坐标轴字体同步 ---------------- */
     function syncAxisTitles(app) {
         const state = app.state;
         if (!state.axis.x.titleEdited) state.axis.x.titleContent = state.roles.x || '';
@@ -256,6 +245,7 @@
     function refreshAxisPanel(app) {
         PlotAxis.render(app.$('axisPanelContainer'), {
             state: app.state.axis,
+            axisTypes: { x: 'category', y: 'numeric' },
             onChange: () => {
                 syncGlobalFromPanel(app);
                 if (app.state.currentSvg) app.drawChart();
@@ -279,6 +269,7 @@
         });
     }
 
+    /* ---------------- 参数读取 ---------------- */
     function readParams(app) {
         const $ = app.$;
         return {
@@ -318,6 +309,7 @@
         };
     }
 
+    /* ---------------- 主绘制 ---------------- */
     function drawChart(app) {
         const state = app.state;
         const $ = app.$;
@@ -331,7 +323,7 @@
         axisCfg.x.fontFamily = p.fontFamily;
         axisCfg.y.fontFamily = p.fontFamily;
 
-        /* 关键：xVals 经过排序 */
+        /* X 值（已排序） */
         const xVals = sortXValues(app, getXValues(app));
         const groupVals = getGroupValues(app);
         const hasGroup = groupVals.length > 0;
@@ -364,8 +356,13 @@
 
         if (!cells.length) { app.showTip('msgTip3', T.noValid, 'error'); return; }
 
+        const isLogY = axisCfg.y.scaleType === 'log';
+        const logBaseY = (axisCfg.y.logBase && axisCfg.y.logBase > 0) ? axisCfg.y.logBase : 10;
+
+        /* Y 范围 */
         const maxY = Math.max.apply(null, cells.map(c => c.ext ? Math.max(c.value, c.ext.upper) : c.value));
-        const minY = Math.min(0, Math.min.apply(null, cells.map(c => c.ext ? Math.min(c.value, c.ext.lower) : c.value)));
+        const minYData = Math.min.apply(null, cells.map(c => c.ext ? Math.min(c.value, c.ext.lower) : c.value));
+        const minY = isLogY ? minYData : Math.min(0, minYData);
 
         const width = p.width;
         const height = p.height;
@@ -416,17 +413,35 @@
         const plotW = Math.max(20, areaW - leftPad - rightPad);
         const plotH = Math.max(20, gridAreaH - topPad - bottomPad);
 
-        const yDomain = PlotAxis.resolveDomain(axisCfg.y, [minY, maxY]);
-        const yScaleRaw = d3.scaleLinear().domain(yDomain).range([plotY + plotH, plotY]).nice();
-        const yScale = PlotAxis.applyBreak(yScaleRaw, axisCfg.y);
-        const yBreakPos = PlotAxis.getBreakPosition(yScale, axisCfg.y);
+        /* ---------- Y 轴：线性 / 对数 ---------- */
+        let yDomain = PlotAxis.resolveDomain(axisCfg.y, [minY, maxY]);
+        if (isLogY) {
+            if (!isFinite(yDomain[0]) || yDomain[0] <= 0) {
+                const posVals = cells.map(c => c.value).filter(v => v > 0);
+                yDomain[0] = (posVals.length ? Math.min.apply(null, posVals) : 1) * 0.5;
+            }
+            if (!isFinite(yDomain[1]) || yDomain[1] <= yDomain[0]) {
+                yDomain[1] = yDomain[0] * logBaseY;
+            }
+        }
 
-        const xCrossVal = PlotAxis.resolveCrossValue(axisCfg.x, yDomain);
-        const xAxisY = isFinite(xCrossVal) ? yScale(xCrossVal) : (plotY + plotH);
+        let yScaleRaw;
+        if (isLogY) {
+            yScaleRaw = d3.scaleLog()
+                .base(logBaseY)
+                .domain(yDomain)
+                .range([plotY + plotH, plotY]);
+        } else {
+            yScaleRaw = d3.scaleLinear()
+                .domain(yDomain)
+                .range([plotY + plotH, plotY])
+                .nice();
+        }
 
-        const yCrossVal = PlotAxis.resolveCrossValue(axisCfg.y, [plotX, plotX + plotW]);
-        const yAxisX = isFinite(yCrossVal) ? yCrossVal : plotX;
+        const yScale = (!isLogY) ? PlotAxis.applyBreak(yScaleRaw, axisCfg.y) : yScaleRaw;
+        const yBreakPos = (!isLogY) ? PlotAxis.getBreakPosition(yScale, axisCfg.y) : NaN;
 
+        /* ---------- X 轴：分类 → scaleBand ---------- */
         const xOuter = d3.scaleBand()
             .domain(xVals)
             .range([plotX, plotX + plotW])
@@ -440,6 +455,24 @@
                 .paddingInner(p.barInnerGap)
             : null;
 
+        /* ---------- X 轴的像素位置（横向主轴线） ---------- */
+        let xAxisYFinal = plotY + plotH;
+        if (axisCfg.x.crossMode === 'max') {
+            xAxisYFinal = plotY;
+        } else if (axisCfg.x.crossMode === 'zero') {
+            xAxisYFinal = isLogY ? (plotY + plotH) : yScale(0);
+        } else if (axisCfg.x.crossMode === 'custom' && isFinite(axisCfg.x.crossValue)) {
+            const v = axisCfg.x.crossValue;
+            xAxisYFinal = isLogY
+                ? (v > 0 ? yScale(v) : plotY + plotH)
+                : yScale(v);
+        }
+        if (!isFinite(xAxisYFinal)) xAxisYFinal = plotY + plotH;
+
+        /* ---------- Y 轴像素位置 ---------- */
+        const yAxisX = plotX;
+
+        /* ---------- 颜色 ---------- */
         const colorKeys = getColorKeys(app);
         const baseColors = app.resolvePaletteColors(colorKeys.length);
         const colorOf = k => {
@@ -448,6 +481,7 @@
             return state.customColors[k] || baseColors[idx] || '#cccccc';
         };
 
+        /* ---------- 画布 ---------- */
         const canvas = PlotCanvas.create(app.chartPreview, {
             width: width, height: height, fontFamily: p.fontFamily, border: p.showCanvasBorder
         });
@@ -461,11 +495,12 @@
             });
         }
 
+        /* ---------- Y 网格 ---------- */
         if (axisCfg.y.gridShow) {
             const gridY = svg.append('g').attr('class', 'grid grid-y');
             const ticks = yScale.ticks ? yScale.ticks() : yScale.domain();
             ticks.forEach(t => {
-                if (axisCfg.y.breakEnable && t > axisCfg.y.breakFrom && t < axisCfg.y.breakTo) return;
+                if (!isLogY && axisCfg.y.breakEnable && t > axisCfg.y.breakFrom && t < axisCfg.y.breakTo) return;
                 const y = yScale(t);
                 if (!isFinite(y)) return;
                 gridY.append('line')
@@ -477,6 +512,7 @@
             });
         }
 
+        /* ---------- X 网格 ---------- */
         if (axisCfg.x.gridShow) {
             const gridX = svg.append('g').attr('class', 'grid grid-x');
             xVals.forEach(xv => {
@@ -490,6 +526,7 @@
             });
         }
 
+        /* ---------- 柱子 ---------- */
         const barsG = svg.append('g').attr('class', 'bars');
         cells.forEach(cell => {
             const xPos = xOuter(cell.x);
@@ -497,10 +534,17 @@
             const bandOriginX = hasGroup ? xPos + xInner(cell.g) : xPos;
             const barW = fullBandW * p.barWidthScale;
             const barX = bandOriginX + (fullBandW - barW) / 2;
-            const yVal = yScale(cell.value);
+
+            let yVal;
+            if (isLogY && cell.value <= 0) {
+                yVal = xAxisYFinal;
+            } else {
+                yVal = yScale(cell.value);
+            }
             if (!isFinite(yVal)) return;
-            const barTop = Math.min(yVal, xAxisY);
-            const barBot = Math.max(yVal, xAxisY);
+
+            const barTop = Math.min(yVal, xAxisYFinal);
+            const barBot = Math.max(yVal, xAxisYFinal);
             const barH = barBot - barTop;
             const colorKey = hasGroup ? cell.g : cell.x;
 
@@ -521,11 +565,18 @@
                     .text(fmtNum(cell.value, 2));
             }
 
+            /* 误差棒 */
             if (cell.ext) {
                 const errColor = PlotErrorBar.resolveErrorColor(state.errBar, colorOf(colorKey));
-                const yHi = yScale(cell.ext.upper);
-                const yLo = yScale(cell.ext.lower);
+
+                let yHi = yScale(cell.ext.upper);
+                let yLo = yScale(cell.ext.lower);
+                if (isLogY) {
+                    if (!isFinite(yHi) || cell.ext.upper <= 0) yHi = xAxisYFinal;
+                    if (!isFinite(yLo) || cell.ext.lower <= 0) yLo = xAxisYFinal;
+                }
                 if (!isFinite(yHi) || !isFinite(yLo)) return;
+
                 const cxBar = barX + barW / 2;
                 const capHalf = (state.errBar.capWidth != null)
                     ? state.errBar.capWidth / 2
@@ -551,7 +602,8 @@
             }
         });
 
-        if (axisCfg.y.breakEnable) {
+        /* ---------- 断轴遮罩（仅线性） ---------- */
+        if (!isLogY && axisCfg.y.breakEnable) {
             const yRange = yScale.range();
             if (yRange.length === 4) {
                 const yTop = Math.min(yRange[1], yRange[2]);
@@ -565,20 +617,22 @@
             }
         }
 
+        /* ---------- X 轴 ---------- */
         const xTicks = PlotAxis.resolveTicks(axisCfg.x, xOuter);
         const xAxisFn = d3.axisBottom(xOuter);
         if (xTicks && xTicks.length) xAxisFn.tickValues(xTicks);
         const xAxisG = svg.append('g')
             .attr('class', 'x-axis')
-            .attr('transform', 'translate(0, ' + xAxisY + ')')
+            .attr('transform', 'translate(0, ' + xAxisYFinal + ')')
             .call(xAxisFn);
         PlotAxis.applyAxis(xAxisG, axisCfg.x, 'bottom');
 
+        /* ---------- Y 轴 ---------- */
         const yTicks = PlotAxis.resolveTicks(axisCfg.y, yScale);
         let yTickValues = yTicks;
         if (!yTickValues) {
             yTickValues = yScale.ticks ? yScale.ticks() : null;
-            if (axisCfg.y.breakEnable && yTickValues) {
+            if (!isLogY && axisCfg.y.breakEnable && yTickValues) {
                 yTickValues = yTickValues.filter(t => !(t > axisCfg.y.breakFrom && t < axisCfg.y.breakTo));
             }
         }
@@ -590,6 +644,7 @@
             .call(yAxisFn);
         PlotAxis.applyAxis(yAxisG, axisCfg.y, 'left', yBreakPos);
 
+        /* ---------- 轴标题 ---------- */
         if (axisCfg.x.titleShow && axisCfg.x.titleContent) {
             svg.append('text')
                 .attr('x', plotX + plotW / 2)
@@ -612,6 +667,7 @@
                 .text(axisCfg.y.titleContent);
         }
 
+        /* ---------- 图例 ---------- */
         if (wantLegend) {
             let legendArea, orientation;
             const gapShift = Math.max(0, gap);
@@ -656,6 +712,7 @@
         app.showTip('msgTip3', PlotI18N.t('drawDone'), 'success');
     }
 
+    /* ---------------- 应用创建 ---------------- */
     PlotApp.create({
         exportName: 'grouped_bar_chart',
         importInfo: T.importInfo,
