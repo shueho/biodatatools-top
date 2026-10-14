@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>堆积柱状图（宽表/丰度表） - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>堆积柱状图（宽表/丰度表）</h2>
+            <p>导入任意宽表（如物种/基因表达丰度表），绘制堆积柱状图。</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：指定数据列与堆叠设置</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">数据列</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>分类列</label>
+                        <select id="catColumnSel" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                </div>
+                <div style="font-size:12px;color:#999;margin:8px 0 4px;">数值列（可多选，将被堆叠）</div>
+                <div id="valueColsBox" class="param-inline" style="gap:10px 24px;">
+                    <span style="color:#999;">导入数据后可选择</span>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">排序与堆叠顺序</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>排序依据</label>
+                        <select id="sortBy" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>排序方向</label>
+                        <select id="sortDir">
+                            <option value="desc" selected>从大到小</option>
+                            <option value="asc">从小到大</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="param-inline" style="margin-top:10px;">
+                    <label>堆叠顺序
+                        <select id="groupOrderMode" data-redraw style="min-width:200px;">
+                            <option value="input" selected>按出现顺序</option>
+                            <option value="absAsc">原始值升序</option>
+                            <option value="absDesc">原始值降序</option>
+                            <option value="pctAsc">百分比升序</option>
+                            <option value="pctDesc">百分比降序</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </label>
+                    <label>自定义顺序
+                        <input type="text" id="groupOrder" value="" placeholder="如 B,A,C" style="width:220px;" disabled>
+                    </label>
+                </div>
+                <div class="param-inline" style="margin-top:6px;">
+                    <span id="groupOrderHint" style="font-size:12px;color:#999;">按数据中首次出现的顺序。</span>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">堆叠方式</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>模式</label>
+                        <select id="stackMode" data-redraw>
+                            <option value="absolute" selected>原始值堆叠</option>
+                            <option value="percent">百分比堆叠 (100%)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">分类合并</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>合并方式</label>
+                        <select id="mergeMode">
+                            <option value="none" selected>不合并</option>
+                            <option value="topN">保留 Top N</option>
+                            <option value="threshold">按百分比阈值</option>
+                        </select>
+                    </div>
+                    <div class="param-item" id="topNItem" style="display:none;">
+                        <label>Top N</label>
+                        <input type="number" id="topN" value="10" min="1" step="1">
+                    </div>
+                    <div class="param-item" id="thresholdItem" style="display:none;">
+                        <label>阈值(%)</label>
+                        <input type="number" id="thresholdPct" value="1" min="0" max="100" step="0.1">
+                    </div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <span style="font-size:12px;color:#999;">未保留的分类合并为 Other。</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：选择色板与颜色</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">分类色板</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                    <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+                </div>
+            </div>
+
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：设置绘图参数</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+            <div id="axisPanelContainer"></div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">柱形设置</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>组间距</label>
+                        <input type="number" id="barOuterGap" value="0.3" min="0" max="0.9" step="0.05" data-redraw></div>
+                    <div class="param-item"><label>柱宽比例</label>
+                        <input type="number" id="barWidthScale" value="0.8" min="0.2" max="1" step="0.05" data-redraw></div>
+                    <div class="param-item"><label>分段描边宽度</label>
+                        <input type="number" id="barStrokeWidth" value="1" min="0" max="4" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>分段描边色</label>
+                        <input type="color" id="barStrokeColor" value="#ffffff" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="barShowValue" data-redraw>在分段内显示数值</label>
+                    <label>字号
+                        <input type="number" id="barValueFontSize" value="11" min="6" max="24" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">标签</div>
+                <div class="param-inline">
+                    <label><input type="checkbox" id="showStackTotal" data-redraw>在柱顶显示总值</label>
+                    <label>字号
+                        <input type="number" id="stackTotalFontSize" value="12" min="6" max="28" style="width:70px;" data-redraw>
+                    </label>
+                    <label>小数位
+                        <input type="number" id="stackTotalDecimals" value="1" min="0" max="4" step="1" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer.js"></script>
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-axis.js"></script>
+    <script src="../COMMON/script/plot-errorbar.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/bar-common.js"></script>
+    <script src="../COMMON/script/plot-stacked.js"></script>
+    <script src="../COMMON/script/010.js"></script>
+</body>
+</html>

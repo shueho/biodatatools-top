@@ -14,137 +14,92 @@
     <div class="main">
         <div class="page-intro">
             <h2>Radar Chart</h2>
-            <p>Draw a radar (spider) chart with multiple samples.</p>
+            <p>Draw a radar chart.</p>
         </div>
 
         <div id="importPanel"></div>
 
         <div class="step-card">
             <div class="step-title">Step 2: Select Data Columns</div>
-            <div class="param-group">
-                <label>Indicator column (variable name):</label>
-                <select id="axisColSel" disabled><option>— Please import data first —</option></select>
-            </div>
-            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 8px;">Sample columns (multi-select)</div>
-            <div id="sampleColsBox" class="param-inline" style="gap:10px 24px;">
-                <span style="color:#999;">Select samples after importing data</span>
-            </div>
-        </div>
-
-        <div class="step-card">
-            <div class="step-title">Step 3: Choose Palette &amp; Colors</div>
-            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:0 0 4px;">Categorical Palette</div>
-            <div id="paletteDropdownContainer"></div>
-            <div class="param-inline" style="margin-top:8px;">
-                <label><input type="checkbox" id="reversePalette">Reverse palette</label>
-                <label><input type="checkbox" id="cycleColors">Cycle colors</label>
-            </div>
-            <div id="colorAssignContainer" style="margin-top:16px;"></div>
-        </div>
-
-        <div class="step-card">
-            <div class="step-title">Step 4: Plot Parameters</div>
 
             <div class="param-panel">
-                <div class="param-panel-title">Canvas Size</div>
+                <div class="param-panel-title">Indicator Column</div>
                 <div class="param-grid cols-4">
-                    <div class="param-item"><label>Width (px)</label><input type="number" id="chartWidth" value="800" min="300" data-redraw></div>
-                    <div class="param-item"><label>Height (px)</label><input type="number" id="chartHeight" value="700" min="300" data-redraw></div>
-                </div>
-                <div class="param-inline" style="margin-top:8px;">
-                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>Show canvas border</label>
+                    <div class="param-item">
+                        <label>Indicator</label>
+                        <select id="axisColSel" disabled><option>— Please import data first —</option></select>
+                    </div>
                 </div>
             </div>
 
             <div class="param-panel">
-                <div class="param-panel-title">Font Styles</div>
-                <div class="font-row">
-                    <span class="font-label">Font</span>
-                    <select id="fontFamily" data-redraw>
-                        <option value="Times New Roman" selected>Times New Roman</option>
-                        <option value="Arial">Arial</option>
-                        <option value="Calibri">Calibri</option>
-                        <option value="Helvetica">Helvetica</option>
-                        <option value="Microsoft YaHei">Microsoft YaHei</option>
-                    </select>
+                <div class="param-panel-title">Sample Columns (multiple)</div>
+                <div id="sampleColsBox" class="param-inline" style="gap:10px 24px;">
+                    <span style="color:#999;">Import data to select samples</span>
                 </div>
-                <div class="font-row">
-                    <span class="font-label">Axis Labels</span>
-                    <input type="number" id="axisLabelFontSize" value="15" min="8" max="36" data-redraw>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Choose Palette and Colors</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Categorical Palette</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">Reverse palette</label>
+                    <label><input type="checkbox" id="cycleColors">Cycle colors</label>
+                </div>
+            </div>
+
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Drawing Parameters</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Labels</div>
+
+                <div class="param-inline">
+                    <label>Axis size
+                        <input type="number" id="axisLabelFontSize" value="15" min="8" max="36" data-redraw>
+                    </label>
                     <label class="mini-check"><input type="checkbox" id="axisLabelBold" data-redraw>B</label>
                     <label class="mini-check"><input type="checkbox" id="axisLabelItalic" data-redraw>I</label>
+                    <label>Offset
+                        <input type="number" id="axisLabelOffset" value="20" min="0" max="100" step="5" style="width:70px;" data-redraw>px
+                    </label>
                 </div>
-                <div class="font-row">
-                    <span class="font-label">Tick Values</span>
-                    <input type="number" id="scaleFontSize" value="12" min="6" max="24" data-redraw>
+
+                <div class="param-inline">
+                    <label>Scale size
+                        <input type="number" id="scaleFontSize" value="12" min="6" max="24" data-redraw>
+                    </label>
                     <label class="mini-check"><input type="checkbox" id="scaleBold" data-redraw>B</label>
                     <label class="mini-check"><input type="checkbox" id="scaleItalic" data-redraw>I</label>
                 </div>
-                <div class="font-row">
-                    <span class="font-label">Legend</span>
-                    <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>B</label>
-                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>I</label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">Legend Title</span>
-                    <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>B</label>
-                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>I</label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">Title</span>
-                    <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>B</label>
-                    <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>I</label>
-                </div>
-            </div>
 
-            <div class="param-panel">
-                <div class="param-panel-title">Component Controls</div>
-<div class="font-row">
-    <span class="font-label">Legend</span>
-    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>Show</label>
-    <input type="hidden" id="legendPosition" value="right">
-    <label>Per row:
-        <input type="number" id="legendMaxPerLine" value="1" min="1" max="50" step="1" style="width:60px;" data-redraw>
-    </label>
-</div>
-
-                <div class="font-row">
-                    <span class="font-label">Legend Title</span>
-                    <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>Show</label>
-                    <label>Content:
-                        <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw>
-                    </label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">Title</span>
-                    <label class="mini-check"><input type="checkbox" id="showTitle" data-redraw>Show</label>
-                    <label>Position:
-                        <select id="titlePosition" data-redraw>
-                            <option value="top-center" selected>Top Center</option>
-                            <option value="top-left">Top Left</option>
-                            <option value="top-right">Top Right</option>
-                            <option value="middle-center">Middle Center</option>
-                            <option value="middle-left">Middle Left</option>
-                            <option value="middle-right">Middle Right</option>
-                            <option value="bottom-center">Bottom Center</option>
-                            <option value="bottom-left">Bottom Left</option>
-                            <option value="bottom-right">Bottom Right</option>
+                <div class="param-inline">
+                    <label>Scale position
+                        <select id="scalePos" data-redraw>
+                            <option value="none" selected>None</option>
+                            <option value="first">First axis only</option>
+                            <option value="all">Every axis</option>
                         </select>
                     </label>
-                    <label>Content:
-                        <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw>
+                    <label>Content
+                        <select id="scaleType" data-redraw>
+                            <option value="ratio" selected>Percentage</option>
+                            <option value="original">Raw value</option>
+                        </select>
                     </label>
-                    <label>Spacing (px):
-                        <input type="number" id="titleSpacing" value="30" min="0" max="200" step="5" style="width:70px;" data-redraw>
+                    <label>Decimals
+                        <input type="number" id="scaleDecimals" value="0" min="0" max="4" step="1" style="width:60px;" data-redraw>
                     </label>
-                </div>
-
-                <div class="font-row">
-                    <span class="font-label">Axis Label Offset</span>
-                    <input type="number" id="axisLabelOffset" value="20" min="0" max="100" step="5" data-redraw>
                 </div>
             </div>
 
@@ -152,8 +107,10 @@
                 <div class="param-panel-title">Radar Settings</div>
 
                 <div class="param-grid cols-4">
-                    <div class="param-item"><label>Outer radius</label><input type="number" id="outerRadius" value="220" min="40" max="1000" step="10" data-redraw></div>
-                    <div class="param-item"><label>Grid levels</label><input type="number" id="gridLevels" value="5" min="1" max="20" data-redraw></div>
+                    <div class="param-item"><label>Outer radius</label>
+                        <input type="number" id="outerRadius" value="220" min="40" max="1000" step="10" data-redraw></div>
+                    <div class="param-item"><label>Grid levels</label>
+                        <input type="number" id="gridLevels" value="5" min="1" max="20" data-redraw></div>
                     <div class="param-item">
                         <label>Grid shape</label>
                         <select id="gridShape" data-redraw>
@@ -161,58 +118,31 @@
                             <option value="circle">Circle</option>
                         </select>
                     </div>
-                    <div class="param-item"><label>Grid color</label><input type="color" id="gridColor" value="#d8e2ec" data-redraw></div>
-                    <div class="param-item"><label>Axis width</label><input type="number" id="axisWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>Grid color</label>
+                        <input type="color" id="gridColor" value="#d8e2ec" data-redraw></div>
+                    <div class="param-item"><label>Axis width</label>
+                        <input type="number" id="axisWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
+                    <div class="param-item">
+                        <label>Scaling</label>
+                        <select id="scaleMode" data-redraw>
+                            <option value="perAxis" selected>Per axis (independent)</option>
+                            <option value="global">Global (shared vertices)</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="param-inline" style="margin-top:10px;">
+                <div class="param-inline" style="margin-top:8px;">
                     <label><input type="checkbox" id="showGrid" checked data-redraw>Show grid rings</label>
                     <label><input type="checkbox" id="showAxisLines" checked data-redraw>Show axis lines</label>
                 </div>
 
-                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Data Scaling</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item">
-                        <label>Scale mode</label>
-                        <select id="scaleMode" data-redraw>
-                            <option value="perAxis" selected>Per-axis (independent)</option>
-                            <option value="global">Global (shared)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Tick Display</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item">
-                        <label>Position</label>
-                        <select id="scalePos" data-redraw>
-                            <option value="none" selected>None</option>
-                            <option value="first">First axis only</option>
-                            <option value="all">All axes</option>
-                        </select>
-                    </div>
-                    <div class="param-item">
-                        <label>Content</label>
-                        <select id="scaleType" data-redraw>
-                            <option value="ratio" selected>Percentage</option>
-                            <option value="original">Raw value</option>
-                        </select>
-                    </div>
-                    <div class="param-item"><label>Decimals</label><input type="number" id="scaleDecimals" value="0" min="0" max="4" step="1" data-redraw></div>
-                </div>
-
-                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Data Polygon</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item"><label>Line width</label><input type="number" id="lineWidth" value="2" min="0" max="10" step="0.5" data-redraw></div>
-                    <div class="param-item"><label>Fill opacity</label><input type="number" id="fillOpacity" value="0.2" min="0" max="1" step="0.05" data-redraw></div>
-                </div>
-                <div class="param-inline" style="margin-top:8px;">
-                    <label><input type="checkbox" id="showFill" checked data-redraw>Fill</label>
-                </div>
-
-                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">Data Points</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item"><label>Point size</label><input type="number" id="pointSize" value="3" min="1" max="20" step="0.5" data-redraw></div>
+                <div class="param-grid cols-4" style="margin-top:14px;">
+                    <div class="param-item"><label>Line width</label>
+                        <input type="number" id="lineWidth" value="2" min="0" max="10" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>Fill opacity</label>
+                        <input type="number" id="fillOpacity" value="0.2" min="0" max="1" step="0.05" data-redraw></div>
+                    <div class="param-item"><label>Point size</label>
+                        <input type="number" id="pointSize" value="3" min="1" max="20" step="0.5" data-redraw></div>
                     <div class="param-item">
                         <label>Point stroke</label>
                         <select id="pointStroke" data-redraw>
@@ -221,9 +151,12 @@
                             <option value="none">None</option>
                         </select>
                     </div>
-                    <div class="param-item"><label>Point stroke width</label><input type="number" id="pointStrokeWidth" value="1.5" min="0" max="6" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>Point stroke width</label>
+                        <input type="number" id="pointStrokeWidth" value="1.5" min="0" max="6" step="0.5" data-redraw></div>
                 </div>
+
                 <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showFill" checked data-redraw>Fill</label>
                     <label><input type="checkbox" id="showPoints" checked data-redraw>Show data points</label>
                 </div>
             </div>
@@ -235,7 +168,7 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 5: Preview &amp; Export</div>
+            <div class="step-title">Step 5: Preview and Export</div>
             <div class="result-toolbar">
                 <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
                 <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
@@ -243,7 +176,7 @@
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div class="chart-preview" id="chartPreview">
-                <div class="placeholder">Import data and adjust settings, then click "Draw Chart" to see the result</div>
+                <div class="placeholder">Import data and complete the settings, then click "Draw Chart" to see the result</div>
             </div>
         </div>
     </div>
@@ -254,10 +187,7 @@
     <script src="../COMMON/script/plot-header.js"></script>
     <script src="../COMMON/script/plot-footer-en.js"></script>
     <script src="../COMMON/script/plot-common.js"></script>
-
     <script src="../COMMON/script/plot-canvas.js"></script>
-    <script src="../COMMON/script/plot-title.js"></script>
-    <script src="../COMMON/script/plot-legend.js"></script>
     <script src="../COMMON/script/plot-i18n.js"></script>
     <script src="../COMMON/script/plot-app.js"></script>
     <script src="../COMMON/script/plot-mini-preview.js"></script>

@@ -1,44 +1,23 @@
 (function () {
     'use strict';
 
+    const PC = window.PlotCommon;
     const EN = PlotI18N.lang() === 'en';
     const T = {
         importInfo: EN
-            ? 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. Three examples are provided: no error bars, range (lower/upper) error bars, and error-value bars.'
-            : '需包含表头，且至少包含 <strong>分类列</strong> 和 <strong>数值列</strong>。示例提供三个版本：无误差棒、上下限（范围）误差棒、误差值误差棒。',
-        noData: EN ? '❌ Please import data first' : '❌ 请先导入数据',
-        selectCols: EN ? '❌ Please select the category and value columns in step 2' : '❌ 请在第 2 步选择分类列和数值列',
-        noValid: EN ? '❌ Could not generate valid plot data. Please check the value column' : '❌ 未能生成有效绘图数据，请检查数值列'
+            ? 'Must include a header row with a <strong>category column</strong>, a <strong>value column</strong>, and columns for error bars (<strong>Lower/Upper</strong> for range bars, or <strong>Error</strong> for error-value bars). You can paste directly from Excel.'
+            : '需包含表头，至少包含 <strong>分类列</strong> 和 <strong>数值列</strong>，以及误差棒所需的列（<strong>上下限</strong> 用于范围棒，或 <strong>误差值</strong> 用于误差值棒）。可直接粘贴 Excel 内容。'
     };
 
-    const EX_NO_ERR = 'Category\tValue\nA\t180\nB\t320\nC\t75\nD\t240\nE\t50\nF\t150\nG\t290';
-    const EX_RANGE = 'Category\tValue\tLower\tUpper\nA\t180\t160\t200\nB\t320\t290\t350\nC\t75\t60\t90\nD\t240\t215\t265\nE\t50\t40\t60\nF\t150\t130\t170\nG\t290\t265\t315';
-    const EX_ERRVAL = 'Category\tValue\tError\nA\t180\t20\nB\t320\t30\nC\t75\t15\nD\t240\t25\nE\t50\t10\nF\t150\t20\nG\t290\t25';
-
-    function num(app, id, fallback) {
-        const el = app.$(id);
-        if (!el) return fallback;
-        const v = parseFloat(el.value);
-        return isFinite(v) ? v : fallback;
-    }
-
-    function estTextWidth(str, fontSize) {
-        let w = 0;
-        for (const ch of String(str)) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
-        return w * fontSize;
-    }
-
-    function fmtNum(v, d) {
-        if (!isFinite(v)) return '';
-        if (Number.isInteger(v)) return String(v);
-        return Number(v).toFixed(d);
-    }
-
-    function textColorOn(bg) {
-        const rgb = PlotCommon.hexToRgb(bg);
-        const lum = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
-        return lum > 165 ? '#333333' : '#ffffff';
-    }
+    const EX_COMBO =
+        'Category\tValue\tLower\tUpper\tError\n' +
+        'A\t180\t160\t200\t20\n' +
+        'B\t320\t290\t350\t30\n' +
+        'C\t75\t60\t90\t15\n' +
+        'D\t240\t215\t265\t25\n' +
+        'E\t50\t40\t60\t10\n' +
+        'F\t150\t130\t170\t20\n' +
+        'G\t290\t265\t315\t25';
 
     function getMaxValue(app) {
         const items = app.getCategoryItems();
@@ -77,18 +56,22 @@
 
     PlotApp.create({
         exportName: 'radial_bar_chart',
+        exampleData: EX_COMBO,
         importInfo: T.importInfo,
-        examples: [
-            { label: EN ? 'Example: no error bars' : '示例：无误差棒', data: EX_NO_ERR },
-            { label: EN ? 'Example: range bars' : '示例：范围棒', data: EX_RANGE },
-            { label: EN ? 'Example: error-value bars' : '示例：误差值棒', data: EX_ERRVAL }
-        ],
+
         stateExtra: {
             refValueEdited: false,
             errBar: {
                 mode: 'none', lowerCol: '', upperCol: '', errCol: '',
                 showWhich: 'both', colorMode: 'uniform',
                 errColor: '#e67700', errWidth: 3, capWidth: 8
+            }
+        },
+
+        syncLegendTitle: function (app) {
+            const input = app.$('legendTitle');
+            if (!app.state.legendTitleEdited && input) {
+                input.value = app.state.roles.category || '';
             }
         },
 
@@ -103,6 +86,7 @@
                 app.state.refValueEdited = true;
             });
         },
+
         onDataImported: function (app) {
             app.state.refValueEdited = false;
             app.state.errBar.mode = 'none';
@@ -125,63 +109,38 @@
             updateRefModeUI(app);
             refreshErrorBarPanel(app);
         },
-
         onStateRestored: function (app) {
             refreshErrorBarPanel(app);
             updateRefModeUI(app);
         },
 
         readParams: function (app) {
+            const p = PC.readCommonParams(app, { width: 760, height: 680 });
             const $ = app.$;
-            return {
-                width: Math.max(200, num(app, 'chartWidth', 760)),
-                height: Math.max(200, num(app, 'chartHeight', 680)),
 
-                innerRadius: Math.max(0, num(app, 'innerRadius', 50)),
-                outerRadius: Math.max(60, num(app, 'outerRadius', 230)),
-                ringGap: Math.max(0, num(app, 'ringGap', 8)),
-                startAngle: num(app, 'startAngle', 0),
-                direction: $('orbitDirection').value || 'clockwise',
-                ringOrder: $('ringOrder').value || 'inner',
+            p.innerRadius = Math.max(0, PC.num(app, 'innerRadius', 50));
+            p.outerRadius = Math.max(60, PC.num(app, 'outerRadius', 230));
+            p.ringGap = Math.max(0, PC.num(app, 'ringGap', 8));
+            p.startAngle = PC.num(app, 'startAngle', 0);
+            p.direction = $('orbitDirection').value || 'clockwise';
+            p.ringOrder = $('ringOrder').value || 'inner';
 
-                refMode: $('refMode').value || 'max',
-                refValue: num(app, 'refValue', 1),
+            p.refMode = $('refMode').value || 'max';
+            p.refValue = PC.num(app, 'refValue', 1);
 
-                showTrackBg: $('showTrackBg').checked,
-                trackBgColor: $('trackBgColor').value || '#eef2f7',
-                showTrackStroke: $('showTrackStroke').checked,
-                trackStrokeColor: $('trackStrokeColor').value || '#d0d8e2',
-                roundCap: $('roundCap').checked,
+            p.showTrackBg = $('showTrackBg').checked;
+            p.trackBgColor = $('trackBgColor').value || '#eef2f7';
+            p.showTrackStroke = $('showTrackStroke').checked;
+            p.trackStrokeColor = $('trackStrokeColor').value || '#d0d8e2';
+            p.roundCap = $('roundCap').checked;
 
-                fontFamily: $('fontFamily').value || 'Times New Roman',
+            p.labelContent = $('labelContent').value || 'none';
+            p.labelDecimals = Math.max(0, Math.round(PC.num(app, 'labelDecimals', 1)));
+            p.labelFontSize = Math.max(6, PC.num(app, 'labelFontSize', 13));
+            p.labelBold = $('labelBold').checked;
+            p.labelItalic = $('labelItalic').checked;
 
-                labelContent: $('labelContent').value || 'none',
-                labelDecimals: Math.max(0, Math.round(num(app, 'labelDecimals', 1))),
-                labelFontSize: Math.max(6, num(app, 'labelFontSize', 13)),
-                labelBold: $('labelBold').checked,
-                labelItalic: $('labelItalic').checked,
-
-                legendFontSize: Math.max(6, num(app, 'legendFontSize', 15)),
-                legendBold: $('legendBold').checked,
-                legendItalic: $('legendItalic').checked,
-                legendTitleFontSize: Math.max(6, num(app, 'legendTitleFontSize', 15)),
-                legendTitleBold: $('legendTitleBold').checked,
-                legendTitleItalic: $('legendTitleItalic').checked,
-
-                titleFontSize: Math.max(6, num(app, 'titleFontSize', 22)),
-                titleBold: $('titleBold').checked,
-                titleItalic: $('titleItalic').checked,
-                titlePosition: $('titlePosition').value || 'top-center',
-
-                showLegend: $('showLegend').checked,
-                legendPosition: $('legendPosition').value || 'right',
-                legendGap: Math.max(0, num(app, 'legendGap', 30)),
-                showLegendTitle: $('showLegendTitle').checked,
-                legendTitle: $('legendTitle').value || '',
-                showTitle: $('showTitle').checked,
-                chartTitle: $('chartTitle').value || '',
-                showCanvasBorder: $('showCanvasBorder').checked
-            };
+            return p;
         },
 
         buildData: function (app, p) {
@@ -189,47 +148,8 @@
         },
 
         computeLayout: function (p, items, app) {
-            const width = p.width;
-            const height = p.height;
-            const titleH = (p.showTitle && p.chartTitle) ? p.titleFontSize + 10 : 0;
-
-            const legendColW = 200;
-            const legendRowH = p.legendFontSize + 10;
-            const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
-            const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
-            const legendInlineH = p.legendFontSize + 20 + legendTitleH;
-            const gap = p.legendGap;
             const margin = 30;
-
-            const wantLegend = !!p.showLegend && items.length > 0;
-            const pos = p.legendPosition || 'right';
-            const isRight = wantLegend && pos === 'right';
-            const isLeft = wantLegend && pos === 'left';
-            const isTop = wantLegend && pos === 'top';
-            const isBottom = wantLegend && pos === 'bottom';
-            const vert = isRight || isLeft;
-
-            let areaX = margin, areaY = margin;
-            let areaW = width - 2 * margin;
-            let areaH = height - 2 * margin;
-
-            /* 图形大小不受 gap 影响 */
-            if (isRight) {
-                areaW = width - legendColW - 2 * margin;
-            } else if (isLeft) {
-                areaX = legendColW + 2 * margin;
-                areaW = width - legendColW - 2 * margin;
-            } else if (isTop) {
-                areaY = legendInlineH + 2 * margin;
-                areaH = height - legendInlineH - 2 * margin;
-            } else if (isBottom) {
-                areaH = height - legendInlineH - 2 * margin;
-            }
-            areaW = Math.max(20, areaW);
-            areaH = Math.max(20, areaH);
-
-            const gridAreaH = Math.max(20, areaH - titleH);
-            const availR = Math.max(20, Math.min(areaW / 2, gridAreaH / 2));
+            const availR = Math.max(20, Math.min(p.width - 2 * margin, p.height - 2 * margin) / 2);
 
             let outerR = Math.max(p.innerRadius + 20, p.outerRadius);
             let innerR = Math.max(0, p.innerRadius);
@@ -240,27 +160,25 @@
             }
             innerR = Math.min(innerR, outerR - 10);
 
-            const blockH = titleH + outerR * 2;
-            const blockTop = areaY + Math.max(0, (areaH - blockH) / 2);
-            const cx = areaX + areaW / 2;
-            const cy = blockTop + titleH + outerR;
-
             return {
-                width: width, height: height, cx: cx, cy: cy,
-                innerR: innerR, outerR: outerR,
-                legendVertical: vert, legendColW: legendColW,
-                legendInlineH: legendInlineH, hasLegendTitle: hasLegendTitle,
-                isRight: isRight, isLeft: isLeft, isTop: isTop, isBottom: isBottom,
-                areaX: areaX, areaY: areaY, areaW: areaW, areaH: areaH,
-                margin: margin, gap: gap
+                cx: p.width / 2,
+                cy: p.height / 2,
+                innerR: innerR,
+                outerR: outerR
             };
         },
 
         draw: function (ctx) {
-            const { app, root, p, data: items, layout: L, colors } = ctx;
-            const { width, height, cx, cy, innerR, outerR, legendVertical, legendColW,
-                    legendInlineH, hasLegendTitle, isRight, isLeft, isTop, isBottom,
-                    areaY, areaH, margin, gap } = L;
+            const app = ctx.app;
+            const root = ctx.root;
+            const p = ctx.p;
+            const items = ctx.data;
+            const colors = ctx.colors;
+            const L = ctx.layout;
+            const cx = L.cx;
+            const cy = L.cy;
+            const innerR = L.innerR;
+            const outerR = L.outerR;
             const N = items.length;
 
             const maxValue = Math.max.apply(null, items.map(d => d.value));
@@ -423,14 +341,14 @@
                 let txt = '';
                 switch (p.labelContent) {
                     case 'name': txt = it.name; break;
-                    case 'value': txt = fmtNum(it.value, p.labelDecimals); break;
+                    case 'value': txt = PC.fmtNum(it.value, p.labelDecimals); break;
                     case 'pct': txt = (it.percent * 100).toFixed(p.labelDecimals) + '%'; break;
                     case 'name_pct': txt = it.name + ' (' + (it.percent * 100).toFixed(p.labelDecimals) + '%)'; break;
                 }
                 if (!txt) return;
 
                 const arcPx = (arcDeg / 360) * C;
-                const needPx = estTextWidth(txt, p.labelFontSize);
+                const needPx = PC.estTextWidth(txt, p.labelFontSize);
                 if (arcPx < needPx * 0.85) return;
 
                 labelGroup.append('text')
@@ -440,62 +358,23 @@
                     .attr('font-size', p.labelFontSize)
                     .attr('font-weight', labelWeight)
                     .attr('font-style', labelStyle)
-                    .attr('fill', textColorOn(colors[i]))
+                    .attr('fill', PC.textColorOn(colors[i]))
                     .attr('pointer-events', 'none')
                     .text(txt);
             });
 
-
             if (p.showLegend && items.length) {
-                let legendArea, orientation;
-                const gapShift = Math.max(0, gap);
-
-                if (legendVertical) {
-                    orientation = 'vertical';
-                    const legendX = isRight
-                        ? Math.max(margin, width - margin - legendColW - gapShift)
-                        : Math.min(width - margin - legendColW, margin + gapShift);
-                    legendArea = {
-                        x: legendX,
-                        y: areaY,
-                        w: legendColW,
-                        h: areaH
-                    };
-                } else {
-                    orientation = 'horizontal';
-                    const legendY = isTop
-                        ? Math.min(height - margin - legendInlineH, margin + gapShift)
-                        : Math.max(margin, height - margin - legendInlineH - gapShift);
-                    legendArea = {
-                        x: 0,
-                        y: legendY,
-                        w: width,
-                        h: legendInlineH
-                    };
-                }
-
-                PlotLegend.draw(root, {
-                    orientation: orientation,
-                    area: legendArea,
-                    width: width,
-                    items: items.map((it, i) => ({
-                        label: it.name + ' (' + (it.percent * 100).toFixed(1) + '%)',
-                        color: colors[i],
-                        shape: 'rect'
-                    })),
-                    fontSize: p.legendFontSize,
-                    bold: p.legendBold,
-                    italic: p.legendItalic,
-                    markerSize: p.legendFontSize,
-                    textGap: 8,
-                    itemGap: 20,
-                    showTitle: hasLegendTitle,
-                    title: p.legendTitle,
-                    titleFontSize: p.legendTitleFontSize,
-                    titleBold: p.legendTitleBold,
-                    titleItalic: p.legendTitleItalic
+                PC.drawLegendOverlay(root, {
+                    p: p,
+                    items: items,
+                    colors: colors,
+                    shape: 'rect'
                 });
             }
+
+            app.exportSvgBtn.disabled = false;
+            app.exportPngBtn.disabled = false;
+            app.showTip('msgTip3', PlotI18N.t('drawDone'), 'success');
         }
     });
 })();

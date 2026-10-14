@@ -1,28 +1,9 @@
-/* ============================================================
-   BioDataTools 柱状图家族公共模块
-============================================================ */
 (function (global) {
     'use strict';
 
-    function num(app, id, fallback) {
-        const el = app.$(id);
-        if (!el) return fallback;
-        const v = parseFloat(el.value);
-        return isFinite(v) ? v : fallback;
-    }
+    const PC = global.PlotCommon;
 
-    function estTextWidth(str, fontSize) {
-        let w = 0;
-        for (const ch of String(str)) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
-        return w * fontSize;
-    }
-
-    function fmtNum(v, d) {
-        if (!isFinite(v)) return '';
-        if (Number.isInteger(v)) return String(v);
-        return Number(v).toFixed(d);
-    }
-
+    /* ---------- 角色下拉 ---------- */
     function fillRoleSelects(app, noGroupLabel) {
         const state = app.state;
         const xSel = app.$('xColSel');
@@ -47,11 +28,12 @@
             return html;
         };
         xSel.innerHTML = opts(state.roles.x, false);
-const allowEmptyGroup = !!(noGroupLabel && noGroupLabel.trim());
-gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
+        const allowEmptyGroup = !!(noGroupLabel && noGroupLabel.trim());
+        gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         ySel.innerHTML = opts(state.roles.y, false);
     }
 
+    /* ---------- 自定义顺序 ---------- */
     function applyCustomOrder(values, customOrder) {
         if (!customOrder) return values;
         const raw = String(customOrder).trim();
@@ -68,6 +50,7 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         return out;
     }
 
+    /* ---------- 分类取值 / 排序 ---------- */
     function getXValues(app) {
         const seen = new Set();
         const out = [];
@@ -114,6 +97,7 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         });
     }
 
+    /* ---------- 分组取值 / 顺序 ---------- */
     function getGroupValues(app, customOrder) {
         if (!app.state.roles.group) return [];
         const seen = new Set();
@@ -135,6 +119,7 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         el.value = vals.join(',');
     }
 
+    /* ---------- 颜色键 ---------- */
     function getColorKeys(app) {
         if (app.state.roles.group) {
             const el = app.$('groupOrder');
@@ -171,6 +156,7 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         });
     }
 
+    /* ---------- 构建单元格 ---------- */
     function buildCells(app, xVals, groupVals, hasGroup) {
         const state = app.state;
         const cellMap = new Map();
@@ -202,6 +188,7 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         return cells;
     }
 
+    /* ---------- 轴标题同步 ---------- */
     function syncAxisTitlesByDirection(app) {
         const st = app.state;
         const dir = st.barDirection || 'vertical';
@@ -217,15 +204,7 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         }
     }
 
-    function syncGlobalAxisFontToUI(app) {
-        app.$('axisTickFontSize').value = app.state.axis.x.tickFontSize;
-        app.$('axisTickBold').checked = app.state.axis.x.tickBold;
-        app.$('axisTickItalic').checked = app.state.axis.x.tickItalic;
-        app.$('axisTitleFontSize').value = app.state.axis.x.titleFontSize;
-        app.$('axisTitleBold').checked = app.state.axis.x.titleBold;
-        app.$('axisTitleItalic').checked = app.state.axis.x.titleItalic;
-    }
-
+    /* ---------- 面板辅助（保留） ---------- */
     function updatePanelFontInputs(app) {
         const container = app.$('axisPanelContainer');
         if (!container) return;
@@ -246,61 +225,21 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         });
     }
 
-    function syncGlobalFromPanel(app) {
-        const container = app.$('axisPanelContainer');
-        if (!container) return;
-        const q = sel => container.querySelector('.ax-x-' + sel);
-        const fs = parseFloat(q('tick-fs') && q('tick-fs').value);
-        const b = q('tick-b') && q('tick-b').checked;
-        const i = q('tick-i') && q('tick-i').checked;
-        if (isFinite(fs)) app.$('axisTickFontSize').value = fs;
-        if (b !== undefined && b !== null) app.$('axisTickBold').checked = b;
-        if (i !== undefined && i !== null) app.$('axisTickItalic').checked = i;
-
-        const tfs = parseFloat(q('title-fs') && q('title-fs').value);
-        const tb = q('title-b') && q('title-b').checked;
-        const ti = q('title-i') && q('title-i').checked;
-        if (isFinite(tfs)) app.$('axisTitleFontSize').value = tfs;
-        if (tb !== undefined && tb !== null) app.$('axisTitleBold').checked = tb;
-        if (ti !== undefined && ti !== null) app.$('axisTitleItalic').checked = ti;
-    }
-
-    function applyGlobalAxisFont(app) {
-        const state = app.state;
-        const fs = Math.max(6, parseFloat(app.$('axisTickFontSize').value) || 14);
-        const b = app.$('axisTickBold').checked;
-        const i = app.$('axisTickItalic').checked;
-        state.axis.x.tickFontSize = fs;
-        state.axis.y.tickFontSize = fs;
-        state.axis.x.tickBold = b;
-        state.axis.y.tickBold = b;
-        state.axis.x.tickItalic = i;
-        state.axis.y.tickItalic = i;
-
-        const tfs = Math.max(6, parseFloat(app.$('axisTitleFontSize').value) || 16);
-        const tb = app.$('axisTitleBold').checked;
-        const ti = app.$('axisTitleItalic').checked;
-        state.axis.x.titleFontSize = tfs;
-        state.axis.y.titleFontSize = tfs;
-        state.axis.x.titleBold = tb;
-        state.axis.y.titleBold = tb;
-        state.axis.x.titleItalic = ti;
-        state.axis.y.titleItalic = ti;
-
-        updatePanelFontInputs(app);
-        if (state.currentSvg) app.drawChart();
-    }
-
+    /* ---------- 轴面板 ---------- */
     function refreshAxisPanel(app) {
         const direction = app.state.barDirection || 'vertical';
         PlotAxis.render(app.$('axisPanelContainer'), {
             state: app.state.axis,
             direction: direction,
-            onChange: () => {
-                syncGlobalFromPanel(app);
+            onGlobalFontChange: function () {
+                /* 全局字体变化 → 同步到 X/Y 轴面板显示 */
+                updatePanelFontInputs(app);
                 if (app.state.currentSvg) app.drawChart();
             },
-            onDirectionChange: (newDir) => {
+            onChange: function () {
+                if (app.state.currentSvg) app.drawChart();
+            },
+            onDirectionChange: function (newDir) {
                 app.state.barDirection = newDir;
                 syncAxisTitlesByDirection(app);
                 if (app.state.currentSvg) app.drawChart();
@@ -309,21 +248,41 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         ['x', 'y'].forEach(k => {
             const input = app.$('axisPanelContainer').querySelector('.ax-' + k + '-title');
             if (input) {
-                input.addEventListener('input', () => {
+                input.addEventListener('input', function () {
                     app.state.axis[k].titleEdited = true;
                 });
             }
         });
     }
 
+    /* ---------- 误差棒面板 ---------- */
     function refreshErrorBarPanel(app) {
-        PlotErrorBar.renderErrorBarConfig(app.$('errorBarPanelContainer'), {
+        const container = app.$('errorBarPanelContainer');
+        if (!container) return;
+
+        if (app.state.stackMode === 'percent') {
+            const isEn = PlotI18N.lang() === 'en';
+            container.className = 'param-panel';
+            container.innerHTML =
+                '<div class="param-panel-title">' +
+                    (isEn ? 'Error Bar Settings' : '误差棒设置') +
+                '</div>' +
+                '<div class="info-box" style="color:#d93025;">' +
+                    (isEn
+                        ? 'Error bars are disabled in <strong>percentage stacking</strong>, because converting absolute abundance to percentage cannot be simply scaled for error bars. Please switch to <strong>Absolute stacking</strong> to enable them.'
+                        : '百分比堆叠模式下禁止使用误差棒：绝对丰度转换为百分比后，误差棒不能直接等比缩放。请切换到 <strong>绝对值堆叠</strong> 后再设置误差棒。') +
+                '</div>';
+            return;
+        }
+
+        PlotErrorBar.renderErrorBarConfig(container, {
             headers: app.state.headers,
             state: app.state.errBar,
             onChange: () => { if (app.state.currentSvg) app.drawChart(); }
         });
     }
 
+    /* ---------- 角色选择事件 ---------- */
     function bindRoleEvents(app, onXChange, onGroupChange, onYChange) {
         app.$('xColSel').addEventListener('change', () => {
             app.state.roles.x = app.$('xColSel').value;
@@ -331,13 +290,12 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
             app.syncLegendTitle();
             if (onXChange) onXChange(app);
             syncAxisTitlesByDirection(app);
-            /* 把新标题同步到面板输入框 */
             const input = app.$('axisPanelContainer').querySelector(
                 (app.state.barDirection === 'horizontal') ? '.ax-y-title' : '.ax-x-title');
             if (input) input.value = (app.state.barDirection === 'horizontal')
                 ? (app.state.axis.y.titleContent || '')
                 : (app.state.axis.x.titleContent || '');
-            app.refreshColors();
+            app.refreshColors(app);
             if (app.state.data.length) app.drawChart();
         });
         app.$('groupColSel').addEventListener('change', () => {
@@ -346,7 +304,7 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
             app.syncLegendTitle();
             fillGroupOrderInput(app);
             if (onGroupChange) onGroupChange(app);
-            app.refreshColors();
+            app.refreshColors(app);
             if (app.state.data.length) app.drawChart();
         });
         app.$('yColSel').addEventListener('change', () => {
@@ -358,39 +316,28 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
             if (input) input.value = (app.state.barDirection === 'horizontal')
                 ? (app.state.axis.x.titleContent || '')
                 : (app.state.axis.y.titleContent || '');
-            app.refreshColors();
+            app.refreshColors(app);
             if (app.state.data.length) app.drawChart();
         });
 
         const goEl = app.$('groupOrder');
         if (goEl) {
             goEl.addEventListener('input', () => {
-                app.refreshColors();
+                app.refreshColors(app);
                 if (app.state.currentSvg) app.drawChart();
             });
         }
-
-        ['axisTickFontSize', 'axisTitleFontSize'].forEach(id => {
-            const el = app.$(id);
-            if (el) {
-                el.addEventListener('input', () => applyGlobalAxisFont(app));
-                el.addEventListener('change', () => applyGlobalAxisFont(app));
-            }
-        });
-        ['axisTickBold', 'axisTickItalic', 'axisTitleBold', 'axisTitleItalic'].forEach(id => {
-            const el = app.$(id);
-            if (el) el.addEventListener('change', () => applyGlobalAxisFont(app));
-        });
     }
 
+    /* ---------- 状态 ---------- */
     function createStateExtra() {
         return {
-            barDirection: 'vertical',   /* vertical | horizontal */
-            barType: 'grouped',          /* grouped | stacked（预留） */
+            barDirection: 'vertical',
+            barType: 'grouped',
             roles: { x: '', group: '', y: '' },
             columnTypes: {},
             sortBy: '__input__',
-            sortDir: 'asc',
+            sortDir: 'desc',
             axis: (function () {
                 const a = PlotAxis.defaultState();
                 a.x.titleEdited = false;
@@ -405,127 +352,27 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         };
     }
 
+    /* ---------- 柱形参数 ---------- */
     function readBarParams(app) {
         const $ = app.$;
         return {
-            barInnerGap: Math.max(0, Math.min(0.9, num(app, 'barInnerGap', 0.15))),
-            barOuterGap: Math.max(0, Math.min(0.9, num(app, 'barOuterGap', 0.3))),
-            barWidthScale: Math.max(0.2, Math.min(1, num(app, 'barWidthScale', 1))),
-            barStrokeWidth: Math.max(0, num(app, 'barStrokeWidth', 0)),
+            barInnerGap: Math.max(0, Math.min(0.9, PC.num(app, 'barInnerGap', 0.15))),
+            barOuterGap: Math.max(0, Math.min(0.9, PC.num(app, 'barOuterGap', 0.3))),
+            barWidthScale: Math.max(0.2, Math.min(1, PC.num(app, 'barWidthScale', 1))),
+            barStrokeWidth: Math.max(0, PC.num(app, 'barStrokeWidth', 0)),
             barStrokeColor: $('barStrokeColor').value || '#ffffff',
             barShowValue: $('barShowValue').checked,
-            barValueFontSize: Math.max(6, num(app, 'barValueFontSize', 12)),
+            barValueFontSize: Math.max(6, PC.num(app, 'barValueFontSize', 12)),
             groupOrder: ($('groupOrder') && $('groupOrder').value) || ''
         };
     }
 
-    function readTitleLegendParams(app) {
-        const $ = app.$;
-        return {
-            fontFamily: $('fontFamily').value || 'Times New Roman',
-            legendFontSize: Math.max(6, num(app, 'legendFontSize', 15)),
-            legendBold: $('legendBold').checked,
-            legendItalic: $('legendItalic').checked,
-            legendTitleFontSize: Math.max(6, num(app, 'legendTitleFontSize', 15)),
-            legendTitleBold: $('legendTitleBold').checked,
-            legendTitleItalic: $('legendTitleItalic').checked,
-            titleFontSize: Math.max(6, num(app, 'titleFontSize', 22)),
-            titleBold: $('titleBold').checked,
-            titleItalic: $('titleItalic').checked,
-            titlePosition: $('titlePosition').value || 'top-center',
-            showLegend: $('showLegend').checked,
-            legendPosition: $('legendPosition').value || 'right',
-            legendGap: Math.max(0, num(app, 'legendGap', 30)),
-            showLegendTitle: $('showLegendTitle').checked,
-            legendTitle: $('legendTitle').value || '',
-            showTitle: $('showTitle').checked,
-            chartTitle: $('chartTitle').value || ''
-        };
-    }
-
-    function readCanvasParams(app, defW, defH) {
-        const $ = app.$;
-        return {
-            width: Math.max(300, num(app, 'chartWidth', defW || 760)),
-            height: Math.max(300, num(app, 'chartHeight', defH || 600)),
-            showCanvasBorder: $('showCanvasBorder').checked
-        };
-    }
-
-    function computeLegendArea(p, hasLegendTitle, legendTitleH, legendInlineH, legendColW) {
-        const gapShift = Math.max(0, p.legendGap || 0);
-        const margin = 30;
-        const wantLegend = !!p.showLegend;
-        const pos = p.legendPosition || 'right';
-        const isRight = wantLegend && pos === 'right';
-        const isLeft = wantLegend && pos === 'left';
-        const isTop = wantLegend && pos === 'top';
-        const isBottom = wantLegend && pos === 'bottom';
-        const vert = isRight || isLeft;
-
-        let areaX = margin, areaY = margin;
-        let areaW = p.width - 2 * margin;
-        let areaH = p.height - 2 * margin;
-
-        if (isRight) areaW = p.width - legendColW - 2 * margin;
-        else if (isLeft) { areaX = legendColW + 2 * margin; areaW = p.width - legendColW - 2 * margin; }
-        else if (isTop) { areaY = legendInlineH + 2 * margin; areaH = p.height - legendInlineH - 2 * margin; }
-        else if (isBottom) areaH = p.height - legendInlineH - 2 * margin;
-
-        areaW = Math.max(20, areaW);
-        areaH = Math.max(20, areaH);
-
-        let legendArea = null;
-        let orientation = 'vertical';
-        if (wantLegend) {
-            if (vert) {
-                orientation = 'vertical';
-                const legendX = isRight
-                    ? Math.max(margin, p.width - margin - legendColW - gapShift)
-                    : Math.min(p.width - margin - legendColW, margin + gapShift);
-                legendArea = { x: legendX, y: areaY, w: legendColW, h: areaH };
-            } else {
-                orientation = 'horizontal';
-                const legendY = isTop
-                    ? Math.min(p.height - margin - legendInlineH, margin + gapShift)
-                    : Math.max(margin, p.height - margin - legendInlineH - gapShift);
-                legendArea = { x: 0, y: legendY, w: p.width, h: legendInlineH };
-            }
-        }
-
-        return {
-            areaX, areaY, areaW, areaH,
-            legendArea, legendOrientation: orientation,
-            isRight, isLeft, isTop, isBottom, vert
-        };
-    }
-
-    function drawLegend(svg, p, groupVals, colorOf, legendArea, orientation, hasLegendTitle) {
-        PlotLegend.draw(svg, {
-            orientation: orientation,
-            area: legendArea,
-            width: p.width,
-            items: groupVals.map(g => ({ label: String(g), color: colorOf(g), shape: 'rect' })),
-            fontSize: p.legendFontSize,
-            bold: p.legendBold,
-            italic: p.legendItalic,
-            markerSize: p.legendFontSize,
-            textGap: 8,
-            itemGap: 20,
-            showTitle: hasLegendTitle,
-            title: p.legendTitle,
-            titleFontSize: p.legendTitleFontSize,
-            titleBold: p.legendTitleBold,
-            titleItalic: p.legendTitleItalic
-        });
-    }
-
-
+    /* ---------- 误差棒绘制 ---------- */
     function drawErrorBar(parent, opts) {
         const {
-            xPx, yPx,                        
-            barThickness,                    
-            loPx, hiPx,                     
+            xPx, yPx,
+            barThickness,
+            loPx, hiPx,
             isHorizontal,
             errColor, errWidth, capWidth
         } = opts;
@@ -563,6 +410,7 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         }
     }
 
+    /* ---------- 轴标题绘制 ---------- */
     function drawAxisTitles(svg, axisCfg, plotX, plotY, plotW, plotH, leftPad, bottomPad) {
         if (axisCfg.x.titleShow && axisCfg.x.titleContent) {
             svg.append('text')
@@ -597,8 +445,8 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         });
     }
 
+    /* ---------- 对外暴露 ---------- */
     global.BarCommon = {
-        num, estTextWidth, fmtNum,
         fillRoleSelects,
         applyCustomOrder,
         getXValues, sortXValues,
@@ -606,13 +454,11 @@ gSel.innerHTML = opts(state.roles.group, allowEmptyGroup);
         getColorKeys, refreshGroupColors,
         buildCells,
         syncAxisTitlesByDirection,
-        syncGlobalAxisFontToUI, updatePanelFontInputs,
-        syncGlobalFromPanel, applyGlobalAxisFont,
+        updatePanelFontInputs,
         refreshAxisPanel, refreshErrorBarPanel,
         bindRoleEvents,
         createStateExtra,
-        readBarParams, readTitleLegendParams, readCanvasParams,
-        computeLegendArea, drawLegend,
+        readBarParams,
         drawErrorBar, drawAxisTitles,
         resetAfterDirectionChange
     };

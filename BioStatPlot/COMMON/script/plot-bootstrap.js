@@ -2,7 +2,6 @@
 (function (global) {
     'use strict';
 
-    /* 按顺序尝试，前面的失败自动 fallback 到下一个 */
     const D3_SOURCES = [
         'https://cdn.jsdmirror.com/npm/d3@7',
         'https://cdn.bootcdn.net/ajax/libs/d3/7.9.0/d3.min.js',

@@ -21,130 +21,85 @@
 
         <div class="step-card">
             <div class="step-title">第二步：指定数据列</div>
-            <div class="param-group">
-                <label>指标列（变量名）：</label>
-                <select id="axisColSel" disabled><option>— 请先导入数据 —</option></select>
+
+            <div class="param-panel">
+                <div class="param-panel-title">指标列</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>指标列</label>
+                        <select id="axisColSel" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                </div>
             </div>
-            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 8px;">样本列（可多选）</div>
-            <div id="sampleColsBox" class="param-inline" style="gap:10px 24px;">
-                <span style="color:#999;">导入数据后可选择</span>
+
+            <div class="param-panel">
+                <div class="param-panel-title">样本列（可多选）</div>
+                <div id="sampleColsBox" class="param-inline" style="gap:10px 24px;">
+                    <span style="color:#999;">导入数据后可选择</span>
+                </div>
             </div>
         </div>
 
         <div class="step-card">
             <div class="step-title">第三步：选择色板与颜色</div>
-            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:0 0 4px;">分类色板</div>
-            <div id="paletteDropdownContainer"></div>
-            <div class="param-inline" style="margin-top:8px;">
-                <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
-                <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+
+            <div class="param-panel">
+                <div class="param-panel-title">分类色板</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                    <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+                </div>
             </div>
-            <div id="colorAssignContainer" style="margin-top:16px;"></div>
+
+            <div id="colorAssignContainer"></div>
         </div>
 
         <div class="step-card">
             <div class="step-title">第四步：设置绘图参数</div>
 
-            <div class="param-panel">
-                <div class="param-panel-title">画布尺寸</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item"><label>宽度(px)</label><input type="number" id="chartWidth" value="800" min="300" data-redraw></div>
-                    <div class="param-item"><label>高度(px)</label><input type="number" id="chartHeight" value="700" min="300" data-redraw></div>
-                </div>
-                <div class="param-inline" style="margin-top:8px;">
-                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>显示画布边框</label>
-                </div>
-            </div>
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
 
             <div class="param-panel">
-                <div class="param-panel-title">字体样式</div>
-                <div class="font-row">
-                    <span class="font-label">字体</span>
-                    <select id="fontFamily" data-redraw>
-                        <option value="Times New Roman" selected>Times New Roman</option>
-                        <option value="Arial">Arial</option>
-                        <option value="Calibri">Calibri</option>
-                        <option value="Helvetica">Helvetica</option>
-                        <option value="Microsoft YaHei">微软雅黑</option>
-                    </select>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">轴标签</span>
-                    <input type="number" id="axisLabelFontSize" value="15" min="8" max="36" data-redraw>
+                <div class="param-panel-title">标签</div>
+
+                <div class="param-inline">
+                    <label>轴标签字号
+                        <input type="number" id="axisLabelFontSize" value="15" min="8" max="36" data-redraw>
+                    </label>
                     <label class="mini-check"><input type="checkbox" id="axisLabelBold" data-redraw>粗</label>
                     <label class="mini-check"><input type="checkbox" id="axisLabelItalic" data-redraw>斜</label>
+                    <label>偏移
+                        <input type="number" id="axisLabelOffset" value="20" min="0" max="100" step="5" style="width:70px;" data-redraw>px
+                    </label>
                 </div>
-                <div class="font-row">
-                    <span class="font-label">刻度值</span>
-                    <input type="number" id="scaleFontSize" value="12" min="6" max="24" data-redraw>
+
+                <div class="param-inline">
+                    <label>刻度字号
+                        <input type="number" id="scaleFontSize" value="12" min="6" max="24" data-redraw>
+                    </label>
                     <label class="mini-check"><input type="checkbox" id="scaleBold" data-redraw>粗</label>
                     <label class="mini-check"><input type="checkbox" id="scaleItalic" data-redraw>斜</label>
                 </div>
-                <div class="font-row">
-                    <span class="font-label">图例</span>
-                    <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>斜</label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">图例标题</span>
-                    <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>斜</label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">标题</span>
-                    <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>斜</label>
-                </div>
-            </div>
 
-            <div class="param-panel">
-                <div class="param-panel-title">组件控制</div>
-<div class="font-row">
-    <span class="font-label">图例</span>
-    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>显示</label>
-    <input type="hidden" id="legendPosition" value="right">
-    <label>每行显示：
-        <input type="number" id="legendMaxPerLine" value="1" min="1" max="50" step="1" style="width:60px;" data-redraw>
-    </label>
-</div>
-
-                <div class="font-row">
-                    <span class="font-label">图例标题</span>
-                    <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>显示</label>
-                    <label>内容：
-                        <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw>
-                    </label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">标题</span>
-                    <label class="mini-check"><input type="checkbox" id="showTitle" data-redraw>显示</label>
-                    <label>位置：
-                        <select id="titlePosition" data-redraw>
-                            <option value="top-center" selected>顶部居中</option>
-                            <option value="top-left">顶部左</option>
-                            <option value="top-right">顶部右</option>
-                            <option value="middle-center">中部居中</option>
-                            <option value="middle-left">中部左</option>
-                            <option value="middle-right">中部右</option>
-                            <option value="bottom-center">底部居中</option>
-                            <option value="bottom-left">底部左</option>
-                            <option value="bottom-right">底部右</option>
+                <div class="param-inline">
+                    <label>刻度显示位置
+                        <select id="scalePos" data-redraw>
+                            <option value="none" selected>不显示</option>
+                            <option value="first">仅第一根轴</option>
+                            <option value="all">每根轴</option>
                         </select>
                     </label>
-                    <label>内容：
-                        <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw>
+                    <label>内容
+                        <select id="scaleType" data-redraw>
+                            <option value="ratio" selected>百分比</option>
+                            <option value="original">原始值</option>
+                        </select>
                     </label>
-                    <label>间距(px)：
-                        <input type="number" id="titleSpacing" value="30" min="0" max="200" step="5" style="width:70px;" data-redraw>
+                    <label>小数位
+                        <input type="number" id="scaleDecimals" value="0" min="0" max="4" step="1" style="width:60px;" data-redraw>
                     </label>
-                </div>
-
-                <div class="font-row">
-                    <span class="font-label">轴标签偏移</span>
-                    <input type="number" id="axisLabelOffset" value="20" min="0" max="100" step="5" data-redraw>
                 </div>
             </div>
 
@@ -152,8 +107,10 @@
                 <div class="param-panel-title">雷达图设置</div>
 
                 <div class="param-grid cols-4">
-                    <div class="param-item"><label>外半径</label><input type="number" id="outerRadius" value="220" min="40" max="1000" step="10" data-redraw></div>
-                    <div class="param-item"><label>网格环数</label><input type="number" id="gridLevels" value="5" min="1" max="20" data-redraw></div>
+                    <div class="param-item"><label>外半径</label>
+                        <input type="number" id="outerRadius" value="220" min="40" max="1000" step="10" data-redraw></div>
+                    <div class="param-item"><label>网格环数</label>
+                        <input type="number" id="gridLevels" value="5" min="1" max="20" data-redraw></div>
                     <div class="param-item">
                         <label>网格形状</label>
                         <select id="gridShape" data-redraw>
@@ -161,19 +118,12 @@
                             <option value="circle">圆形</option>
                         </select>
                     </div>
-                    <div class="param-item"><label>网格颜色</label><input type="color" id="gridColor" value="#d8e2ec" data-redraw></div>
-                    <div class="param-item"><label>轴线宽度</label><input type="number" id="axisWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
-                </div>
-
-                <div class="param-inline" style="margin-top:10px;">
-                    <label><input type="checkbox" id="showGrid" checked data-redraw>显示网格环</label>
-                    <label><input type="checkbox" id="showAxisLines" checked data-redraw>显示轴线</label>
-                </div>
-
-                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">数据缩放</div>
-                <div class="param-grid cols-4">
+                    <div class="param-item"><label>网格颜色</label>
+                        <input type="color" id="gridColor" value="#d8e2ec" data-redraw></div>
+                    <div class="param-item"><label>轴线宽度</label>
+                        <input type="number" id="axisWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
                     <div class="param-item">
-                        <label>计算方式</label>
+                        <label>数据缩放</label>
                         <select id="scaleMode" data-redraw>
                             <option value="perAxis" selected>分别计算（每轴独立）</option>
                             <option value="global">统一轴（共享顶点）</option>
@@ -181,38 +131,18 @@
                     </div>
                 </div>
 
-                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">刻度显示</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item">
-                        <label>显示位置</label>
-                        <select id="scalePos" data-redraw>
-                            <option value="none" selected>不显示</option>
-                            <option value="first">仅第一根轴</option>
-                            <option value="all">每根轴</option>
-                        </select>
-                    </div>
-                    <div class="param-item">
-                        <label>显示内容</label>
-                        <select id="scaleType" data-redraw>
-                            <option value="ratio" selected>百分比</option>
-                            <option value="original">原始值</option>
-                        </select>
-                    </div>
-                    <div class="param-item"><label>小数位</label><input type="number" id="scaleDecimals" value="0" min="0" max="4" step="1" data-redraw></div>
-                </div>
-
-                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">数据多边形</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item"><label>线条宽度</label><input type="number" id="lineWidth" value="2" min="0" max="10" step="0.5" data-redraw></div>
-                    <div class="param-item"><label>填充透明度</label><input type="number" id="fillOpacity" value="0.2" min="0" max="1" step="0.05" data-redraw></div>
-                </div>
                 <div class="param-inline" style="margin-top:8px;">
-                    <label><input type="checkbox" id="showFill" checked data-redraw>填充</label>
+                    <label><input type="checkbox" id="showGrid" checked data-redraw>显示网格环</label>
+                    <label><input type="checkbox" id="showAxisLines" checked data-redraw>显示轴线</label>
                 </div>
 
-                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">数据点</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item"><label>点大小</label><input type="number" id="pointSize" value="3" min="1" max="20" step="0.5" data-redraw></div>
+                <div class="param-grid cols-4" style="margin-top:14px;">
+                    <div class="param-item"><label>线条宽度</label>
+                        <input type="number" id="lineWidth" value="2" min="0" max="10" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>填充透明度</label>
+                        <input type="number" id="fillOpacity" value="0.2" min="0" max="1" step="0.05" data-redraw></div>
+                    <div class="param-item"><label>点大小</label>
+                        <input type="number" id="pointSize" value="3" min="1" max="20" step="0.5" data-redraw></div>
                     <div class="param-item">
                         <label>点边框色</label>
                         <select id="pointStroke" data-redraw>
@@ -221,9 +151,12 @@
                             <option value="none">无边框</option>
                         </select>
                     </div>
-                    <div class="param-item"><label>点边框宽度</label><input type="number" id="pointStrokeWidth" value="1.5" min="0" max="6" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>点边框宽度</label>
+                        <input type="number" id="pointStrokeWidth" value="1.5" min="0" max="6" step="0.5" data-redraw></div>
                 </div>
+
                 <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showFill" checked data-redraw>填充</label>
                     <label><input type="checkbox" id="showPoints" checked data-redraw>显示数据点</label>
                 </div>
             </div>
@@ -237,8 +170,8 @@
         <div class="step-card">
             <div class="step-title">第五步：预览与导出</div>
             <div class="result-toolbar">
-                <button class="btn" id="exportSvgBtn" disabled>导出 SVG</button>
-                <button class="btn" id="exportPngBtn" disabled>导出 PNG</button>
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
                 <span class="spacer"></span>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
@@ -254,10 +187,7 @@
     <script src="../COMMON/script/plot-header.js"></script>
     <script src="../COMMON/script/plot-footer.js"></script>
     <script src="../COMMON/script/plot-common.js"></script>
-
     <script src="../COMMON/script/plot-canvas.js"></script>
-    <script src="../COMMON/script/plot-title.js"></script>
-    <script src="../COMMON/script/plot-legend.js"></script>
     <script src="../COMMON/script/plot-i18n.js"></script>
     <script src="../COMMON/script/plot-app.js"></script>
     <script src="../COMMON/script/plot-mini-preview.js"></script>

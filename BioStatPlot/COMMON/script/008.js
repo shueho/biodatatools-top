@@ -1,6 +1,7 @@
 (function () {
     'use strict';
 
+    const PC = window.PlotCommon;
     const EN = PlotI18N.lang() === 'en';
     const T = {
         importInfo: EN
@@ -13,17 +14,17 @@
     };
 
     const EX_PLAIN =
-        'BigCat\tSubCat\tValue\tLower\tUpper\n' +
-        'A\tX1\t18\t15\t21\n' +
-        'A\tX2\t32\t28\t36\n' +
-        'A\tX3\t12\t10\t14\n' +
-        'B\tY1\t24\t21\t27\n' +
-        'B\tY2\t8\t6\t10\n' +
-        'B\tY3\t20\t18\t22\n' +
-        'B\tY4\t15\t13\t17\n' +
-        'C\tZ1\t22\t20\t24\n' +
-        'C\tZ2\t26\t24\t28\n' +
-        'C\tZ3\t18\t16\t20';
+        'BigCat\tSubCat\tValue\tLower\tUpper\tError\n' +
+        'A\tX1\t18\t15\t21\t3\n' +
+        'A\tX2\t32\t28\t36\t4\n' +
+        'A\tX3\t12\t10\t14\t2\n' +
+        'B\tY1\t24\t21\t27\t3\n' +
+        'B\tY2\t8\t6\t10\t2\n' +
+        'B\tY3\t20\t18\t22\t2\n' +
+        'B\tY4\t15\t13\t17\t2\n' +
+        'C\tZ1\t22\t20\t24\t2\n' +
+        'C\tZ2\t26\t24\t28\t2\n' +
+        'C\tZ3\t18\t16\t20\t2';
 
     function prepareData(app, p) {
         const state = app.state;
@@ -100,9 +101,9 @@
     function readAllParams(app) {
         const $ = app.$;
         const p = Object.assign({},
-            BarCommon.readCanvasParams(app, 760, 600),
+            PC.readCanvasParams(app, 760, 600),
             BarCommon.readBarParams(app),
-            BarCommon.readTitleLegendParams(app)
+            PC.readTitleLegendParams(app)
         );
         p.direction = app.state.barDirection || 'vertical';
         p.bigCatSorted = !!app.state.bigCatSorted;
@@ -112,32 +113,14 @@
         if (!isFinite(p.stripOpacity)) p.stripOpacity = 1;
         p.stripOpacity = Math.max(0, Math.min(1, p.stripOpacity));
         p.stripStrokeColor = ($('stripStrokeColor') && $('stripStrokeColor').value) || '#c8d2de';
-        p.stripStrokeWidth = Math.max(0, numById(app, 'stripStrokeWidth', 1));
+        p.stripStrokeWidth = Math.max(0, PC.num(app, 'stripStrokeWidth', 1));
         p.stripTextColor = ($('stripTextColor') && $('stripTextColor').value) || '#1f4068';
         return p;
-    }
-
-    function numById(app, id, fallback) {
-        const el = app.$(id);
-        if (!el) return fallback;
-        const v = parseFloat(el.value);
-        return isFinite(v) ? v : fallback;
     }
 
     function resolveStripFill(p, bigCat, colorOf) {
         if (p.stripStyle === 'byBar') return colorOf(bigCat);
         return p.stripColor;
-    }
-
-    function computeLayout(p, hasData) {
-        p.showLegend = p.showLegend && hasData;
-        const titleH = (p.showTitle && p.chartTitle) ? p.titleFontSize + 10 : 0;
-        const legendColW = 200;
-        const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
-        const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
-        const legendInlineH = p.legendFontSize + 20 + legendTitleH;
-        const legendInfo = BarCommon.computeLegendArea(p, hasLegendTitle, legendTitleH, legendInlineH, legendColW);
-        return { titleH, hasLegendTitle, legendInfo };
     }
 
     function drawStrip(svg, x1, y1, w, h, p, bigCat, colorOf, horizontal, fs) {
@@ -175,9 +158,11 @@
         const minYData = Math.min.apply(null, cells.map(c => c.ext ? Math.min(c.value, c.ext.lower) : c.value));
         const minY = isLogY ? minYData : Math.min(0, minYData);
 
-        const { titleH, hasLegendTitle, legendInfo } = computeLayout(p, bigCatVals.length > 0);
-        const { areaX, areaY, areaW, areaH, legendArea, legendOrientation } = legendInfo;
-        const gridAreaH = Math.max(20, areaH - titleH);
+        const margin = 30;
+        const areaX = margin;
+        const areaY = margin;
+        const areaW = p.width - 2 * margin;
+        const areaH = p.height - 2 * margin;
 
         const stripH = showStrip ? 22 : 0;
         const stripGap = showStrip ? 6 : 0;
@@ -193,9 +178,9 @@
         const topPad = stripH + stripGap + 6;
 
         const plotX = areaX + leftPad;
-        const plotY = areaY + titleH + topPad;
+        const plotY = areaY + topPad;
         const plotW = Math.max(20, areaW - leftPad - rightPad);
-        const plotH = Math.max(20, gridAreaH - topPad - bottomPad);
+        const plotH = Math.max(20, areaH - topPad - bottomPad);
 
         let yDomain = PlotAxis.resolveDomain(axisCfg.y, [minY, maxY]);
         if (isLogY) {
@@ -244,13 +229,6 @@
         const svg = canvas.root;
         state.currentSvg = canvas.node;
 
-        if (p.showTitle && p.chartTitle) {
-            PlotTitle.draw(svg, {
-                width: p.width, height: p.height, position: p.titlePosition, text: p.chartTitle,
-                fontSize: p.titleFontSize, bold: p.titleBold, italic: p.titleItalic
-            });
-        }
-
         if (axisCfg.y.gridShow) {
             const gridY = svg.append('g').attr('class', 'grid grid-y');
             const ticks = yScale.ticks ? yScale.ticks() : yScale.domain();
@@ -298,7 +276,7 @@
                     .attr('text-anchor', 'middle')
                     .attr('font-size', p.barValueFontSize)
                     .attr('fill', '#333')
-                    .text(BarCommon.fmtNum(slot.value, 2));
+                    .text(PC.fmtNum(slot.value, 2));
             }
 
             if (slot.ext) {
@@ -338,7 +316,7 @@
         }
 
         if (showStrip) {
-            const stripY = areaY + titleH + 2;
+            const stripY = areaY + 2;
             const groups = buildStripGroups(cells);
             const fs = Math.min(13, axisCfg.x.tickFontSize);
             groups.forEach(g => {
@@ -372,8 +350,14 @@
 
         BarCommon.drawAxisTitles(svg, axisCfg, plotX, plotY, plotW, plotH, leftPad, bottomPad);
 
-        if (legendArea) {
-            BarCommon.drawLegend(svg, p, bigCatVals, colorOf, legendArea, legendOrientation, hasLegendTitle);
+        if (p.showLegend && bigCatVals.length) {
+            PC.drawLegendOverlay(svg, {
+                p: p,
+                items: bigCatVals.map(name => ({ name: name, percent: null })),
+                colors: bigCatVals.map(name => colorOf(name)),
+                shape: 'rect',
+                labelFormatter: it => it.name
+            });
         }
         PlotAxis.applyFontFamily(svg, p.fontFamily);
     }
@@ -390,9 +374,11 @@
         const minXData = Math.min.apply(null, cells.map(c => c.ext ? Math.min(c.value, c.ext.lower) : c.value));
         const minX = isLogX ? minXData : Math.min(0, minXData);
 
-        const { titleH, hasLegendTitle, legendInfo } = computeLayout(p, bigCatVals.length > 0);
-        const { areaX, areaY, areaW, areaH, legendArea, legendOrientation } = legendInfo;
-        const gridAreaH = Math.max(20, areaH - titleH);
+        const margin = 30;
+        const areaX = margin;
+        const areaY = margin;
+        const areaW = p.width - 2 * margin;
+        const areaH = p.height - 2 * margin;
 
         const stripW = showStrip ? 24 : 0;
         const stripGap = showStrip ? 6 : 0;
@@ -403,7 +389,7 @@
         const yTitleFont = (axisCfg.y.titleShow && axisCfg.y.titleContent) ? axisCfg.y.titleFontSize + 8 : 0;
 
         let maxCatW = 0;
-        cells.forEach(c => { maxCatW = Math.max(maxCatW, BarCommon.estTextWidth(c.subCat, axisCfg.y.tickFontSize)); });
+        cells.forEach(c => { maxCatW = Math.max(maxCatW, PC.estTextWidth(c.subCat, axisCfg.y.tickFontSize)); });
         const catLabelSpace = Math.min(maxCatW + 12, areaW * 0.4);
 
         const leftPad = catLabelSpace + yTitleFont + 10;
@@ -412,9 +398,9 @@
         const topPad = 20;
 
         const plotX = areaX + leftPad;
-        const plotY = areaY + titleH + topPad;
+        const plotY = areaY + topPad;
         const plotW = Math.max(20, areaW - leftPad - rightPad);
-        const plotH = Math.max(20, gridAreaH - topPad - bottomPad);
+        const plotH = Math.max(20, areaH - topPad - bottomPad);
 
         let xDomain = PlotAxis.resolveDomain(axisCfg.x, [minX, maxX]);
         if (isLogX) {
@@ -466,13 +452,6 @@
         const svg = canvas.root;
         state.currentSvg = canvas.node;
 
-        if (p.showTitle && p.chartTitle) {
-            PlotTitle.draw(svg, {
-                width: p.width, height: p.height, position: p.titlePosition, text: p.chartTitle,
-                fontSize: p.titleFontSize, bold: p.titleBold, italic: p.titleItalic
-            });
-        }
-
         if (axisCfg.x.gridShow) {
             const gridX = svg.append('g').attr('class', 'grid grid-x');
             const ticks = xScale.ticks ? xScale.ticks() : xScale.domain();
@@ -523,7 +502,7 @@
                     .attr('dominant-baseline', 'middle')
                     .attr('font-size', p.barValueFontSize)
                     .attr('fill', '#333')
-                    .text(BarCommon.fmtNum(slot.value, 2));
+                    .text(PC.fmtNum(slot.value, 2));
             }
 
             if (slot.ext) {
@@ -597,8 +576,14 @@
 
         BarCommon.drawAxisTitles(svg, axisCfg, plotX, plotY, plotW, plotH, leftPad, bottomPad);
 
-        if (legendArea) {
-            BarCommon.drawLegend(svg, p, bigCatVals, colorOf, legendArea, legendOrientation, hasLegendTitle);
+        if (p.showLegend && bigCatVals.length) {
+            PC.drawLegendOverlay(svg, {
+                p: p,
+                items: bigCatVals.map(name => ({ name: name, percent: null })),
+                colors: bigCatVals.map(name => colorOf(name)),
+                shape: 'rect',
+                labelFormatter: it => it.name
+            });
         }
         PlotAxis.applyFontFamily(svg, p.fontFamily);
     }
@@ -668,6 +653,7 @@
         exportName: 'categorized_bar_chart',
         importInfo: T.importInfo,
         exampleData: EX_PLAIN,
+
         stateExtra: (function () {
             const base = BarCommon.createStateExtra();
             base.bigCatSorted = true;
@@ -675,14 +661,14 @@
         })(),
 
         syncLegendTitle: function (app) {
-            if (!app.state.legendTitleEdited && app.legendTitleInput) {
-                app.legendTitleInput.value = app.state.roles.x || '';
+            const input = app.$('legendTitle');
+            if (!app.state.legendTitleEdited && input) {
+                input.value = app.state.roles.x || '';
             }
         },
 
         setup: function (app) {
             BarCommon.fillRoleSelects(app, '');
-            BarCommon.syncGlobalAxisFontToUI(app);
             BarCommon.refreshAxisPanel(app);
             BarCommon.refreshErrorBarPanel(app);
 
@@ -711,9 +697,6 @@
             state.roles.group = cats[1] || res.headers[1] || '';
             state.roles.y = nums[0] || res.headers[2] || res.headers[0];
             state.customColors = {};
-            state.sortBy = '__input__';
-            state.sortDir = 'asc';
-            if (app.sortDirSel) app.sortDirSel.value = 'asc';
             state.errBar.mode = 'none';
             state.errBar.lowerCol = '';
             state.errBar.upperCol = '';
@@ -737,9 +720,6 @@
             state.columnTypes = {};
             state.roles = { x: '', group: '', y: '' };
             state.customColors = {};
-            state.sortBy = '__input__';
-            state.sortDir = 'asc';
-            if (app.sortDirSel) app.sortDirSel.value = 'asc';
             state.errBar.mode = 'none';
             state.errBar.lowerCol = '';
             state.errBar.upperCol = '';
@@ -748,12 +728,14 @@
             state.axis.x.titleEdited = false;
             state.axis.y.titleEdited = false;
             state.bigCatSorted = true;
+
             const chk = app.$('bigCatSorted');
             if (chk) chk.checked = true;
+
             const goEl = app.$('groupOrder');
             if (goEl) goEl.value = '';
+
             BarCommon.fillRoleSelects(app, '');
-            BarCommon.syncGlobalAxisFontToUI(app);
             BarCommon.refreshAxisPanel(app);
             BarCommon.refreshErrorBarPanel(app);
         },
@@ -762,7 +744,6 @@
             const chk = app.$('bigCatSorted');
             if (chk) chk.checked = !!app.state.bigCatSorted;
             BarCommon.fillRoleSelects(app, '');
-            BarCommon.syncGlobalAxisFontToUI(app);
             BarCommon.refreshAxisPanel(app);
             BarCommon.refreshErrorBarPanel(app);
             refreshBigCatColors(app);

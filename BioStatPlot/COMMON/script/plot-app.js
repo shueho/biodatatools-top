@@ -17,6 +17,8 @@
             sortBy: '',
             sortDir: 'desc',
             legendTitleEdited: false,
+            legendOffset: { dx: 0, dy: 0 },
+            legendScale: 1,
             currentSvg: null
         }, cfg.stateExtra || {});
 
@@ -31,7 +33,6 @@
         const exportSvgBtn = $('exportSvgBtn');
         const exportPngBtn = $('exportPngBtn');
         const toolbarTip = $('toolbarTip');
-        const legendTitleInput = $('legendTitle');
 
         const app = {
             state: state,
@@ -45,41 +46,33 @@
             chartPreview: chartPreview,
             exportSvgBtn: exportSvgBtn,
             exportPngBtn: exportPngBtn,
-            toolbarTip: toolbarTip,
-            legendTitleInput: legendTitleInput
+            toolbarTip: toolbarTip
         };
 
         const isEn = PlotI18N.lang() === 'en';
         const TXT = {
-            loadStyle:   isEn ? 'Load Style'           : '加载样式',
-            exportStyle: isEn ? 'Export Style'         : '导出样式',
-            styleOk:     isEn ? '✅ Style loaded'      : '✅ 样式已恢复',
-            styleExport: isEn ? '✅ Style exported'    : '✅ 样式已导出',
-            styleBad:    isEn ? '❌ Invalid style file': '❌ 样式文件无效'
+            loadStyle:   isEn ? 'Load Style'    : '加载样式',
+            exportStyle: isEn ? 'Export Style'  : '导出样式',
+            styleOk:     isEn ? '✅ Style loaded'   : '✅ 样式已恢复',
+            styleExport: isEn ? '✅ Style exported' : '✅ 样式已导出',
+            styleBad:    isEn ? '❌ Invalid style file' : '❌ 样式文件无效'
         };
 
-        if (legendTitleInput) {
-            legendTitleInput.addEventListener('input', () => { state.legendTitleEdited = true; });
-        }
-        function defaultSyncLegendTitle() {
-            if (!state.legendTitleEdited && legendTitleInput) {
-                legendTitleInput.value = state.roles.category || '';
+        document.addEventListener('input', e => {
+            if (e.target && e.target.id === 'legendTitle') {
+                state.legendTitleEdited = true;
             }
-        }
-        function syncLegendTitle() {
-            if (cfg.syncLegendTitle) {
-                cfg.syncLegendTitle(app);
-            } else {
-                defaultSyncLegendTitle();
-            }
-        }
+        });
 
-        function syncLegendPosition() {
-            const maxEl = document.getElementById('legendMaxPerLine');
-            const posEl = document.getElementById('legendPosition');
-            if (!maxEl || !posEl) return;
-            const v = parseInt(maxEl.value, 10);
-            posEl.value = (isFinite(v) && v > 3) ? 'bottom' : 'right';
+function defaultSyncLegendTitle() {
+    const input = $('legendTitle');
+    if (!state.legendTitleEdited && input) {
+        input.value = 'Item';
+    }
+}
+        function syncLegendTitle() {
+            if (cfg.syncLegendTitle) cfg.syncLegendTitle(app);
+            else defaultSyncLegendTitle();
         }
 
         function fillRoleSelects() {
@@ -93,7 +86,7 @@
             }
             catColSel.disabled = false;
             valColSel.disabled = false;
-            const opts = (selVal) => state.headers.map(h =>
+            const opts = selVal => state.headers.map(h =>
                 `<option value="${PlotCommon.escapeHtml(h)}" ${h === selVal ? 'selected' : ''}>${PlotCommon.escapeHtml(h)}</option>`
             ).join('');
             catColSel.innerHTML = opts(state.roles.category);
@@ -212,8 +205,11 @@
             state.sortBy = '';
             state.sortDir = 'desc';
             state.legendTitleEdited = false;
+            state.legendOffset = { dx: 0, dy: 0 };
+            state.legendScale = 1;
             if (sortDirSel) sortDirSel.value = 'desc';
-            if (legendTitleInput) legendTitleInput.value = '';
+            const lt = $('legendTitle');
+            if (lt) lt.value = '';
             if (cfg.onReset) cfg.onReset(app);
             fillRoleSelects();
             fillSortBySelect();
@@ -230,6 +226,9 @@
             state.customColors = {};
             state.sortBy = valCol;
             state.sortDir = 'desc';
+            state.legendOffset = { dx: 0, dy: 0 };
+            state.legendScale = 1;
+            state.legendTitleEdited = false;
             if (sortDirSel) sortDirSel.value = 'desc';
             syncLegendTitle();
             if (cfg.onDataImported) cfg.onDataImported(app, res);
@@ -238,7 +237,7 @@
             refreshColors(app);
 
             if (state.data.length) {
-                setTimeout(function () { drawChart(); }, 0);
+                setTimeout(() => drawChart(), 0);
             } else {
                 resetChart();
             }
@@ -306,11 +305,15 @@
         const drawBtn = $('drawBtn');
         if (drawBtn) drawBtn.addEventListener('click', drawChart);
 
-        document.querySelectorAll('[data-redraw]').forEach(el => {
-            el.addEventListener('change', () => {
-                if (state.currentSvg) drawChart();
+        function bindRedrawEvents() {
+            document.querySelectorAll('[data-redraw]').forEach(el => {
+                if (el._redrawBound) return;
+                el._redrawBound = true;
+                el.addEventListener('change', () => {
+                    if (state.currentSvg) drawChart();
+                });
             });
-        });
+        }
 
         if (exportSvgBtn) {
             exportSvgBtn.addEventListener('click', () => {
@@ -349,18 +352,6 @@
             });
             state.currentSvg = canvas.node;
 
-            if (p.showTitle && p.chartTitle) {
-                PlotTitle.draw(canvas.root, {
-                    width: p.width,
-                    height: p.height,
-                    position: p.titlePosition,
-                    text: p.chartTitle,
-                    fontSize: p.titleFontSize,
-                    bold: p.titleBold,
-                    italic: p.titleItalic,
-                });
-            }
-
             const layout = cfg.computeLayout ? cfg.computeLayout(p, data, app) : {};
             const colors = resolveItemColors(data);
             cfg.draw({ app: app, root: canvas.root, p: p, data: data, layout: layout, colors: colors });
@@ -371,41 +362,18 @@
         }
 
         function drawChart() {
-            syncLegendPosition();
-
-            PlotBootstrap.ensureD3().then(function () {
-                if (cfg.drawChart) {
-                    cfg.drawChart(app);
-                } else {
-                    drawChartOrchestrated();
-                }
-            }).catch(function (err) {
+            PlotBootstrap.ensureD3().then(() => {
+                if (cfg.drawChart) cfg.drawChart(app);
+                else drawChartOrchestrated();
+            }).catch(err => {
                 console.error(err);
                 const box = document.getElementById('chartPreview');
-                const msg = PlotI18N.lang() === 'en' ? 'Failed to load d3. Please check your network and refresh.' : '无法加载 d3，请检查网络后刷新';
+                const msg = PlotI18N.lang() === 'en'
+                    ? 'Failed to load d3. Please check your network and refresh.'
+                    : '无法加载 d3，请检查网络后刷新';
                 showTip('msgTip3', msg, 'error');
                 if (box) box.innerHTML = '<div class="placeholder" style="color:#c00;">' + msg + '</div>';
             });
-        }
-
-        function ensureTitleSpacingInput() {
-            if (document.getElementById('titleSpacing')) return;
-            const titleInput = document.getElementById('chartTitle');
-            if (!titleInput || !titleInput.parentNode) return;
-            const label = document.createElement('label');
-            label.textContent = isEn ? 'Spacing (px): ' : '间距(px)：';
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.id = 'titleSpacing';
-            input.value = '30';
-            input.min = '0';
-            input.max = '200';
-            input.step = '5';
-            input.style.width = '70px';
-            input.setAttribute('data-redraw', '');
-            input.addEventListener('change', () => { if (state.currentSvg) drawChart(); });
-            label.appendChild(input);
-            titleInput.parentNode.parentNode.insertBefore(label, titleInput.parentNode.nextSibling);
         }
 
         function collectFormState() {
@@ -442,9 +410,7 @@
             const stateCopy = {};
             Object.keys(state).forEach(k => {
                 if (k === 'currentSvg') return;
-                try {
-                    stateCopy[k] = JSON.parse(JSON.stringify(state[k]));
-                } catch (e) {}
+                try { stateCopy[k] = JSON.parse(JSON.stringify(state[k])); } catch (e) {}
             });
             return {
                 version: 1,
@@ -489,12 +455,13 @@
             initPaletteDropdown();
             if (refreshColors) refreshColors(app);
 
-            if (legendTitleInput && data.state.legendTitle !== undefined) {
-                legendTitleInput.value = data.state.legendTitle;
+            const lt = $('legendTitle');
+            if (lt && data.state.legendTitle !== undefined) {
+                lt.value = data.state.legendTitle;
             }
 
             if (state.data && state.data.length) {
-                setTimeout(function () { drawChart(); }, 0);
+                setTimeout(() => drawChart(), 0);
             } else {
                 resetChart();
             }
@@ -552,17 +519,6 @@
         }
 
         function init() {
-            ensureTitleSpacingInput();
-
-            (function () {
-                const maxEl = document.getElementById('legendMaxPerLine');
-                if (maxEl) {
-                    maxEl.addEventListener('input', syncLegendPosition);
-                    maxEl.addEventListener('change', syncLegendPosition);
-                }
-                syncLegendPosition();
-            })();
-
             PlotCommon.renderImportPanel('importPanel', {
                 title: cfg.importTitle || PlotI18N.t('importTitle'),
                 infoBox: cfg.importInfo || PlotI18N.t('importInfo'),
@@ -575,12 +531,25 @@
 
             injectStateButtons();
 
-            PlotBootstrap.ensureD3().then(function () {
+            if (document.getElementById('globalSettingsPanel')) {
+                PlotCommon.renderGlobalSettings('globalSettingsPanel');
+            }
+            if (document.getElementById('legendSettingsPanel')) {
+                PlotCommon.renderLegendSettings('legendSettingsPanel');
+            }
+
+            defaultSyncLegendTitle();
+
+            if (cfg.setup) cfg.setup(app);
+
+            bindRedrawEvents();
+
+            PlotBootstrap.ensureD3().then(() => {
                 initPaletteDropdown();
-            }).catch(function () {
+            }).catch(() => {
                 initPaletteDropdown();
             });
-            if (cfg.setup) cfg.setup(app);
+
             fillRoleSelects();
             fillSortBySelect();
             refreshColors(app);
@@ -588,7 +557,6 @@
         }
 
         app.syncLegendTitle = syncLegendTitle;
-        app.syncLegendPosition = syncLegendPosition;
         app.fillRoleSelects = fillRoleSelects;
         app.fillSortBySelect = fillSortBySelect;
         app.initPaletteDropdown = initPaletteDropdown;
@@ -610,7 +578,6 @@
         }
 
         global.PlotApp.current = app;
-
         return app;
     }
 

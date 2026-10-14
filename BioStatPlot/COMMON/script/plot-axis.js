@@ -13,6 +13,8 @@
             directionHorizontal: '横向',
             directionTip: '切换柱形朝向（轴身份自动调整）',
 
+            globalFontGroup: '坐标轴字体',
+
             xAxis: 'X 轴',
             yAxis: 'Y 轴',
             typeNumeric: '数字轴',
@@ -60,6 +62,9 @@
             tickValueCustomTip: '逗号分隔，如 0,5,10,15',
             tickFontGroup: '刻度字体',
             tickRotate: '旋转(°)',
+            tickLabelPosLabel: '位置',
+            tickLabelPosOutside: '轴外',
+            tickLabelPosInside: '轴内',
 
             gridGroup: '网格线',
             gridShow: '显示',
@@ -88,6 +93,8 @@
             directionVertical: 'Vertical',
             directionHorizontal: 'Horizontal',
             directionTip: 'Switch bar orientation (axis roles auto-adjust)',
+
+            globalFontGroup: 'Axis Font',
 
             xAxis: 'X Axis',
             yAxis: 'Y Axis',
@@ -136,6 +143,9 @@
             tickValueCustomTip: 'Comma-separated, e.g. 0,5,10,15',
             tickFontGroup: 'Tick Font',
             tickRotate: 'Rotate (°)',
+            tickLabelPosLabel: 'Position',
+            tickLabelPosOutside: 'Outside',
+            tickLabelPosInside: 'Inside',
 
             gridGroup: 'Grid Lines',
             gridShow: 'Show',
@@ -196,6 +206,7 @@
             tickValueShow: true,
             tickValueAuto: true,
             tickValueCustom: '',
+            tickLabelPos: 'outside',
             tickFontSize: 14,
             tickBold: false,
             tickItalic: false,
@@ -302,6 +313,35 @@
         `;
     }
 
+    function globalFontPanelHTML(t, st) {
+        const fs = st.x.tickFontSize;
+        const fb = st.x.tickBold;
+        const fi = st.x.tickItalic;
+        const tfs = st.x.titleFontSize;
+        const tb = st.x.titleBold;
+        const ti = st.x.titleItalic;
+
+        return `
+        <div class="axis-block">
+            <div class="axis-block-title">
+                <span>${t.globalFontGroup}</span>
+            </div>
+            <div class="font-row">
+                <span class="font-label">${t.tickFontGroup}</span>
+                <input type="number" id="axisTickFontSize" value="${fs}" min="6" max="36" style="width:60px;">
+                <label class="mini-check"><input type="checkbox" id="axisTickBold" ${fb ? 'checked' : ''}> ${t.bold}</label>
+                <label class="mini-check"><input type="checkbox" id="axisTickItalic" ${fi ? 'checked' : ''}> ${t.italic}</label>
+            </div>
+            <div class="font-row">
+                <span class="font-label">${t.titleLabel}</span>
+                <input type="number" id="axisTitleFontSize" value="${tfs}" min="6" max="48" style="width:60px;">
+                <label class="mini-check"><input type="checkbox" id="axisTitleBold" ${tb ? 'checked' : ''}> ${t.bold}</label>
+                <label class="mini-check"><input type="checkbox" id="axisTitleItalic" ${ti ? 'checked' : ''}> ${t.italic}</label>
+            </div>
+        </div>
+        `;
+    }
+
     function axisPanelHTML(key, cfg, t, axisType) {
         const isX = (key === 'x');
         const isNumeric = (axisType === 'numeric');
@@ -350,7 +390,7 @@
                         <option value="linear" ${cfg.scaleType === 'linear' ? 'selected' : ''}>${t.scaleLinear}</option>
                         <option value="log" ${cfg.scaleType === 'log' ? 'selected' : ''}>${t.scaleLog}</option>
                     </select>
-                    <label class="ax-${key}-logbase-wrap" style="display:${cfg.scaleType === 'log' ? '' : 'none'};">
+                    <label class="ax-${key}-logbase-wrap" style="display:${cfg.scaleType === 'log' ? '' : 'none'}">
                         ${t.logBase}
                         <input type="number" class="ax-${key}-log-base" value="${cfg.logBase || 10}" min="0.0001" step="0.1" style="width:70px;">
                         <span class="axis-tip" style="margin-left:8px;">${t.logBaseTip}</span>
@@ -398,6 +438,12 @@
             <div class="axis-subsection">${t.tickValueGroup}</div>
             <div class="font-row">
                 <label class="mini-check"><input type="checkbox" class="ax-${key}-tickvalue-show" ${cfg.tickValueShow ? 'checked' : ''}> ${t.tickValueShow}</label>
+                <label>${t.tickLabelPosLabel}
+                    <select class="ax-${key}-ticklabel-pos">
+                        <option value="outside" ${cfg.tickLabelPos !== 'inside' ? 'selected' : ''}>${t.tickLabelPosOutside}</option>
+                        <option value="inside" ${cfg.tickLabelPos === 'inside' ? 'selected' : ''}>${t.tickLabelPosInside}</option>
+                    </select>
+                </label>
         `;
         if (isNumeric) {
             html += `
@@ -518,6 +564,7 @@
             setIf(cfg, 'tickValueShow', chk(g, 'tickvalue-show'));
             setIf(cfg, 'tickValueAuto', chk(g, 'tickvalue-auto'));
             setIf(cfg, 'tickValueCustom', val(g, 'tickvalue-custom'));
+            setIf(cfg, 'tickLabelPos', val(g, 'ticklabel-pos'));
             const tfs = num(g, 'tick-fs', 14);
             if (tfs !== undefined) cfg.tickFontSize = Math.max(6, tfs);
             setIf(cfg, 'tickBold', chk(g, 'tick-b'));
@@ -565,6 +612,7 @@
             container.innerHTML = `
                 <div class="param-panel-title">${t.panelTitle}</div>
                 ${directionPanelHTML(t, currentDirection)}
+                ${globalFontPanelHTML(t, st)}
                 ${axisPanelHTML('x', st.x, t, axisTypes.x)}
                 ${axisPanelHTML('y', st.y, t, axisTypes.y)}
             `;
@@ -588,6 +636,43 @@
                     sel.addEventListener('change', update);
                     update();
                 }
+            });
+
+            bindGlobalFont();
+        }
+
+        function bindGlobalFont() {
+            function readGlobalFont() {
+                const fs = parseFloat((document.getElementById('axisTickFontSize') || {}).value);
+                const fb = !!(document.getElementById('axisTickBold') || {}).checked;
+                const fi = !!(document.getElementById('axisTickItalic') || {}).checked;
+                const tfs = parseFloat((document.getElementById('axisTitleFontSize') || {}).value);
+                const tb = !!(document.getElementById('axisTitleBold') || {}).checked;
+                const ti = !!(document.getElementById('axisTitleItalic') || {}).checked;
+
+                ['x', 'y'].forEach(k => {
+                    if (isFinite(fs)) st[k].tickFontSize = Math.max(6, fs);
+                    st[k].tickBold = fb;
+                    st[k].tickItalic = fi;
+                    if (isFinite(tfs)) st[k].titleFontSize = Math.max(6, tfs);
+                    st[k].titleBold = tb;
+                    st[k].titleItalic = ti;
+                });
+
+                if (opts.onGlobalFontChange) opts.onGlobalFontChange();
+                if (opts.onChange) opts.onChange();
+            }
+
+            ['axisTickFontSize', 'axisTitleFontSize'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', readGlobalFont);
+                    el.addEventListener('change', readGlobalFont);
+                }
+            });
+            ['axisTickBold', 'axisTickItalic', 'axisTitleBold', 'axisTitleItalic'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', readGlobalFont);
             });
         }
 
@@ -647,12 +732,41 @@
             .style('font-style', cfg.tickItalic ? 'italic' : 'normal')
             .style('font-family', cfg.fontFamily || null);
 
-        if (cfg.tickRotate) {
-            axisG.selectAll('.tick text')
-                .attr('transform', `rotate(${cfg.tickRotate})`)
-                .style('text-anchor', cfg.tickRotate < 0 ? 'end' : 'start');
+        /* 刻度值位置：轴外 / 轴内 */
+        const labelPos = cfg.tickLabelPos || 'outside';
+        const tickLen = cfg.tickShow ? cfg.tickLength : 0;
+
+        if (horiz) {
+            if (labelPos === 'inside') {
+                axisG.selectAll('.tick text')
+                    .attr('y', -(tickLen + 4))
+                    .attr('dy', '0.35em')
+                    .attr('text-anchor', 'middle');
+            } else {
+                axisG.selectAll('.tick text')
+                    .attr('y', tickLen + 6)
+                    .attr('dy', '0.71em')
+                    .attr('text-anchor', 'middle');
+            }
         } else {
-            axisG.selectAll('.tick text').attr('transform', null).style('text-anchor', null);
+            if (labelPos === 'inside') {
+                axisG.selectAll('.tick text')
+                    .attr('x', tickLen + 4)
+                    .attr('dy', '0.35em')
+                    .attr('text-anchor', 'start');
+            } else {
+                axisG.selectAll('.tick text')
+                    .attr('x', -(tickLen + 6))
+                    .attr('dy', '0.35em')
+                    .attr('text-anchor', 'end');
+            }
+        }
+
+        /* 旋转只改 transform，不覆盖 text-anchor */
+        if (cfg.tickRotate) {
+            axisG.selectAll('.tick text').attr('transform', `rotate(${cfg.tickRotate})`);
+        } else {
+            axisG.selectAll('.tick text').attr('transform', null);
         }
 
         axisG.selectAll('.axis-break-mark').remove();

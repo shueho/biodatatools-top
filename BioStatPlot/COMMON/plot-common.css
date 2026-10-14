@@ -292,8 +292,8 @@ input[type="color"] {
     flex-shrink: 0;
     font-size: 14px;
     color: var(--text-muted);
-    min-width: 78px;
-    text-align: right;
+    align-items: center;
+    gap: 4px;
 }
 .param-item > input,
 .param-item > select {
@@ -824,4 +824,13 @@ input[type="color"] {
 }
 .plot-margin-handle:hover {
     background: rgba(31, 64, 104, .06);
+}
+
+.param-item > label.mini-check {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    text-align: left;
+    font-weight: 400;
+    color: var(--text-muted);
 }

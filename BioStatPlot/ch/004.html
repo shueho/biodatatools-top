@@ -20,140 +20,113 @@
         <div id="importPanel"></div>
 
         <div class="step-card">
-            <div class="step-title">第二步：指定数据列</div>
-            <div class="param-group">
-                <label>分类列：</label>
-                <select id="catColSel" disabled><option>— 请先导入数据 —</option></select>
-                <label>数值列：</label>
-                <select id="valColSel" disabled><option>— 请先导入数据 —</option></select>
+            <div class="step-title">第二步：指定数据列与排序</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">数据列</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>分类列</label>
+                        <select id="catColSel" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>数值列</label>
+                        <select id="valColSel" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">排序</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>排序依据</label>
+                        <select id="sortBy" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>排序方向</label>
+                        <select id="sortDir">
+                            <option value="desc" selected>从大到小</option>
+                            <option value="asc">从小到大</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="step-card">
             <div class="step-title">第三步：选择色板与颜色</div>
-            <div class="param-group" style="margin-top:0;">
-                <label>排序依据：</label>
-                <select id="sortBy" disabled><option>— 请先导入数据 —</option></select>
-                <label>排序方向：</label>
-                <select id="sortDir">
-                    <option value="desc" selected>从大到小</option>
-                    <option value="asc">从小到大</option>
-                </select>
+
+            <div class="param-panel">
+                <div class="param-panel-title">分类色板</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                    <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+                </div>
             </div>
-            <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">分类色板</div>
-            <div id="paletteDropdownContainer"></div>
-            <div class="param-inline" style="margin-top:8px;">
-                <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
-                <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
-            </div>
-            <div id="colorAssignContainer" style="margin-top:16px;"></div>
+
+            <div id="colorAssignContainer"></div>
         </div>
 
         <div class="step-card">
             <div class="step-title">第四步：设置绘图参数</div>
 
-            <div class="param-panel">
-                <div class="param-panel-title">画布尺寸</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item"><label>宽度(px)</label><input type="number" id="chartWidth" value="700" min="300" data-redraw></div>
-                    <div class="param-item"><label>高度(px)</label><input type="number" id="chartHeight" value="650" min="300" data-redraw></div>
-                </div>
-                <div class="param-inline" style="margin-top:8px;">
-                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>显示画布边框</label>
-                </div>
-            </div>
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
 
             <div class="param-panel">
-                <div class="param-panel-title">字体样式</div>
-                <div class="font-row">
-                    <span class="font-label">字体</span>
-                    <select id="fontFamily" data-redraw>
-                        <option value="Times New Roman" selected>Times New Roman</option>
-                        <option value="Arial">Arial</option>
-                        <option value="Calibri">Calibri</option>
-                        <option value="Helvetica">Helvetica</option>
-                        <option value="Microsoft YaHei">微软雅黑</option>
-                    </select>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">标签</span>
-                    <input type="number" id="labelFontSize" value="14" min="8" max="36" data-redraw>
+                <div class="param-panel-title">标签</div>
+
+                <div class="param-inline">
+                    <label>字号
+                        <input type="number" id="labelFontSize" value="14" min="8" max="36" data-redraw>
+                    </label>
                     <label class="mini-check"><input type="checkbox" id="labelBold" data-redraw>粗</label>
                     <label class="mini-check"><input type="checkbox" id="labelItalic" data-redraw>斜</label>
                 </div>
-                <div class="font-row">
-                    <span class="font-label">刻度值</span>
-                    <input type="number" id="scaleFontSize" value="12" min="6" max="24" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="scaleBold" data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="scaleItalic" data-redraw>斜</label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">图例</span>
-                    <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>斜</label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">图例标题</span>
-                    <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>斜</label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">标题</span>
-                    <input type="number" id="titleFontSize" value="22" min="10" max="48" data-redraw>
-                    <label class="mini-check"><input type="checkbox" id="titleBold" checked data-redraw>粗</label>
-                    <label class="mini-check"><input type="checkbox" id="titleItalic" data-redraw>斜</label>
-                </div>
-            </div>
 
-            <div class="param-panel">
-                <div class="param-panel-title">组件控制</div>
-<div class="font-row">
-    <span class="font-label">图例</span>
-    <label class="mini-check"><input type="checkbox" id="showLegend" checked data-redraw>显示</label>
-    <input type="hidden" id="legendPosition" value="right">
-    <label>每行显示：
-        <input type="number" id="legendMaxPerLine" value="1" min="1" max="50" step="1" style="width:60px;" data-redraw>
-    </label>
-</div>
-                <div class="font-row">
-                    <span class="font-label">图例标题</span>
-                    <label class="mini-check"><input type="checkbox" id="showLegendTitle" checked data-redraw>显示</label>
-                    <label>内容：
-                        <input type="text" id="legendTitle" value="" style="width:220px;" data-redraw>
-                    </label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">标题</span>
-                    <label class="mini-check"><input type="checkbox" id="showTitle" data-redraw>显示</label>
-                    <label>位置：
-                        <select id="titlePosition" data-redraw>
-                            <option value="top-center" selected>顶部居中</option>
-                            <option value="top-left">顶部左</option>
-                            <option value="top-right">顶部右</option>
-                            <option value="middle-center">中部居中</option>
-                            <option value="middle-left">中部左</option>
-                            <option value="middle-right">中部右</option>
-                            <option value="bottom-center">底部居中</option>
-                            <option value="bottom-left">底部左</option>
-                            <option value="bottom-right">底部右</option>
+                <div class="param-inline">
+                    <label>分类名位置
+                        <select id="namePosition" data-redraw>
+                            <option value="none">不显示</option>
+                            <option value="inside" selected>圆内（贴花瓣）</option>
+                            <option value="outside">圆外（超出同心环）</option>
                         </select>
                     </label>
-                    <label>内容：
-                        <input type="text" id="chartTitle" value="BioDataTools" style="width:220px;" data-redraw>
+                </div>
+
+                <div class="param-inline">
+                    <label>值标签位置
+                        <select id="valuePosition" data-redraw>
+                            <option value="none" selected>不显示</option>
+                            <option value="inside">圆内（贴花瓣）</option>
+                            <option value="outside">圆外（超出同心环）</option>
+                        </select>
                     </label>
-                    <label>间距(px)：
-                        <input type="number" id="titleSpacing" value="30" min="0" max="200" step="5" style="width:70px;" data-redraw>
+                    <label>值内容
+                        <select id="valueContent" data-redraw>
+                            <option value="pct" selected>百分比</option>
+                            <option value="value">原始值</option>
+                            <option value="pct_value">百分比 + 原始值</option>
+                        </select>
+                    </label>
+                    <label>圆外偏移
+                        <input type="number" id="labelOffset" value="20" min="0" max="200" step="5" style="width:70px;" data-redraw>px
                     </label>
                 </div>
             </div>
 
             <div class="param-panel">
                 <div class="param-panel-title">花瓣图设置</div>
+
+                <div style="font-size:12px;font-weight:700;color:#4a6784;margin:4px 0 8px 0;">花瓣形状</div>
+
                 <div class="param-grid cols-4">
-                    <div class="param-item"><label>最大半径</label><input type="number" id="outerRadius" value="220" min="40" max="1000" step="10" data-redraw></div>
-                    <div class="param-item"><label>内半径</label><input type="number" id="innerRadius" value="0" min="0" max="500" step="5" data-redraw></div>
+                    <div class="param-item"><label>最大半径</label>
+                        <input type="number" id="outerRadius" value="220" min="40" max="1000" step="10" data-redraw></div>
+                    <div class="param-item"><label>内半径</label>
+                        <input type="number" id="innerRadius" value="0" min="0" max="500" step="5" data-redraw></div>
                     <div class="param-item">
                         <label>半径模式</label>
                         <select id="radiusScale" data-redraw>
@@ -175,21 +148,24 @@
                             <option value="counterclockwise">逆时针</option>
                         </select>
                     </div>
-                    <div class="param-item"><label>起始角度(°)</label><input type="number" id="startAngle" value="0" min="0" max="360" step="5" data-redraw></div>
-                    <div class="param-item"><label>花瓣间隙(°)</label><input type="number" id="gapAngle" value="2" min="0" max="30" step="0.5" data-redraw></div>
-                    <div class="param-item"><label>花瓣描边</label><input type="color" id="sliceStroke" value="#ffffff" data-redraw></div>
-                    <div class="param-item"><label>描边宽度</label><input type="number" id="strokeWidth" value="1.5" min="0" max="6" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>起始角度(°)</label>
+                        <input type="number" id="startAngle" value="0" min="0" max="360" step="5" data-redraw></div>
+                    <div class="param-item"><label>花瓣间隙(°)</label>
+                        <input type="number" id="gapAngle" value="2" min="0" max="30" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>花瓣描边</label>
+                        <input type="color" id="sliceStroke" value="#ffffff" data-redraw></div>
+                    <div class="param-item"><label>描边宽度</label>
+                        <input type="number" id="strokeWidth" value="1.5" min="0" max="6" step="0.5" data-redraw></div>
                 </div>
+
                 <div class="param-inline" style="margin-top:8px;">
                     <label><input type="checkbox" id="mergeSmall" data-redraw>合并小花瓣</label>
-                    <label>合并阈值(%)：
-                        <input type="number" id="mergeThreshold" value="3" min="0" max="30" step="0.5" style="width:70px;" data-redraw>
+                    <label>阈值
+                        <input type="number" id="mergeThreshold" value="3" min="0" max="30" step="0.5" style="width:70px;" data-redraw>%
                     </label>
                 </div>
-            </div>
 
-            <div class="param-panel">
-                <div class="param-panel-title">环形坐标轴</div>
+                <div style="font-size:12px;font-weight:700;color:#4a6784;margin:16px 0 8px 0;">径向轴与刻度值</div>
 
                 <div class="param-grid cols-4">
                     <div class="param-item">
@@ -199,13 +175,12 @@
                             <option value="all">显示</option>
                         </select>
                     </div>
-                    <div class="param-item"><label>环数</label><input type="number" id="ringLevels" value="4" min="1" max="20" data-redraw></div>
-                    <div class="param-item"><label>环颜色</label><input type="color" id="ringColor" value="#d8e2ec" data-redraw></div>
-                    <div class="param-item"><label>环宽度</label><input type="number" id="ringWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
-                </div>
-
-                <div style="font-size:14px;font-weight:700;color:#1f4068;margin:16px 0 4px;">径向轴与刻度值</div>
-                <div class="param-grid cols-4">
+                    <div class="param-item"><label>环数</label>
+                        <input type="number" id="ringLevels" value="4" min="1" max="20" data-redraw></div>
+                    <div class="param-item"><label>环颜色</label>
+                        <input type="color" id="ringColor" value="#d8e2ec" data-redraw></div>
+                    <div class="param-item"><label>环宽度</label>
+                        <input type="number" id="ringWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
                     <div class="param-item">
                         <label>径向轴线</label>
                         <select id="showRadial" data-redraw>
@@ -213,8 +188,10 @@
                             <option value="all">显示</option>
                         </select>
                     </div>
-                    <div class="param-item"><label>轴颜色</label><input type="color" id="axisColor" value="#d8e2ec" data-redraw></div>
-                    <div class="param-item"><label>轴宽度</label><input type="number" id="axisWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>轴颜色</label>
+                        <input type="color" id="axisColor" value="#d8e2ec" data-redraw></div>
+                    <div class="param-item"><label>轴宽度</label>
+                        <input type="number" id="axisWidth" value="1" min="0" max="6" step="0.5" data-redraw></div>
                     <div class="param-item">
                         <label>刻度位置</label>
                         <select id="scalePos" data-redraw>
@@ -230,41 +207,16 @@
                             <option value="original">原始值</option>
                         </select>
                     </div>
-                    <div class="param-item"><label>小数位</label><input type="number" id="scaleDecimals" value="0" min="0" max="4" step="1" data-redraw></div>
+                    <div class="param-item"><label>小数位</label>
+                        <input type="number" id="scaleDecimals" value="0" min="0" max="4" step="1" data-redraw></div>
                 </div>
-            </div>
 
-            <div class="param-panel">
-                <div class="param-panel-title">标签</div>
-                <div class="font-row">
-                    <span class="font-label">分类名</span>
-                    <label>位置：
-                        <select id="namePosition" data-redraw>
-                            <option value="none">不显示</option>
-                            <option value="inside" selected>圆内（贴花瓣）</option>
-                            <option value="outside">圆外（超出同心环）</option>
-                        </select>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label>刻度字号
+                        <input type="number" id="scaleFontSize" value="12" min="6" max="24" data-redraw>
                     </label>
-                </div>
-                <div class="font-row">
-                    <span class="font-label">值标签</span>
-                    <label>位置：
-                        <select id="valuePosition" data-redraw>
-                            <option value="none" selected>不显示</option>
-                            <option value="inside">圆内（贴花瓣）</option>
-                            <option value="outside">圆外（超出同心环）</option>
-                        </select>
-                    </label>
-                    <label>内容：
-                        <select id="valueContent" data-redraw>
-                            <option value="pct" selected>百分比</option>
-                            <option value="value">原始值</option>
-                            <option value="pct_value">百分比 + 原始值</option>
-                        </select>
-                    </label>
-                    <label>圆外偏移(px)：
-                        <input type="number" id="labelOffset" value="20" min="0" max="200" step="5" style="width:70px;" data-redraw>
-                    </label>
+                    <label class="mini-check"><input type="checkbox" id="scaleBold" data-redraw>粗</label>
+                    <label class="mini-check"><input type="checkbox" id="scaleItalic" data-redraw>斜</label>
                 </div>
             </div>
 
@@ -277,8 +229,8 @@
         <div class="step-card">
             <div class="step-title">第五步：预览与导出</div>
             <div class="result-toolbar">
-                <button class="btn" id="exportSvgBtn" disabled>导出 SVG</button>
-                <button class="btn" id="exportPngBtn" disabled>导出 PNG</button>
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
                 <span class="spacer"></span>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
@@ -294,10 +246,7 @@
     <script src="../COMMON/script/plot-header.js"></script>
     <script src="../COMMON/script/plot-footer.js"></script>
     <script src="../COMMON/script/plot-common.js"></script>
-
     <script src="../COMMON/script/plot-canvas.js"></script>
-    <script src="../COMMON/script/plot-title.js"></script>
-    <script src="../COMMON/script/plot-legend.js"></script>
     <script src="../COMMON/script/plot-i18n.js"></script>
     <script src="../COMMON/script/plot-app.js"></script>
     <script src="../COMMON/script/plot-mini-preview.js"></script>

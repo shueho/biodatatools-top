@@ -1,25 +1,7 @@
 ﻿(function () {
     'use strict';
 
-    function num(app, id, fallback) {
-        const el = app.$(id);
-        if (!el) return fallback;
-        const v = parseFloat(el.value);
-        return isFinite(v) ? v : fallback;
-    }
-
-    function estTextWidth(str, fontSize) {
-        let w = 0;
-        for (const ch of String(str)) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
-        return w * fontSize;
-    }
-
-    function getMaxPerLine() {
-        const el = document.getElementById('legendMaxPerLine');
-        if (!el) return 1;
-        const v = parseInt(el.value, 10);
-        return (isFinite(v) && v > 0) ? v : 1;
-    }
+    const PC = window.PlotCommon;
 
     function drawShape(parent, shapeId, cx, cy, cellSize, fill) {
         if (shapeId === 'square') {
@@ -66,35 +48,16 @@
     }
 
     function readParams(app) {
-        return {
-            width: Math.max(200, num(app, 'chartWidth', 700)),
-            height: Math.max(200, num(app, 'chartHeight', 600)),
-            fontFamily: app.$('fontFamily').value || 'Times New Roman',
-            legendFontSize: Math.max(6, num(app, 'legendFontSize', 15)),
-            legendBold: app.$('legendBold').checked,
-            legendItalic: app.$('legendItalic').checked,
-            legendTitleFontSize: Math.max(6, num(app, 'legendTitleFontSize', 15)),
-            legendTitleBold: app.$('legendTitleBold').checked,
-            legendTitleItalic: app.$('legendTitleItalic').checked,
-            titleFontSize: Math.max(6, num(app, 'titleFontSize', 22)),
-            titleBold: app.$('titleBold').checked,
-            titleItalic: app.$('titleItalic').checked,
-            titlePosition: app.$('titlePosition').value || 'top-center',
-            showLegend: app.$('showLegend').checked,
-            legendPosition: app.$('legendPosition').value || 'right',
-            legendGap: Math.max(0, num(app, 'legendGap', 30)),
-            showLegendTitle: app.$('showLegendTitle').checked,
-            legendTitle: app.$('legendTitle').value || '',
-            showTitle: app.$('showTitle').checked,
-            chartTitle: app.$('chartTitle').value || '',
-            showCanvasBorder: app.$('showCanvasBorder').checked,
-            direction: app.$('waffleDirection').value || 'horizontal',
-            total: Math.max(1, Math.round(num(app, 'waffleTotal', 100))),
-            cols: Math.max(1, num(app, 'waffleCols', 10)),
-            rows: Math.max(1, num(app, 'waffleRows', 10)),
-            waffleGapX: Math.max(0, num(app, 'waffleGapX', 2)),
-            waffleGapY: Math.max(0, num(app, 'waffleGapY', 2))
-        };
+        const p = PC.readCommonParams(app, { width: 700, height: 600 });
+
+        p.direction = app.$('waffleDirection').value || 'horizontal';
+        p.total = Math.max(1, Math.round(PC.num(app, 'waffleTotal', 100)));
+        p.cols = Math.max(1, PC.num(app, 'waffleCols', 10));
+        p.rows = Math.max(1, PC.num(app, 'waffleRows', 10));
+        p.waffleGapX = Math.max(0, PC.num(app, 'waffleGapX', 2));
+        p.waffleGapY = Math.max(0, PC.num(app, 'waffleGapY', 2));
+
+        return p;
     }
 
     function getGrid(p) {
@@ -112,10 +75,12 @@
     function buildCells(app, p) {
         const items = app.getCategoryItems();
         if (!items.length) return null;
+
         const grid = getGrid(p);
         const totalCells = grid.total;
         const cells = [];
         let remaining = totalCells;
+
         items.forEach((it, idx) => {
             let count;
             if (idx === items.length - 1) count = remaining;
@@ -123,6 +88,7 @@
             for (let i = 0; i < count; i++) cells.push({ category: it.name });
             remaining -= count;
         });
+
         return { cells, rows: grid.rows, cols: grid.cols };
     }
 
@@ -132,7 +98,19 @@
         importInfo: PlotI18N.lang() === 'en'
             ? 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. You can paste directly from Excel.'
             : '需包含表头，且至少包含 <strong>分类列</strong> 和 <strong>数值列</strong>。可直接粘贴 Excel 内容。',
-        stateExtra: { shapeMode: 'uniform', uniformShape: 'square', categoryShapes: {} },
+
+        stateExtra: {
+            shapeMode: 'uniform',
+            uniformShape: 'square',
+            categoryShapes: {}
+        },
+
+        syncLegendTitle: function (app) {
+            const input = app.$('legendTitle');
+            if (!app.state.legendTitleEdited && input) {
+                input.value = app.state.roles.category || '';
+            }
+        },
 
         setup: function (app) {
             updateWaffleDirectionUI(app);
@@ -142,6 +120,7 @@
             });
             refreshShapeSelector(app);
         },
+
         onDataImported: function (app) {
             app.state.categoryShapes = {};
             refreshShapeSelector(app);
@@ -161,26 +140,29 @@
 
         drawChart: function (app) {
             const state = app.state;
-            const $ = app.$;
             const chartPreview = app.chartPreview;
-            const toolbarTip = app.toolbarTip;
-            const exportSvgBtn = app.exportSvgBtn;
-            const exportPngBtn = app.exportPngBtn;
-            const showTip = app.showTip;
 
-            toolbarTip.textContent = '';
-            if (!state.data.length) { showTip('msgTip3', PlotI18N.t('noData'), 'error'); return; }
+            if (!state.data.length) {
+                app.showTip('msgTip3', PlotI18N.t('noData'), 'error');
+                return;
+            }
             if (!state.roles.category || !state.roles.value) {
-                showTip('msgTip3', PlotI18N.t('selectColumns'), 'error'); return;
+                app.showTip('msgTip3', PlotI18N.t('selectColumns'), 'error');
+                return;
             }
 
             const p = readParams(app);
             const built = buildCells(app, p);
             if (!built || !built.cells.length) {
-                showTip('msgTip3', PlotI18N.t('noValidData'), 'error'); return;
+                app.showTip('msgTip3', PlotI18N.t('noValidData'), 'error');
+                return;
             }
-            const { cells, rows, cols } = built;
+
+            const cells = built.cells;
+            const rows = built.rows;
+            const cols = built.cols;
             const items = app.getCategoryItems();
+
             const allCatNames = items.map(x => x.name);
             const allBaseColors = app.resolvePaletteColors(allCatNames.length);
 
@@ -198,198 +180,59 @@
 
             const width = p.width;
             const height = p.height;
-            const titleH = (p.showTitle && p.chartTitle) ? p.titleFontSize + 10 : 0;
-
-            const wantLegend = !!p.showLegend && items.length > 0;
-            const pos = p.legendPosition;
-            const isRight = wantLegend && pos === 'right';
-            const isLeft = wantLegend && pos === 'left';
-            const isTop = wantLegend && pos === 'top';
-            const isBottom = wantLegend && pos === 'bottom';
-
-            const legendColW = 200;
-            const legendRowH = p.legendFontSize + 10;
-            const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
-            const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
-            const legendInlineH = p.legendFontSize + 20 + legendTitleH;
-            const gap = p.legendGap;
             const margin = 30;
-            const maxPerLine = getMaxPerLine();
+            const areaX = margin;
+            const areaY = margin;
+            const areaW = width - 2 * margin;
+            const areaH = height - 2 * margin;
 
-            let areaX = margin, areaY = margin;
-            let areaW = width - 2 * margin;
-            let areaH = height - 2 * margin;
-            if (isRight) areaW = width - legendColW - 2 * margin;
-            else if (isLeft) { areaX = legendColW + gap + margin; areaW = width - legendColW - 2 * margin; }
-            else if (isTop) { areaY = legendInlineH + gap + margin; areaH = height - legendInlineH - 2 * margin; }
-            else if (isBottom) areaH = height - legendInlineH - 2 * margin;
-            areaW = Math.max(20, areaW);
-            areaH = Math.max(20, areaH);
-
-            const gridAreaH = Math.max(20, areaH - titleH);
             const gx = p.waffleGapX;
             const gy = p.waffleGapY;
             const cellFromW = (areaW - gx * (cols - 1)) / cols;
-            const cellFromH = (gridAreaH - gy * (rows - 1)) / rows;
+            const cellFromH = (areaH - gy * (rows - 1)) / rows;
             const cellSize = Math.max(1, Math.min(cellFromW, cellFromH));
             const fullW = cellSize * cols + gx * (cols - 1);
             const fullH = cellSize * rows + gy * (rows - 1);
-            const blockH = titleH + fullH;
-            const blockTop = areaY + (areaH - blockH) / 2;
-            const gridTop = blockTop + titleH;
+            const gridTop = areaY + (areaH - fullH) / 2;
             const gridLeft = areaX + (areaW - fullW) / 2;
 
             const canvas = PlotCanvas.create(chartPreview, {
-                width: width, height: height, fontFamily: p.fontFamily, border: p.showCanvasBorder
+                width: width,
+                height: height,
+                fontFamily: p.fontFamily,
+                border: p.showCanvasBorder
             });
             const svg = canvas.root;
             state.currentSvg = canvas.node;
 
-            if (p.showTitle && p.chartTitle) {
-                PlotTitle.draw(svg, {
-                    width, height, position: p.titlePosition, text: p.chartTitle,
-                    fontSize: p.titleFontSize, bold: p.titleBold, italic: p.titleItalic
-                });
-            }
-
             const g = svg.append('g').attr('class', 'waffle-cells');
             cells.forEach((cell, idx) => {
                 let r, c;
-                if (p.direction === 'horizontal') { r = Math.floor(idx / cols); c = idx % cols; }
-                else { r = idx % rows; c = Math.floor(idx / rows); }
+                if (p.direction === 'horizontal') {
+                    r = Math.floor(idx / cols);
+                    c = idx % cols;
+                } else {
+                    r = idx % rows;
+                    c = Math.floor(idx / rows);
+                }
                 const cx = gridLeft + c * (cellSize + gx) + cellSize / 2;
                 const cy = gridTop + r * (cellSize + gy) + cellSize / 2;
                 drawShape(g, shapeOf(cell.category), cx, cy, cellSize, colorOf(cell.category));
             });
 
-            if (wantLegend) {
-                const legendGroup = svg.append('g').attr('class', 'chart-legend');
-                const markerSize = p.legendFontSize;
-                const textGap = 8;
-                const itemGap = 20;
-                const legendWeight = p.legendBold ? 'bold' : 'normal';
-                const legendStyle = p.legendItalic ? 'italic' : 'normal';
-                const ltitleWeight = p.legendTitleBold ? 'bold' : 'normal';
-                const ltitleStyle = p.legendTitleItalic ? 'italic' : 'normal';
-                const labels = items.map(it => `${it.name} (${(it.percent * 100).toFixed(1)}%)`);
-
-                if (isRight || isLeft) {
-                    const baseX = isRight ? (width - legendColW - gap + 12) : 12;
-
-                    if (maxPerLine > 1 && items.length > maxPerLine) {
-                        const rowCount = Math.ceil(items.length / maxPerLine);
-
-                        const colWidths = [];
-                        for (let c = 0; c < maxPerLine; c++) {
-                            let w = 0;
-                            for (let r = 0; r < rowCount; r++) {
-                                const idx = r * maxPerLine + c;
-                                if (idx >= items.length) break;
-                                const lw = markerSize + textGap + estTextWidth(labels[idx], p.legendFontSize) + itemGap;
-                                w = Math.max(w, lw);
-                            }
-                            if (w > 0) colWidths.push(w);
-                        }
-
-                        const totalH = (hasLegendTitle ? legendTitleH : 0) + rowCount * legendRowH;
-                        const startY2 = areaY + (areaH - totalH) / 2;
-                        if (hasLegendTitle) {
-                            legendGroup.append('text').attr('x', baseX).attr('y', startY2 + p.legendTitleFontSize / 2)
-                                .attr('dy', '0.35em').attr('font-size', p.legendTitleFontSize)
-                                .attr('font-weight', ltitleWeight).attr('font-style', ltitleStyle)
-                                .attr('fill', '#333').text(p.legendTitle);
-                        }
-                        const itemsStartY = startY2 + (hasLegendTitle ? legendTitleH : 0);
-
-                        items.forEach((it, i) => {
-                            const r = Math.floor(i / maxPerLine);
-                            const c = i % maxPerLine;
-                            let colX = baseX;
-                            for (let ci = 0; ci < c; ci++) colX += colWidths[ci];
-                            const y = itemsStartY + r * legendRowH;
-                            drawShape(legendGroup, shapeOf(it.name), colX + markerSize / 2, y + markerSize / 2, markerSize, colorOf(it.name));
-                            legendGroup.append('text').attr('x', colX + markerSize + textGap).attr('y', y + markerSize / 2)
-                                .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
-                                .attr('font-weight', legendWeight).attr('font-style', legendStyle)
-                                .attr('fill', '#333').text(labels[i]);
-                        });
-                    } else {
-                        const totalH = (hasLegendTitle ? legendTitleH : 0) + items.length * legendRowH;
-                        const startY2 = areaY + (areaH - totalH) / 2;
-                        if (hasLegendTitle) {
-                            legendGroup.append('text').attr('x', baseX).attr('y', startY2 + p.legendTitleFontSize / 2)
-                                .attr('dy', '0.35em').attr('font-size', p.legendTitleFontSize)
-                                .attr('font-weight', ltitleWeight).attr('font-style', ltitleStyle)
-                                .attr('fill', '#333').text(p.legendTitle);
-                        }
-                        const itemsStartY = startY2 + (hasLegendTitle ? legendTitleH : 0);
-                        items.forEach((it, i) => {
-                            const y = itemsStartY + i * legendRowH;
-                            drawShape(legendGroup, shapeOf(it.name), baseX + markerSize / 2, y + markerSize / 2, markerSize, colorOf(it.name));
-                            legendGroup.append('text').attr('x', baseX + markerSize + textGap).attr('y', y + markerSize / 2)
-                                .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
-                                .attr('font-weight', legendWeight).attr('font-style', legendStyle)
-                                .attr('fill', '#333').text(labels[i]);
-                        });
-                    }
-                } else {
-                    const legendY0 = isTop ? margin : (height - legendInlineH - margin);
-                    const itemsY0 = legendY0 + (hasLegendTitle ? legendTitleH : 0) + 6;
-
-                    if (hasLegendTitle) {
-                        legendGroup.append('text').attr('x', width / 2).attr('y', legendY0 + p.legendTitleFontSize / 2)
-                            .attr('text-anchor', 'middle').attr('dy', '0.35em').attr('font-size', p.legendTitleFontSize)
-                            .attr('font-weight', ltitleWeight).attr('font-style', ltitleStyle)
-                            .attr('fill', '#333').text(p.legendTitle);
-                    }
-
-                    if (maxPerLine > 1 && items.length > maxPerLine) {
-                        const rowCount = Math.ceil(items.length / maxPerLine);
-                        for (let r = 0; r < rowCount; r++) {
-                            const startIdx = r * maxPerLine;
-                            const rowItems = items.slice(startIdx, startIdx + maxPerLine);
-                            const rowLabels = rowItems.map((it, i) => labels[startIdx + i]);
-                            const rowWidths = rowLabels.map(lb => markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap);
-                            const totalW = rowWidths.reduce((a, b) => a + b, 0) - itemGap;
-                            const startX2 = Math.max(10, (width - totalW) / 2);
-                            const rowY = itemsY0 + r * legendRowH;
-
-                            let cursorX = startX2;
-                            rowItems.forEach((it, i) => {
-                                drawShape(legendGroup, shapeOf(it.name), cursorX + markerSize / 2, rowY + markerSize / 2, markerSize, colorOf(it.name));
-                                legendGroup.append('text').attr('x', cursorX + markerSize + textGap).attr('y', rowY + markerSize / 2)
-                                    .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
-                                    .attr('font-weight', legendWeight).attr('font-style', legendStyle)
-                                    .attr('fill', '#333').text(rowLabels[i]);
-                                cursorX += rowWidths[i];
-                            });
-                        }
-                    } else {
-                        const widths = labels.map(lb => markerSize + textGap + estTextWidth(lb, p.legendFontSize) + itemGap);
-                        const totalW = widths.reduce((a, b) => a + b, 0) - itemGap;
-                        const startX2 = Math.max(10, (width - totalW) / 2);
-                        let cursorX = startX2;
-                        items.forEach((it, i) => {
-                            drawShape(legendGroup, shapeOf(it.name), cursorX + markerSize / 2, itemsY0 + markerSize / 2, markerSize, colorOf(it.name));
-                            legendGroup.append('text').attr('x', cursorX + markerSize + textGap).attr('y', itemsY0 + markerSize / 2)
-                                .attr('dy', '0.35em').attr('font-size', p.legendFontSize)
-                                .attr('font-weight', legendWeight).attr('font-style', legendStyle)
-                                .attr('fill', '#333').text(labels[i]);
-                            cursorX += widths[i];
-                        });
-                    }
-                }
-
-                const off = PlotLegend.getLegendOffset();
-                if (off.dx || off.dy) {
-                    legendGroup.attr('transform', 'translate(' + off.dx + ',' + off.dy + ')');
-                }
-                PlotLegend.attachDrag(legendGroup);
+            if (p.showLegend && items.length) {
+                PC.drawLegendOverlay(svg, {
+                    p: p,
+                    items: items,
+                    colors: items.map(it => colorOf(it.name)),
+                    shapeOf: (i, it) => shapeOf(it.name),
+                    margin: 15
+                });
             }
 
-            exportSvgBtn.disabled = false;
-            exportPngBtn.disabled = false;
-            showTip('msgTip3', PlotI18N.t('drawDone'), 'success');
+            app.exportSvgBtn.disabled = false;
+            app.exportPngBtn.disabled = false;
+            app.showTip('msgTip3', PlotI18N.t('drawDone'), 'success');
         }
     });
 })();

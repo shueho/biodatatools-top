@@ -1,11 +1,12 @@
 (function () {
     'use strict';
 
+    const PC = window.PlotCommon;
     const EN = PlotI18N.lang() === 'en';
     const T = {
         importInfo: EN
-            ? 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. Two examples are provided: no grouping (range bars) and grouped (error-value bars).'
-            : '需包含表头，且至少包含 <strong>分类列</strong> 和 <strong>数值列</strong>。示例提供两个版本：无分组（带范围棒）、有分组（误差值棒）。',
+            ? 'Must include a header row with a <strong>category column</strong>, a <strong>value column</strong>, and optionally a <strong>group column</strong> and error-bar columns (<strong>Lower/Upper</strong> or <strong>Error</strong>). You can paste directly from Excel.'
+            : '需包含表头，至少包含 <strong>分类列</strong> 和 <strong>数值列</strong>，可选 <strong>分组列</strong> 及误差棒列（<strong>上下限</strong> 或 <strong>误差值</strong>）。可直接粘贴 Excel 内容。',
         noData: EN ? '❌ Please import data first' : '❌ 请先导入数据',
         selectCols: EN ? '❌ Please select the category and value columns' : '❌ 请选择分类列与数值列',
         noValid: EN ? '❌ Could not generate valid plot data. Please check the value column' : '❌ 未能生成有效绘图数据，请检查数值列',
@@ -13,17 +14,22 @@
         colorEmpty: EN ? 'Category colors will be shown here after selecting data columns' : '选择数据列后将在此处显示每个类别的颜色'
     };
 
-    const EX_PLAIN = 'X\tValue\tLower\tUpper\nA\t18\t15\t21\nB\t32\t28\t36\nC\t12\t10\t14\nD\t24\t21\t27\nE\t8\t6\t10';
-    const EX_ERRVAL = 'X\tGroup\tValue\tError\nA\tCtrl\t20\t2\nA\tTrt1\t25\t3\nB\tCtrl\t30\t4\nB\tTrt1\t35\t5\nC\tCtrl\t18\t2\nC\tTrt1\t24\t3';
-
+    const EX_COMBO =
+        'X\tGroup\tValue\tLower\tUpper\tError\n' +
+        'A\tCtrl\t20\t18\t22\t2\n' +
+        'A\tTrt1\t25\t22\t28\t3\n' +
+        'B\tCtrl\t30\t27\t33\t4\n' +
+        'B\tTrt1\t35\t32\t38\t5\n' +
+        'C\tCtrl\t18\t16\t20\t2\n' +
+        'C\tTrt1\t24\t21\t27\t3';
 
     function prepareData(app) {
         const state = app.state;
         const axisCfg = state.axis;
         const p = Object.assign({},
-            BarCommon.readCanvasParams(app, 760, 600),
+            PC.readCanvasParams(app, 760, 600),
             BarCommon.readBarParams(app),
-            BarCommon.readTitleLegendParams(app)
+            PC.readTitleLegendParams(app)
         );
         p.direction = state.barDirection || 'vertical';
 
@@ -40,22 +46,6 @@
         return { p, axisCfg, catVals, groupVals, hasGroup, cells };
     }
 
-
-    function prepareLayout(p, hasGroup) {
-        p.showLegend = p.showLegend && hasGroup;
-
-        const titleH = (p.showTitle && p.chartTitle) ? p.titleFontSize + 10 : 0;
-        const legendColW = 200;
-        const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
-        const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
-        const legendInlineH = p.legendFontSize + 20 + legendTitleH;
-
-        const legendInfo = BarCommon.computeLegendArea(p, hasLegendTitle, legendTitleH, legendInlineH, legendColW);
-
-        return { titleH, hasLegendTitle, legendColW, legendInfo };
-    }
-
-
     function drawVertical(app, prepared) {
         const { p, axisCfg, catVals, groupVals, hasGroup, cells } = prepared;
         const state = app.state;
@@ -68,9 +58,11 @@
         const minYData = Math.min.apply(null, cells.map(c => c.ext ? Math.min(c.value, c.ext.lower) : c.value));
         const minY = isLogY ? minYData : Math.min(0, minYData);
 
-        const { titleH, hasLegendTitle, legendInfo } = prepareLayout(p, hasGroup);
-        const { areaX, areaY, areaW, areaH, legendArea, legendOrientation } = legendInfo;
-        const gridAreaH = Math.max(20, areaH - titleH);
+        const margin = 30;
+        const areaX = margin;
+        const areaY = margin;
+        const areaW = p.width - 2 * margin;
+        const areaH = p.height - 2 * margin;
 
         const xLabelFont = axisCfg.x.tickValueShow ? axisCfg.x.tickFontSize : 0;
         const yLabelFont = axisCfg.y.tickValueShow ? axisCfg.y.tickFontSize : 0;
@@ -82,9 +74,9 @@
         const topPad = 20;
 
         const plotX = areaX + leftPad;
-        const plotY = areaY + titleH + topPad;
+        const plotY = areaY + topPad;
         const plotW = Math.max(20, areaW - leftPad - rightPad);
-        const plotH = Math.max(20, gridAreaH - topPad - bottomPad);
+        const plotH = Math.max(20, areaH - topPad - bottomPad);
 
         let yDomain = PlotAxis.resolveDomain(axisCfg.y, [minY, maxY]);
         if (isLogY) {
@@ -137,13 +129,6 @@
         });
         const svg = canvas.root;
         state.currentSvg = canvas.node;
-
-        if (p.showTitle && p.chartTitle) {
-            PlotTitle.draw(svg, {
-                width: p.width, height: p.height, position: p.titlePosition, text: p.chartTitle,
-                fontSize: p.titleFontSize, bold: p.titleBold, italic: p.titleItalic
-            });
-        }
 
         if (axisCfg.y.gridShow) {
             const gridY = svg.append('g').attr('class', 'grid grid-y');
@@ -206,7 +191,7 @@
                     .attr('text-anchor', 'middle')
                     .attr('font-size', p.barValueFontSize)
                     .attr('fill', '#333')
-                    .text(BarCommon.fmtNum(cell.value, 2));
+                    .text(PC.fmtNum(cell.value, 2));
             }
 
             if (cell.ext) {
@@ -270,12 +255,17 @@
 
         BarCommon.drawAxisTitles(svg, axisCfg, plotX, plotY, plotW, plotH, leftPad, bottomPad);
 
-        if (legendArea) {
-            BarCommon.drawLegend(svg, p, groupVals, colorOf, legendArea, legendOrientation, hasLegendTitle);
+        if (p.showLegend && hasGroup && groupVals.length) {
+            PC.drawLegendOverlay(svg, {
+                p: p,
+                items: groupVals.map(g => ({ name: g, percent: null })),
+                colors: groupVals.map(g => colorOf(g)),
+                shape: 'rect',
+                labelFormatter: it => it.name
+            });
         }
         PlotAxis.applyFontFamily(svg, p.fontFamily);
     }
-
 
     function drawHorizontal(app, prepared) {
         const { p, axisCfg, catVals, groupVals, hasGroup, cells } = prepared;
@@ -289,9 +279,11 @@
         const minXData = Math.min.apply(null, cells.map(c => c.ext ? Math.min(c.value, c.ext.lower) : c.value));
         const minX = isLogX ? minXData : Math.min(0, minXData);
 
-        const { titleH, hasLegendTitle, legendInfo } = prepareLayout(p, hasGroup);
-        const { areaX, areaY, areaW, areaH, legendArea, legendOrientation } = legendInfo;
-        const gridAreaH = Math.max(20, areaH - titleH);
+        const margin = 30;
+        const areaX = margin;
+        const areaY = margin;
+        const areaW = p.width - 2 * margin;
+        const areaH = p.height - 2 * margin;
 
         const xLabelFont = axisCfg.x.tickValueShow ? axisCfg.x.tickFontSize : 0;
         const yLabelFont = axisCfg.y.tickValueShow ? axisCfg.y.tickFontSize : 0;
@@ -299,7 +291,7 @@
         const yTitleFont = (axisCfg.y.titleShow && axisCfg.y.titleContent) ? axisCfg.y.titleFontSize + 8 : 0;
 
         let maxCatW = 0;
-        catVals.forEach(c => { maxCatW = Math.max(maxCatW, BarCommon.estTextWidth(c, axisCfg.y.tickFontSize)); });
+        catVals.forEach(c => { maxCatW = Math.max(maxCatW, PC.estTextWidth(c, axisCfg.y.tickFontSize)); });
         const catLabelSpace = Math.min(maxCatW + 12, areaW * 0.4);
 
         const leftPad = catLabelSpace + yTitleFont + 10;
@@ -308,9 +300,9 @@
         const topPad = 20;
 
         const plotX = areaX + leftPad;
-        const plotY = areaY + titleH + topPad;
+        const plotY = areaY + topPad;
         const plotW = Math.max(20, areaW - leftPad - rightPad);
-        const plotH = Math.max(20, gridAreaH - topPad - bottomPad);
+        const plotH = Math.max(20, areaH - topPad - bottomPad);
 
         let xDomain = PlotAxis.resolveDomain(axisCfg.x, [minX, maxX]);
         if (isLogX) {
@@ -364,13 +356,6 @@
         });
         const svg = canvas.root;
         state.currentSvg = canvas.node;
-
-        if (p.showTitle && p.chartTitle) {
-            PlotTitle.draw(svg, {
-                width: p.width, height: p.height, position: p.titlePosition, text: p.chartTitle,
-                fontSize: p.titleFontSize, bold: p.titleBold, italic: p.titleItalic
-            });
-        }
 
         if (axisCfg.x.gridShow) {
             const gridX = svg.append('g').attr('class', 'grid grid-x');
@@ -436,7 +421,7 @@
                     .attr('dominant-baseline', 'middle')
                     .attr('font-size', p.barValueFontSize)
                     .attr('fill', '#333')
-                    .text(BarCommon.fmtNum(cell.value, 2));
+                    .text(PC.fmtNum(cell.value, 2));
             }
 
             if (cell.ext) {
@@ -498,12 +483,17 @@
 
         BarCommon.drawAxisTitles(svg, axisCfg, plotX, plotY, plotW, plotH, leftPad, bottomPad);
 
-        if (legendArea) {
-            BarCommon.drawLegend(svg, p, groupVals, colorOf, legendArea, legendOrientation, hasLegendTitle);
+        if (p.showLegend && hasGroup && groupVals.length) {
+            PC.drawLegendOverlay(svg, {
+                p: p,
+                items: groupVals.map(g => ({ name: g, percent: null })),
+                colors: groupVals.map(g => colorOf(g)),
+                shape: 'rect',
+                labelFormatter: it => it.name
+            });
         }
         PlotAxis.applyFontFamily(svg, p.fontFamily);
     }
-
 
     function drawChart(app) {
         const state = app.state;
@@ -525,29 +515,24 @@
         app.showTip('msgTip3', PlotI18N.t('drawDone'), 'success');
     }
 
-
     PlotApp.create({
         exportName: 'grouped_bar_chart',
+        exampleData: EX_COMBO,
         importInfo: T.importInfo,
-        examples: [
-            { label: EN ? 'Example: no group' : '示例：无分组', data: EX_PLAIN },
-            { label: EN ? 'Example: grouped with error bars' : '示例：分组含误差棒', data: EX_ERRVAL }
-        ],
         stateExtra: BarCommon.createStateExtra(),
 
         syncLegendTitle: function (app) {
-            if (!app.state.legendTitleEdited && app.legendTitleInput) {
-                app.legendTitleInput.value = app.state.roles.group || app.state.roles.x || '';
+            const input = app.$('legendTitle');
+            if (!app.state.legendTitleEdited && input) {
+                input.value = app.state.roles.group || app.state.roles.x || '';
             }
         },
 
         setup: function (app) {
             BarCommon.fillRoleSelects(app, T.noGroup);
-            BarCommon.syncGlobalAxisFontToUI(app);
             BarCommon.refreshAxisPanel(app);
             BarCommon.refreshErrorBarPanel(app);
             BarCommon.fillGroupOrderInput(app);
-
             BarCommon.bindRoleEvents(app, null, null, null);
         },
 
@@ -560,9 +545,6 @@
             state.roles.group = cats[1] || '';
             state.roles.y = nums[0] || res.headers[1] || res.headers[0];
             state.customColors = {};
-            state.sortBy = '__input__';
-            state.sortDir = 'asc';
-            if (app.sortDirSel) app.sortDirSel.value = 'asc';
             state.errBar.mode = 'none';
             state.errBar.lowerCol = '';
             state.errBar.upperCol = '';
@@ -582,9 +564,6 @@
             state.columnTypes = {};
             state.roles = { x: '', group: '', y: '' };
             state.customColors = {};
-            state.sortBy = '__input__';
-            state.sortDir = 'asc';
-            if (app.sortDirSel) app.sortDirSel.value = 'asc';
             state.errBar.mode = 'none';
             state.errBar.lowerCol = '';
             state.errBar.upperCol = '';
@@ -592,18 +571,15 @@
             state.axis = PlotAxis.defaultState();
             state.axis.x.titleEdited = false;
             state.axis.y.titleEdited = false;
-            /* 方向保持用户当前选择 */
             const goEl = app.$('groupOrder');
             if (goEl) goEl.value = '';
             BarCommon.fillRoleSelects(app, T.noGroup);
-            BarCommon.syncGlobalAxisFontToUI(app);
             BarCommon.refreshAxisPanel(app);
             BarCommon.refreshErrorBarPanel(app);
         },
 
         onStateRestored: function (app) {
             BarCommon.fillRoleSelects(app, T.noGroup);
-            BarCommon.syncGlobalAxisFontToUI(app);
             BarCommon.refreshAxisPanel(app);
             BarCommon.refreshErrorBarPanel(app);
             BarCommon.refreshGroupColors(app, T.colorEmpty);

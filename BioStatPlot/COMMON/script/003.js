@@ -1,6 +1,7 @@
 (function () {
     'use strict';
 
+    const PC = window.PlotCommon;
     const EN = PlotI18N.lang() === 'en';
     const T = {
         importInfo: EN
@@ -13,19 +14,6 @@
         sampleTip: EN ? 'Import data to select samples' : '导入数据后可选择',
         noSample: EN ? 'No available sample columns' : '没有可用的样本列'
     };
-
-    function num(app, id, fallback) {
-        const el = app.$(id);
-        if (!el) return fallback;
-        const v = parseFloat(el.value);
-        return isFinite(v) ? v : fallback;
-    }
-
-    function estTextWidth(str, fontSize) {
-        let w = 0;
-        for (const ch of String(str)) w += /[\u4e00-\u9fa5\uff00-\uffef]/.test(ch) ? 1 : 0.55;
-        return w * fontSize;
-    }
 
     function fillAxisSelect(app) {
         const sel = app.$('axisColSel');
@@ -58,17 +46,19 @@
         box.innerHTML = cands.map(h => {
             const checked = state.roles.samples.indexOf(h) >= 0 ? 'checked' : '';
             return '<label><input type="checkbox" class="sample-col-cb" value="' +
-                PlotCommon.escapeHtml(h) + '" ' + checked + '> ' + PlotCommon.escapeHtml(h) + '</label>';
+                PlotCommon.escapeHtml(h) + '" ' + checked + '> ' +
+                PlotCommon.escapeHtml(h) + '</label>';
         }).join('');
-        box.querySelectorAll('.sample-col-cb').forEach(cb => {
-            cb.addEventListener('change', () => {
-                state.roles.samples = Array.from(box.querySelectorAll('.sample-col-cb:checked'))
-                    .map(x => x.value);
-                state.customColors = {};
-                app.refreshColors();
-                /* 换了样本后自动重绘 */
-                if (state.data.length) app.drawChart();
-            });
+
+        if (box._delegated) return;
+        box._delegated = true;
+        box.addEventListener('change', e => {
+            if (!e.target.classList.contains('sample-col-cb')) return;
+            state.roles.samples = Array.from(box.querySelectorAll('.sample-col-cb:checked'))
+                .map(x => x.value);
+            state.customColors = {};
+            refreshSampleColors(app);
+            if (state.data.length) app.drawChart();
         });
     }
 
@@ -80,12 +70,11 @@
             return;
         }
         const baseColors = app.resolvePaletteColors(samples.length);
-        const items = samples.map((s, i) => ({
-            name: s,
-            color: app.state.customColors[s] || baseColors[i]
-        }));
         PlotCommon.renderColorAssignment(container, {
-            items: items,
+            items: samples.map((s, i) => ({
+                name: s,
+                color: app.state.customColors[s] || baseColors[i]
+            })),
             onChange: (idx, newColor) => {
                 app.state.customColors[samples[idx]] = newColor;
                 if (app.state.currentSvg) app.drawChart();
@@ -99,96 +88,71 @@
     }
 
     function getAxes(app) {
-        const axisCol = app.state.roles.axis;
+        const axis = app.state.roles.axis;
         const samples = app.state.roles.samples;
-        if (!axisCol || !samples.length) return [];
+        if (!axis || !samples.length) return [];
         const out = [];
         app.state.data.forEach(row => {
-            const name = row[axisCol];
+            const name = row[axis];
             if (name === undefined || name === null || name === '') return;
             const values = {};
             samples.forEach(s => { values[s] = parseFloat(row[s]); });
-            out.push({ name: String(name), values: values });
+            out.push({ name: String(name), values });
         });
         return out;
     }
 
     function getRefValues(axes, samples, p) {
+        const pick = a => samples.map(s => a.values[s]).filter(isFinite);
         if (p.scaleMode === 'perAxis') {
-            return axes.map(a => {
-                const vals = samples.map(s => a.values[s]).filter(isFinite);
-                return vals.length ? Math.max.apply(null, vals) : 1;
-            });
+            return axes.map(a => { const v = pick(a); return v.length ? Math.max.apply(null, v) : 1; });
         }
-        const all = [];
-        axes.forEach(a => samples.forEach(s => {
-            if (isFinite(a.values[s])) all.push(a.values[s]);
-        }));
+        const all = axes.reduce((acc, a) => acc.concat(pick(a)), []);
         const gMax = all.length ? Math.max.apply(null, all) : 1;
         return axes.map(() => gMax);
     }
 
     function readParams(app) {
+        const p = PC.readCommonParams(app, { width: 800, height: 700 });
         const $ = app.$;
-        return {
-            width: Math.max(200, num(app, 'chartWidth', 800)),
-            height: Math.max(200, num(app, 'chartHeight', 700)),
-            outerRadius: Math.max(40, num(app, 'outerRadius', 220)),
-            gridLevels: Math.max(1, Math.round(num(app, 'gridLevels', 5))),
-            gridShape: $('gridShape').value || 'polygon',
-            gridColor: $('gridColor').value || '#d8e2ec',
-            axisWidth: Math.max(0, num(app, 'axisWidth', 1)),
+        const n = (id, fb) => PC.num(app, id, fb);
 
-            showGrid: $('showGrid').checked,
-            showAxisLines: $('showAxisLines').checked,
+        p.outerRadius = Math.max(40, n('outerRadius', 220));
+        p.gridLevels = Math.max(1, Math.round(n('gridLevels', 5)));
+        p.gridShape = $('gridShape').value || 'polygon';
+        p.gridColor = $('gridColor').value || '#d8e2ec';
+        p.axisWidth = Math.max(0, n('axisWidth', 1));
 
-            scaleMode: $('scaleMode').value || 'perAxis',
-            scalePos: $('scalePos').value || 'none',
-            scaleType: $('scaleType').value || 'ratio',
-            scaleDecimals: Math.max(0, Math.round(num(app, 'scaleDecimals', 0))),
-            scaleFontSize: Math.max(6, num(app, 'scaleFontSize', 12)),
-            scaleBold: $('scaleBold').checked,
-            scaleItalic: $('scaleItalic').checked,
+        p.showGrid = $('showGrid').checked;
+        p.showAxisLines = $('showAxisLines').checked;
 
-            lineWidth: Math.max(0, num(app, 'lineWidth', 2)),
-            fillOpacity: Math.max(0, Math.min(1, num(app, 'fillOpacity', 0.2))),
-            showFill: $('showFill').checked,
+        p.scaleMode = $('scaleMode').value || 'perAxis';
+        p.scalePos = $('scalePos').value || 'none';
+        p.scaleType = $('scaleType').value || 'ratio';
+        p.scaleDecimals = Math.max(0, Math.round(n('scaleDecimals', 0)));
+        p.scaleFontSize = Math.max(6, n('scaleFontSize', 12));
+        p.scaleBold = $('scaleBold').checked;
+        p.scaleItalic = $('scaleItalic').checked;
 
-            pointSize: Math.max(1, num(app, 'pointSize', 6)),
-            pointStroke: $('pointStroke').value || 'same',
-            pointStrokeWidth: Math.max(0, num(app, 'pointStrokeWidth', 1.5)),
-            showPoints: $('showPoints').checked,
+        p.lineWidth = Math.max(0, n('lineWidth', 2));
+        p.fillOpacity = Math.max(0, Math.min(1, n('fillOpacity', 0.2)));
+        p.showFill = $('showFill').checked;
 
-            fontFamily: $('fontFamily').value || 'Times New Roman',
-            axisLabelFontSize: Math.max(6, num(app, 'axisLabelFontSize', 15)),
-            axisLabelBold: $('axisLabelBold').checked,
-            axisLabelItalic: $('axisLabelItalic').checked,
-            legendFontSize: Math.max(6, num(app, 'legendFontSize', 15)),
-            legendBold: $('legendBold').checked,
-            legendItalic: $('legendItalic').checked,
-            legendTitleFontSize: Math.max(6, num(app, 'legendTitleFontSize', 15)),
-            legendTitleBold: $('legendTitleBold').checked,
-            legendTitleItalic: $('legendTitleItalic').checked,
-            titleFontSize: Math.max(6, num(app, 'titleFontSize', 22)),
-            titleBold: $('titleBold').checked,
-            titleItalic: $('titleItalic').checked,
-            titlePosition: $('titlePosition').value || 'top-center',
+        p.pointSize = Math.max(1, n('pointSize', 3));
+        p.pointStroke = $('pointStroke').value || 'same';
+        p.pointStrokeWidth = Math.max(0, n('pointStrokeWidth', 1.5));
+        p.showPoints = $('showPoints').checked;
 
-            showLegend: $('showLegend').checked,
-            legendPosition: $('legendPosition').value || 'right',
-            legendGap: Math.max(0, num(app, 'legendGap', 30)),
-            showLegendTitle: $('showLegendTitle').checked,
-            legendTitle: $('legendTitle').value || '',
-            showTitle: $('showTitle').checked,
-            chartTitle: $('chartTitle').value || '',
-            showCanvasBorder: $('showCanvasBorder').checked,
-            axisLabelOffset: Math.max(0, num(app, 'axisLabelOffset', 20))
-        };
+        p.axisLabelFontSize = Math.max(6, n('axisLabelFontSize', 15));
+        p.axisLabelBold = $('axisLabelBold').checked;
+        p.axisLabelItalic = $('axisLabelItalic').checked;
+        p.axisLabelOffset = Math.max(0, n('axisLabelOffset', 20));
+
+        return p;
     }
 
     function drawChart(app) {
         const state = app.state;
-        const $ = app.$;
         app.toolbarTip.textContent = '';
 
         if (!state.data.length) { app.showTip('msgTip3', T.noData, 'error'); return; }
@@ -205,83 +169,43 @@
         const width = p.width;
         const height = p.height;
         const refValues = getRefValues(axes, samples, p);
-
-        function norm(v, i) {
+        const norm = (v, i) => {
             if (!isFinite(v)) return 0;
             const mx = refValues[i];
             if (!isFinite(mx) || mx <= 0) return 0;
             return Math.max(0, Math.min(1, v / mx));
-        }
+        };
 
-        const titleH = (p.showTitle && p.chartTitle) ? p.titleFontSize + 10 : 0;
-
-        const wantLegend = !!p.showLegend && samples.length > 0;
-        const pos = p.legendPosition;
-        const isRight = wantLegend && pos === 'right';
-        const isLeft = wantLegend && pos === 'left';
-        const isTop = wantLegend && pos === 'top';
-        const isBottom = wantLegend && pos === 'bottom';
-
-        const legendColW = 200;
-        const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
-        const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
-        const legendInlineH = p.legendFontSize + 20 + legendTitleH;
-        const gap = p.legendGap;
         const margin = 30;
-
-        let areaX = margin, areaY = margin;
-        let areaW = width - 2 * margin;
-        let areaH = height - 2 * margin;
-
-        /* 图形大小不受 gap 影响 */
-        if (isRight) {
-            areaW = width - legendColW - 2 * margin;
-        } else if (isLeft) {
-            areaX = legendColW + 2 * margin;
-            areaW = width - legendColW - 2 * margin;
-        } else if (isTop) {
-            areaY = legendInlineH + 2 * margin;
-            areaH = height - legendInlineH - 2 * margin;
-        } else if (isBottom) {
-            areaH = height - legendInlineH - 2 * margin;
-        }
-        areaW = Math.max(20, areaW);
-        areaH = Math.max(20, areaH);
-
-        const gridAreaH = Math.max(20, areaH - titleH);
+        const areaW = width - 2 * margin;
+        const areaH = height - 2 * margin;
 
         let maxLabelW = 0;
         axes.forEach(a => {
-            maxLabelW = Math.max(maxLabelW, estTextWidth(a.name, p.axisLabelFontSize));
+            maxLabelW = Math.max(maxLabelW, PC.estTextWidth(a.name, p.axisLabelFontSize));
         });
         const labelSpace = maxLabelW * 0.5 + p.axisLabelOffset + 8;
 
         const maxR = Math.max(20, Math.min(
             p.outerRadius,
             areaW / 2 - labelSpace,
-            gridAreaH / 2 - labelSpace
+            areaH / 2 - labelSpace
         ));
 
-        const blockH = titleH + maxR * 2 + labelSpace * 2;
-        const blockTop = areaY + (areaH - blockH) / 2;
-        const cx = areaX + areaW / 2;
-        const cy = blockTop + titleH + labelSpace + maxR;
+        const cx = width / 2;
+        const cy = height / 2;
 
         const baseColors = app.resolvePaletteColors(samples.length);
         const colors = samples.map((s, i) => state.customColors[s] || baseColors[i]);
 
         const canvas = PlotCanvas.create(app.chartPreview, {
-            width: width, height: height, fontFamily: p.fontFamily, border: p.showCanvasBorder
+            width: width,
+            height: height,
+            fontFamily: p.fontFamily,
+            border: p.showCanvasBorder
         });
         const svg = canvas.root;
         state.currentSvg = canvas.node;
-
-        if (p.showTitle && p.chartTitle) {
-            PlotTitle.draw(svg, {
-                width: width, height: height, position: p.titlePosition, text: p.chartTitle,
-                fontSize: p.titleFontSize, bold: p.titleBold, italic: p.titleItalic
-            });
-        }
 
         const angles = [];
         for (let i = 0; i < N; i++) angles.push((Math.PI * 2 * i) / N - Math.PI / 2);
@@ -401,40 +325,13 @@
                 .text(axes[i].name);
         });
 
-        if (wantLegend) {
-            let legendArea, orientation;
-            const gapShift = Math.max(0, gap);
-
-            if (isRight || isLeft) {
-                orientation = 'vertical';
-                const legendX = isRight
-                    ? Math.max(margin, width - margin - legendColW - gapShift)
-                    : Math.min(width - margin - legendColW, margin + gapShift);
-                legendArea = { x: legendX, y: areaY, w: legendColW, h: areaH };
-            } else {
-                orientation = 'horizontal';
-                const legendY = isTop
-                    ? Math.min(height - margin - legendInlineH, margin + gapShift)
-                    : Math.max(margin, height - margin - legendInlineH - gapShift);
-                legendArea = { x: 0, y: legendY, w: width, h: legendInlineH };
-            }
-
-            PlotLegend.draw(svg, {
-                orientation: orientation,
-                area: legendArea,
-                width: width,
-                items: samples.map((s, i) => ({ label: s, color: colors[i], shape: 'rect' })),
-                fontSize: p.legendFontSize,
-                bold: p.legendBold,
-                italic: p.legendItalic,
-                markerSize: p.legendFontSize,
-                textGap: 8,
-                itemGap: 20,
-                showTitle: hasLegendTitle,
-                title: p.legendTitle,
-                titleFontSize: p.legendTitleFontSize,
-                titleBold: p.legendTitleBold,
-                titleItalic: p.legendTitleItalic
+        if (p.showLegend && samples.length) {
+            PC.drawLegendOverlay(svg, {
+                p: p,
+                items: samples.map(s => ({ name: s })),
+                colors: colors,
+                shape: 'rect',
+                labelFormatter: it => it.name
             });
         }
 
@@ -447,11 +344,8 @@
         exportName: 'radar_chart',
         exampleData: 'Indicator\tS1\tS2\tS3\nSpeed\t80\t60\t75\nPower\t70\t90\t65\nAccuracy\t85\t70\t80\nEndurance\t60\t75\t90\nAgility\t90\t65\t70\n',
         importInfo: T.importInfo,
-        syncLegendTitle: function (app) {
-            if (!app.state.legendTitleEdited && app.legendTitleInput) {
-                app.legendTitleInput.value = 'Sample';
-            }
-        },
+
+
         setup: function (app) {
             fillAxisSelect(app);
             renderSampleCols(app);
@@ -464,11 +358,12 @@
                 }
                 state.customColors = {};
                 renderSampleCols(app);
-                app.refreshColors();
+                refreshSampleColors(app);
                 if (state.data.length) app.drawChart();
             });
             refreshSampleColors(app);
         },
+
         onDataImported: function (app, res) {
             const axisCol = res.headers.find(h => res.columnTypes[h] === 'categorical') || res.headers[0];
             let samples = res.headers.filter(h => h !== axisCol && res.columnTypes[h] === 'numeric');
@@ -478,19 +373,23 @@
             fillAxisSelect(app);
             renderSampleCols(app);
         },
+
         onReset: function (app) {
             app.state.roles = { axis: '', samples: [] };
             fillAxisSelect(app);
             renderSampleCols(app);
         },
+
         onStateRestored: function (app) {
             fillAxisSelect(app);
             renderSampleCols(app);
             refreshSampleColors(app);
         },
+
         refreshColors: function (app) {
             refreshSampleColors(app);
         },
+
         drawChart: function (app) {
             drawChart(app);
         }

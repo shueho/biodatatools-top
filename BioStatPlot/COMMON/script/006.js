@@ -1,24 +1,7 @@
 (function () {
     'use strict';
 
-    function num(app, id, fallback) {
-        const el = app.$(id);
-        if (!el) return fallback;
-        const v = parseFloat(el.value);
-        return isFinite(v) ? v : fallback;
-    }
-
-    function fmtNum(v, d) {
-        if (!isFinite(v)) return '';
-        if (Number.isInteger(v)) return String(v);
-        return Number(v).toFixed(d);
-    }
-
-    function textColorOn(bg) {
-        const rgb = PlotCommon.hexToRgb(bg);
-        const lum = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
-        return lum > 165 ? '#333333' : '#ffffff';
-    }
+    const PC = window.PlotCommon;
 
     PlotApp.create({
         exportName: 'concentric_ring_chart',
@@ -26,64 +9,36 @@
         importInfo: PlotI18N.lang() === 'en'
             ? 'Must include a header row with at least a <strong>category column</strong> and a <strong>value column</strong>. You can paste directly from Excel.'
             : '需包含表头，且至少包含 <strong>分类列</strong> 和 <strong>数值列</strong>。可直接粘贴 Excel 内容。',
-        stateExtra: { sortDir: 'asc' },
 
-        onDataImported: function (app) {
-            app.state.sortBy = '__input__';
-            app.state.sortDir = 'asc';
-            if (app.sortDirSel) app.sortDirSel.value = 'asc';
-        },
-        onReset: function (app) {
-            app.state.sortDir = 'asc';
-            if (app.sortDirSel) app.sortDirSel.value = 'asc';
-        },
 
+        syncLegendTitle: function (app) {
+            const input = app.$('legendTitle');
+            if (!app.state.legendTitleEdited && input) {
+                input.value = app.state.roles.category || '';
+            }
+        },
         readParams: function (app) {
+            const p = PC.readCommonParams(app, { width: 760, height: 680 });
             const $ = app.$;
-            return {
-                width: Math.max(200, num(app, 'chartWidth', 760)),
-                height: Math.max(200, num(app, 'chartHeight', 680)),
 
-                innerRadius: Math.max(0, num(app, 'innerRadius', 40)),
-                outerRadius: Math.max(60, num(app, 'outerRadius', 280)),
-                ringGap: Math.max(0, num(app, 'ringGap', 3)),
-                startAngle: num(app, 'startAngle', 0),
-                endAngle: num(app, 'endAngle', 360),
-                ringOrder: $('ringOrder').value || 'inner',
+            p.innerRadius = Math.max(0, PC.num(app, 'innerRadius', 40));
+            p.outerRadius = Math.max(60, PC.num(app, 'outerRadius', 280));
+            p.ringGap = Math.max(0, PC.num(app, 'ringGap', 3));
+            p.startAngle = PC.num(app, 'startAngle', 0);
+            p.endAngle = PC.num(app, 'endAngle', 360);
+            p.ringOrder = $('ringOrder').value || 'inner';
 
-                showRingStroke: $('showRingStroke').checked,
-                ringStrokeColor: $('ringStrokeColor').value || '#ffffff',
-                ringStrokeWidth: Math.max(0, num(app, 'ringStrokeWidth', 1)),
+            p.showRingStroke = $('showRingStroke').checked;
+            p.ringStrokeColor = $('ringStrokeColor').value || '#ffffff';
+            p.ringStrokeWidth = Math.max(0, PC.num(app, 'ringStrokeWidth', 1));
 
-                fontFamily: $('fontFamily').value || 'Times New Roman',
+            p.labelContent = $('labelContent').value || 'none';
+            p.labelDecimals = Math.max(0, Math.round(PC.num(app, 'labelDecimals', 1)));
+            p.labelFontSize = Math.max(6, PC.num(app, 'labelFontSize', 13));
+            p.labelBold = $('labelBold').checked;
+            p.labelItalic = $('labelItalic').checked;
 
-                labelContent: $('labelContent').value || 'none',
-                labelDecimals: Math.max(0, Math.round(num(app, 'labelDecimals', 1))),
-                labelFontSize: Math.max(6, num(app, 'labelFontSize', 13)),
-                labelBold: $('labelBold').checked,
-                labelItalic: $('labelItalic').checked,
-
-                legendFontSize: Math.max(6, num(app, 'legendFontSize', 15)),
-                legendBold: $('legendBold').checked,
-                legendItalic: $('legendItalic').checked,
-                legendTitleFontSize: Math.max(6, num(app, 'legendTitleFontSize', 15)),
-                legendTitleBold: $('legendTitleBold').checked,
-                legendTitleItalic: $('legendTitleItalic').checked,
-
-                titleFontSize: Math.max(6, num(app, 'titleFontSize', 22)),
-                titleBold: $('titleBold').checked,
-                titleItalic: $('titleItalic').checked,
-                titlePosition: $('titlePosition').value || 'top-center',
-
-                showLegend: $('showLegend').checked,
-                legendPosition: $('legendPosition').value || 'right',
-                legendGap: Math.max(0, num(app, 'legendGap', 30)),
-                showLegendTitle: $('showLegendTitle').checked,
-                legendTitle: $('legendTitle').value || '',
-                showTitle: $('showTitle').checked,
-                chartTitle: $('chartTitle').value || '',
-                showCanvasBorder: $('showCanvasBorder').checked
-            };
+            return p;
         },
 
         buildData: function (app, p) {
@@ -91,47 +46,8 @@
         },
 
         computeLayout: function (p, items, app) {
-            const width = p.width;
-            const height = p.height;
-            const titleH = (p.showTitle && p.chartTitle) ? p.titleFontSize + 10 : 0;
-
-            const legendColW = 200;
-            const legendRowH = p.legendFontSize + 10;
-            const hasLegendTitle = !!(p.showLegendTitle && p.legendTitle && p.legendTitle.trim());
-            const legendTitleH = hasLegendTitle ? (p.legendTitleFontSize + 10) : 0;
-            const legendInlineH = p.legendFontSize + 20 + legendTitleH;
-            const gap = p.legendGap;
             const margin = 30;
-
-            const wantLegend = !!p.showLegend && items.length > 0;
-            const pos = p.legendPosition || 'right';
-            const isRight = wantLegend && pos === 'right';
-            const isLeft = wantLegend && pos === 'left';
-            const isTop = wantLegend && pos === 'top';
-            const isBottom = wantLegend && pos === 'bottom';
-            const vert = isRight || isLeft;
-
-            let areaX = margin, areaY = margin;
-            let areaW = width - 2 * margin;
-            let areaH = height - 2 * margin;
-
-            /* 图形大小不受 gap 影响 */
-            if (isRight) {
-                areaW = width - legendColW - 2 * margin;
-            } else if (isLeft) {
-                areaX = legendColW + 2 * margin;
-                areaW = width - legendColW - 2 * margin;
-            } else if (isTop) {
-                areaY = legendInlineH + 2 * margin;
-                areaH = height - legendInlineH - 2 * margin;
-            } else if (isBottom) {
-                areaH = height - legendInlineH - 2 * margin;
-            }
-            areaW = Math.max(20, areaW);
-            areaH = Math.max(20, areaH);
-
-            const gridAreaH = Math.max(20, areaH - titleH);
-            const availR = Math.max(20, Math.min(areaW / 2, gridAreaH / 2));
+            const availR = Math.max(20, Math.min(p.width - 2 * margin, p.height - 2 * margin) / 2);
 
             let outerR = Math.max(p.innerRadius + 20, p.outerRadius);
             let innerR = Math.max(0, p.innerRadius);
@@ -142,27 +58,24 @@
             }
             innerR = Math.min(innerR, outerR - 10);
 
-            const blockH = titleH + outerR * 2;
-            const blockTop = areaY + Math.max(0, (areaH - blockH) / 2);
-            const cx = areaX + areaW / 2;
-            const cy = blockTop + titleH + outerR;
-
             return {
-                width: width, height: height, cx: cx, cy: cy,
-                innerR: innerR, outerR: outerR,
-                legendVertical: vert, legendColW: legendColW,
-                legendInlineH: legendInlineH, hasLegendTitle: hasLegendTitle,
-                isRight: isRight, isLeft: isLeft, isTop: isTop, isBottom: isBottom,
-                areaX: areaX, areaY: areaY, areaW: areaW, areaH: areaH,
-                margin: margin, gap: gap
+                cx: p.width / 2,
+                cy: p.height / 2,
+                innerR: innerR,
+                outerR: outerR
             };
         },
 
         draw: function (ctx) {
-            const { root, p, data: items, layout: L, colors } = ctx;
-            const { width, height, cx, cy, innerR, outerR, legendVertical, legendColW,
-                    legendInlineH, hasLegendTitle, isRight, isLeft, isTop, isBottom,
-                    areaY, areaH, margin, gap } = L;
+            const root = ctx.root;
+            const p = ctx.p;
+            const items = ctx.data;
+            const colors = ctx.colors;
+            const L = ctx.layout;
+            const cx = L.cx;
+            const cy = L.cy;
+            const innerR = L.innerR;
+            const outerR = L.outerR;
             const N = items.length;
 
             let gapPx = p.ringGap;
@@ -229,7 +142,7 @@
                     let txt = '';
                     switch (p.labelContent) {
                         case 'name': txt = d.name; break;
-                        case 'value': txt = fmtNum(d.value, p.labelDecimals); break;
+                        case 'value': txt = PC.fmtNum(d.value, p.labelDecimals); break;
                         case 'pct': txt = (d.percent * 100).toFixed(p.labelDecimals) + '%'; break;
                         case 'name_pct': txt = d.name + ' (' + (d.percent * 100).toFixed(p.labelDecimals) + '%)'; break;
                     }
@@ -248,61 +161,18 @@
                         .attr('font-size', fs)
                         .attr('font-weight', labelWeight)
                         .attr('font-style', labelStyle)
-                        .attr('fill', textColorOn(colors[d._colorIdx]))
+                        .attr('fill', PC.textColorOn(colors[d._colorIdx]))
                         .attr('pointer-events', 'none')
                         .text(txt);
                 });
             }
 
-
             if (p.showLegend && items.length) {
-                let legendArea, orientation;
-                const gapShift = Math.max(0, gap);
-
-                if (legendVertical) {
-                    orientation = 'vertical';
-                    const legendX = isRight
-                        ? Math.max(margin, width - margin - legendColW - gapShift)
-                        : Math.min(width - margin - legendColW, margin + gapShift);
-                    legendArea = {
-                        x: legendX,
-                        y: areaY,
-                        w: legendColW,
-                        h: areaH
-                    };
-                } else {
-                    orientation = 'horizontal';
-                    const legendY = isTop
-                        ? Math.min(height - margin - legendInlineH, margin + gapShift)
-                        : Math.max(margin, height - margin - legendInlineH - gapShift);
-                    legendArea = {
-                        x: 0,
-                        y: legendY,
-                        w: width,
-                        h: legendInlineH
-                    };
-                }
-
-                PlotLegend.draw(root, {
-                    orientation: orientation,
-                    area: legendArea,
-                    width: width,
-                    items: items.map((it, i) => ({
-                        label: it.name + ' (' + (it.percent * 100).toFixed(1) + '%)',
-                        color: colors[i],
-                        shape: 'rect'
-                    })),
-                    fontSize: p.legendFontSize,
-                    bold: p.legendBold,
-                    italic: p.legendItalic,
-                    markerSize: p.legendFontSize,
-                    textGap: 8,
-                    itemGap: 20,
-                    showTitle: hasLegendTitle,
-                    title: p.legendTitle,
-                    titleFontSize: p.legendTitleFontSize,
-                    titleBold: p.legendTitleBold,
-                    titleItalic: p.legendTitleItalic
+                PC.drawLegendOverlay(root, {
+                    p: p,
+                    items: items,
+                    colors: colors,
+                    shape: 'rect'
                 });
             }
         }
