@@ -1,7 +1,8 @@
 'use strict';
 
 /* ---------- 常量 ---------- */
-const ICON_ROTATE_INTERVAL = 5000;
+const ICON_ROTATE_MIN      = 3000;   // 随机间隔下限 (ms)
+const ICON_ROTATE_MAX      = 15000;  // 随机间隔上限 (ms)
 const ICON_PROBE_MAX       = 30;
 const ICON_SLIDE_DURATION  = 600;
 
@@ -162,15 +163,22 @@ function fillIconSlots() {
 }
 
 /* ============================================================
-   翻页轮换
+   随机翻页轮换（每个图标独立随机）
 ============================================================ */
+
+function pickNextIndex(total, current) {
+    if (total < 2) return current;
+    const offset = 1 + Math.floor(Math.random() * (total - 1));
+    return (current + offset) % total;
+}
+
 function slideNext(el) {
     const files = iconFileCache.get(el.dataset.iconKey) || [];
     if (files.length < 2) return;
 
     const imgs    = el.querySelectorAll('.icon-slide');
     const current = parseInt(el.dataset.current, 10) || 0;
-    const next    = (current + 1) % files.length;
+    const next    = pickNextIndex(files.length, current);
     const curImg  = imgs[current];
     const nxtImg  = imgs[next];
     if (!curImg || !nxtImg) return;
@@ -193,20 +201,33 @@ function slideNext(el) {
     el.dataset.current = next;
 }
 
-let iconRotatorTimer = null;
-function startIconRotators() {
-    const rotators = document.querySelectorAll('.icon-rotator');
-    if (!rotators.length) return;
+const rotatorTimers = new Map();   
 
-    if (iconRotatorTimer) clearInterval(iconRotatorTimer);
-    iconRotatorTimer = setInterval(() => {
-        document.querySelectorAll('.icon-rotator').forEach(el => slideNext(el));
-    }, ICON_ROTATE_INTERVAL);
+function scheduleNextRotation(el) {
+    const delay = ICON_ROTATE_MIN + Math.random() * (ICON_ROTATE_MAX - ICON_ROTATE_MIN);
+    const timer = setTimeout(() => {
+        rotatorTimers.delete(el);
+        if (!el.isConnected) return;  
+        slideNext(el);
+        scheduleNextRotation(el);     
+    }, delay);
+    rotatorTimers.set(el, timer);
 }
 
-/* ============================================================
-   顶部/侧栏语言化文案
-============================================================ */
+function stopIconRotators() {
+    rotatorTimers.forEach(t => clearTimeout(t));
+    rotatorTimers.clear();
+}
+
+function startIconRotators() {
+    stopIconRotators();
+    document.querySelectorAll('.icon-rotator').forEach(el => {
+        // 首次也随机错开，避免所有图标同时开始切换
+        scheduleNextRotation(el);
+    });
+}
+
+
 const langConfig = {
     en: {
         navTitle: '📚 Tools',
@@ -285,7 +306,6 @@ function renderSideNav() {
 
         const subMenu = document.getElementById(catId);
 
-        /* 情况一：类别直接包含 tools（无子类别） */
         if (cat.tools && cat.tools.length) {
             cat.tools.forEach(tool => {
                 const toolLi = document.createElement('li');
@@ -295,7 +315,6 @@ function renderSideNav() {
             return;
         }
 
-        /* 情况二：类别包含子类别 */
         (cat.subcategories || []).forEach((sub, subIdx) => {
             const subId = `sub-${catIdx}-${subIdx}`;
             const subLi = document.createElement('li');
@@ -402,7 +421,6 @@ function renderToolCards() {
         catDiv.innerHTML = `<h2 class="category-title">${cat[LANG] || ''}</h2>`;
         container.appendChild(catDiv);
 
-        /* 情况一：类别直接包含 tools */
         if (cat.tools && cat.tools.length) {
             const grid = document.createElement('div');
             grid.className = 'sub-tool-grid';
@@ -412,7 +430,6 @@ function renderToolCards() {
             return;
         }
 
-        /* 情况二：类别包含子类别 */
         (cat.subcategories || []).forEach((sub, subIdx) => {
             const subDiv = document.createElement('div');
             subDiv.className = 'sub-category';

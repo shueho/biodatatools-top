@@ -310,7 +310,14 @@
                             const capLen = (app.state.errBar.capWidth != null)
                                 ? app.state.errBar.capWidth
                                 : Math.max(6, ringW * 0.7);
-                            [t1, t2].forEach(t => {
+
+                            const capMode = (ext.capMode) || app.state.errBar.showWhich || 'both';
+                            const capsToDraw = [];
+                            if (capMode === 'both')        capsToDraw.push(t1, t2);
+                            else if (capMode === 'upper')  capsToDraw.push(t2);
+                            else if (capMode === 'lower')  capsToDraw.push(t1);
+
+                            capsToDraw.forEach(t => {
                                 const a = angleAt(t);
                                 const ux = Math.sin(a);
                                 const uy = -Math.cos(a);

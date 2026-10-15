@@ -253,23 +253,30 @@ function renderColOptions(headers, current, placeholderText) {
 
             if (lower === null && upper === null) return null;
 
+            let capMode = config.showWhich || 'both';
+            if (lower === null) capMode = 'upper';
+            else if (upper === null) capMode = 'lower';
+
             if (lower === null) lower = v;
             if (upper === null) upper = v;
 
-            return { lower: Math.min(lower, upper), upper: Math.max(lower, upper) };
+            return {
+                lower: Math.min(lower, upper),
+                upper: Math.max(lower, upper),
+                capMode: capMode
+            };
         }
 
         if (config.mode === 'value') {
             const err = parseFloat(row[config.errCol]);
             if (!isFinite(err) || err < 0) return null;
-            if (config.showWhich === 'upper') return { lower: v, upper: v + err };
-            if (config.showWhich === 'lower') return { lower: v - err, upper: v };
-            return { lower: v - err, upper: v + err };
+            if (config.showWhich === 'upper') return { lower: v, upper: v + err, capMode: 'upper' };
+            if (config.showWhich === 'lower') return { lower: v - err, upper: v, capMode: 'lower' };
+            return { lower: v - err, upper: v + err, capMode: 'both' };
         }
 
         return null;
     }
-
     function resolveErrorColor(config, barColor) {
         if (!config) return '#e67700';
         if (config.colorMode === 'sameAsBar') return barColor || '#e67700';

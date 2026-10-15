@@ -23,6 +23,7 @@
                     { id: '008', zh: '分类柱状图', en: 'Categorized Bar Chart' },
                     { id: '009', zh: '堆积柱状图（带误差棒）', en: 'Stacked Bar Chart (with Error Bars)' },
                     { id: '010', zh: '堆积柱状图（宽表/丰度表）', en: 'Stacked Bar Chart (Wide / Abundance Table)' },
+                    { id: '011', zh: '显著性柱状图', en: 'Significance Bar Chart' },
 
                 ]
             },
@@ -30,7 +31,7 @@
                 zh: '箱线图',
                 en: 'Box Plot',
                 tools: [
-                    { id: 'xxx', zh: '开发中', en: 'NULL' }
+                    { id: '012', zh: '显著性箱线图', en: 'Significance Box Plot' },
                 ]
             },
 

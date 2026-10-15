@@ -368,48 +368,60 @@
     }
 
     /* ---------- 误差棒绘制 ---------- */
+
     function drawErrorBar(parent, opts) {
         const {
             xPx, yPx,
             barThickness,
             loPx, hiPx,
+            valuePx,
             isHorizontal,
-            errColor, errWidth, capWidth
+            errColor, errWidth, capWidth,
+            capMode
         } = opts;
 
         const capHalf = (capWidth != null)
             ? capWidth / 2
             : Math.min(barThickness * 0.35, 8);
+        const mode = capMode || 'both';
+
+        const line = (x1, y1, x2, y2) => parent.append('line')
+            .attr('x1', x1).attr('y1', y1)
+            .attr('x2', x2).attr('y2', y2)
+            .attr('stroke', errColor).attr('stroke-width', errWidth);
 
         if (isHorizontal) {
-            parent.append('line')
-                .attr('x1', loPx).attr('y1', yPx)
-                .attr('x2', hiPx).attr('y2', yPx)
-                .attr('stroke', errColor).attr('stroke-width', errWidth);
-            parent.append('line')
-                .attr('x1', hiPx).attr('y1', yPx - capHalf)
-                .attr('x2', hiPx).attr('y2', yPx + capHalf)
-                .attr('stroke', errColor).attr('stroke-width', errWidth).attr('stroke-linecap', 'round');
-            parent.append('line')
-                .attr('x1', loPx).attr('y1', yPx - capHalf)
-                .attr('x2', loPx).attr('y2', yPx + capHalf)
-                .attr('stroke', errColor).attr('stroke-width', errWidth).attr('stroke-linecap', 'round');
+            if (mode === 'both') {
+                line(loPx, yPx, hiPx, yPx);
+                line(loPx, yPx - capHalf, loPx, yPx + capHalf);
+                line(hiPx, yPx - capHalf, hiPx, yPx + capHalf);
+            } else if (mode === 'upper') {
+                const vPx = (valuePx != null) ? valuePx : loPx;
+                line(vPx, yPx, hiPx, yPx);
+                line(hiPx, yPx - capHalf, hiPx, yPx + capHalf);
+            } else if (mode === 'lower') {
+                const vPx = (valuePx != null) ? valuePx : hiPx;
+                line(vPx, yPx, loPx, yPx);
+                line(loPx, yPx - capHalf, loPx, yPx + capHalf);
+            }
         } else {
-            parent.append('line')
-                .attr('x1', xPx).attr('y1', loPx)
-                .attr('x2', xPx).attr('y2', hiPx)
-                .attr('stroke', errColor).attr('stroke-width', errWidth);
-            parent.append('line')
-                .attr('x1', xPx - capHalf).attr('y1', hiPx)
-                .attr('x2', xPx + capHalf).attr('y2', hiPx)
-                .attr('stroke', errColor).attr('stroke-width', errWidth).attr('stroke-linecap', 'round');
-            parent.append('line')
-                .attr('x1', xPx - capHalf).attr('y1', loPx)
-                .attr('x2', xPx + capHalf).attr('y2', loPx)
-                .attr('stroke', errColor).attr('stroke-width', errWidth).attr('stroke-linecap', 'round');
+            const topPx = Math.min(loPx, hiPx);
+            const botPx = Math.max(loPx, hiPx);
+            const vPx = (valuePx != null) ? valuePx : botPx;
+
+            if (mode === 'both') {
+                line(xPx, topPx, xPx, botPx);
+                line(xPx - capHalf, topPx, xPx + capHalf, topPx);
+                line(xPx - capHalf, botPx, xPx + capHalf, botPx);
+            } else if (mode === 'upper') {
+                line(xPx, vPx, xPx, topPx);
+                line(xPx - capHalf, topPx, xPx + capHalf, topPx);
+            } else if (mode === 'lower') {
+                line(xPx, vPx, xPx, botPx);
+                line(xPx - capHalf, botPx, xPx + capHalf, botPx);
+            }
         }
     }
-
     /* ---------- 轴标题绘制 ---------- */
     function drawAxisTitles(svg, axisCfg, plotX, plotY, plotW, plotH, leftPad, bottomPad) {
         if (axisCfg.x.titleShow && axisCfg.x.titleContent) {

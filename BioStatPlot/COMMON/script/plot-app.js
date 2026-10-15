@@ -7,6 +7,21 @@
     function create(cfg) {
         cfg = cfg || {};
 
+        const DATA_STATE_FIELDS = ['currentSvg', 'data', 'headers', 'columnTypes', 'roles', 'sortBy', 'sortDir'];
+        const DATA_FORM_IDS = [
+            'catColSel', 'valColSel',
+            'xColSel', 'groupColSel', 'yColSel', 'repColSel',
+            'sortBy', 'sortDir',
+            'catOrder', 'groupOrder'
+        ];
+
+        function isDataStateField(k) {
+            return DATA_STATE_FIELDS.indexOf(k) >= 0;
+        }
+        function isDataFormId(id) {
+            return DATA_FORM_IDS.indexOf(id) >= 0;
+        }
+
         const state = Object.assign({
             headers: [], data: [],
             roles: { category: '', value: '' },
@@ -64,12 +79,12 @@
             }
         });
 
-function defaultSyncLegendTitle() {
-    const input = $('legendTitle');
-    if (!state.legendTitleEdited && input) {
-        input.value = 'Item';
-    }
-}
+        function defaultSyncLegendTitle() {
+            const input = $('legendTitle');
+            if (!state.legendTitleEdited && input) {
+                input.value = 'Item';
+            }
+        }
         function syncLegendTitle() {
             if (cfg.syncLegendTitle) cfg.syncLegendTitle(app);
             else defaultSyncLegendTitle();
@@ -382,6 +397,7 @@ function defaultSyncLegendTitle() {
                 if (el.closest('#importPanel')) return;
                 if (el.id === 'importStateFile') return;
                 if (el.type === 'file') return;
+                if (isDataFormId(el.id)) return;
                 if (el.type === 'radio') {
                     if (el.checked) out[el.id] = true;
                     return;
@@ -398,6 +414,7 @@ function defaultSyncLegendTitle() {
         function applyFormState(form) {
             if (!form) return;
             Object.keys(form).forEach(id => {
+                if (isDataFormId(id)) return;
                 const el = document.getElementById(id);
                 if (!el) return;
                 const v = form[id];
@@ -409,7 +426,7 @@ function defaultSyncLegendTitle() {
         function collectState() {
             const stateCopy = {};
             Object.keys(state).forEach(k => {
-                if (k === 'currentSvg') return;
+                if (isDataStateField(k)) return;
                 try { stateCopy[k] = JSON.parse(JSON.stringify(state[k])); } catch (e) {}
             });
             return {
@@ -441,7 +458,7 @@ function defaultSyncLegendTitle() {
                 throw new Error('invalid style file');
             }
             Object.keys(data.state).forEach(k => {
-                if (k === 'currentSvg') return;
+                if (isDataStateField(k)) return;
                 state[k] = data.state[k];
             });
             applyFormState(data.form);

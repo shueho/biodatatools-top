@@ -979,6 +979,46 @@ if (s === 'circle') {
         .attr('width', markerSize).attr('height', markerSize)
         .attr('rx', 2)
         .attr('fill', colors[i]);
+} else if (s === 'box') {
+    const bx = colX;
+    const by = markerY;
+    const bw = markerSize;
+    const bh = markerSize;
+    const midX = bx + bw / 2;
+    const q1y = by + bh * 0.3;
+    const q3y = by + bh * 0.7;
+    const medY = by + bh * 0.5;
+    const topY = by;
+    const botY = by + bh;
+    const capHalf = bw * 0.28;
+
+    group.append('rect')
+        .attr('x', bx).attr('y', q1y)
+        .attr('width', bw).attr('height', q3y - q1y)
+        .attr('fill', colors[i])
+        .attr('fill-opacity', 0.7)
+        .attr('stroke', '#333')
+        .attr('stroke-width', 0.8);
+    group.append('line')
+        .attr('x1', midX).attr('x2', midX)
+        .attr('y1', q1y).attr('y2', topY)
+        .attr('stroke', '#333').attr('stroke-width', 0.8);
+    group.append('line')
+        .attr('x1', midX).attr('x2', midX)
+        .attr('y1', q3y).attr('y2', botY)
+        .attr('stroke', '#333').attr('stroke-width', 0.8);
+    group.append('line')
+        .attr('x1', midX - capHalf).attr('x2', midX + capHalf)
+        .attr('y1', topY).attr('y2', topY)
+        .attr('stroke', '#333').attr('stroke-width', 0.8);
+    group.append('line')
+        .attr('x1', midX - capHalf).attr('x2', midX + capHalf)
+        .attr('y1', botY).attr('y2', botY)
+        .attr('stroke', '#333').attr('stroke-width', 0.8);
+    group.append('line')
+        .attr('x1', bx).attr('x2', bx + bw)
+        .attr('y1', medY).attr('y2', medY)
+        .attr('stroke', '#333').attr('stroke-width', 1.2);
 } else if (window.PlotShapes) {
     const symType = PlotShapes.getSymbolType(s);
     const size = PlotShapes.getSymbolSize(s, markerSize);
