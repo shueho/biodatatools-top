@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histogram - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Histogram</h2>
+            <p>Frequency / percentage histogram with binning by bin count or bin width, and optional normal-distribution fit.</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Select Data Column</div>
+            <div class="param-panel">
+                <div class="param-panel-title">Data Column</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Numeric column</label>
+                        <select id="valColSel" disabled><option>— Please import data first —</option></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Choose Palette &amp; Colors</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Categorical palette</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">Reverse palette order</label>
+                    <label><input type="checkbox" id="cycleColors">Cycle colors</label>
+                </div>
+            </div>
+
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Plot Parameters</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+            <div id="axisPanelContainer"></div>
+            <div class="info-box" style="margin-top:10px;">
+                <strong>Note:</strong> Axis Position and Axis Break do not apply to histograms.
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Histogram Settings</div>
+
+                <div class="axis-subsection">Binning</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Mode</label>
+                        <select id="binMode" data-redraw>
+                            <option value="count" selected>By bin count</option>
+                            <option value="spacing">By bin width</option>
+                        </select>
+                    </div>
+                    <div class="param-item" id="binCountItem">
+                        <label>Bin count</label>
+                        <input type="number" id="binCount" value="12" min="1" max="200" step="1" data-redraw>
+                    </div>
+                    <div class="param-item" id="binSpacingItem" style="display:none;">
+                        <label>Bin width</label>
+                        <input type="number" id="binSpacing" value="5" min="0.0001" step="any" data-redraw>
+                    </div>
+                </div>
+
+                <div class="param-inline" style="margin-top:10px;">
+                    <label><input type="checkbox" id="autoRange" checked data-redraw>Auto range (data min / max)</label>
+                    <label><input type="checkbox" id="midpointTicks" checked data-redraw>Use bin midpoints as ticks</label>
+                    <label>Decimals
+                        <select id="tickDecimals" data-redraw style="width:90px;">
+                            <option value="auto" selected>Auto</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="param-grid cols-4" style="margin-top:8px;">
+                    <div class="param-item">
+                        <label>Range min</label>
+                        <input type="number" id="rangeMin" value="0" step="any" data-redraw disabled>
+                    </div>
+                    <div class="param-item">
+                        <label>Range max</label>
+                        <input type="number" id="rangeMax" value="100" step="any" data-redraw disabled>
+                    </div>
+                </div>
+
+                <div class="axis-subsection">Display Mode</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Y axis</label>
+                        <select id="displayMode" data-redraw>
+                            <option value="count" selected>Frequency (raw count)</option>
+                            <option value="frequency">Frequency (%)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="axis-subsection">Bars</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>Bar gap</label>
+                        <input type="number" id="barGap" value="0" min="0" max="0.5" step="0.01" data-redraw></div>
+                    <div class="param-item"><label>Fill color</label>
+                        <input type="color" id="barFillColor" value="#4e79a7" data-redraw></div>
+                    <div class="param-item"><label>Stroke width</label>
+                        <input type="number" id="barStrokeWidth" value="1" min="0" max="4" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>Stroke color</label>
+                        <input type="color" id="barStrokeColor" value="#ffffff" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="barShowValue" data-redraw>Show value on top</label>
+                    <label>Font size
+                        <input type="number" id="barValueFontSize" value="11" min="6" max="24" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+
+                <div class="axis-subsection">Fitted Curve</div>
+                <div class="param-inline">
+                    <label><input type="checkbox" id="showNormalFit" data-redraw>Overlay normal fit</label>
+                    <label>Color
+                        <input type="color" id="normalColor" value="#e15759" data-redraw>
+                    </label>
+                    <label>Width
+                        <input type="number" id="normalWidth" value="2" min="0.5" max="6" step="0.5" style="width:70px;" data-redraw>
+                    </label>
+                    <label><input type="checkbox" id="normalDash" data-redraw>Dashed</label>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showFitStats" data-redraw>Show fit statistics</label>
+                </div>
+                <div class="info-box" style="margin-top:10px;">
+                    Need more statistics? Use the <a href="s001.html" target="_blank" style="color:#1f4068;font-weight:600;">Statistics Calculator</a>.
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">Draw Chart</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 5: Preview &amp; Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">Import data and configure settings, then click "Draw Chart".</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer-en.js"></script>
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-formula.js"></script>
+    <script src="../COMMON/script/plot-axis.js"></script>
+    <script src="../COMMON/script/stat-common.js"></script>
+    <script src="../COMMON/script/stat-fitting.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/bar-common.js"></script>
+    <script src="../COMMON/script/016.js"></script>
+</body>
+</html>

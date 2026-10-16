@@ -1055,13 +1055,19 @@
             (it => it.name + ' (' + (it.percent * 100).toFixed(1) + '%)');
         const labels = items.map(fmt);
 
+        const shapeFnForWidth = opts.shapeOf || (() => opts.shape || 'rect');
+
         const colWidths = [];
         for (let c = 0; c < itemsPerRow; c++) {
             let w = 0;
             for (let r = 0; r < rowCount; r++) {
                 const idx = r * itemsPerRow + c;
                 if (idx >= items.length) break;
-                const lw = markerSize + textGap + estTextWidth(labels[idx], fontSize) + itemGap;
+                const sCheck = shapeFnForWidth(idx, items[idx]);
+                const markerW = (sCheck === 'line' || sCheck === 'dashline')
+                    ? markerSize * 1.5
+                    : markerSize;
+                const lw = markerW + textGap + estTextWidth(labels[idx], fontSize) + itemGap;
                 if (lw > w) w = lw;
             }
             if (w > 0) colWidths.push(w);
@@ -1173,6 +1179,17 @@
                     .attr('x1', bx).attr('x2', bx + bw)
                     .attr('y1', medY).attr('y2', medY)
                     .attr('stroke', '#333').attr('stroke-width', 1.2);
+            } else if (s === 'line' || s === 'dashline') {
+                const lineY = markerCY;
+                const lineX1 = colX;
+                const lineX2 = colX + markerSize * 1.5;
+                const lineEl = group.append('line')
+                    .attr('x1', lineX1).attr('x2', lineX2)
+                    .attr('y1', lineY).attr('y2', lineY)
+                    .attr('stroke', colors[i])
+                    .attr('stroke-width', 2)
+                    .attr('stroke-linecap', 'round');
+                if (s === 'dashline') lineEl.attr('stroke-dasharray', '6 4');
             } else if (window.PlotShapes) {
                 const symType = PlotShapes.getSymbolType(s);
                 const size = PlotShapes.getSymbolSize(s, markerSize);

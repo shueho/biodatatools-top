@@ -24,6 +24,7 @@
                     { id: '009', zh: '堆积柱状图（带误差棒）', en: 'Stacked Bar Chart (with Error Bars)' },
                     { id: '010', zh: '堆积柱状图（宽表/丰度表）', en: 'Stacked Bar Chart (Wide / Abundance Table)' },
                     { id: '011', zh: '显著性柱状图', en: 'Significance Bar Chart' },
+                    { id: '016', zh: '直方图', en: 'Histogram' },
 
                 ]
             },

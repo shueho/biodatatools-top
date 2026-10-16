@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直方图 - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>直方图</h2>
+            <p>绘制频数/频率直方图，支持按组数或组间距分箱，可叠加正态分布拟合曲线。</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：指定数据列</div>
+            <div class="param-panel">
+                <div class="param-panel-title">数据列</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>数值列</label>
+                        <select id="valColSel" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：选择色板与颜色</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">分类色板</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                    <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+                </div>
+            </div>
+
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：设置绘图参数</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+            <div id="axisPanelContainer"></div>
+            <div class="info-box" style="margin-top:10px;">
+                <strong>注意：</strong>坐标轴设置中的轴线位置、轴截断等选项对直方图不生效。
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">直方图设置</div>
+
+                <div class="axis-subsection">分箱设置</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>分箱模式</label>
+                        <select id="binMode" data-redraw>
+                            <option value="count" selected>按组数</option>
+                            <option value="spacing">按组间距</option>
+                        </select>
+                    </div>
+                    <div class="param-item" id="binCountItem">
+                        <label>组数</label>
+                        <input type="number" id="binCount" value="12" min="1" max="200" step="1" data-redraw>
+                    </div>
+                    <div class="param-item" id="binSpacingItem" style="display:none;">
+                        <label>组间距</label>
+                        <input type="number" id="binSpacing" value="5" min="0.0001" step="any" data-redraw>
+                    </div>
+                </div>
+
+                <div class="param-inline" style="margin-top:10px;">
+                    <label><input type="checkbox" id="autoRange" checked data-redraw>自动范围（按数据最小值 / 最大值）</label>
+                    <label><input type="checkbox" id="midpointTicks" checked data-redraw>刻度使用组中值</label>
+                    <label>小数位
+                        <select id="tickDecimals" data-redraw style="width:90px;">
+                            <option value="auto" selected>自动</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="param-grid cols-4" style="margin-top:8px;">
+                    <div class="param-item">
+                        <label>范围下限</label>
+                        <input type="number" id="rangeMin" value="0" step="any" data-redraw disabled>
+                    </div>
+                    <div class="param-item">
+                        <label>范围上限</label>
+                        <input type="number" id="rangeMax" value="100" step="any" data-redraw disabled>
+                    </div>
+                </div>
+
+                <div class="axis-subsection">显示模式</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>纵轴显示</label>
+                        <select id="displayMode" data-redraw>
+                            <option value="count" selected>频数（原始计数）</option>
+                            <option value="frequency">频率（%）</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="axis-subsection">柱形设置</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>柱间隙</label>
+                        <input type="number" id="barGap" value="0" min="0" max="0.5" step="0.01" data-redraw></div>
+                    <div class="param-item"><label>柱填充色</label>
+                        <input type="color" id="barFillColor" value="#4e79a7" data-redraw></div>
+                    <div class="param-item"><label>描边宽度</label>
+                        <input type="number" id="barStrokeWidth" value="1" min="0" max="4" step="0.5" data-redraw></div>
+                    <div class="param-item"><label>描边色</label>
+                        <input type="color" id="barStrokeColor" value="#ffffff" data-redraw></div>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="barShowValue" data-redraw>在柱顶显示数值</label>
+                    <label>字号
+                        <input type="number" id="barValueFontSize" value="11" min="6" max="24" style="width:70px;" data-redraw>
+                    </label>
+                </div>
+
+                <div class="axis-subsection">拟合曲线</div>
+                <div class="param-inline">
+                    <label><input type="checkbox" id="showNormalFit" data-redraw>叠加正态分布拟合曲线</label>
+                    <label>颜色
+                        <input type="color" id="normalColor" value="#e15759" data-redraw>
+                    </label>
+                    <label>线宽
+                        <input type="number" id="normalWidth" value="2" min="0.5" max="6" step="0.5" style="width:70px;" data-redraw>
+                    </label>
+                    <label><input type="checkbox" id="normalDash" data-redraw>虚线</label>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showFitStats" data-redraw>显示拟合统计值</label>
+
+                </div>
+                <div class="info-box" style="margin-top:10px;">
+                    需要计算其他统计量？可使用 <a href="s001.html" target="_blank" style="color:#1f4068;font-weight:600;">统计量计算器</a> 得到更多结果。
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer.js"></script>
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-formula.js"></script>
+
+    <script src="../COMMON/script/plot-axis.js"></script>
+    <script src="../COMMON/script/stat-common.js"></script>
+    <script src="../COMMON/script/stat-fitting.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/bar-common.js"></script>
+    <script src="../COMMON/script/016.js"></script>
+</body>
+</html>

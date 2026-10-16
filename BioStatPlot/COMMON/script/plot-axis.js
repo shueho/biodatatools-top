@@ -11,7 +11,7 @@
             directionGroup: '图表方向',
             directionVertical: '竖向',
             directionHorizontal: '横向',
-            directionTip: '切换柱形朝向（轴身份自动调整）',
+            directionTip: '切换柱形朝向',
 
             globalFontGroup: '坐标轴字体',
 
@@ -92,7 +92,7 @@
             directionGroup: 'Chart Direction',
             directionVertical: 'Vertical',
             directionHorizontal: 'Horizontal',
-            directionTip: 'Switch bar orientation (axis roles auto-adjust)',
+            directionTip: 'Switch bar orientation',
 
             globalFontGroup: 'Axis Font',
 
@@ -607,7 +607,7 @@
         let currentDirection = opts.direction || 'vertical';
 
         function build() {
-            const axisTypes = getAxisTypesForDirection(currentDirection);
+            const axisTypes = opts.axisTypes || getAxisTypesForDirection(currentDirection);
             container.className = 'param-panel';
             container.innerHTML = `
                 <div class="param-panel-title">${t.panelTitle}</div>
