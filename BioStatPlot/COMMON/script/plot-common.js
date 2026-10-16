@@ -1191,13 +1191,11 @@
                     .attr('stroke-linecap', 'round');
                 if (s === 'dashline') lineEl.attr('stroke-dasharray', '6 4');
             } else if (window.PlotShapes) {
-                const symType = PlotShapes.getSymbolType(s);
-                const size = PlotShapes.getSymbolSize(s, markerSize);
-                const pathData = d3.symbol().type(symType).size(size)();
-                group.append('path')
+                const pathData = PlotShapes.buildSymbolPath(s, markerSize);
+                const p = group.append('path')
                     .attr('d', pathData)
-                    .attr('transform', `translate(${markerCX}, ${markerCY})`)
-                    .attr('fill', colors[i]);
+                    .attr('transform', `translate(${markerCX}, ${markerCY})`);
+                PlotShapes.applyShapeStyle(p, s, colors[i]);
             } else {
                 group.append('rect')
                     .attr('x', colX).attr('y', markerY)

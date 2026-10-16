@@ -5,60 +5,126 @@
     'use strict';
 
     const SHAPES = [
-        { id: 'square',   zh: '方形',   en: 'Square'   },
-        { id: 'circle',   zh: '圆形',   en: 'Circle'   },
-        { id: 'diamond',  zh: '菱形',   en: 'Diamond'  },
-        { id: 'triangle', zh: '三角形', en: 'Triangle' },
-        { id: 'star',     zh: '星形',   en: 'Star'     },
-        { id: 'cross',    zh: '十字',   en: 'Cross'    },
-        { id: 'wye',      zh: 'Y形',    en: 'Y-shape'  }
+        { id: 'square',          symbol: 'square',   hollow: false, zh: '实心方形',   en: 'Square' },
+        { id: 'circle',          symbol: 'circle',   hollow: false, zh: '实心圆形',   en: 'Circle' },
+        { id: 'diamond',         symbol: 'diamond2', hollow: false, zh: '实心菱形',   en: 'Diamond' },
+        { id: 'triangle',        symbol: 'triangle', hollow: false, zh: '实心三角',   en: 'Triangle' },
+        { id: 'star',            symbol: 'star',     hollow: false, zh: '实心星形',   en: 'Star' },
+        { id: 'cross',           symbol: 'cross',    hollow: false, zh: '实心十字',   en: 'Cross' },
+        { id: 'wye',             symbol: 'wye',      hollow: false, zh: '实心Y形',    en: 'Y-shape' },
+
+        { id: 'square-hollow',   symbol: 'square',   hollow: true,  zh: '空心方形',   en: 'Hollow square' },
+        { id: 'circle-hollow',   symbol: 'circle',   hollow: true,  zh: '空心圆形',   en: 'Hollow circle' },
+        { id: 'diamond-hollow',  symbol: 'diamond2', hollow: true,  zh: '空心菱形',   en: 'Hollow diamond' },
+        { id: 'triangle-hollow', symbol: 'triangle', hollow: true,  zh: '空心三角',   en: 'Hollow triangle' },
+        { id: 'star-hollow',     symbol: 'star',     hollow: true,  zh: '空心星形',   en: 'Hollow star' },
+        { id: 'cross-hollow',    symbol: 'cross',    hollow: true,  zh: '空心十字',   en: 'Hollow cross' },
+        { id: 'wye-hollow',      symbol: 'wye',      hollow: true,  zh: '空心Y形',    en: 'Hollow Y-shape' }
     ];
 
-    function getLang() {
-        return window.location.pathname.includes('/en/') ? 'en' : 'zh';
-    }
+    const SHAPE_MAP = {};
+    SHAPES.forEach(s => { SHAPE_MAP[s.id] = s; });
 
-    function shapeName(shapeId) {
-        const s = SHAPES.find(x => x.id === shapeId);
-        if (!s) return shapeId;
-        return s[getLang()] || s.zh;
-    }
-
-    /**
-     * 返回 d3.symbol 类型常量
-     * 任何未知形状都退回 circle，保证永远不会返回 undefined
-     */
-function getSymbolType(shapeId) {
-    if (!global.d3) return null;
-    const D = global.d3;
-    const map = {
-        square:   D.symbolSquare,
-        circle:   D.symbolCircle,
-        diamond:  D.symbolDiamond,
-        triangle: D.symbolTriangle,
-        star:     D.symbolStar,
-        cross:    D.symbolCross,
-        wye:      D.symbolWye || D.symbolCircle
+    const SYMBOL_MAP = {
+        square:   'symbolSquare',
+        circle:   'symbolCircle',
+        diamond2: 'symbolDiamond2',
+        diamond:  'symbolDiamond',
+        triangle: 'symbolTriangle',
+        star:     'symbolStar',
+        cross:    'symbolCross',
+        wye:      'symbolWye'
     };
-    return map[shapeId] || D.symbolCircle;
-}
 
-function getSymbolSize(shapeId, targetSize) {
-    const t = Math.max(1, Number(targetSize) || 1);
-    const t2 = t * t;
-    const k = {
+    const SIZE_FACTOR = {
         square:   1.00,
         circle:   0.785,
+        diamond2: 0.60,
         diamond:  0.55,
         triangle: 1.20,
         star:     0.95,
         cross:    1.10,
         wye:      1.00
     };
-    const factor = k[shapeId] || 1;
-    return Math.max(1, t2 * factor);
-}
 
+    function getLang() {
+        return window.location.pathname.includes('/en/') ? 'en' : 'zh';
+    }
+
+    function findShape(shapeId) {
+        return SHAPE_MAP[shapeId] || null;
+    }
+
+    function shapeName(shapeId) {
+        const s = findShape(shapeId);
+        if (!s) return shapeId;
+        return s[getLang()] || s.zh;
+    }
+
+    function isHollow(shapeId) {
+        const s = findShape(shapeId);
+        return !!(s && s.hollow);
+    }
+
+    function getSymbolType(shapeId) {
+        if (!global.d3) return null;
+        const D = global.d3;
+        const s = findShape(shapeId);
+        const symName = s ? s.symbol : 'circle';
+        const key = SYMBOL_MAP[symName] || 'symbolCircle';
+        return D[key] || D.symbolCircle;
+    }
+
+    function getSymbolSize(shapeId, targetSize) {
+        const t = Math.max(1, Number(targetSize) || 1);
+        const t2 = t * t;
+        const s = findShape(shapeId);
+        const symName = s ? s.symbol : 'circle';
+        const factor = SIZE_FACTOR[symName] || 1;
+        return Math.max(1, t2 * factor);
+    }
+
+    function buildSymbolPath(shapeId, targetSize) {
+        if (!global.d3) return '';
+        const symType = getSymbolType(shapeId);
+        const size = getSymbolSize(shapeId, targetSize);
+        return d3.symbol().type(symType).size(size)();
+    }
+
+    function applyShapeStyle(pathSel, shapeId, color, opts) {
+        opts = opts || {};
+        const hollow = isHollow(shapeId);
+        const strokeWidth = (opts.strokeWidth != null) ? opts.strokeWidth : 1.5;
+
+        if (hollow) {
+            pathSel
+                .attr('fill', 'none')
+                .attr('stroke', color)
+                .attr('stroke-width', strokeWidth);
+        } else {
+            pathSel
+                .attr('fill', color)
+                .attr('stroke', opts.stroke || 'none')
+                .attr('stroke-width', opts.strokeWidth != null ? opts.strokeWidth : 0);
+        }
+    }
+
+    function drawShape(parent, opts) {
+        opts = opts || {};
+        if (!global.d3) return null;
+        const shapeId = opts.shapeId || 'circle';
+        const x = opts.x || 0;
+        const y = opts.y || 0;
+        const size = opts.size || 6;
+        const color = opts.color || '#333';
+
+        const pathData = buildSymbolPath(shapeId, size);
+        const el = parent.append('path')
+            .attr('d', pathData)
+            .attr('transform', 'translate(' + x + ',' + y + ')');
+        applyShapeStyle(el, shapeId, color, opts);
+        return el;
+    }
 
     function escapeHtml(s) {
         return String(s)
@@ -66,9 +132,6 @@ function getSymbolSize(shapeId, targetSize) {
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    /* ------------------------------------------------------------
-       渲染形状选择器 UI
-    ------------------------------------------------------------ */
     function renderShapeSelector(container, opts) {
         opts = opts || {};
         const items = opts.items || [];
@@ -82,7 +145,6 @@ function getSymbolSize(shapeId, targetSize) {
 
         container.innerHTML = '';
 
-        /* ---- 模式切换 ---- */
         const modeRow = document.createElement('div');
         modeRow.className = 'param-inline';
         modeRow.style.marginBottom = '12px';
@@ -106,7 +168,6 @@ function getSymbolSize(shapeId, targetSize) {
             });
         });
 
-        /* ---- 统一形状 ---- */
         if (st.shapeMode === 'uniform') {
             const row = document.createElement('div');
             row.className = 'param-inline';
@@ -130,7 +191,6 @@ function getSymbolSize(shapeId, targetSize) {
             return;
         }
 
-        /* ---- 按分类设置 ---- */
         if (!items.length) {
             const empty = document.createElement('div');
             empty.className = 'color-assign-empty';
@@ -169,11 +229,15 @@ function getSymbolSize(shapeId, targetSize) {
         container.appendChild(grid);
     }
 
-global.PlotShapes = {
-    SHAPES,
-    getSymbolType,
-    getSymbolSize,
-    shapeName,
-    renderShapeSelector
-};
+    global.PlotShapes = {
+        SHAPES,
+        shapeName,
+        isHollow,
+        getSymbolType,
+        getSymbolSize,
+        buildSymbolPath,
+        applyShapeStyle,
+        drawShape,
+        renderShapeSelector
+    };
 })(window);

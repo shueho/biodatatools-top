@@ -169,6 +169,29 @@
     };
     function L() { return I18N[isEn() ? 'en' : 'zh']; }
 
+    function shapeOptionsHTML(current) {
+        if (global.PlotShapes && global.PlotShapes.SHAPES) {
+            const lang = isEn() ? 'en' : 'zh';
+            return global.PlotShapes.SHAPES.map(function (s) {
+                return '<option value="' + s.id + '"' +
+                    (s.id === current ? ' selected' : '') + '>' +
+                    (s[lang] || s.zh) + '</option>';
+            }).join('');
+        }
+        const T = L();
+        const list = [
+            ['circle', T.shapeCircle],
+            ['square', T.shapeSquare],
+            ['triangle', T.shapeTriangle],
+            ['diamond', T.shapeDiamond]
+        ];
+        return list.map(function (p) {
+            return '<option value="' + p[0] + '"' +
+                (p[0] === current ? ' selected' : '') + '>' +
+                p[1] + '</option>';
+        }).join('');
+    }
+
     function defaultBoxSettings() {
         return {
             boxWidthScale: 0.6,
@@ -298,12 +321,7 @@
                         <option value="all" ${st.pointShow === 'all' ? 'selected' : ''}>${T.pointShowAll}</option>
                     </select></div>
                 <div class="param-item"><label>${T.pointShape}</label>
-                    <select class="bx-point-shape">
-                        <option value="circle" ${st.pointShape === 'circle' ? 'selected' : ''}>${T.shapeCircle}</option>
-                        <option value="square" ${st.pointShape === 'square' ? 'selected' : ''}>${T.shapeSquare}</option>
-                        <option value="triangle" ${st.pointShape === 'triangle' ? 'selected' : ''}>${T.shapeTriangle}</option>
-                        <option value="diamond" ${st.pointShape === 'diamond' ? 'selected' : ''}>${T.shapeDiamond}</option>
-                    </select></div>
+                    <select class="bx-point-shape">${shapeOptionsHTML(st.pointShape)}</select></div>
                 <div class="param-item"><label>${T.pointSize}</label>
                     <input type="number" class="bx-point-size" value="${st.pointSize}" min="1" max="12" step="0.5"></div>
                 <div class="param-item"><label>${T.pointJitter}</label>
@@ -328,12 +346,7 @@
                 <div class="param-item"><label class="mini-check"><input type="checkbox" class="bx-outlier-show" ${st.outlierShow ? 'checked' : ''}>${T.outlierShow}</label></div>
                 <div class="param-item"><label class="mini-check"><input type="checkbox" class="bx-outlier-use-point" ${st.outlierUsePoint ? 'checked' : ''}>${T.outlierUsePoint}</label></div>
                 <div class="param-item bx-outlier-shape-item"><label>${T.outlierShape}</label>
-                    <select class="bx-outlier-shape">
-                        <option value="circle" ${st.outlierShape === 'circle' ? 'selected' : ''}>${T.shapeCircle}</option>
-                        <option value="square" ${st.outlierShape === 'square' ? 'selected' : ''}>${T.shapeSquare}</option>
-                        <option value="triangle" ${st.outlierShape === 'triangle' ? 'selected' : ''}>${T.shapeTriangle}</option>
-                        <option value="diamond" ${st.outlierShape === 'diamond' ? 'selected' : ''}>${T.shapeDiamond}</option>
-                    </select></div>
+                    <select class="bx-outlier-shape">${shapeOptionsHTML(st.outlierShape)}</select></div>
                 <div class="param-item bx-outlier-size-item"><label>${T.outlierSize}</label>
                     <input type="number" class="bx-outlier-size" value="${st.outlierSize}" min="1" max="12" step="0.5"></div>
                 <div class="param-item bx-outlier-color-item"><label>${T.outlierColor}</label>
@@ -424,12 +437,7 @@
                         <option value="all" ${st.pointShow === 'all' ? 'selected' : ''}>${T.pointShowAll}</option>
                     </select></div>
                 <div class="param-item"><label>${T.pointShape}</label>
-                    <select class="vi-point-shape">
-                        <option value="circle" ${st.pointShape === 'circle' ? 'selected' : ''}>${T.shapeCircle}</option>
-                        <option value="square" ${st.pointShape === 'square' ? 'selected' : ''}>${T.shapeSquare}</option>
-                        <option value="triangle" ${st.pointShape === 'triangle' ? 'selected' : ''}>${T.shapeTriangle}</option>
-                        <option value="diamond" ${st.pointShape === 'diamond' ? 'selected' : ''}>${T.shapeDiamond}</option>
-                    </select></div>
+                    <select class="vi-point-shape">${shapeOptionsHTML(st.pointShape)}</select></div>
                 <div class="param-item"><label>${T.pointSize}</label>
                     <input type="number" class="vi-point-size" value="${st.pointSize}" min="1" max="12" step="0.5"></div>
                 <div class="param-item"><label>${T.pointJitter}</label>
@@ -450,12 +458,7 @@
             <div class="param-grid cols-4">
                 <div class="param-item"><label class="mini-check"><input type="checkbox" class="vi-outlier-show" ${st.outlierShow ? 'checked' : ''}>${T.outlierShow}</label></div>
                 <div class="param-item"><label>${T.outlierShape}</label>
-                    <select class="vi-outlier-shape">
-                        <option value="circle" ${st.outlierShape === 'circle' ? 'selected' : ''}>${T.shapeCircle}</option>
-                        <option value="square" ${st.outlierShape === 'square' ? 'selected' : ''}>${T.shapeSquare}</option>
-                        <option value="triangle" ${st.outlierShape === 'triangle' ? 'selected' : ''}>${T.shapeTriangle}</option>
-                        <option value="diamond" ${st.outlierShape === 'diamond' ? 'selected' : ''}>${T.shapeDiamond}</option>
-                    </select></div>
+                    <select class="vi-outlier-shape">${shapeOptionsHTML(st.outlierShape)}</select></div>
                 <div class="param-item"><label>${T.outlierSize}</label>
                     <input type="number" class="vi-outlier-size" value="${st.outlierSize}" min="1" max="12" step="0.5"></div>
                 <div class="param-item"><label>${T.outlierColor}</label>
@@ -758,7 +761,15 @@
     }
 
     function drawPointShape(parent, shape, x, y, size, fill) {
-        const sym = d3.symbol().type(getSymbolType(shape)).size(size * size * 3);
+        if (global.PlotShapes && PlotShapes.buildSymbolPath) {
+            const p = parent.append('path')
+                .attr('d', PlotShapes.buildSymbolPath(shape, size * Math.sqrt(3)))
+                .attr('transform', 'translate(' + x + ',' + y + ')');
+            PlotShapes.applyShapeStyle(p, shape, fill);
+            return;
+        }
+        const symType = getSymbolType(shape);
+        const sym = d3.symbol().type(symType).size(size * size * 3);
         parent.append('path')
             .attr('d', sym())
             .attr('transform', 'translate(' + x + ',' + y + ')')
@@ -1282,7 +1293,6 @@
                 .attr('stroke-width', medianWidth);
         }
     }
-    /* ============ Split Violin（分裂小提琴） ============ */
 
     function drawHalfBoxOverlayVertical(parent, opts) {
         const cx = opts.cx;
@@ -1407,6 +1417,7 @@
                 .attr('stroke-width', medianWidth);
         }
     }
+
     function drawSplitViolin(parent, opts) {
         const cx = opts.cx;
         const halfW = opts.halfW;

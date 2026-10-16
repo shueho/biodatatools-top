@@ -44,7 +44,7 @@
                 zh: '散点图',
                 en: 'Scatter Plot',
                 tools: [
-                    { id: 'xxx', zh: '开发中', en: 'NULL' }
+                    { id: '017', zh: '分组拟合散点图', en: 'Grouped Fit Scatter Plot' },
                 ]
             },
             {

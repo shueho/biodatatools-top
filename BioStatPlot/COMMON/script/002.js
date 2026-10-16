@@ -16,10 +16,10 @@
         const symType = PlotShapes.getSymbolType(shapeId);
         const size = PlotShapes.getSymbolSize(shapeId, cellSize);
         const pathData = d3.symbol().type(symType).size(size)();
-        parent.append('path')
+        const p = parent.append('path')
             .attr('d', pathData)
-            .attr('transform', `translate(${cx}, ${cy})`)
-            .attr('fill', fill);
+            .attr('transform', `translate(${cx}, ${cy})`);
+        PlotShapes.applyShapeStyle(p, shapeId, fill);
     }
 
     function refreshShapeSelector(app) {
