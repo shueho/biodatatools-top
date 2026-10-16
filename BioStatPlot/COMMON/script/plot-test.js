@@ -899,17 +899,20 @@
 
             if (vertical) {
                 const y = minBaseV - 8 - it.level * levelH;
-                g.append('path')
-                    .attr('d', 'M ' + it.p1 + ' ' + y +
-                              ' L ' + it.p1 + ' ' + (y - brkHeight) +
-                              ' L ' + it.p2 + ' ' + (y - brkHeight) +
-                              ' L ' + it.p2 + ' ' + y)
-                    .attr('fill', 'none')
-                    .attr('stroke', brkColor)
-                    .attr('stroke-width', brkWidth);
+                const needLine = Math.abs(it.p2 - it.p1) > 2;
+                if (needLine) {
+                    g.append('path')
+                        .attr('d', 'M ' + it.p1 + ' ' + y +
+                                  ' L ' + it.p1 + ' ' + (y - brkHeight) +
+                                  ' L ' + it.p2 + ' ' + (y - brkHeight) +
+                                  ' L ' + it.p2 + ' ' + y)
+                        .attr('fill', 'none')
+                        .attr('stroke', brkColor)
+                        .attr('stroke-width', brkWidth);
+                }
                 g.append('text')
                     .attr('x', (it.p1 + it.p2) / 2)
-                    .attr('y', y - brkHeight - 3)
+                    .attr('y', needLine ? (y - brkHeight - 3) : y)
                     .attr('text-anchor', 'middle')
                     .attr('font-size', brkFontSize)
                     .attr('font-weight', brkBold ? 'bold' : 'normal')
@@ -918,16 +921,19 @@
                     .text(labelText);
             } else {
                 const x = maxBaseV + 8 + it.level * levelH;
-                g.append('path')
-                    .attr('d', 'M ' + x + ' ' + it.p1 +
-                              ' L ' + (x + brkHeight) + ' ' + it.p1 +
-                              ' L ' + (x + brkHeight) + ' ' + it.p2 +
-                              ' L ' + x + ' ' + it.p2)
-                    .attr('fill', 'none')
-                    .attr('stroke', brkColor)
-                    .attr('stroke-width', brkWidth);
+                const needLine = Math.abs(it.p2 - it.p1) > 2;
+                if (needLine) {
+                    g.append('path')
+                        .attr('d', 'M ' + x + ' ' + it.p1 +
+                                  ' L ' + (x + brkHeight) + ' ' + it.p1 +
+                                  ' L ' + (x + brkHeight) + ' ' + it.p2 +
+                                  ' L ' + x + ' ' + it.p2)
+                        .attr('fill', 'none')
+                        .attr('stroke', brkColor)
+                        .attr('stroke-width', brkWidth);
+                }
                 g.append('text')
-                    .attr('x', x + brkHeight + 3)
+                    .attr('x', needLine ? (x + brkHeight + 3) : x)
                     .attr('y', (it.p1 + it.p2) / 2)
                     .attr('text-anchor', 'start')
                     .attr('dominant-baseline', 'middle')

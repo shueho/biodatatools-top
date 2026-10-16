@@ -1282,6 +1282,309 @@
                 .attr('stroke-width', medianWidth);
         }
     }
+    /* ============ Split Violin（分裂小提琴） ============ */
+
+    function drawHalfBoxOverlayVertical(parent, opts) {
+        const cx = opts.cx;
+        const halfW = opts.halfW;
+        const stats = opts.stats;
+        const yScale = opts.yScale;
+        const fill = opts.fill;
+        const stroke = opts.stroke;
+        const medianWidth = opts.medianWidth;
+        const medianColor = opts.medianColor;
+        const side = opts.side;
+        if (!stats) return;
+
+        const yQ1 = yScale(stats.q1);
+        const yQ3 = yScale(stats.q3);
+        const yMed = yScale(stats.median);
+        const yHi = yScale(stats.whiskerHi);
+        const yLo = yScale(stats.whiskerLo);
+        const top = Math.min(yQ1, yQ3);
+        const bot = Math.max(yQ1, yQ3);
+
+        parent.append('line')
+            .attr('x1', cx).attr('x2', cx)
+            .attr('y1', yQ1).attr('y2', yHi)
+            .attr('stroke', stroke).attr('stroke-width', 1);
+        parent.append('line')
+            .attr('x1', cx).attr('x2', cx)
+            .attr('y1', yQ3).attr('y2', yLo)
+            .attr('stroke', stroke).attr('stroke-width', 1);
+
+        const capHalf = halfW * 0.7;
+        if (capHalf > 0.5) {
+            const capX1 = side === 'left' ? cx - capHalf : cx;
+            const capX2 = side === 'left' ? cx : cx + capHalf;
+            parent.append('line')
+                .attr('x1', capX1).attr('x2', capX2)
+                .attr('y1', yHi).attr('y2', yHi)
+                .attr('stroke', stroke).attr('stroke-width', 1);
+            parent.append('line')
+                .attr('x1', capX1).attr('x2', capX2)
+                .attr('y1', yLo).attr('y2', yLo)
+                .attr('stroke', stroke).attr('stroke-width', 1);
+        }
+
+        const rectX = side === 'left' ? cx - halfW : cx;
+        parent.append('rect')
+            .attr('x', rectX).attr('y', top)
+            .attr('width', halfW).attr('height', Math.max(1, bot - top))
+            .attr('fill', fill)
+            .attr('stroke', stroke)
+            .attr('stroke-width', 1);
+
+        if (medianWidth > 0) {
+            const mx1 = side === 'left' ? cx - halfW : cx;
+            const mx2 = side === 'left' ? cx : cx + halfW;
+            parent.append('line')
+                .attr('x1', mx1).attr('x2', mx2)
+                .attr('y1', yMed).attr('y2', yMed)
+                .attr('stroke', medianColor)
+                .attr('stroke-width', medianWidth);
+        }
+    }
+
+    function drawHalfBoxOverlayHorizontal(parent, opts) {
+        const cy = opts.cy;
+        const halfH = opts.halfH;
+        const stats = opts.stats;
+        const xScale = opts.xScale;
+        const fill = opts.fill;
+        const stroke = opts.stroke;
+        const medianWidth = opts.medianWidth;
+        const medianColor = opts.medianColor;
+        const side = opts.side;
+        if (!stats) return;
+
+        const xQ1 = xScale(stats.q1);
+        const xQ3 = xScale(stats.q3);
+        const xMed = xScale(stats.median);
+        const xHi = xScale(stats.whiskerHi);
+        const xLo = xScale(stats.whiskerLo);
+        const left = Math.min(xQ1, xQ3);
+        const right = Math.max(xQ1, xQ3);
+
+        parent.append('line')
+            .attr('x1', xQ3).attr('x2', xHi)
+            .attr('y1', cy).attr('y2', cy)
+            .attr('stroke', stroke).attr('stroke-width', 1);
+        parent.append('line')
+            .attr('x1', xQ1).attr('x2', xLo)
+            .attr('y1', cy).attr('y2', cy)
+            .attr('stroke', stroke).attr('stroke-width', 1);
+
+        const capHalf = halfH * 0.7;
+        if (capHalf > 0.5) {
+            const capY1 = side === 'left' ? cy - capHalf : cy;
+            const capY2 = side === 'left' ? cy : cy + capHalf;
+            parent.append('line')
+                .attr('x1', xHi).attr('x2', xHi)
+                .attr('y1', capY1).attr('y2', capY2)
+                .attr('stroke', stroke).attr('stroke-width', 1);
+            parent.append('line')
+                .attr('x1', xLo).attr('x2', xLo)
+                .attr('y1', capY1).attr('y2', capY2)
+                .attr('stroke', stroke).attr('stroke-width', 1);
+        }
+
+        const rectY = side === 'left' ? cy - halfH : cy;
+        parent.append('rect')
+            .attr('x', left).attr('y', rectY)
+            .attr('width', Math.max(1, right - left)).attr('height', halfH)
+            .attr('fill', fill)
+            .attr('stroke', stroke)
+            .attr('stroke-width', 1);
+
+        if (medianWidth > 0) {
+            const my1 = side === 'left' ? cy - halfH : cy;
+            const my2 = side === 'left' ? cy : cy + halfH;
+            parent.append('line')
+                .attr('x1', xMed).attr('x2', xMed)
+                .attr('y1', my1).attr('y2', my2)
+                .attr('stroke', medianColor)
+                .attr('stroke-width', medianWidth);
+        }
+    }
+    function drawSplitViolin(parent, opts) {
+        const cx = opts.cx;
+        const halfW = opts.halfW;
+        const kde = opts.kde;
+        const stats = opts.stats;
+        const yScale = opts.yScale;
+        const color = opts.color;
+        const st = opts.settings;
+        const side = opts.side;
+        const seed = opts.seed || 0;
+        if (!kde || !kde.xs.length) return;
+
+        const maxY = Math.max.apply(null, kde.ys);
+        const scale = maxY > 0 ? halfW / maxY : 0;
+
+        const pts = [];
+        for (let i = 0; i < kde.xs.length; i++) {
+            const x = kde.xs[i];
+            const py = yScale(x);
+            const w = kde.ys[i] * scale;
+            const px = side === 'left' ? cx - w : cx + w;
+            pts.push([px, py]);
+        }
+
+        let d = 'M ' + cx + ' ' + pts[0][1];
+        for (let i = 0; i < pts.length; i++) {
+            d += ' L ' + pts[i][0] + ' ' + pts[i][1];
+        }
+        d += ' L ' + cx + ' ' + pts[pts.length - 1][1];
+        d += ' Z';
+
+        parent.append('path')
+            .attr('d', d)
+            .attr('fill', resolveViolinFill(st, color))
+            .attr('stroke', st.violinStrokeColor)
+            .attr('stroke-width', st.violinStrokeWidth)
+            .attr('stroke-linejoin', 'round');
+
+        if (st.boxOverlay && stats) {
+            drawHalfBoxOverlayVertical(parent, {
+                cx: cx,
+                halfW: halfW * st.boxOverlayWidth,
+                stats: stats,
+                yScale: yScale,
+                fill: resolveBoxOverlayFill(st, color),
+                stroke: st.violinStrokeColor,
+                medianWidth: st.boxOverlayMedianWidth,
+                medianColor: st.boxOverlayMedianColor,
+                side: side
+            });
+        }
+
+        if (st.pointShow !== 'none') {
+            const jitterHalf = halfW * st.pointJitter * 0.5;
+            const sorted = stats ? stats.values : kde.xs;
+            for (let i = 0; i < sorted.length; i++) {
+                const v = sorted[i];
+                const inBox = stats ? (v >= stats.q1 && v <= stats.q3) : true;
+                const isOutlier = stats ? (v < stats.whiskerLo || v > stats.whiskerHi) : false;
+                if (isOutlier) continue;
+                if (st.pointShow === 'in' && !inBox) continue;
+                if (st.pointShow === 'out' && inBox) continue;
+
+                const r = seededRand(seed + i * 1.1 + 1);
+                const offset = r * jitterHalf;
+                const px = side === 'left' ? cx - offset : cx + offset;
+                const py = yScale(v);
+                let fill;
+                if (st.pointColorMode === 'sameAsViolin') {
+                    fill = hexToRgba(color, st.pointAlpha);
+                } else {
+                    fill = hexToRgba(st.inColor, st.pointAlpha);
+                }
+                drawPointShape(parent, st.pointShape, px, py, st.pointSize, fill);
+            }
+        }
+
+        if (st.outlierShow && stats && stats.outliers.length) {
+            const jitterHalf = halfW * st.pointJitter * 0.5;
+            stats.outliers.forEach(function (v, i) {
+                const r = seededRand(seed + (1000 + i) * 1.1 + 1);
+                const offset = r * jitterHalf;
+                const px = side === 'left' ? cx - offset : cx + offset;
+                const fill = hexToRgba(st.outlierColor, st.outlierAlpha);
+                drawPointShape(parent, st.outlierShape, px, yScale(v), st.outlierSize, fill);
+            });
+        }
+    }
+
+    function drawSplitViolinHorizontal(parent, opts) {
+        const cy = opts.cy;
+        const halfH = opts.halfH;
+        const kde = opts.kde;
+        const stats = opts.stats;
+        const xScale = opts.xScale;
+        const color = opts.color;
+        const st = opts.settings;
+        const side = opts.side;
+        const seed = opts.seed || 0;
+        if (!kde || !kde.xs.length) return;
+
+        const maxY = Math.max.apply(null, kde.ys);
+        const scale = maxY > 0 ? halfH / maxY : 0;
+
+        const pts = [];
+        for (let i = 0; i < kde.xs.length; i++) {
+            const x = kde.xs[i];
+            const px = xScale(x);
+            const h = kde.ys[i] * scale;
+            const py = side === 'left' ? cy - h : cy + h;
+            pts.push([px, py]);
+        }
+
+        let d = 'M ' + pts[0][0] + ' ' + cy;
+        for (let i = 0; i < pts.length; i++) {
+            d += ' L ' + pts[i][0] + ' ' + pts[i][1];
+        }
+        d += ' L ' + pts[pts.length - 1][0] + ' ' + cy;
+        d += ' Z';
+
+        parent.append('path')
+            .attr('d', d)
+            .attr('fill', resolveViolinFill(st, color))
+            .attr('stroke', st.violinStrokeColor)
+            .attr('stroke-width', st.violinStrokeWidth)
+            .attr('stroke-linejoin', 'round');
+
+        if (st.boxOverlay && stats) {
+            drawHalfBoxOverlayHorizontal(parent, {
+                cy: cy,
+                halfH: halfH * st.boxOverlayWidth,
+                stats: stats,
+                xScale: xScale,
+                fill: resolveBoxOverlayFill(st, color),
+                stroke: st.violinStrokeColor,
+                medianWidth: st.boxOverlayMedianWidth,
+                medianColor: st.boxOverlayMedianColor,
+                side: side
+            });
+        }
+
+        if (st.pointShow !== 'none') {
+            const jitterHalf = halfH * st.pointJitter * 0.5;
+            const sorted = stats ? stats.values : kde.xs;
+            for (let i = 0; i < sorted.length; i++) {
+                const v = sorted[i];
+                const inBox = stats ? (v >= stats.q1 && v <= stats.q3) : true;
+                const isOutlier = stats ? (v < stats.whiskerLo || v > stats.whiskerHi) : false;
+                if (isOutlier) continue;
+                if (st.pointShow === 'in' && !inBox) continue;
+                if (st.pointShow === 'out' && inBox) continue;
+
+                const r = seededRand(seed + i * 1.1 + 1);
+                const offset = r * jitterHalf;
+                const px = xScale(v);
+                const py = side === 'left' ? cy - offset : cy + offset;
+                let fill;
+                if (st.pointColorMode === 'sameAsViolin') {
+                    fill = hexToRgba(color, st.pointAlpha);
+                } else {
+                    fill = hexToRgba(st.inColor, st.pointAlpha);
+                }
+                drawPointShape(parent, st.pointShape, px, py, st.pointSize, fill);
+            }
+        }
+
+        if (st.outlierShow && stats && stats.outliers.length) {
+            const jitterHalf = halfH * st.pointJitter * 0.5;
+            stats.outliers.forEach(function (v, i) {
+                const r = seededRand(seed + (1000 + i) * 1.1 + 1);
+                const offset = r * jitterHalf;
+                const px = xScale(v);
+                const py = side === 'left' ? cy - offset : cy + offset;
+                const fill = hexToRgba(st.outlierColor, st.outlierAlpha);
+                drawPointShape(parent, st.outlierShape, px, py, st.outlierSize, fill);
+            });
+        }
+    }
 
     global.BoxCommon = {
         defaultBoxSettings: defaultBoxSettings,
@@ -1297,6 +1600,8 @@
         computeKDE: computeKDE,
         drawViolin: drawViolin,
         drawViolinHorizontal: drawViolinHorizontal,
+        drawSplitViolin: drawSplitViolin,
+        drawSplitViolinHorizontal: drawSplitViolinHorizontal,
 
         L: L
     };

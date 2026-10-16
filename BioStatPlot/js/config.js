@@ -32,6 +32,10 @@
                 en: 'Box Plot',
                 tools: [
                     { id: '012', zh: '显著性箱线图', en: 'Significance Box Plot' },
+                    { id: '013', zh: '显著性小提琴图', en: 'Significance Violin Plot' },
+                    { id: '014', zh: '分裂小提琴图', en: 'Split Violin Plot' },
+                    { id: '015', zh: '分面箱线图/小提琴图', en: 'Faceted Box / Violin Plot' },
+
                 ]
             },
 

@@ -56,11 +56,31 @@
         }
     };
 
+    /* 色板分组标题 i18n */
+    const PALETTE_I18N = {
+        zh: {
+            groupD3:      'D3配色',
+            groupGgsci:   'GGSCI配色',
+            groupOther:   '其他配色',
+            groupD3Cont:  'D3连续配色'
+        },
+        en: {
+            groupD3:      'D3 Palette',
+            groupGgsci:   'GGSCI Palette',
+            groupOther:   'Other Palette',
+            groupD3Cont:  'D3 Continuous'
+        }
+    };
+
     function getLang() {
         return window.location.pathname.includes('/en/') ? 'en' : 'zh';
     }
     function L() {
         return I18N[getLang()] || I18N.zh;
+    }
+    function PT(key) {
+        const d = PALETTE_I18N[getLang()] || PALETTE_I18N.zh;
+        return d[key] !== undefined ? d[key] : key;
     }
     function getLangUrl() {
         const p = window.location.pathname;
@@ -90,6 +110,62 @@
         '#4e79a7', '#f28e2c', '#e15759', '#76b7b2', '#59a14f',
         '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab'
     ];
+
+    const GGSCI_SCHEMES = {
+        npg:          ['#E64B35', '#4DBBD5', '#00A087', '#3C5488', '#F39B7F', '#8491B4', '#91D1C2', '#DC0000', '#7E6148', '#B09C85'],
+        aaas:         ['#3B4992', '#EE0000', '#008B45', '#631879', '#008280', '#BB0021', '#5F559B', '#A20056', '#808180', '#1B1919'],
+        nejm:         ['#BC3C29', '#0072B5', '#E18727', '#20854E', '#7876B1', '#6F99AD', '#FFDC91', '#EE4C97'],
+        lancet:       ['#00468B', '#ED0000', '#42B540', '#0099B4', '#925E9F', '#FDAF91', '#AD002A', '#ADB6B6', '#1B1919'],
+        jama:         ['#374E55', '#DF8F44', '#00A1D5', '#B24745', '#79AF97', '#6A6599', '#80796B'],
+        bmj:          ['#2A6EBB', '#E18727', '#3DB7E4', '#7E2F8E', '#4DAF4A', '#FF7F00', '#984EA3', '#A65628', '#F781BF', '#999999'],
+        jco:          ['#0073C2', '#EFC000', '#868686', '#CD534C', '#7AA6DC', '#003C67', '#8F7700', '#3B3B3B', '#A73030', '#4A6990'],
+        locuszoom:    ['#D43F3A', '#EEA236', '#5CB85C', '#46B8DA', '#357EBD', '#9632B8', '#B8B8B8', '#EEEEEE'],
+        uchicago:     ['#800000', '#767676', '#FFA319', '#8A9045', '#155F83', '#C16622', '#8F3931', '#58593F', '#350E20'],
+        startrek:     ['#E4EAEE', '#CCD6DD', '#AAB8C2', '#939393', '#788B95', '#65737E', '#555D66', '#40474D', '#343A3F', '#1C1C1C'],
+        tron:         ['#FF410D', '#6EE2FF', '#F7C530', '#95CC5E', '#D0DFE6', '#F79D1E', '#748AA6'],
+        futurama:     ['#FF6F00', '#FF8E00', '#FFC000', '#FFE100', '#FFFF00', '#B0FF00', '#00FF00', '#00FFB0', '#00FFFF', '#00B0FF', '#008EFF', '#006FFF'],
+        rickandmorty: ['#FAFD7C', '#82491E', '#24325F', '#B7E4F9', '#FB6467', '#526E2D', '#E89242', '#EEDD62', '#FAE7B5', '#DC5945', '#5244A0', '#D64D8C'],
+        simpsons:     ['#FED439', '#709AE1', '#8A9197', '#D2AF81', '#FD7446', '#D5E4A2', '#197EC0', '#F05C3B', '#46732E', '#71D0F5', '#370335', '#075149', '#C80813', '#91331F', '#1A9993', '#FD8CC1']
+    };
+    const GGSCI_LIST = Object.keys(GGSCI_SCHEMES);
+
+    /* ---------- 其他配色（可自定义） ---------- */
+    const OTHER_SCHEMES = {
+        okabeito:  ['#E69F00', '#56B4E9', '#009E73', '#F0E442', '#0072B2', '#D55E00', '#CC79A7', '#000000'],
+        ibm:       ['#648FFF', '#785EF0', '#DC267F', '#FE6100', '#FFB000'],
+
+        tolBright:         ['#4477AA', '#EE6677', '#228833', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB'],
+        tolVibrant:        ['#EE7733', '#009988', '#33BBEE', '#EE3377', '#CC3311', '#000000'],
+        tolMuted:          ['#CC6677', '#332288', '#DDCC77', '#117733', '#88CCEE', '#882255', '#DDDDDD'],
+        tolLight:          ['#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDCC'],
+        tolHighContrast:   ['#004488', '#DDAA33', '#BB5566'],
+        tolMediumContrast: ['#6699CC', '#004488', '#EECC66', '#994455', '#997700', '#EE99AA'],
+
+        kelly:      ['#F2F3F4', '#222222', '#F3C300', '#875692', '#F38400', '#A1CAF1', '#BE0032',
+                     '#C2B280', '#848482', '#008856', '#E68FAC', '#0067A5', '#F99379', '#604E97',
+                     '#F6A600', '#B3446C', '#DCD300', '#882D17', '#8DB600', '#654522', '#E25822', '#2B3D26'],
+        ggplotHue:  ['#F8766E', '#01BEC4', '#7CAE00', '#C77CFF', '#00BA38', '#619CFF']
+    };
+
+    const OTHER_LIST = Object.keys(OTHER_SCHEMES);
+
+    function isGgsciName(name) {
+        return Object.prototype.hasOwnProperty.call(GGSCI_SCHEMES, String(name || '').toLowerCase());
+    }
+    function getGgsciScheme(name) {
+        const arr = GGSCI_SCHEMES[String(name || '').toLowerCase()];
+        return arr ? arr.slice() : null;
+    }
+    function getOtherScheme(name) {
+        const arr = OTHER_SCHEMES[name];
+        return arr ? arr.slice() : null;
+    }
+    function isOtherName(name) {
+        return Object.prototype.hasOwnProperty.call(OTHER_SCHEMES, name);
+    }
+    function isContinuousName(name) {
+        return CONTINUOUS_LIST.indexOf(name) !== -1;
+    }
 
     function hexToRgb(hex) {
         let h = String(hex).trim().replace('#', '');
@@ -128,40 +204,7 @@
         }
         return out;
     }
-    function getCategoricalScheme(name) {
-        const key = 'scheme' + name.charAt(0).toUpperCase() + name.slice(1);
-        const arr = global.d3 && global.d3[key];
-        return (Array.isArray(arr) && arr.length) ? arr.slice() : FALLBACK_CATEGORICAL.slice();
-    }
-    function listPalettes(type) {
-        if (type === 'categorical') return CATEGORICAL_LIST.slice();
-        if (type === 'continuous') return CONTINUOUS_LIST.slice();
-        return [];
-    }
-function getCategoricalColors(name, n, opts) {
-    opts = opts || {};
-    let reverse = false, cycle = false;
-    if (typeof opts === 'boolean') reverse = opts;
-    else { reverse = !!opts.reverse; cycle = !!opts.cycle; }
 
-    const base = getCategoricalScheme(name);
-
-    let result;
-    if (!n || n <= 0) {
-        result = base.slice();
-    } else if (n <= base.length) {
-        result = base.slice(0, n);
-    } else if (cycle) {
-        result = [];
-        for (let i = 0; i < n; i++) result.push(base[i % base.length]);
-    } else {
-        result = base.slice();
-        while (result.length < n) result.push('#cccccc');
-    }
-
-    if (reverse) result = result.slice().reverse();
-    return result;
-}
     function getContinuousInterpolator(name, reverse) {
         const key = 'interpolate' + name.charAt(0).toUpperCase() + name.slice(1);
         const f = (global.d3 && typeof global.d3[key] === 'function') ? global.d3[key] : (() => '#cccccc');
@@ -173,6 +216,61 @@ function getCategoricalColors(name, n, opts) {
         if (n <= 1) return [interp(0.5)];
         for (let i = 0; i < n; i++) out.push(interp(i / (n - 1)));
         return out;
+    }
+
+    function getCategoricalScheme(name) {
+        const o = getOtherScheme(name);
+        if (o && o.length) return o;
+        const g = getGgsciScheme(name);
+        if (g && g.length) return g;
+        const key = 'scheme' + name.charAt(0).toUpperCase() + name.slice(1);
+        const arr = global.d3 && global.d3[key];
+        return (Array.isArray(arr) && arr.length) ? arr.slice() : FALLBACK_CATEGORICAL.slice();
+    }
+
+    function listPalettes(type) {
+        if (type === 'categorical') return CATEGORICAL_LIST.concat(GGSCI_LIST, OTHER_LIST);
+        if (type === 'continuous') return CONTINUOUS_LIST.slice();
+        return [];
+    }
+
+    /* 分类：3 组（D3 / GGSCI / 其他）；连续：1 组（D3 连续） */
+    function listPaletteGroups(type) {
+        if (type === 'continuous') {
+            return [
+                { key: 'd3-cont', label: PT('groupD3Cont'), kind: 'continuous', names: CONTINUOUS_LIST.slice() }
+            ];
+        }
+        return [
+            { key: 'd3',    label: PT('groupD3'),    kind: 'categorical', names: CATEGORICAL_LIST.slice() },
+            { key: 'ggsci', label: PT('groupGgsci'), kind: 'categorical', names: GGSCI_LIST.slice() },
+            { key: 'other', label: PT('groupOther'), kind: 'categorical', names: OTHER_LIST.slice() }
+        ];
+    }
+
+    function getCategoricalColors(name, n, opts) {
+        opts = opts || {};
+        let reverse = false, cycle = false;
+        if (typeof opts === 'boolean') reverse = opts;
+        else { reverse = !!opts.reverse; cycle = !!opts.cycle; }
+
+        const base = getCategoricalScheme(name);
+
+        let result;
+        if (!n || n <= 0) {
+            result = base.slice();
+        } else if (n <= base.length) {
+            result = base.slice(0, n);
+        } else if (cycle) {
+            result = [];
+            for (let i = 0; i < n; i++) result.push(base[i % base.length]);
+        } else {
+            result = base.slice();
+            while (result.length < n) result.push('#cccccc');
+        }
+
+        if (reverse) result = result.slice().reverse();
+        return result;
     }
 
     /* ---------- 工具 ---------- */
@@ -249,11 +347,61 @@ function getCategoricalColors(name, n, opts) {
     }
 
     /* ---------- 色板下拉 ---------- */
+    let paletteDropdownStyleInjected = false;
+    function injectPaletteDropdownStyle() {
+        if (paletteDropdownStyleInjected) return;
+        paletteDropdownStyleInjected = true;
+        const style = document.createElement('style');
+        style.id = 'plot-palette-dropdown-style';
+        style.textContent = `
+            .palette-select-dropdown { max-height: 420px; overflow-y: auto; }
+
+            .palette-select-dropdown .palette-group-label {
+                display: flex; align-items: center; gap: 6px;
+                padding: 8px 12px 6px;
+                font-size: 11px; font-weight: 700;
+                letter-spacing: .08em;
+                color: #6b7688;
+                background: #f4f6fb;
+                border-top: 1px solid #e6eaf2;
+                position: sticky; top: 0; z-index: 1;
+                user-select: none; pointer-events: none;
+            }
+            .palette-select-dropdown .palette-group-label:first-child { border-top: none; }
+            .palette-select-dropdown .palette-group-label::before {
+                content: ''; width: 8px; height: 8px; border-radius: 2px;
+                background: #b7c0d0;
+            }
+
+            .palette-select-dropdown .palette-group-label[data-group="d3"]      { color: #3b5bdb; }
+            .palette-select-dropdown .palette-group-label[data-group="d3"]::before      { background: #3b5bdb; }
+            .palette-select-dropdown .palette-group-label[data-group="ggsci"]   { color: #2f6f5e; }
+            .palette-select-dropdown .palette-group-label[data-group="ggsci"]::before   { background: #2f6f5e; }
+            .palette-select-dropdown .palette-group-label[data-group="other"]   { color: #7c3aed; }
+            .palette-select-dropdown .palette-group-label[data-group="other"]::before   { background: #7c3aed; }
+            .palette-select-dropdown .palette-group-label[data-group="d3-cont"] { color: #b45309; }
+            .palette-select-dropdown .palette-group-label[data-group="d3-cont"]::before { background: #b45309; }
+
+            .palette-select-dropdown .palette-option { padding-left: 20px; }
+            .palette-select-dropdown .palette-option[data-group="d3"]      .palette-name { color: #3b5bdb; }
+            .palette-select-dropdown .palette-option[data-group="ggsci"]   .palette-name { color: #2f6f5e; }
+            .palette-select-dropdown .palette-option[data-group="other"]   .palette-name { color: #7c3aed; }
+            .palette-select-dropdown .palette-option[data-group="d3-cont"] .palette-name { color: #b45309; }
+        `;
+        document.head.appendChild(style);
+    }
+
     function renderPaletteDropdown(container, opts) {
         opts = opts || {};
         const type = opts.type || 'categorical';
-        const names = listPalettes(type);
-        const previewCount = opts.previewCount || 8;
+        const groups = listPaletteGroups(type);
+
+        const allNames = groups.reduce((acc, g) => acc.concat(g.names), []);
+        const defaultName = (opts.selected && allNames.indexOf(opts.selected) !== -1)
+            ? opts.selected
+            : (allNames[0] || '');
+
+        injectPaletteDropdownStyle();
 
         container.innerHTML = '';
         container.className = 'palette-select-wrap';
@@ -262,45 +410,61 @@ function getCategoricalColors(name, n, opts) {
         trigger.className = 'palette-select-trigger';
         trigger.innerHTML = `
             <div class="palette-preview-slot"></div>
-            <span class="palette-name">${escapeHtml(opts.selected || names[0])}</span>
+            <span class="palette-name">${escapeHtml(defaultName)}</span>
             <span class="caret">▼</span>
         `;
 
         const dropdown = document.createElement('div');
         dropdown.className = 'palette-select-dropdown';
 
-        names.forEach(name => {
-            const option = document.createElement('div');
-            option.className = 'palette-option' + (opts.selected === name ? ' active' : '');
-            option.dataset.value = name;
-
-            let previewHTML = '';
-            if (type === 'categorical') {
-                const colors = getCategoricalColors(name, previewCount);
-                previewHTML = `<div class="palette-swatches-mini">${
-                    colors.map(c => `<div style="background:${c}"></div>`).join('')
-                }</div>`;
-            } else {
+        function buildPreview(name, kind) {
+            if (kind === 'continuous') {
                 const interp = getContinuousInterpolator(name);
                 const stops = [];
                 for (let i = 0; i < 10; i++) stops.push(interp(i / 9));
-                previewHTML = `<div class="palette-gradient-mini" style="background:linear-gradient(to right, ${stops.join(',')})"></div>`;
+                return `<div class="palette-gradient-mini" style="background:linear-gradient(to right, ${stops.join(',')})"></div>`;
             }
+            const base = getCategoricalScheme(name);
+            const count = base.length;
+            const colors = getCategoricalColors(name, count);
+            return `<div class="palette-swatches-mini">${
+                colors.map(c => `<div style="background:${c}"></div>`).join('')
+            }</div>`;
+        }
 
-            option.innerHTML = `
-                ${previewHTML}
-                <span class="palette-name">${escapeHtml(name)}</span>
-                <span class="palette-check">✓</span>
-            `;
-            option.addEventListener('click', () => {
-                dropdown.querySelectorAll('.palette-option').forEach(el => el.classList.remove('active'));
-                option.classList.add('active');
-                trigger.querySelector('.palette-name').textContent = name;
-                updateTriggerPreview();
-                container.classList.remove('open');
-                opts.onSelect && opts.onSelect(name);
+        groups.forEach(group => {
+            if (!group.names || !group.names.length) return;
+
+            const labelEl = document.createElement('div');
+            labelEl.className = 'palette-group-label';
+            labelEl.dataset.group = group.key;
+            labelEl.textContent = group.label;
+            dropdown.appendChild(labelEl);
+
+            group.names.forEach(name => {
+                const option = document.createElement('div');
+                option.className = 'palette-option' + (defaultName === name ? ' active' : '');
+                option.dataset.value = name;
+                option.dataset.group = group.key;
+                option.dataset.kind = group.kind;
+                option.innerHTML = `
+                    ${buildPreview(name, group.kind)}
+                    <span class="palette-name">${escapeHtml(name)}</span>
+                    <span class="palette-check">✓</span>
+                `;
+                option.addEventListener('click', () => {
+                    dropdown.querySelectorAll('.palette-option').forEach(el => el.classList.remove('active'));
+                    option.classList.add('active');
+                    trigger.querySelector('.palette-name').textContent = name;
+                    updateTriggerPreview();
+                    container.classList.remove('open');
+                    opts.onSelect && opts.onSelect(name, {
+                        group: group.key,
+                        kind: group.kind
+                    });
+                });
+                dropdown.appendChild(option);
             });
-            dropdown.appendChild(option);
         });
 
         function updateTriggerPreview() {
@@ -311,10 +475,12 @@ function getCategoricalColors(name, n, opts) {
             slot.innerHTML = previewEl ? previewEl.outerHTML : '';
         }
 
-        const initialActive = dropdown.querySelector('.palette-option.active') || dropdown.firstElementChild;
-        if (initialActive && !initialActive.classList.contains('active')) {
-            initialActive.classList.add('active');
-            trigger.querySelector('.palette-name').textContent = initialActive.dataset.value;
+        if (!dropdown.querySelector('.palette-option.active')) {
+            const first = dropdown.querySelector('.palette-option');
+            if (first) {
+                first.classList.add('active');
+                trigger.querySelector('.palette-name').textContent = first.dataset.value;
+            }
         }
         updateTriggerPreview();
 
@@ -842,10 +1008,6 @@ function getCategoricalColors(name, n, opts) {
 
     /* ============================================================
        图例：覆盖式，默认右上角，可拖动·可滚轮缩放·可换行
-       - 位置：由 canvas 尺寸确定锚点，加上用户拖动偏移
-       - 缩放：滚轮，范围 0.3 ~ 3
-       - 换行：由 #legendMaxPerLine 控制
-       - 状态：state.legendOffset {dx,dy}、state.legendScale
     ============================================================ */
     function getLegendMaxPerLine() {
         const el = document.getElementById('legendMaxPerLine');
@@ -862,14 +1024,6 @@ function getCategoricalColors(name, n, opts) {
         return { app, state };
     }
 
-    /**
-     * 绘制覆盖式图例。
-     * opts: { p, items, colors,
-     *         labelFormatter?: (item,i)=>string,
-     *         shape?: 'rect'|'circle',
-     *         anchor?: 'top-right'|'top-left'|'bottom-right'|'bottom-left'  (默认 top-right)
-     *         margin?: number }
-     */
     function drawLegendOverlay(root, opts) {
         opts = opts || {};
         const p = opts.p || {};
@@ -917,29 +1071,29 @@ function getCategoricalColors(name, n, opts) {
         const boxW = gridW + pad * 2;
         const boxH = gridH + pad * 2;
 
-const margin = (opts.margin != null) ? opts.margin : 15;
-const anchor = opts.anchor || 'right-middle';
-let baseX, baseY;
-if (anchor === 'top-left')           { baseX = margin;                   baseY = margin; }
-else if (anchor === 'top-right')     { baseX = p.width - boxW - margin;  baseY = margin; }
-else if (anchor === 'bottom-right')  { baseX = p.width - boxW - margin;  baseY = p.height - boxH - margin; }
-else if (anchor === 'bottom-left')   { baseX = margin;                   baseY = p.height - boxH - margin; }
-else if (anchor === 'left-middle')   { baseX = margin;                   baseY = (p.height - boxH) / 2; }
-else if (anchor === 'top-middle')    { baseX = (p.width - boxW) / 2;     baseY = margin; }
-else if (anchor === 'bottom-middle') { baseX = (p.width - boxW) / 2;     baseY = p.height - boxH - margin; }
-else                                 { baseX = p.width - boxW - margin;  baseY = (p.height - boxH) / 2; }  
+        const margin = (opts.margin != null) ? opts.margin : 15;
+        const anchor = opts.anchor || 'right-middle';
+        let baseX, baseY;
+        if (anchor === 'top-left')           { baseX = margin;                   baseY = margin; }
+        else if (anchor === 'top-right')     { baseX = p.width - boxW - margin;  baseY = margin; }
+        else if (anchor === 'bottom-right')  { baseX = p.width - boxW - margin;  baseY = p.height - boxH - margin; }
+        else if (anchor === 'bottom-left')   { baseX = margin;                   baseY = p.height - boxH - margin; }
+        else if (anchor === 'left-middle')   { baseX = margin;                   baseY = (p.height - boxH) / 2; }
+        else if (anchor === 'top-middle')    { baseX = (p.width - boxW) / 2;     baseY = margin; }
+        else if (anchor === 'bottom-middle') { baseX = (p.width - boxW) / 2;     baseY = p.height - boxH - margin; }
+        else                                 { baseX = p.width - boxW - margin;  baseY = (p.height - boxH) / 2; }
 
         const group = root.append('g')
             .attr('class', 'chart-legend')
             .datum({ baseX, baseY })
             .attr('transform', `translate(${baseX + offset.dx},${baseY + offset.dy})`);
 
-group.append('rect')
-    .attr('class', 'legend-hit')
-    .attr('x', 0).attr('y', 0)
-    .attr('width', boxW).attr('height', boxH)
-    .attr('fill', 'transparent')
-    .attr('pointer-events', 'all');
+        group.append('rect')
+            .attr('class', 'legend-hit')
+            .attr('x', 0).attr('y', 0)
+            .attr('width', boxW).attr('height', boxH)
+            .attr('fill', 'transparent')
+            .attr('pointer-events', 'all');
 
         let cursorY = pad;
         if (hasTitle) {
@@ -962,77 +1116,77 @@ group.append('rect')
             for (let ci = 0; ci < c; ci++) colX += colWidths[ci];
             const y = cursorY + r * rowH;
 
-const markerY = y + rowH / 2 - markerSize / 2;
-const markerCX = colX + markerSize / 2;
-const markerCY = markerY + markerSize / 2;
-const shapeFn = opts.shapeOf || (() => opts.shape || 'rect');
-const s = shapeFn(i, it);
+            const markerY = y + rowH / 2 - markerSize / 2;
+            const markerCX = colX + markerSize / 2;
+            const markerCY = markerY + markerSize / 2;
+            const shapeFn = opts.shapeOf || (() => opts.shape || 'rect');
+            const s = shapeFn(i, it);
 
-if (s === 'circle') {
-    group.append('circle')
-        .attr('cx', markerCX).attr('cy', markerCY)
-        .attr('r', markerSize / 2)
-        .attr('fill', colors[i]);
-} else if (s === 'rect' || s === 'square') {
-    group.append('rect')
-        .attr('x', colX).attr('y', markerY)
-        .attr('width', markerSize).attr('height', markerSize)
-        .attr('rx', 2)
-        .attr('fill', colors[i]);
-} else if (s === 'box') {
-    const bx = colX;
-    const by = markerY;
-    const bw = markerSize;
-    const bh = markerSize;
-    const midX = bx + bw / 2;
-    const q1y = by + bh * 0.3;
-    const q3y = by + bh * 0.7;
-    const medY = by + bh * 0.5;
-    const topY = by;
-    const botY = by + bh;
-    const capHalf = bw * 0.28;
+            if (s === 'circle') {
+                group.append('circle')
+                    .attr('cx', markerCX).attr('cy', markerCY)
+                    .attr('r', markerSize / 2)
+                    .attr('fill', colors[i]);
+            } else if (s === 'rect' || s === 'square') {
+                group.append('rect')
+                    .attr('x', colX).attr('y', markerY)
+                    .attr('width', markerSize).attr('height', markerSize)
+                    .attr('rx', 2)
+                    .attr('fill', colors[i]);
+            } else if (s === 'box') {
+                const bx = colX;
+                const by = markerY;
+                const bw = markerSize;
+                const bh = markerSize;
+                const midX = bx + bw / 2;
+                const q1y = by + bh * 0.3;
+                const q3y = by + bh * 0.7;
+                const medY = by + bh * 0.5;
+                const topY = by;
+                const botY = by + bh;
+                const capHalf = bw * 0.28;
 
-    group.append('rect')
-        .attr('x', bx).attr('y', q1y)
-        .attr('width', bw).attr('height', q3y - q1y)
-        .attr('fill', colors[i])
-        .attr('fill-opacity', 0.7)
-        .attr('stroke', '#333')
-        .attr('stroke-width', 0.8);
-    group.append('line')
-        .attr('x1', midX).attr('x2', midX)
-        .attr('y1', q1y).attr('y2', topY)
-        .attr('stroke', '#333').attr('stroke-width', 0.8);
-    group.append('line')
-        .attr('x1', midX).attr('x2', midX)
-        .attr('y1', q3y).attr('y2', botY)
-        .attr('stroke', '#333').attr('stroke-width', 0.8);
-    group.append('line')
-        .attr('x1', midX - capHalf).attr('x2', midX + capHalf)
-        .attr('y1', topY).attr('y2', topY)
-        .attr('stroke', '#333').attr('stroke-width', 0.8);
-    group.append('line')
-        .attr('x1', midX - capHalf).attr('x2', midX + capHalf)
-        .attr('y1', botY).attr('y2', botY)
-        .attr('stroke', '#333').attr('stroke-width', 0.8);
-    group.append('line')
-        .attr('x1', bx).attr('x2', bx + bw)
-        .attr('y1', medY).attr('y2', medY)
-        .attr('stroke', '#333').attr('stroke-width', 1.2);
-} else if (window.PlotShapes) {
-    const symType = PlotShapes.getSymbolType(s);
-    const size = PlotShapes.getSymbolSize(s, markerSize);
-    const pathData = d3.symbol().type(symType).size(size)();
-    group.append('path')
-        .attr('d', pathData)
-        .attr('transform', `translate(${markerCX}, ${markerCY})`)
-        .attr('fill', colors[i]);
-} else {
-    group.append('rect')
-        .attr('x', colX).attr('y', markerY)
-        .attr('width', markerSize).attr('height', markerSize)
-        .attr('fill', colors[i]);
-}
+                group.append('rect')
+                    .attr('x', bx).attr('y', q1y)
+                    .attr('width', bw).attr('height', q3y - q1y)
+                    .attr('fill', colors[i])
+                    .attr('fill-opacity', 0.7)
+                    .attr('stroke', '#333')
+                    .attr('stroke-width', 0.8);
+                group.append('line')
+                    .attr('x1', midX).attr('x2', midX)
+                    .attr('y1', q1y).attr('y2', topY)
+                    .attr('stroke', '#333').attr('stroke-width', 0.8);
+                group.append('line')
+                    .attr('x1', midX).attr('x2', midX)
+                    .attr('y1', q3y).attr('y2', botY)
+                    .attr('stroke', '#333').attr('stroke-width', 0.8);
+                group.append('line')
+                    .attr('x1', midX - capHalf).attr('x2', midX + capHalf)
+                    .attr('y1', topY).attr('y2', topY)
+                    .attr('stroke', '#333').attr('stroke-width', 0.8);
+                group.append('line')
+                    .attr('x1', midX - capHalf).attr('x2', midX + capHalf)
+                    .attr('y1', botY).attr('y2', botY)
+                    .attr('stroke', '#333').attr('stroke-width', 0.8);
+                group.append('line')
+                    .attr('x1', bx).attr('x2', bx + bw)
+                    .attr('y1', medY).attr('y2', medY)
+                    .attr('stroke', '#333').attr('stroke-width', 1.2);
+            } else if (window.PlotShapes) {
+                const symType = PlotShapes.getSymbolType(s);
+                const size = PlotShapes.getSymbolSize(s, markerSize);
+                const pathData = d3.symbol().type(symType).size(size)();
+                group.append('path')
+                    .attr('d', pathData)
+                    .attr('transform', `translate(${markerCX}, ${markerCY})`)
+                    .attr('fill', colors[i]);
+            } else {
+                group.append('rect')
+                    .attr('x', colX).attr('y', markerY)
+                    .attr('width', markerSize).attr('height', markerSize)
+                    .attr('fill', colors[i]);
+            }
 
             group.append('text')
                 .attr('x', colX + markerSize + textGap)
@@ -1095,107 +1249,113 @@ if (s === 'circle') {
         });
     }
 
-/* ---------- 公共面板：全局设置 ---------- */
-function renderGlobalSettings(containerOrId) {
-    const container = typeof containerOrId === 'string'
-        ? document.getElementById(containerOrId) : containerOrId;
-    if (!container) return;
-    const isEn = getLang() === 'en';
-    const S = {
-        title:       isEn ? 'Global Settings' : '全局设置',
-        width:       isEn ? 'Width (px)'  : '宽度(px)',
-        height:      isEn ? 'Height (px)' : '高度(px)',
-        showBorder:  isEn ? 'Show canvas border' : '显示画布边框',
-        fontLabel:   isEn ? 'Font' : '字体'
-    };
+    /* ---------- 公共面板：全局设置 ---------- */
+    function renderGlobalSettings(containerOrId) {
+        const container = typeof containerOrId === 'string'
+            ? document.getElementById(containerOrId) : containerOrId;
+        if (!container) return;
+        const isEn = getLang() === 'en';
+        const S = {
+            title:       isEn ? 'Global Settings' : '全局设置',
+            width:       isEn ? 'Width (px)'  : '宽度(px)',
+            height:      isEn ? 'Height (px)' : '高度(px)',
+            showBorder:  isEn ? 'Show canvas border' : '显示画布边框',
+            fontLabel:   isEn ? 'Font' : '字体'
+        };
 
-    container.innerHTML = `
-        <div class="param-panel">
-            <div class="param-panel-title">${S.title}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label>${S.width}</label>
-                    <input type="number" id="chartWidth" value="700" min="300" data-redraw>
+        container.innerHTML = `
+            <div class="param-panel">
+                <div class="param-panel-title">${S.title}</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>${S.width}</label>
+                        <input type="number" id="chartWidth" value="700" min="300" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>${S.height}</label>
+                        <input type="number" id="chartHeight" value="600" min="300" data-redraw>
+                    </div>
                 </div>
-                <div class="param-item">
-                    <label>${S.height}</label>
-                    <input type="number" id="chartHeight" value="600" min="300" data-redraw>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>${S.showBorder}</label>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label>${S.fontLabel}
+                        <select id="fontFamily" data-redraw>
+                            <option value="Times New Roman" selected>Times New Roman</option>
+                            <option value="Arial">Arial</option>
+                            <option value="Calibri">Calibri</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Microsoft YaHei">微软雅黑</option>
+                        </select>
+                    </label>
                 </div>
             </div>
-            <div class="param-inline" style="margin-top:8px;">
-                <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>${S.showBorder}</label>
-            </div>
-            <div class="param-inline" style="margin-top:8px;">
-                <label>${S.fontLabel}
-                    <select id="fontFamily" data-redraw>
-                        <option value="Times New Roman" selected>Times New Roman</option>
-                        <option value="Arial">Arial</option>
-                        <option value="Calibri">Calibri</option>
-                        <option value="Helvetica">Helvetica</option>
-                        <option value="Microsoft YaHei">微软雅黑</option>
-                    </select>
-                </label>
-            </div>
-        </div>
-    `;
-}
+        `;
+    }
 
-/* ---------- 公共面板：图例组件 ---------- */
-function renderLegendSettings(containerOrId) {
-    const container = typeof containerOrId === 'string'
-        ? document.getElementById(containerOrId) : containerOrId;
-    if (!container) return;
-    const isEn = getLang() === 'en';
-    const S = {
-        title:        isEn ? 'Legend'         : '图例',
-        show:         isEn ? 'Show'           : '显示',
-        perRow:       isEn ? 'Per row:'       : '每行显示：',
-        titleRow:     isEn ? 'Legend Title'   : '图例标题',
-        titleShow:    isEn ? 'Show'           : '显示',
-        content:      isEn ? 'Text:'          : '内容：',
-        fontSize:     isEn ? 'Size'           : '字号',
-        bold:         isEn ? 'B'              : '粗',
-        italic:       isEn ? 'I'              : '斜'
-    };
+    /* ---------- 公共面板：图例组件 ---------- */
+    function renderLegendSettings(containerOrId) {
+        const container = typeof containerOrId === 'string'
+            ? document.getElementById(containerOrId) : containerOrId;
+        if (!container) return;
+        const isEn = getLang() === 'en';
+        const S = {
+            title:        isEn ? 'Legend'         : '图例',
+            show:         isEn ? 'Show'           : '显示',
+            perRow:       isEn ? 'Per row:'       : '每行显示：',
+            titleRow:     isEn ? 'Legend Title'   : '图例标题',
+            titleShow:    isEn ? 'Show'           : '显示',
+            content:      isEn ? 'Text:'          : '内容：',
+            fontSize:     isEn ? 'Size'           : '字号',
+            bold:         isEn ? 'B'              : '粗',
+            italic:       isEn ? 'I'              : '斜'
+        };
 
-    container.innerHTML = `
-        <div class="param-panel">
-            <div class="param-panel-title">${S.title}</div>
+        container.innerHTML = `
+            <div class="param-panel">
+                <div class="param-panel-title">${S.title}</div>
 
-            <div class="param-inline">
-                <label><input type="checkbox" id="showLegend" checked data-redraw>${S.show}</label>
-                <label>${S.perRow}
-                    <input type="number" id="legendMaxPerLine" value="1" min="1" max="50" step="1" style="width:60px;" data-redraw>
-                </label>
-                <label>${S.fontSize}
-                    <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
-                </label>
-                <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>${S.bold}</label>
-                <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>${S.italic}</label>
+                <div class="param-inline">
+                    <label><input type="checkbox" id="showLegend" checked data-redraw>${S.show}</label>
+                    <label>${S.perRow}
+                        <input type="number" id="legendMaxPerLine" value="1" min="1" max="50" step="1" style="width:60px;" data-redraw>
+                    </label>
+                    <label>${S.fontSize}
+                        <input type="number" id="legendFontSize" value="15" min="8" max="36" data-redraw>
+                    </label>
+                    <label class="mini-check"><input type="checkbox" id="legendBold" data-redraw>${S.bold}</label>
+                    <label class="mini-check"><input type="checkbox" id="legendItalic" data-redraw>${S.italic}</label>
+                </div>
+
+                <div class="param-inline">
+                    <label>${S.titleRow}
+                        <input type="checkbox" id="showLegendTitle" checked data-redraw>${S.titleShow}
+                    </label>
+                    <label>${S.content}
+                        <input type="text" id="legendTitle" value="Item" style="width:200px;" data-redraw>
+                    </label>
+                    <label>${S.fontSize}
+                        <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
+                    </label>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>${S.bold}</label>
+                    <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>${S.italic}</label>
+                </div>
             </div>
-
-            <div class="param-inline">
-                <label>${S.titleRow}
-                    <input type="checkbox" id="showLegendTitle" checked data-redraw>${S.titleShow}
-                </label>
-                <label>${S.content}
-                    <input type="text" id="legendTitle" value="Item" style="width:200px;" data-redraw>
-                </label>
-                <label>${S.fontSize}
-                    <input type="number" id="legendTitleFontSize" value="15" min="8" max="36" data-redraw>
-                </label>
-                <label class="mini-check"><input type="checkbox" id="legendTitleBold" checked data-redraw>${S.bold}</label>
-                <label class="mini-check"><input type="checkbox" id="legendTitleItalic" data-redraw>${S.italic}</label>
-            </div>
-        </div>
-    `;
-}
+        `;
+    }
 
     /* ---------- 对外暴露 ---------- */
     global.PlotCommon = {
         hexToRgb, rgbToHex, mixColor, sampleStops, expandScheme,
         getCategoricalScheme,
-        listPalettes, getCategoricalColors,
+        isGgsciName, getGgsciScheme,
+        isOtherName, getOtherScheme,
+        isContinuousName,
+        GGSCI_SCHEMES, GGSCI_LIST,
+        OTHER_SCHEMES, OTHER_LIST,
+        CATEGORICAL_LIST, CONTINUOUS_LIST,
+        listPalettes, listPaletteGroups, getCategoricalColors,
         getContinuousInterpolator, getContinuousColors,
         renderPaletteDropdown, renderColorAssignment,
 
@@ -1209,7 +1369,7 @@ function renderLegendSettings(containerOrId) {
 
         downloadSVG, downloadPNG,
         showToast, escapeHtml, clone, uid,
-        getLang, getLangUrl, t, L,
+        getLang, getLangUrl, t, L, PT,
 
         num, numById, intById,
         estTextWidth, fmtNum, textColorOn,

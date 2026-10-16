@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Split Violin Plot - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Split Violin Plot</h2>
+            <p>Each category shares a single violin between two groups — the left half shows one group and the right half shows the other, making distribution differences easy to compare at a glance.</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Data Columns &amp; Order</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Data Columns</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Category (X-axis)</label>
+                        <select id="xColSel" disabled><option value="">— Please import data first —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>Group (exactly 2 values)</label>
+                        <select id="groupColSel" disabled><option value="">None</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>Replicate label</label>
+                        <select id="repColSel" disabled><option value="">None</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>Value</label>
+                        <select id="yColSel" disabled><option value="">— Please import data first —</option></select>
+                    </div>
+                </div>
+                <div style="font-size:12px;color:#999;margin-top:8px;">
+                    Category is required and defines the X-axis ticks. <strong>Group is required and must have exactly 2 unique values</strong>, which occupy the left and right halves of each category. The replicate label column is only needed for paired tests; replicate labels must be strictly identical across all groups.
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Order</div>
+                <div class="param-inline" style="margin-bottom:8px;">
+                    <label>Category order
+                        <input type="text" id="catOrder" value="" placeholder="e.g. B,A,C" style="width:320px;">
+                    </label>
+                    <span style="font-size:12px;color:#999;">Leave empty to use data order; unlisted categories are appended</span>
+                </div>
+                <div class="param-inline">
+                    <label>Group order (first = left, second = right)
+                        <input type="text" id="groupOrder" value="" placeholder="e.g. Ctrl,Trt" style="width:320px;">
+                    </label>
+                    <span style="font-size:12px;color:#999;">Leave empty to use data order</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Palette &amp; Colors</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Group palette</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">Reverse palette</label>
+                    <label><input type="checkbox" id="cycleColors">Cycle colors</label>
+                </div>
+            </div>
+
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Plot Settings</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+            <div id="axisPanelContainer"></div>
+
+            <div id="violinPanelContainer"></div>
+
+            <div id="testPanelContainer"></div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">Draw Chart</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 5: Preview &amp; Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">Import data and complete the settings, then click "Draw Chart" to see the result</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer-en.js"></script>
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-axis.js"></script>
+    <script src="../COMMON/script/stat-common.js"></script>
+    <script src="../COMMON/script/stat-test.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/bar-common.js"></script>
+    <script src="../COMMON/script/plot-test.js"></script>
+    <script src="../COMMON/script/box-common.js"></script>
+    <script src="../COMMON/script/014.js"></script>
+</body>
+</html>
