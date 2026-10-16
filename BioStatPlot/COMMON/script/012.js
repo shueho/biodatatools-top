@@ -9,7 +9,11 @@
     const T = {
         importInfo: EN
             ? 'Headers required. <strong>Category (X-axis)</strong> and <strong>Value</strong> are mandatory; <strong>Group</strong> and <strong>Replicate</strong> are optional.'
-            : '需包含表头。<strong>分类列（X轴）</strong> 和 <strong>数值列</strong> 必填；<strong>分组列（组内）</strong> 和 <strong>重复标记列</strong> 可选。',
+              + '<br>If your data is in <strong>wide format</strong>, please convert it first using the '
+              + '<a href="../../en/022.Wide_long_table_reshaping.html" target="_blank" style="color:#1f4068;font-weight:600;">Wide-to-Long Table Converter</a>.'
+            : '需包含表头。<strong>分类列（X轴）</strong> 和 <strong>数值列</strong> 必填；<strong>分组列（组内）</strong> 和 <strong>重复标记列</strong> 可选。'
+              + '<br>若您的数据为<strong>宽表</strong>形式，请先使用 '
+              + '<a href="../../ch/022.Wide_long_table_reshaping.html" target="_blank" style="color:#1f4068;font-weight:600;">宽长表转换工具</a> 转换后再导入。',
         noData: EN ? '❌ Import data first' : '❌ 请先导入数据',
         selectCols: EN ? '❌ Select Category (X-axis) and Value' : '❌ 请选择分类列（X轴）与数值列',
         noValid: EN ? '❌ No valid data' : '❌ 未能生成有效数据',
@@ -20,12 +24,12 @@
 
     const EX =
         'Category\tGroup\tRep\tValue\n' +
-        'A\tCtrl\t1\t11.0\nA\tCtrl\t2\t15.0\nA\tCtrl\t3\t16.5\nA\tCtrl\t4\t17.8\nA\tCtrl\t5\t18.2\nA\tCtrl\t6\t18.5\nA\tCtrl\t7\t19.0\nA\tCtrl\t8\t19.5\nA\tCtrl\t9\t20.5\nA\tCtrl\t10\t21.5\n' +
-        'A\tTrt1\t1\t20.0\nA\tTrt1\t2\t21.5\nA\tTrt1\t3\t22.5\nA\tTrt1\t4\t23.5\nA\tTrt1\t5\t24.0\nA\tTrt1\t6\t24.5\nA\tTrt1\t7\t25.0\nA\tTrt1\t8\t26.5\nA\tTrt1\t9\t27.0\nA\tTrt1\t10\t34.0\n' +
-        'B\tCtrl\t1\t15.0\nB\tCtrl\t2\t21.0\nB\tCtrl\t3\t22.0\nB\tCtrl\t4\t22.5\nB\tCtrl\t5\t23.0\nB\tCtrl\t6\t23.5\nB\tCtrl\t7\t24.0\nB\tCtrl\t8\t25.0\nB\tCtrl\t9\t26.0\nB\tCtrl\t10\t27.0\n' +
-        'B\tTrt1\t1\t27.0\nB\tTrt1\t2\t28.5\nB\tTrt1\t3\t29.5\nB\tTrt1\t4\t30.5\nB\tTrt1\t5\t31.0\nB\tTrt1\t6\t32.0\nB\tTrt1\t7\t33.0\nB\tTrt1\t8\t34.5\nB\tTrt1\t9\t35.5\nB\tTrt1\t10\t40.0\n' +
-        'C\tCtrl\t1\t7.0\nC\tCtrl\t2\t12.5\nC\tCtrl\t3\t13.5\nC\tCtrl\t4\t14.5\nC\tCtrl\t5\t15.5\nC\tCtrl\t6\t16.0\nC\tCtrl\t7\t16.5\nC\tCtrl\t8\t17.0\nC\tCtrl\t9\t17.5\nC\tCtrl\t10\t18.5\n' +
-        'C\tTrt1\t1\t17.0\nC\tTrt1\t2\t18.0\nC\tTrt1\t3\t19.0\nC\tTrt1\t4\t19.5\nC\tTrt1\t5\t20.0\nC\tTrt1\t6\t21.0\nC\tTrt1\t7\t22.0\nC\tTrt1\t8\t23.0\nC\tTrt1\t9\t24.0\nC\tTrt1\t10\t31.0';
+        'A\tCtrl\t1\t10.0\nA\tCtrl\t2\t12.5\nA\tCtrl\t3\t13.0\nA\tCtrl\t4\t13.5\nA\tCtrl\t5\t14.0\nA\tCtrl\t6\t14.5\nA\tCtrl\t7\t15.0\nA\tCtrl\t8\t15.5\nA\tCtrl\t9\t16.0\nA\tCtrl\t10\t17.0\nA\tCtrl\t11\t18.0\nA\tCtrl\t12\t19.0\nA\tCtrl\t13\t19.5\nA\tCtrl\t14\t20.0\nA\tCtrl\t15\t20.5\nA\tCtrl\t16\t21.0\nA\tCtrl\t17\t21.5\nA\tCtrl\t18\t22.0\nA\tCtrl\t19\t22.5\nA\tCtrl\t20\t23.5\n' +
+        'A\tTrt1\t1\t18.0\nA\tTrt1\t2\t19.0\nA\tTrt1\t3\t20.0\nA\tTrt1\t4\t21.0\nA\tTrt1\t5\t22.0\nA\tTrt1\t6\t22.5\nA\tTrt1\t7\t23.0\nA\tTrt1\t8\t23.5\nA\tTrt1\t9\t24.0\nA\tTrt1\t10\t24.5\nA\tTrt1\t11\t25.0\nA\tTrt1\t12\t25.5\nA\tTrt1\t13\t26.0\nA\tTrt1\t14\t26.5\nA\tTrt1\t15\t27.0\nA\tTrt1\t16\t27.5\nA\tTrt1\t17\t28.0\nA\tTrt1\t18\t29.0\nA\tTrt1\t19\t30.0\nA\tTrt1\t20\t34.0\n' +
+        'B\tCtrl\t1\t15.0\nB\tCtrl\t2\t18.0\nB\tCtrl\t3\t19.0\nB\tCtrl\t4\t20.0\nB\tCtrl\t5\t21.0\nB\tCtrl\t6\t22.0\nB\tCtrl\t7\t22.5\nB\tCtrl\t8\t23.0\nB\tCtrl\t9\t23.5\nB\tCtrl\t10\t24.0\nB\tCtrl\t11\t24.5\nB\tCtrl\t12\t25.0\nB\tCtrl\t13\t25.5\nB\tCtrl\t14\t26.0\nB\tCtrl\t15\t26.5\nB\tCtrl\t16\t27.0\nB\tCtrl\t17\t28.0\nB\tCtrl\t18\t29.0\nB\tCtrl\t19\t30.0\nB\tCtrl\t20\t31.0\n' +
+        'B\tTrt1\t1\t25.0\nB\tTrt1\t2\t27.0\nB\tTrt1\t3\t28.0\nB\tTrt1\t4\t29.0\nB\tTrt1\t5\t30.0\nB\tTrt1\t6\t31.0\nB\tTrt1\t7\t31.5\nB\tTrt1\t8\t32.0\nB\tTrt1\t9\t32.5\nB\tTrt1\t10\t33.0\nB\tTrt1\t11\t33.5\nB\tTrt1\t12\t34.0\nB\tTrt1\t13\t34.5\nB\tTrt1\t14\t35.0\nB\tTrt1\t15\t35.5\nB\tTrt1\t16\t36.0\nB\tTrt1\t17\t37.0\nB\tTrt1\t18\t38.0\nB\tTrt1\t19\t39.0\nB\tTrt1\t20\t42.0\n' +
+        'C\tCtrl\t1\t8.0\nC\tCtrl\t2\t10.0\nC\tCtrl\t3\t11.0\nC\tCtrl\t4\t12.0\nC\tCtrl\t5\t13.0\nC\tCtrl\t6\t14.0\nC\tCtrl\t7\t15.0\nC\tCtrl\t8\t15.5\nC\tCtrl\t9\t16.0\nC\tCtrl\t10\t16.5\nC\tCtrl\t11\t17.0\nC\tCtrl\t12\t17.5\nC\tCtrl\t13\t18.0\nC\tCtrl\t14\t18.5\nC\tCtrl\t15\t19.0\nC\tCtrl\t16\t20.0\nC\tCtrl\t17\t21.0\nC\tCtrl\t18\t22.0\nC\tCtrl\t19\t24.0\nC\tCtrl\t20\t28.0\n' +
+        'C\tTrt1\t1\t16.0\nC\tTrt1\t2\t17.0\nC\tTrt1\t3\t18.0\nC\tTrt1\t4\t18.5\nC\tTrt1\t5\t19.0\nC\tTrt1\t6\t19.5\nC\tTrt1\t7\t20.0\nC\tTrt1\t8\t20.5\nC\tTrt1\t9\t21.0\nC\tTrt1\t10\t22.0\nC\tTrt1\t11\t23.0\nC\tTrt1\t12\t24.0\nC\tTrt1\t13\t25.0\nC\tTrt1\t14\t25.5\nC\tTrt1\t15\t26.0\nC\tTrt1\t16\t26.5\nC\tTrt1\t17\t27.0\nC\tTrt1\t18\t28.0\nC\tTrt1\t19\t29.0\nC\tTrt1\t20\t33.0';
 
     const OUTER_GAP = 0.3;
     const INNER_GAP = 0.15;

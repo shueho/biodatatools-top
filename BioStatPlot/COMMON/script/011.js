@@ -10,7 +10,11 @@
     const T = {
         importInfo: EN
             ? 'Headers required. <strong>Category (X-axis)</strong> and <strong>Value</strong> are mandatory; <strong>Group</strong> and <strong>Replicate</strong> are optional.'
-            : '需包含表头。<strong>分类列（X轴）</strong> 和 <strong>数值列</strong> 必填；<strong>分组列（组内）</strong> 和 <strong>重复标记列</strong> 可选。',
+              + '<br>If your data is in <strong>wide format</strong>, please convert it first using the '
+              + '<a href="../../en/022.Wide_long_table_reshaping.html" target="_blank" style="color:#1f4068;font-weight:600;">Wide-to-Long Table Converter</a>.'
+            : '需包含表头。<strong>分类列（X轴）</strong> 和 <strong>数值列</strong> 必填；<strong>分组列（组内）</strong> 和 <strong>重复标记列</strong> 可选。'
+              + '<br>若您的数据为<strong>宽表</strong>形式，请先使用 '
+              + '<a href="../../ch/022.Wide_long_table_reshaping.html" target="_blank" style="color:#1f4068;font-weight:600;">宽长表转换工具</a> 转换后再导入。',
         noData: EN ? '❌ Import data first' : '❌ 请先导入数据',
         selectCols: EN ? '❌ Select Category (X-axis) and Value' : '❌ 请选择分类列（X轴）与数值列',
         noValid: EN ? '❌ No valid data' : '❌ 未能生成有效数据',
