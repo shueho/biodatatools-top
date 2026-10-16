@@ -51,7 +51,7 @@
                 zh: '折线图',
                 en: 'Line Chart',
                 tools: [
-                    { id: 'xxx', zh: '开发中', en: 'NULL' }
+                    { id: '018', zh: '分组折线图', en: 'Grouped Line Chart' }
                 ]
             }
         ]

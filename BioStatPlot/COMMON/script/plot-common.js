@@ -1064,9 +1064,9 @@
                 const idx = r * itemsPerRow + c;
                 if (idx >= items.length) break;
                 const sCheck = shapeFnForWidth(idx, items[idx]);
-                const markerW = (sCheck === 'line' || sCheck === 'dashline')
-                    ? markerSize * 1.5
-                    : markerSize;
+const isLineShape = (sCheck === 'line' || sCheck === 'dashline'
+    || sCheck === 'linepoint' || sCheck === 'dashlinepoint');
+const markerW = isLineShape ? markerSize * 1.5 : markerSize;
                 const lw = markerW + textGap + estTextWidth(labels[idx], fontSize) + itemGap;
                 if (lw > w) w = lw;
             }
@@ -1179,7 +1179,7 @@
                     .attr('x1', bx).attr('x2', bx + bw)
                     .attr('y1', medY).attr('y2', medY)
                     .attr('stroke', '#333').attr('stroke-width', 1.2);
-            } else if (s === 'line' || s === 'dashline') {
+                       } else if (s === 'line' || s === 'dashline') {
                 const lineY = markerCY;
                 const lineX1 = colX;
                 const lineX2 = colX + markerSize * 1.5;
@@ -1190,6 +1190,32 @@
                     .attr('stroke-width', 2)
                     .attr('stroke-linecap', 'round');
                 if (s === 'dashline') lineEl.attr('stroke-dasharray', '6 4');
+            } else if (s === 'linepoint' || s === 'dashlinepoint') {
+                const lineY = markerCY;
+                const lineX1 = colX;
+                const lineX2 = colX + markerSize * 1.5;
+                const lineEl = group.append('line')
+                    .attr('x1', lineX1).attr('x2', lineX2)
+                    .attr('y1', lineY).attr('y2', lineY)
+                    .attr('stroke', colors[i])
+                    .attr('stroke-width', 2)
+                    .attr('stroke-linecap', 'round');
+                if (s === 'dashlinepoint') lineEl.attr('stroke-dasharray', '6 4');
+
+                const pShape = opts.pointShapeOf ? opts.pointShapeOf(i, it) : 'circle';
+                const midX = (lineX1 + lineX2) / 2;
+                if (window.PlotShapes && PlotShapes.buildSymbolPath) {
+                    const pathData = PlotShapes.buildSymbolPath(pShape, markerSize * 0.9);
+                    const p = group.append('path')
+                        .attr('d', pathData)
+                        .attr('transform', `translate(${midX}, ${lineY})`);
+                    PlotShapes.applyShapeStyle(p, pShape, colors[i]);
+                } else {
+                    group.append('circle')
+                        .attr('cx', midX).attr('cy', lineY)
+                        .attr('r', markerSize * 0.35)
+                        .attr('fill', colors[i]);
+                }
             } else if (window.PlotShapes) {
                 const pathData = PlotShapes.buildSymbolPath(s, markerSize);
                 const p = group.append('path')

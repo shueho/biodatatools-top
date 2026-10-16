@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分组折线图 - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>分组折线图</h2>
+            <p>可按分组着色绘制折线，支持平滑曲线与自定义点形状，如果有重复值可以形成误差棒。</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：指定数据列</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">数据列</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>X 轴（数值或文本）</label>
+                        <select id="xColSel" disabled><option value="">— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>Y 轴（数值列）</label>
+                        <select id="yColSel" disabled><option value="">— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>分组列（可选）</label>
+                        <select id="groupColSel" disabled><option value="">无</option></select>
+                    </div>
+                </div>
+                <div style="font-size:12px;color:#999;margin-top:8px;">
+                    X 列可为连续/不连续数字或文本，均按类别均匀排布；Y 列必须为数值。选择分组列后，将按分组着色并分别绘制折线。
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：选择色板与颜色</div>
+            <div class="param-panel">
+                <div class="param-panel-title">分类色板</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                    <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+                </div>
+            </div>
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：设置绘图参数</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+            <div id="axisPanelContainer"></div>
+            <div class="info-box" style="margin-top:10px;">
+                <strong>注意：</strong>坐标轴设置中的轴线位置、轴截断等选项对折线图不生效。
+            </div>
+            <div id="linePanelContainer"></div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer.js"></script>
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-shapes.js"></script>
+    <script src="../COMMON/script/plot-axis.js"></script>
+    <script src="../COMMON/script/stat-common.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/bar-common.js"></script>
+    <script src="../COMMON/script/line-common.js"></script>
+    <script src="../COMMON/script/018.js"></script>
+</body>
+</html>
