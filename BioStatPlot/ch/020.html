@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>棒棒糖图 - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>棒棒糖图</h2>
+            <p>以基线为起点，用一条线连接到数据点，形成"棒棒糖"形状；支持正负值、分组与自定义排序。</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：指定数据列与排序</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">数据列</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>分类列</label>
+                        <select id="xColSel" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>分组列（可选）</label>
+                        <select id="groupColSel" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>数值列</label>
+                        <select id="yColSel" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                </div>
+                <div style="font-size:12px;color:#999;margin-top:8px;">
+                    数值可正可负；同一分类（同一分组）下的多个重复行会自动取均值。
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">排序</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>排序依据</label>
+                        <select id="sortBy" disabled><option>— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>排序方向</label>
+                        <select id="sortDir">
+                            <option value="desc" selected>从大到小</option>
+                            <option value="asc">从小到大</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="param-inline" style="margin-top:10px;">
+                    <label class="mini-check">
+                        <input type="checkbox" id="bigCatSorted" checked data-redraw>
+                        按分组聚拢排序
+                    </label>
+                    <span style="font-size:12px;color:#999;">
+                        勾选：先按分组聚拢，组内按排序依据排；不勾选：所有类别一起排（颜色交错）
+                    </span>
+                </div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label>分组顺序
+                        <input type="text" id="groupOrder" value="" placeholder="如 A,B,C" style="width:280px;">
+                    </label>
+                    <span style="font-size:12px;color:#999;">留空按出现顺序</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：选择色板与颜色</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">分类色板</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                    <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+                </div>
+            </div>
+
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：设置绘图参数</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+            <div id="axisPanelContainer"></div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">基线</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>基线值</label>
+                        <input type="number" id="baselineValue" value="0" step="any" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="showBaseline" checked data-redraw>显示基线</label>
+                    </div>
+                    <div class="param-item"><label>基线颜色</label>
+                        <input type="color" id="baselineColor" value="#999999" data-redraw>
+                    </div>
+                    <div class="param-item"><label>基线宽度</label>
+                        <input type="number" id="baselineWidth" value="1" min="0" max="6" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="baselineDash" data-redraw>基线虚线</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">棒棒糖设置</div>
+
+                <div class="axis-subsection">端点（棒棒糖头部）</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>点大小模式</label>
+                        <select id="dotSizeMode" data-redraw>
+                            <option value="uniform" selected>统一点大小</option>
+                            <option value="proportional">与数值大小成正比</option>
+                        </select>
+                    </div>
+                    <div class="param-item"><label>统一点大小</label>
+                        <input type="number" id="dotSize" value="8" min="2" max="30" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item"><label>最小点大小</label>
+                        <input type="number" id="dotSizeMin" value="4" min="1" max="40" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item"><label>最大点大小</label>
+                        <input type="number" id="dotSizeMax" value="20" min="2" max="60" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item"><label>点形状</label>
+                        <select id="dotShape" data-redraw></select>
+                    </div>
+                    <div class="param-item"><label>点描边色</label>
+                        <select id="dotStrokeMode" data-redraw>
+                            <option value="same" selected>与点同色</option>
+                            <option value="white">白色</option>
+                            <option value="none">无描边</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                    <div class="param-item" id="dotStrokeColorItem" style="display:none;">
+                        <label>自定义描边色</label>
+                        <input type="color" id="dotStrokeColor" value="#333333">
+                    </div>
+                    <div class="param-item"><label>点描边宽度</label>
+                        <input type="number" id="dotStrokeWidth" value="1.5" min="0" max="6" step="0.5" data-redraw>
+                    </div>
+                </div>
+
+                <div class="axis-subsection">线条（棒棒糖茎部）</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>线宽</label>
+                        <input type="number" id="lineWidth" value="2" min="0.5" max="10" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item"><label>线色模式</label>
+                        <select id="lineColorMode" data-redraw>
+                            <option value="same" selected>与点同色</option>
+                            <option value="uniform">统一色</option>
+                            <option value="direction">按方向（正/负）</option>
+                        </select>
+                    </div>
+                    <div class="param-item" id="uniformLineColorItem" style="display:none;">
+                        <label>统一线色</label>
+                        <input type="color" id="uniformLineColor" value="#888888" data-redraw>
+                    </div>
+                    <div class="param-item" id="posLineColorItem" style="display:none;">
+                        <label>正值线色</label>
+                        <input type="color" id="posLineColor" value="#e15759" data-redraw>
+                    </div>
+                    <div class="param-item" id="negLineColorItem" style="display:none;">
+                        <label>负值线色</label>
+                        <input type="color" id="negLineColor" value="#4e79a7" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="lineDash" data-redraw>虚线</label>
+                    </div>
+                </div>
+
+                <div class="axis-subsection">布局</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item"><label>间距</label>
+                        <input type="number" id="barOuterGap" value="0.4" min="0" max="0.9" step="0.05" data-redraw>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer.js"></script>
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-shapes.js"></script>
+    <script src="../COMMON/script/plot-axis.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/bar-common.js"></script>
+    <script src="../COMMON/script/020.js"></script>
+</body>
+</html>

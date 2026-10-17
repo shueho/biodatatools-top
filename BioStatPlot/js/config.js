@@ -52,7 +52,8 @@
                 en: 'Line Chart',
                 tools: [
                     { id: '018', zh: '分组折线图', en: 'Grouped Line Chart' },
-                    { id: '019', zh: '哑铃图', en: 'Dumbbell Chart' }
+                    { id: '019', zh: '哑铃图', en: 'Dumbbell Chart' },
+                    { id: '020', zh: '棒棒糖图', en: 'Lollipop Chart' },
 
                 ]
             }
