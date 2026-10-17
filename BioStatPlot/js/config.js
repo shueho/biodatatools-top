@@ -45,6 +45,8 @@
                 en: 'Scatter Plot',
                 tools: [
                     { id: '017', zh: '分组拟合散点图', en: 'Grouped Fit Scatter Plot' },
+                    { id: '021', zh: '带误差棒的散点图', en: 'Scatter Plot with Error Bars' },
+
                 ]
             },
             {

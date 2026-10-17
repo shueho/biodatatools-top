@@ -10,7 +10,7 @@
 
     const STR = {
         zh: {
-            title: '图表预览',
+            title: '图表预览（仅供预览，请在最后一步导出图片）',
             empty: '绘制图表后将在此处显示缩略图',
             collapse: '折叠',
             expand: '展开',
@@ -18,7 +18,7 @@
             hint: '调整参数后，建议点击右上角 ⟳ 刷新预览'
         },
         en: {
-            title: 'Preview',
+            title: 'Preview (for preview only — please export the image in the final step)',
             empty: 'The chart preview will appear here',
             collapse: 'Collapse',
             expand: 'Expand',
