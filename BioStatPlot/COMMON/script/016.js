@@ -373,7 +373,7 @@
         if (valueAxisCfg.gridShow) {
             const ticks = valueScale.ticks ? valueScale.ticks() : valueScale.domain();
             ticks.forEach(t => {
-                const pos = valueScale(t);
+                const pos = Math.round(valueScale(t)) + 0.5;
                 if (!isFinite(pos)) return;
                 const line = svg.append('line')
                     .attr('stroke', valueAxisCfg.gridColor)
@@ -391,7 +391,7 @@
         if (freqAxisCfg.gridShow) {
             const ticks = freqScale.ticks ? freqScale.ticks() : freqScale.domain();
             ticks.forEach(t => {
-                const pos = freqScale(t);
+                const pos = Math.round(freqScale(t)) + 0.5;
                 if (!isFinite(pos)) return;
                 const line = svg.append('line')
                     .attr('stroke', freqAxisCfg.gridColor)
@@ -545,6 +545,12 @@
         const bAxisG = svg.append('g').attr('class', 'x-axis')
             .attr('transform', 'translate(0,' + (plotY + plotH) + ')')
             .call(bAxisFn);
+
+        bAxisG.selectAll('.tick').attr('transform', d => {
+            const x = Math.round(bottomScale(d)) + 0.5;
+            return `translate(${x},0)`;
+        });
+
         PlotAxis.applyAxis(bAxisG, bottomCfg, 'bottom');
 
         const leftScale = isH ? valueScale : freqScale;
@@ -567,6 +573,12 @@
         const lAxisG = svg.append('g').attr('class', 'y-axis')
             .attr('transform', 'translate(' + plotX + ',0)')
             .call(lAxisFn);
+
+        lAxisG.selectAll('.tick').attr('transform', d => {
+            const y = Math.round(leftScale(d)) + 0.5;
+            return `translate(0,${y})`;
+        });
+
         PlotAxis.applyAxis(lAxisG, leftCfg, 'left');
 
         if (bottomCfg.titleShow && bottomCfg.titleContent) {
@@ -590,6 +602,13 @@
                 .attr('fill', '#333')
                 .text(leftCfg.titleContent);
         }
+
+        PlotAxis.drawFrameAndRefLines(svg, {
+            plotX, plotY, plotW, plotH,
+            xScale: bottomScale,
+            yScale: leftScale,
+            axisCfg: axisCfg
+        });
 
         if (p.showLegend && p.showNormalFit) {
             PC.drawLegendOverlay(svg, {

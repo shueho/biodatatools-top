@@ -386,10 +386,10 @@
                     if (i === 1) eq += sign + PC.fmtNum(absC, 5) + 'x';
                     else eq += sign + PC.fmtNum(absC, 5) + 'x^' + i;
                 }
-lines.push([
-    { text: eq, color: color },
-    { text: '  R² = ' + fit.r2.toFixed(5), color: color }
-]);
+                lines.push([
+                    { text: eq, color: color },
+                    { text: '  R² = ' + fit.r2.toFixed(5), color: color }
+                ]);
             } else if (fit.type === 'glm') {
                 if (fit.family === 'poisson') {
                     lines.push([{ text: labelPrefix + 'y = exp(' + PC.fmtNum(fit.coeffs[0], 5) + ' + ' + PC.fmtNum(fit.coeffs[1], 5) + 'x)', color: color }]);
@@ -475,7 +475,7 @@ lines.push([
             const gridY = svg.append('g').attr('class', 'grid grid-y');
             const ticks = yScale.ticks ? yScale.ticks() : yScale.domain();
             ticks.forEach(function (t) {
-                const y = yScale(t);
+                const y = Math.round(yScale(t)) + 0.5;
                 if (!isFinite(y)) return;
                 gridY.append('line')
                     .attr('x1', plotX).attr('x2', plotX + plotW)
@@ -489,7 +489,7 @@ lines.push([
             const gridX = svg.append('g').attr('class', 'grid grid-x');
             const ticks = xScale.ticks ? xScale.ticks() : xScale.domain();
             ticks.forEach(function (t) {
-                const x = xScale(t);
+                const x = Math.round(xScale(t)) + 0.5;
                 if (!isFinite(x)) return;
                 gridX.append('line')
                     .attr('x1', x).attr('x2', x)
@@ -639,26 +639,41 @@ lines.push([
         if (!xTickValues) xTickValues = xScale.ticks ? xScale.ticks() : null;
         const xAxisFn = d3.axisBottom(xScale);
         if (xTickValues && xTickValues.length) xAxisFn.tickValues(xTickValues);
-        PlotAxis.applyAxis(
-            svg.append('g').attr('class', 'x-axis')
-                .attr('transform', 'translate(0,' + (plotY + plotH) + ')')
-                .call(xAxisFn),
-            axisCfg.x, 'bottom'
-        );
+        const xAxisG = svg.append('g').attr('class', 'x-axis')
+            .attr('transform', 'translate(0,' + (plotY + plotH) + ')')
+            .call(xAxisFn);
+
+        xAxisG.selectAll('.tick').attr('transform', d => {
+            const x = Math.round(xScale(d)) + 0.5;
+            return `translate(${x},0)`;
+        });
+
+        PlotAxis.applyAxis(xAxisG, axisCfg.x, 'bottom');
 
         const yTicks = PlotAxis.resolveTicks(axisCfg.y, yScale);
         let yTickValues = yTicks;
         if (!yTickValues) yTickValues = yScale.ticks ? yScale.ticks() : null;
         const yAxisFn = d3.axisLeft(yScale);
         if (yTickValues && yTickValues.length) yAxisFn.tickValues(yTickValues);
-        PlotAxis.applyAxis(
-            svg.append('g').attr('class', 'y-axis')
-                .attr('transform', 'translate(' + plotX + ',0)')
-                .call(yAxisFn),
-            axisCfg.y, 'left'
-        );
+        const yAxisG = svg.append('g').attr('class', 'y-axis')
+            .attr('transform', 'translate(' + plotX + ',0)')
+            .call(yAxisFn);
+
+        yAxisG.selectAll('.tick').attr('transform', d => {
+            const y = Math.round(yScale(d)) + 0.5;
+            return `translate(0,${y})`;
+        });
+
+        PlotAxis.applyAxis(yAxisG, axisCfg.y, 'left');
 
         BarCommon.drawAxisTitles(svg, axisCfg, plotX, plotY, plotW, plotH, leftPad, bottomPad);
+
+        PlotAxis.drawFrameAndRefLines(svg, {
+            plotX, plotY, plotW, plotH,
+            xScale: xScale,
+            yScale: yScale,
+            axisCfg: axisCfg
+        });
 
         if (p.showLegend && groupKeys.length && s.roles.group) {
             PC.drawLegendOverlay(svg, {

@@ -15,8 +15,20 @@
 
             globalFontGroup: '坐标轴字体',
 
-            xAxis: 'X 轴',
-            yAxis: 'Y 轴',
+            frameGroup: '绘图区边框',
+            frameShow: '显示',
+            frameColor: '颜色',
+            frameWidth: '线宽',
+            frameDash: '虚线',
+
+            refLineGroup: '参考线',
+            refLineTip: '空格或逗号分隔，如5 11',
+            refLineColor: '颜色',
+            refLineWidth: '线宽',
+            refLineDash: '虚线',
+
+            xAxis: 'X轴',
+            yAxis: 'Y轴',
             typeNumeric: '数字轴',
             typeCategory: '标签轴',
 
@@ -36,9 +48,9 @@
             scaleGroup: '刻度类型',
             scaleLinear: '线性',
             scaleLog: '对数',
-            scaleLogTip: '对数轴不能有 0 或负数，也不能与"轴截断"同时使用',
+            scaleLogTip: '对数轴不能有0或负数，也不能与"轴截断"同时使用',
             logBase: '底数',
-            logBaseTip: '常用 2 / e / 10',
+            logBaseTip: '常用2/e/10',
 
             breakGroup: '轴截断',
             breakEnable: '启用',
@@ -95,6 +107,18 @@
             directionTip: 'Switch bar orientation',
 
             globalFontGroup: 'Axis Font',
+
+            frameGroup: 'Plot Frame',
+            frameShow: 'Show',
+            frameColor: 'Color',
+            frameWidth: 'Width',
+            frameDash: 'Dash',
+
+            refLineGroup: 'Reference Lines',
+            refLineTip: 'Space or comma separated, e.g. 5 11',
+            refLineColor: 'Color',
+            refLineWidth: 'Width',
+            refLineDash: 'Dash',
 
             xAxis: 'X Axis',
             yAxis: 'Y Axis',
@@ -218,14 +242,23 @@
             lineWidth: 1,
             lineColor: '#333333',
             crossMode: 'auto',
-            crossValue: 0
+            crossValue: 0,
+            refLines: '',
+            refLineColor: '#e15759',
+            refLineWidth: 1.5,
+            refLineDash: false
         };
+    }
+
+    function frameDefault() {
+        return { show: false, color: '#333333', width: 1, dash: false };
     }
 
     function defaultState() {
         return {
             x: singleAxisDefault(),
-            y: singleAxisDefault()
+            y: singleAxisDefault(),
+            frame: frameDefault()
         };
     }
 
@@ -342,6 +375,25 @@
         `;
     }
 
+    function framePanelHTML(t, frameCfg) {
+        const f = Object.assign(frameDefault(), frameCfg || {});
+        return `
+        <div class="axis-block">
+            <div class="axis-block-title"><span>${t.frameGroup}</span></div>
+            <div class="font-row">
+                <label class="mini-check"><input type="checkbox" class="ax-frame-show" ${f.show ? 'checked' : ''}> ${t.frameShow}</label>
+                <label>${t.frameColor}
+                    <input type="color" class="ax-frame-color" value="${f.color}">
+                </label>
+                <label>${t.frameWidth}
+                    <input type="number" class="ax-frame-width" value="${f.width}" min="0" max="10" step="0.5" style="width:60px;">
+                </label>
+                <label class="mini-check"><input type="checkbox" class="ax-frame-dash" ${f.dash ? 'checked' : ''}> ${t.frameDash}</label>
+            </div>
+        </div>
+        `;
+    }
+
     function axisPanelHTML(key, cfg, t, axisType) {
         const isX = (key === 'x');
         const isNumeric = (axisType === 'numeric');
@@ -382,6 +434,18 @@
                     <label>${t.domainPad}
                         <input type="number" class="ax-${key}-domain-pad" value="${cfg.domainPad}" min="0" max="100" step="1" style="width:60px;">
                     </label>
+                </div>
+
+                <div class="axis-subsection">${t.refLineGroup}</div>
+                <div class="font-row">
+                    <input type="text" class="ax-${key}-reflines" value="${escapeHtml(cfg.refLines || '')}" placeholder="${t.refLineTip}" style="flex:1;min-width:150px;">
+                    <label>${t.refLineColor}
+                        <input type="color" class="ax-${key}-refline-color" value="${cfg.refLineColor || '#e15759'}">
+                    </label>
+                    <label>${t.refLineWidth}
+                        <input type="number" class="ax-${key}-refline-width" value="${cfg.refLineWidth || 1.5}" min="0.5" max="10" step="0.5" style="width:60px;">
+                    </label>
+                    <label class="mini-check"><input type="checkbox" class="ax-${key}-refline-dash" ${cfg.refLineDash ? 'checked' : ''}> ${t.refLineDash}</label>
                 </div>
 
                 <div class="axis-subsection">${t.scaleGroup}</div>
@@ -546,6 +610,12 @@
             const pad = num(g, 'domain-pad', 0);
             if (pad !== undefined) cfg.domainPad = Math.max(0, pad);
 
+            setIf(cfg, 'refLines', val(g, 'reflines'));
+            setIf(cfg, 'refLineColor', val(g, 'refline-color'));
+            const rlw = num(g, 'refline-width', 1.5);
+            if (rlw !== undefined) cfg.refLineWidth = Math.max(0.5, rlw);
+            setIf(cfg, 'refLineDash', chk(g, 'refline-dash'));
+
             setIf(cfg, 'scaleType', val(g, 'scale-type'));
             const lb = num(g, 'log-base', 10);
             if (lb !== undefined) cfg.logBase = (lb > 0 ? lb : 10);
@@ -583,6 +653,19 @@
             setIf(cfg, 'crossMode', val(g, 'cross-mode'));
             setIf(cfg, 'crossValue', num(g, 'cross-value', 0));
         });
+
+        if (!st.frame) st.frame = frameDefault();
+        const fShow = container.querySelector('.ax-frame-show');
+        const fColor = container.querySelector('.ax-frame-color');
+        const fWidth = container.querySelector('.ax-frame-width');
+        const fDash = container.querySelector('.ax-frame-dash');
+        if (fShow) st.frame.show = fShow.checked;
+        if (fColor) st.frame.color = fColor.value;
+        if (fWidth) {
+            const v = parseFloat(fWidth.value);
+            if (isFinite(v)) st.frame.width = Math.max(0, v);
+        }
+        if (fDash) st.frame.dash = fDash.checked;
     }
 
     function getAxisTypesForDirection(direction) {
@@ -603,6 +686,7 @@
         const st = opts.state || defaultState();
         if (!st.x) st.x = singleAxisDefault();
         if (!st.y) st.y = singleAxisDefault();
+        if (!st.frame) st.frame = frameDefault();
 
         let currentDirection = opts.direction || 'vertical';
 
@@ -613,6 +697,7 @@
                 <div class="param-panel-title">${t.panelTitle}</div>
                 ${directionPanelHTML(t, currentDirection)}
                 ${globalFontPanelHTML(t, st)}
+                ${framePanelHTML(t, st.frame)}
                 ${axisPanelHTML('x', st.x, t, axisTypes.x)}
                 ${axisPanelHTML('y', st.y, t, axisTypes.y)}
             `;
@@ -622,6 +707,11 @@
                     const newDir = container.querySelector('input[name="axisDirection"]:checked').value;
                     if (newDir === currentDirection) return;
                     readFromDOM(container, st);
+                    ['refLines', 'refLineColor', 'refLineWidth', 'refLineDash'].forEach(k => {
+                        const tmp = st.x[k];
+                        st.x[k] = st.y[k];
+                        st.y[k] = tmp;
+                    });
                     currentDirection = newDir;
                     if (opts.onDirectionChange) opts.onDirectionChange(newDir);
                     build();
@@ -694,10 +784,35 @@
     function applyAxis(axisG, cfg, orientation, breakPos) {
         if (!axisG || !cfg) return;
 
-        axisG.select('.domain')
+        const domain = axisG.select('.domain');
+        domain
             .style('display', cfg.lineShow ? null : 'none')
             .attr('stroke', cfg.lineColor)
             .attr('stroke-width', cfg.lineWidth);
+
+        const pathD = domain.attr('d');
+        if (pathD) {
+            const horiz = (orientation === 'bottom' || orientation === 'top');
+            if (horiz) {
+                const m = pathD.match(/^M\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*(?:V\s*(-?[\d.]+)\s*)?H\s*(-?[\d.]+)/);
+                if (m && m[3] !== undefined) {
+                    domain.attr('d', `M${m[1]},${m[3]}H${m[4]}`);
+                }
+            } else {
+                const m = pathD.match(/^M\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*H\s*(-?[\d.]+)\s*(?:V\s*(-?[\d.]+))?/);
+                if (m && m[4] !== undefined) {
+                    domain.attr('d', `M${m[3]},${m[2]}V${m[4]}`);
+                }
+            }
+        }
+
+        axisG.selectAll('.tick').each(function () {
+            const t = d3.select(this);
+            const textEl = t.select('text');
+            if (textEl.empty() || !textEl.text().trim()) {
+                t.style('display', 'none');
+            }
+        });
 
         const len = cfg.tickLength;
         const horiz = (orientation === 'bottom' || orientation === 'top');
@@ -732,7 +847,6 @@
             .style('font-style', cfg.tickItalic ? 'italic' : 'normal')
             .style('font-family', cfg.fontFamily || null);
 
-        /* 刻度值位置：轴外 / 轴内 */
         const labelPos = cfg.tickLabelPos || 'outside';
         const tickLen = cfg.tickShow ? cfg.tickLength : 0;
 
@@ -762,7 +876,6 @@
             }
         }
 
-        /* 旋转只改 transform，不覆盖 text-anchor */
         if (cfg.tickRotate) {
             axisG.selectAll('.tick text').attr('transform', `rotate(${cfg.tickRotate})`);
         } else {
@@ -891,6 +1004,58 @@
         }
     }
 
+    function drawFrameAndRefLines(svg, opts) {
+        opts = opts || {};
+        const axisCfg = opts.axisCfg || {};
+        const plotX = opts.plotX, plotY = opts.plotY;
+        const plotW = opts.plotW, plotH = opts.plotH;
+
+        const f = axisCfg.frame;
+        if (f && f.show) {
+            svg.append('rect')
+                .attr('class', 'axis-frame')
+                .attr('x', plotX).attr('y', plotY)
+                .attr('width', plotW).attr('height', plotH)
+                .attr('fill', 'none')
+                .attr('stroke', f.color || '#333333')
+                .attr('stroke-width', f.width || 1)
+                .attr('stroke-dasharray', f.dash ? '5 3' : null)
+                .attr('pointer-events', 'none');
+        }
+
+        ['x', 'y'].forEach(key => {
+            const axCfg = axisCfg[key];
+            if (!axCfg || !axCfg.refLines) return;
+            const raw = String(axCfg.refLines).trim();
+            if (!raw) return;
+            const values = raw.split(/[,，\s]+/).map(parseFloat).filter(v => isFinite(v));
+            if (!values.length) return;
+
+            const scale = opts[key + 'Scale'];
+            if (!scale) return;
+            const isLog = axCfg.scaleType === 'log';
+
+            const g = svg.append('g').attr('class', 'axis-ref-lines axis-ref-lines-' + key);
+            values.forEach(v => {
+                if (isLog && v <= 0) return;
+                const pos = Math.round(scale(v)) + 0.5;
+                if (!isFinite(pos)) return;
+                const line = g.append('line')
+                    .attr('stroke', axCfg.refLineColor || '#e15759')
+                    .attr('stroke-width', axCfg.refLineWidth || 1.5)
+                    .attr('stroke-dasharray', axCfg.refLineDash ? '6 4' : null)
+                    .attr('pointer-events', 'none');
+                if (key === 'y') {
+                    line.attr('x1', plotX).attr('x2', plotX + plotW)
+                        .attr('y1', pos).attr('y2', pos);
+                } else {
+                    line.attr('x1', pos).attr('x2', pos)
+                        .attr('y1', plotY).attr('y2', plotY + plotH);
+                }
+            });
+        });
+    }
+
     function applyFontFamily(target, family) {
         if (!target || !family) return;
         const sel = (target.node && typeof target.node === 'function') ? target : d3.select(target);
@@ -900,6 +1065,7 @@
     global.PlotAxis = {
         defaultState,
         singleAxisDefault,
+        frameDefault,
         getAxisTypesForDirection,
         render,
         applyAxis,
@@ -909,6 +1075,7 @@
         resolveTicks,
         resolveCrossValue,
         drawGrid,
+        drawFrameAndRefLines,
         applyFontFamily,
         L
     };

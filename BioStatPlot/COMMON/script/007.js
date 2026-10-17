@@ -135,7 +135,7 @@
             const ticks = yScale.ticks ? yScale.ticks() : yScale.domain();
             ticks.forEach(t => {
                 if (!isLogY && axisCfg.y.breakEnable && t > axisCfg.y.breakFrom && t < axisCfg.y.breakTo) return;
-                const y = yScale(t);
+                const y = Math.round(yScale(t)) + 0.5;
                 if (!isFinite(y)) return;
                 gridY.append('line')
                     .attr('x1', plotX).attr('x2', plotX + plotW)
@@ -149,7 +149,7 @@
         if (axisCfg.x.gridShow) {
             const gridX = svg.append('g').attr('class', 'grid grid-x');
             catVals.forEach(cv => {
-                const cx = xOuter(cv) + xOuter.bandwidth() / 2;
+                const cx = Math.round(xOuter(cv) + xOuter.bandwidth() / 2) + 0.5;
                 gridX.append('line')
                     .attr('x1', cx).attr('x2', cx)
                     .attr('y1', plotY).attr('y2', plotY + plotH)
@@ -209,8 +209,8 @@
                     barThickness: barW,
                     loPx: yHi,
                     hiPx: yLo,
-    valuePx: yVal,                          
-    capMode: (cell.ext && cell.ext.capMode) || state.errBar.showWhich, 
+                    valuePx: yVal,
+                    capMode: (cell.ext && cell.ext.capMode) || state.errBar.showWhich,
                     isHorizontal: false,
                     errColor: errColor,
                     errWidth: state.errBar.errWidth,
@@ -238,6 +238,12 @@
         const xAxisG = svg.append('g').attr('class', 'x-axis')
             .attr('transform', 'translate(0, ' + xAxisYFinal + ')')
             .call(xAxisFn);
+
+        xAxisG.selectAll('.tick').attr('transform', d => {
+            const cx = Math.round(xOuter(d) + xOuter.bandwidth() / 2) + 0.5;
+            return `translate(${cx},0)`;
+        });
+
         PlotAxis.applyAxis(xAxisG, axisCfg.x, 'bottom');
 
         const yTicks = PlotAxis.resolveTicks(axisCfg.y, yScale);
@@ -253,9 +259,22 @@
         const yAxisG = svg.append('g').attr('class', 'y-axis')
             .attr('transform', 'translate(' + yAxisX + ', 0)')
             .call(yAxisFn);
+
+        yAxisG.selectAll('.tick').attr('transform', d => {
+            const y = Math.round(yScale(d)) + 0.5;
+            return `translate(0,${y})`;
+        });
+
         PlotAxis.applyAxis(yAxisG, axisCfg.y, 'left', yBreakPos);
 
         BarCommon.drawAxisTitles(svg, axisCfg, plotX, plotY, plotW, plotH, leftPad, bottomPad);
+
+        PlotAxis.drawFrameAndRefLines(svg, {
+            plotX, plotY, plotW, plotH,
+            xScale: xOuter,
+            yScale: yScale,
+            axisCfg: axisCfg
+        });
 
         if (p.showLegend && hasGroup && groupVals.length) {
             PC.drawLegendOverlay(svg, {
@@ -364,7 +383,7 @@
             const ticks = xScale.ticks ? xScale.ticks() : xScale.domain();
             ticks.forEach(t => {
                 if (!isLogX && axisCfg.x.breakEnable && t > axisCfg.x.breakFrom && t < axisCfg.x.breakTo) return;
-                const x = xScale(t);
+                const x = Math.round(xScale(t)) + 0.5;
                 if (!isFinite(x)) return;
                 gridX.append('line')
                     .attr('x1', x).attr('x2', x)
@@ -378,7 +397,7 @@
         if (axisCfg.y.gridShow) {
             const gridY = svg.append('g').attr('class', 'grid grid-y');
             catVals.forEach(cv => {
-                const cy = yOuter(cv) + yOuter.bandwidth() / 2;
+                const cy = Math.round(yOuter(cv) + yOuter.bandwidth() / 2) + 0.5;
                 gridY.append('line')
                     .attr('x1', plotX).attr('x2', plotX + plotW)
                     .attr('y1', cy).attr('y2', cy)
@@ -441,8 +460,8 @@
                     barThickness: barH,
                     loPx: xLo,
                     hiPx: xHi,
-    valuePx: xVal,                          
-    capMode: (cell.ext && cell.ext.capMode) || state.errBar.showWhich,
+                    valuePx: xVal,
+                    capMode: (cell.ext && cell.ext.capMode) || state.errBar.showWhich,
                     isHorizontal: true,
                     errColor: errColor,
                     errWidth: state.errBar.errWidth,
@@ -477,15 +496,34 @@
         const xAxisG = svg.append('g').attr('class', 'x-axis')
             .attr('transform', 'translate(0, ' + xAxisYFinal + ')')
             .call(xAxisFn);
+
+        xAxisG.selectAll('.tick').attr('transform', d => {
+            const x = Math.round(xScale(d)) + 0.5;
+            return `translate(${x},0)`;
+        });
+
         PlotAxis.applyAxis(xAxisG, axisCfg.x, 'bottom', xBreakPos);
 
         const yAxisFn = d3.axisLeft(yOuter);
         const yAxisG = svg.append('g').attr('class', 'y-axis')
             .attr('transform', 'translate(' + yAxisXFinal + ', 0)')
             .call(yAxisFn);
+
+        yAxisG.selectAll('.tick').attr('transform', d => {
+            const cy = Math.round(yOuter(d) + yOuter.bandwidth() / 2) + 0.5;
+            return `translate(0,${cy})`;
+        });
+
         PlotAxis.applyAxis(yAxisG, axisCfg.y, 'left');
 
         BarCommon.drawAxisTitles(svg, axisCfg, plotX, plotY, plotW, plotH, leftPad, bottomPad);
+
+        PlotAxis.drawFrameAndRefLines(svg, {
+            plotX, plotY, plotW, plotH,
+            xScale: xScale,
+            yScale: yOuter,
+            axisCfg: axisCfg
+        });
 
         if (p.showLegend && hasGroup && groupVals.length) {
             PC.drawLegendOverlay(svg, {

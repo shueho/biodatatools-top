@@ -659,7 +659,7 @@
             const ticks = valScale.ticks ? valScale.ticks() : valScale.domain();
             const grid = svg.append('g').attr('class', 'grid grid-val');
             ticks.forEach(function (t) {
-                const pos = valScale(t);
+                const pos = Math.round(valScale(t)) + 0.5;
                 if (!isFinite(pos)) return;
                 const line = grid.append('line')
                     .attr('stroke', valAxisCfg.gridColor)
@@ -687,15 +687,16 @@
             }
             positions.forEach(function (pos) {
                 if (!isFinite(pos)) return;
+                const snapped = Math.round(pos) + 0.5;
                 const line = grid.append('line')
                     .attr('stroke', catAxisCfg.gridColor)
                     .attr('stroke-dasharray', catAxisCfg.gridDash)
                     .attr('stroke-width', 1);
                 if (isH) {
                     line.attr('x1', plotX).attr('x2', plotX + plotW)
-                        .attr('y1', pos).attr('y2', pos);
+                        .attr('y1', snapped).attr('y2', snapped);
                 } else {
-                    line.attr('x1', pos).attr('x2', pos)
+                    line.attr('x1', snapped).attr('x2', snapped)
                         .attr('y1', plotY).attr('y2', plotY + plotH);
                 }
             });
@@ -811,6 +812,14 @@
         } else {
             catAxisG.attr('transform', 'translate(0,' + (plotY + plotH) + ')').call(catAxisFn);
         }
+
+        catAxisG.selectAll('.tick').attr('transform', d => {
+            const pos = useLinearX
+                ? Math.round(xScale(parseFloat(d))) + 0.5
+                : Math.round(xScale(d)) + 0.5;
+            return isH ? `translate(0,${pos})` : `translate(${pos},0)`;
+        });
+
         PlotAxis.applyAxis(catAxisG, catAxisCfg, isH ? 'left' : 'bottom');
 
         const valAxisFn = isH ? d3.axisBottom(valScale) : d3.axisLeft(valScale);
@@ -822,6 +831,12 @@
         } else {
             valAxisG.attr('transform', 'translate(' + plotX + ',0)').call(valAxisFn);
         }
+
+        valAxisG.selectAll('.tick').attr('transform', d => {
+            const pos = Math.round(valScale(d)) + 0.5;
+            return isH ? `translate(${pos},0)` : `translate(0,${pos})`;
+        });
+
         PlotAxis.applyAxis(valAxisG, valAxisCfg, isH ? 'bottom' : 'left');
 
         if (catAxisCfg.titleShow && catAxisCfg.titleContent) {
@@ -868,6 +883,13 @@
                     .text(valAxisCfg.titleContent);
             }
         }
+
+        PlotAxis.drawFrameAndRefLines(svg, {
+            plotX: plotX, plotY: plotY, plotW: plotW, plotH: plotH,
+            xScale: isH ? valScale : xScale,
+            yScale: isH ? xScale : valScale,
+            axisCfg: axisCfg
+        });
 
         if (p.showLegend && groupValues.length && s.roles.group) {
             const baseShape = ls.lineDash === 'solid' ? 'line' : 'dashline';

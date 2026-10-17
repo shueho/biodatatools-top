@@ -220,6 +220,56 @@
         };
     }
 
+    function drawFrameAndRefLinesForFacet(svg, opts) {
+        const plotX = opts.plotX, plotY = opts.plotY;
+        const plotW = opts.plotW, plotH = opts.plotH;
+        const isV = opts.isV;
+        const valueScale = opts.valueScale;
+        const axisCfg = opts.axisCfg || {};
+        const barDirection = opts.barDirection || 'vertical';
+        const isLogVal = !!opts.isLogVal;
+
+        const f = axisCfg.frame;
+        if (f && f.show) {
+            svg.append('rect')
+                .attr('class', 'axis-frame')
+                .attr('x', plotX).attr('y', plotY)
+                .attr('width', plotW).attr('height', plotH)
+                .attr('fill', 'none')
+                .attr('stroke', f.color || '#333333')
+                .attr('stroke-width', f.width || 1)
+                .attr('stroke-dasharray', f.dash ? '5 3' : null)
+                .attr('pointer-events', 'none');
+        }
+
+        const numAxisKey = (barDirection === 'horizontal') ? 'x' : 'y';
+        const axCfg = axisCfg[numAxisKey];
+        if (!axCfg || !axCfg.refLines) return;
+        const raw = String(axCfg.refLines).trim();
+        if (!raw) return;
+        const values = raw.split(/[,，\s]+/).map(parseFloat).filter(function (v) { return isFinite(v); });
+        if (!values.length) return;
+
+        const g = svg.append('g').attr('class', 'axis-ref-lines axis-ref-lines-' + numAxisKey);
+        values.forEach(function (v) {
+            if (isLogVal && v <= 0) return;
+            const pos = Math.round(valueScale(v)) + 0.5;
+            if (!isFinite(pos)) return;
+            const line = g.append('line')
+                .attr('stroke', axCfg.refLineColor || '#e15759')
+                .attr('stroke-width', axCfg.refLineWidth || 1.5)
+                .attr('stroke-dasharray', axCfg.refLineDash ? '6 4' : null)
+                .attr('pointer-events', 'none');
+            if (isV) {
+                line.attr('x1', plotX).attr('x2', plotX + plotW)
+                    .attr('y1', pos).attr('y2', pos);
+            } else {
+                line.attr('x1', pos).attr('x2', pos)
+                    .attr('y1', plotY).attr('y2', plotY + plotH);
+            }
+        });
+    }
+
     function drawFaceted(app, p, axisCfg, facetData, options) {
         options = options || {};
         const PT = global.PlotTest;
@@ -233,6 +283,7 @@
         const bx = options.bx || {};
         const ts = p.test;
         const isV = (fst.layout !== 'horizontal');
+        const barDirection = s.barDirection || 'vertical';
 
         if (!catOrder.length) return;
 
@@ -277,28 +328,35 @@
             : ((axisCfg.x.logBase > 0) ? axisCfg.x.logBase : 10);
 
         const stripThick = fst.showStrip ? 22 : 0;
-        const stripGap = fst.showStrip ? 4 : 0;
+        const stripGap = fst.showStrip ? 6 : 0;
 
         const yTickFontV = axisCfg.y.tickValueShow ? axisCfg.y.tickFontSize : 0;
         const yTitleFontV = (axisCfg.y.titleShow && axisCfg.y.titleContent) ? axisCfg.y.titleFontSize + 8 : 0;
         const xTickFontH = axisCfg.x.tickValueShow ? axisCfg.x.tickFontSize : 0;
         const xTitleFontH = (axisCfg.x.titleShow && axisCfg.x.titleContent) ? axisCfg.x.titleFontSize + 8 : 0;
 
-        // 竖向：所有分面用同一个左 padding
-        const leftPadV = yTickFontV + 8 + yTitleFontV + 8;
-        const bottomPadV = xTickFontH + 10 + xTitleFontH + 8;
-        const topPadV = 6;
-        const rightPadV = 4;
+        let maxYTickLabelW = 20;
+        if (isV) {
+            const sampleAbs = Math.max(Math.abs(gMin || 0), Math.abs(gMax || 0));
+            if (isFinite(sampleAbs) && sampleAbs > 0) {
+                const str = String(Number(sampleAbs.toPrecision(4)));
+                const est = str.length * (yTickFontV || 12) * 0.62;
+                if (est > maxYTickLabelW) maxYTickLabelW = est;
+            }
+        }
+        const leftPadV = Math.min(maxYTickLabelW + 14, cellW * 0.4) + yTitleFontV + 12;
+        const bottomPadV = xTickFontH + 12 + xTitleFontH + 10;
+        const topPadV = 10;
+        const rightPadV = 14;
 
-        // 横向：所有分面用同一个左 padding（含 Y 轴标签空间）
         let maxCatW = 0;
         catOrder.forEach(function (c) {
             maxCatW = Math.max(maxCatW, PC.estTextWidth(c, axisCfg.y.tickFontSize));
         });
-        const leftPadH = Math.min(maxCatW + 10, cellW * 0.35) + yTitleFontV + 6;
-        const bottomPadH = xTickFontH + 10 + xTitleFontH + 8;
-        const topPadH = 6;
-        const rightPadH = 8;
+        const leftPadH = Math.min(maxCatW + 12, cellW * 0.35) + yTitleFontV + 10;
+        const bottomPadH = xTickFontH + 12 + xTitleFontH + 10;
+        const topPadH = 10;
+        const rightPadH = 12;
 
         const canvas = PlotCanvas.create(app.chartPreview, {
             width: p.width, height: p.height,
@@ -326,23 +384,25 @@
             let plotX, plotY, plotW, plotH;
 
             if (isV) {
-                stripW = stripThick;
-                stripH = Math.max(1, cellH - topPadV - bottomPadV - 8);
-                stripX = cx0 + cellW - rightPadV - stripW;
-                stripY = cy0 + topPadV + 4;
                 plotX = cx0 + leftPadV;
                 plotY = cy0 + topPadV;
-                plotW = Math.max(20, stripX - stripGap - plotX);
+                plotW = Math.max(20, cellW - leftPadV - rightPadV - stripThick - stripGap);
                 plotH = Math.max(20, cellH - topPadV - bottomPadV);
+
+                stripX = plotX + plotW + stripGap;
+                stripY = plotY;
+                stripW = stripThick;
+                stripH = plotH;
             } else {
-                stripX = cx0 + leftPadH;
-                stripY = cy0 + topPadH;
-                stripW = Math.max(20, cellW - leftPadH - rightPadH);
-                stripH = stripThick;
-                plotX = stripX;
-                plotY = stripY + stripH + stripGap;
-                plotW = stripW;
+                plotX = cx0 + leftPadH;
+                plotY = cy0 + topPadH + stripThick + stripGap;
+                plotW = Math.max(20, cellW - leftPadH - rightPadH);
                 plotH = Math.max(20, cellH - (plotY - cy0) - bottomPadH);
+
+                stripX = plotX;
+                stripY = cy0 + topPadH;
+                stripW = plotW;
+                stripH = stripThick;
             }
 
             geom.push({
@@ -389,6 +449,12 @@
                 });
             });
             valueDomain[0] = (pos.length ? Math.min.apply(null, pos) : 1) * 0.5;
+        } else if (!isLogVal) {
+            const cfg = isV ? axisCfg.y : axisCfg.x;
+            if (cfg.domainAuto) {
+                const span = valueDomain[1] - valueDomain[0];
+                if (isFinite(span) && span > 0) valueDomain[1] += span * 0.02;
+            }
         }
 
         const lastRowIdx = rows - 1;
@@ -435,11 +501,26 @@
                 breakPos = isLogVal ? NaN : PlotAxis.getBreakPosition(valueScale, axisCfg.x);
             }
 
+            let xOuter = null, xInner = null, yOuter = null, yInner = null;
+            if (isV) {
+                xOuter = d3.scaleBand().domain(catOrder).range([plotX, plotX + plotW])
+                    .paddingOuter(0.3).paddingInner(0.3);
+                xInner = hasGroup
+                    ? d3.scaleBand().domain(grpOrder).range([0, xOuter.bandwidth()]).paddingInner(0.15)
+                    : null;
+            } else {
+                yOuter = d3.scaleBand().domain(catOrder).range([plotY, plotY + plotH])
+                    .paddingOuter(0.3).paddingInner(0.3);
+                yInner = hasGroup
+                    ? d3.scaleBand().domain(grpOrder).range([0, yOuter.bandwidth()]).paddingInner(0.15)
+                    : null;
+            }
+
             if (isV && axisCfg.y.gridShow) {
                 const gridY = svg.append('g').attr('class', 'grid grid-y');
                 (valueScale.ticks ? valueScale.ticks() : valueScale.domain()).forEach(function (t) {
                     if (!isLogVal && axisCfg.y.breakEnable && t > axisCfg.y.breakFrom && t < axisCfg.y.breakTo) return;
-                    const y = valueScale(t);
+                    const y = Math.round(valueScale(t)) + 0.5;
                     if (!isFinite(y)) return;
                     gridY.append('line')
                         .attr('x1', plotX).attr('x2', plotX + plotW)
@@ -453,7 +534,7 @@
                 const gridX = svg.append('g').attr('class', 'grid grid-x');
                 (valueScale.ticks ? valueScale.ticks() : valueScale.domain()).forEach(function (t) {
                     if (!isLogVal && axisCfg.x.breakEnable && t > axisCfg.x.breakFrom && t < axisCfg.x.breakTo) return;
-                    const x = valueScale(t);
+                    const x = Math.round(valueScale(t)) + 0.5;
                     if (!isFinite(x)) return;
                     gridX.append('line')
                         .attr('x1', x).attr('x2', x)
@@ -463,16 +544,35 @@
                         .attr('stroke-width', 1);
                 });
             }
+            if (isV && axisCfg.x.gridShow) {
+                const gridX = svg.append('g').attr('class', 'grid grid-x');
+                catOrder.forEach(function (cv) {
+                    const cx = Math.round(xOuter(cv) + xOuter.bandwidth() / 2) + 0.5;
+                    gridX.append('line')
+                        .attr('x1', cx).attr('x2', cx)
+                        .attr('y1', plotY).attr('y2', plotY + plotH)
+                        .attr('stroke', axisCfg.x.gridColor)
+                        .attr('stroke-dasharray', axisCfg.x.gridDash)
+                        .attr('stroke-width', 1);
+                });
+            }
+            if (!isV && axisCfg.y.gridShow) {
+                const gridY = svg.append('g').attr('class', 'grid grid-y');
+                catOrder.forEach(function (cv) {
+                    const cy = Math.round(yOuter(cv) + yOuter.bandwidth() / 2) + 0.5;
+                    gridY.append('line')
+                        .attr('x1', plotX).attr('x2', plotX + plotW)
+                        .attr('y1', cy).attr('y2', cy)
+                        .attr('stroke', axisCfg.y.gridColor)
+                        .attr('stroke-dasharray', axisCfg.y.gridDash)
+                        .attr('stroke-width', 1);
+                });
+            }
 
             const shapesG = svg.append('g');
             let pos = new Map();
 
             if (isV) {
-                const xOuter = d3.scaleBand().domain(catOrder).range([plotX, plotX + plotW])
-                    .paddingOuter(0.3).paddingInner(0.3);
-                const xInner = hasGroup
-                    ? d3.scaleBand().domain(grpOrder).range([0, xOuter.bandwidth()]).paddingInner(0.15)
-                    : null;
                 if (options.drawShapeV) {
                     pos = options.drawShapeV(shapesG, {
                         g: g, fi: g.fi, cells: g.f.cells,
@@ -482,11 +582,6 @@
                     }) || pos;
                 }
             } else {
-                const yOuter = d3.scaleBand().domain(catOrder).range([plotY, plotY + plotH])
-                    .paddingOuter(0.3).paddingInner(0.3);
-                const yInner = hasGroup
-                    ? d3.scaleBand().domain(grpOrder).range([0, yOuter.bandwidth()]).paddingInner(0.15)
-                    : null;
                 if (options.drawShapeH) {
                     pos = options.drawShapeH(shapesG, {
                         g: g, fi: g.fi, cells: g.f.cells,
@@ -511,8 +606,6 @@
             }
 
             if (isV) {
-                const xOuter = d3.scaleBand().domain(catOrder).range([plotX, plotX + plotW])
-                    .paddingOuter(0.3).paddingInner(0.3);
                 const xAxisFn = d3.axisBottom(xOuter);
                 const xTicks = PlotAxis.resolveTicks(axisCfg.x, xOuter);
                 if (xTicks && xTicks.length) xAxisFn.tickValues(xTicks);
@@ -520,12 +613,16 @@
                 const xCfgLocal = (isLastRow || fst.showInnerTicks)
                     ? axisCfg.x
                     : Object.assign({}, axisCfg.x, { tickShow: false, tickValueShow: false });
-                PlotAxis.applyAxis(
-                    svg.append('g').attr('class', 'x-axis')
-                        .attr('transform', 'translate(0,' + (plotY + plotH) + ')')
-                        .call(xAxisFn),
-                    xCfgLocal, 'bottom'
-                );
+                const xAxisG = svg.append('g').attr('class', 'x-axis')
+                    .attr('transform', 'translate(0,' + (plotY + plotH) + ')')
+                    .call(xAxisFn);
+
+                xAxisG.selectAll('.tick').attr('transform', d => {
+                    const cx = Math.round(xOuter(d) + xOuter.bandwidth() / 2) + 0.5;
+                    return `translate(${cx},0)`;
+                });
+
+                PlotAxis.applyAxis(xAxisG, xCfgLocal, 'bottom');
 
                 const yAxisFn = d3.axisLeft(valueScale);
                 const yTicks = PlotAxis.resolveTicks(axisCfg.y, valueScale);
@@ -539,12 +636,16 @@
                     }
                 }
                 if (yTV && yTV.length) yAxisFn.tickValues(yTV);
-                PlotAxis.applyAxis(
-                    svg.append('g').attr('class', 'y-axis')
-                        .attr('transform', 'translate(' + plotX + ',0)')
-                        .call(yAxisFn),
-                    axisCfg.y, 'left', breakPos
-                );
+                const yAxisG = svg.append('g').attr('class', 'y-axis')
+                    .attr('transform', 'translate(' + plotX + ',0)')
+                    .call(yAxisFn);
+
+                yAxisG.selectAll('.tick').attr('transform', d => {
+                    const y = Math.round(valueScale(d)) + 0.5;
+                    return `translate(0,${y})`;
+                });
+
+                PlotAxis.applyAxis(yAxisG, axisCfg.y, 'left', breakPos);
 
                 if (axisCfg.y.titleShow && axisCfg.y.titleContent) {
                     const yTitleX = plotX - yTickFontV - 12;
@@ -570,26 +671,32 @@
                     }
                 }
                 if (xTV && xTV.length) xAxisFn.tickValues(xTV);
-                PlotAxis.applyAxis(
-                    svg.append('g').attr('class', 'x-axis')
-                        .attr('transform', 'translate(0,' + (plotY + plotH) + ')')
-                        .call(xAxisFn),
-                    axisCfg.x, 'bottom', breakPos
-                );
+                const xAxisG = svg.append('g').attr('class', 'x-axis')
+                    .attr('transform', 'translate(0,' + (plotY + plotH) + ')')
+                    .call(xAxisFn);
 
-                const yOuter = d3.scaleBand().domain(catOrder).range([plotY, plotY + plotH])
-                    .paddingOuter(0.3).paddingInner(0.3);
+                xAxisG.selectAll('.tick').attr('transform', d => {
+                    const x = Math.round(valueScale(d)) + 0.5;
+                    return `translate(${x},0)`;
+                });
+
+                PlotAxis.applyAxis(xAxisG, axisCfg.x, 'bottom', breakPos);
+
                 const yAxisFn = d3.axisLeft(yOuter);
                 const isFirstCol = (g.col === firstColIdx);
                 const yCfgLocal = (isFirstCol || fst.showInnerTicks)
                     ? axisCfg.y
                     : Object.assign({}, axisCfg.y, { tickShow: false, tickValueShow: false });
-                PlotAxis.applyAxis(
-                    svg.append('g').attr('class', 'y-axis')
-                        .attr('transform', 'translate(' + plotX + ',0)')
-                        .call(yAxisFn),
-                    yCfgLocal, 'left'
-                );
+                const yAxisG = svg.append('g').attr('class', 'y-axis')
+                    .attr('transform', 'translate(' + plotX + ',0)')
+                    .call(yAxisFn);
+
+                yAxisG.selectAll('.tick').attr('transform', d => {
+                    const cy = Math.round(yOuter(d) + yOuter.bandwidth() / 2) + 0.5;
+                    return `translate(0,${cy})`;
+                });
+
+                PlotAxis.applyAxis(yAxisG, yCfgLocal, 'left');
 
                 if (isFirstCol && axisCfg.y.titleShow && axisCfg.y.titleContent) {
                     const yTitleX = plotX - yTickFontV - 12 - Math.max(20, maxCatW);
@@ -603,6 +710,15 @@
                         .text(axisCfg.y.titleContent);
                 }
             }
+
+            drawFrameAndRefLinesForFacet(svg, {
+                plotX: plotX, plotY: plotY, plotW: plotW, plotH: plotH,
+                isV: isV,
+                valueScale: valueScale,
+                axisCfg: axisCfg,
+                barDirection: barDirection,
+                isLogVal: isLogVal
+            });
         });
 
         if (axisCfg.x.titleShow && axisCfg.x.titleContent) {
