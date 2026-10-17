@@ -5,7 +5,7 @@
 (function (global) {
     'use strict';
 
-    const VERSION = '1.5.0';
+    const VERSION = '1.6.1';
 
     function getInterpFn(name) {
         if (!global.d3) return function () { return '#cccccc'; };
@@ -212,7 +212,11 @@
         return global.d3.scaleSequential(interp).domain([min, max]).clamp(true);
     }
 
-    /* ---------- 可拖动 / 缩放的色条（支持多实例） ---------- */
+    /* ============================================================
+       色条绘制
+       tickSide = 'left'  → 纵向：刻度在左；横向：刻度在上
+       tickSide = 'right' → 纵向：刻度在右；横向：刻度在下
+       ============================================================ */
     let _gradCounter = 0;
 
     function drawColorBar(svg, opts) {
@@ -234,6 +238,7 @@
         const stops = opts.stops || ['#ffffff', '#000000'];
         const title = cfg.title || '';
         const showLabels = cfg.showLabels !== false;
+        const tickSide = cfg.tickSide || 'left';
 
         const minV = isFinite(opts.min) ? opts.min : 0;
         const maxV = isFinite(opts.max) ? opts.max : 1;
@@ -252,12 +257,15 @@
         const offset = cfg.offset;
         const scale = Math.max(0.3, Math.min(3, cfg.scale || 1));
 
+        const tickLen = 4;   /* 统一在函数作用域，标题和刻度都会用到 */
+
         const g = svg.append('g')
             .attr('class', 'continuous-colorbar')
             .datum({ baseX: x, baseY: y })
             .attr('transform',
                 'translate(' + (x + offset.dx) + ',' + (y + offset.dy) + ') scale(' + scale + ')');
 
+        /* 渐变 */
         const gradId = 'ctp-grad-' + (++_gradCounter);
         const defs = svg.append('defs');
         const grad = defs.append('linearGradient').attr('id', gradId);
@@ -272,6 +280,7 @@
                 .attr('stop-color', c);
         });
 
+        /* 色条本体 */
         g.append('rect')
             .attr('x', 0).attr('y', 0)
             .attr('width', barW).attr('height', barH)
@@ -279,16 +288,34 @@
             .attr('stroke', '#ccc')
             .attr('stroke-width', 0.5);
 
+        /* 标题：跟随刻度方向锚定 */
         if (title) {
-            g.append('text')
-                .attr('x', barW / 2)
-                .attr('y', -(titleFS + 2))
-                .attr('text-anchor', 'middle')
-                .attr('font-size', titleFS)
-                .attr('font-weight', titleBold ? 'bold' : 'normal')
-                .attr('font-style', titleItalic ? 'italic' : 'normal')
-                .attr('fill', '#333')
-                .text(title);
+            if (isH) {
+                const titleY = (tickSide === 'left') ? (barH + tickLen + 22) : (-tickLen - 14);
+                g.append('text')
+                    .attr('x', barW / 2)
+                    .attr('y', titleY)
+                    .attr('text-anchor', 'middle')
+                    .attr('dominant-baseline', 'middle')
+                    .attr('font-size', titleFS)
+                    .attr('font-weight', titleBold ? 'bold' : 'normal')
+                    .attr('font-style', titleItalic ? 'italic' : 'normal')
+                    .attr('fill', '#333')
+                    .text(title);
+            } else {
+                /* 纵向：无论刻度在左还是在右，标题始终左对齐到色条左上方 */
+                g.append('text')
+                    .attr('x', -tickLen - 2)
+                    .attr('y', -8)
+                    .attr('text-anchor', 'start')
+                    .attr('dominant-baseline', 'auto')
+                    .attr('font-size', titleFS)
+                    .attr('font-weight', titleBold ? 'bold' : 'normal')
+                    .attr('font-style', titleItalic ? 'italic' : 'normal')
+                    .attr('fill', '#333')
+                    .text(title);
+            }
+
         }
 
         function valueToPos(v) {
@@ -300,36 +327,51 @@
             return Number(v).toFixed(decimals);
         }
 
+        /* 刻度 */
         if (showLabels) {
             ticks.forEach(function (t) {
                 if (!isFinite(t)) return;
                 const pos = valueToPos(t);
                 if (!isFinite(pos)) return;
-                const tickLen = 4;
+
                 if (isH) {
+                    const isTop = (tickSide === 'left');
+                    const y1 = isTop ? -tickLen : barH;
+                    const y2 = isTop ? 0 : barH + tickLen;
+                    const textY = isTop ? (-tickLen - 3) : (barH + tickLen + 3);
+                    const baseline = isTop ? 'auto' : 'hanging';
+
                     g.append('line')
                         .attr('x1', pos).attr('x2', pos)
-                        .attr('y1', barH).attr('y2', barH + tickLen)
+                        .attr('y1', y1).attr('y2', y2)
                         .attr('stroke', '#333').attr('stroke-width', 1);
+
                     g.append('text')
                         .attr('x', pos)
-                        .attr('y', barH + tickLen + 3)
+                        .attr('y', textY)
                         .attr('text-anchor', 'middle')
-                        .attr('dominant-baseline', 'hanging')
+                        .attr('dominant-baseline', baseline)
                         .attr('font-size', labelFS)
                         .attr('font-weight', labelBold ? 'bold' : 'normal')
                         .attr('font-style', labelItalic ? 'italic' : 'normal')
                         .attr('fill', '#333')
                         .text(fmtVal(t));
                 } else {
+                    const isLeft = (tickSide === 'left');
+                    const x1 = isLeft ? -tickLen : barW;
+                    const x2 = isLeft ? 0 : barW + tickLen;
+                    const textX = isLeft ? (-tickLen - 2) : (barW + tickLen + 2);
+                    const anchor = isLeft ? 'end' : 'start';
+
                     g.append('line')
-                        .attr('x1', barW).attr('x2', barW + tickLen)
+                        .attr('x1', x1).attr('x2', x2)
                         .attr('y1', pos).attr('y2', pos)
                         .attr('stroke', '#333').attr('stroke-width', 1);
+
                     g.append('text')
-                        .attr('x', barW + tickLen + 2)
+                        .attr('x', textX)
                         .attr('y', pos)
-                        .attr('text-anchor', 'start')
+                        .attr('text-anchor', anchor)
                         .attr('dominant-baseline', 'middle')
                         .attr('font-size', labelFS)
                         .attr('font-weight', labelBold ? 'bold' : 'normal')
@@ -340,12 +382,14 @@
             });
         }
 
+        /* 透明命中区 */
         g.append('rect')
-            .attr('x', -20).attr('y', -24)
-            .attr('width', barW + 80).attr('height', barH + 60)
+            .attr('x', -60).attr('y', -30)
+            .attr('width', barW + 120).attr('height', barH + 70)
             .attr('fill', 'transparent')
             .attr('pointer-events', 'all');
 
+        /* 拖动 */
         let dragging = false, sx = 0, sy = 0;
         g.style('cursor', 'move');
 
@@ -373,6 +417,7 @@
             });
         g.call(drag);
 
+        /* 滚轮缩放 */
         g.on('wheel', function (ev) {
             ev.preventDefault();
             ev.stopPropagation();

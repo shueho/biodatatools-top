@@ -10,6 +10,7 @@
             appearance: '外观', show: '显示色条', title: '标题',
             orientation: '方向', vertical: '纵向', horizontal: '横向',
             thickness: '粗细', length: '长度', showLabels: '显示刻度', decimals: '小数位数',
+            tickSide: '刻度位置', tickSideLeft: '左 / 上', tickSideRight: '右 / 下',
             range: '范围', auto: '自动', min: '最小值', max: '最大值',
             ticks: '刻度', tickAuto: '自动等分', tickCount: '等分数量', tickCustom: '自定义刻度',
             tickPlaceholder: '如 -1, 0, 1',
@@ -20,6 +21,7 @@
             appearance: 'Appearance', show: 'Show color bar', title: 'Title',
             orientation: 'Orientation', vertical: 'Vertical', horizontal: 'Horizontal',
             thickness: 'Thickness', length: 'Length', showLabels: 'Show ticks', decimals: 'Decimals',
+            tickSide: 'Tick side', tickSideLeft: 'Left / Top', tickSideRight: 'Right / Bottom',
             range: 'Range', auto: 'Auto', min: 'Min', max: 'Max',
             ticks: 'Ticks', tickAuto: 'Auto even split', tickCount: 'Count', tickCustom: 'Custom ticks',
             tickPlaceholder: 'e.g. -1, 0, 1',
@@ -36,27 +38,29 @@
     }
 
     function defaults() {
+        const isEn = getLang() === 'en';
         return {
             show: true,
-            title: 'r',
-            titleFontSize: 12,
+            title: isEn ? 'Correlation r' : 'Correlation r',
+            titleFontSize: 19,
             titleBold: true,
             titleItalic: false,
             orientation: 'vertical',
             thickness: 16,
             length: 120,
             showLabels: true,
-            decimals: 2,
+            decimals: 1,
+            tickSide: 'left',
             offset: { dx: 0, dy: 0 },
             scale: 1,
             rangeAuto: true,
             min: -1,
             max: 1,
             tickAuto: true,
-            tickCount: 3,
+            tickCount: 5,
             tickCustom: '',
             labelFontSize: 11,
-            labelBold: false,
+            labelBold: true,
             labelItalic: false
         };
     }
@@ -73,18 +77,8 @@
         styleInjected = true;
         const s = document.createElement('style');
         s.id = 'color-bar-panel-style';
-        s.textContent = `
-            .hm-subsection {
-                font-size: 13px;
-                font-weight: 700;
-                color: #1f4068;
-                margin: 14px 0 8px 0;
-                padding-bottom: 3px;
-                border-bottom: 1px solid #e3ebf3;
-                letter-spacing: 0.02em;
-            }
-            .hm-subsection:first-child { margin-top: 0; }
-        `;
+        s.textContent = '.hm-subsection{font-size:13px;font-weight:700;color:#1f4068;margin:14px 0 8px 0;padding-bottom:3px;border-bottom:1px solid #e3ebf3;letter-spacing:0.02em;}'
+            + '.hm-subsection:first-child{margin-top:0;}';
         document.head.appendChild(s);
     }
 
@@ -94,100 +88,106 @@
         injectStyle();
         cfg = cfg || defaults();
         const t = T();
+        const tickSide = cfg.tickSide || 'left';
 
-        c.innerHTML = `
-            <div class="hm-subsection">${t.appearance}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="cb-show" ${cfg.show ? 'checked' : ''}> ${t.show}</label>
-                </div>
-                <div class="param-item">
-                    <label>${t.title}</label>
-                    <input type="text" class="cb-title" value="${escapeAttr(cfg.title)}" style="width:100%;">
-                </div>
-                <div class="param-item">
-                    <label>${t.orientation}</label>
-                    <select class="cb-orientation">
-                        <option value="vertical" ${cfg.orientation === 'vertical' ? 'selected' : ''}>${t.vertical}</option>
-                        <option value="horizontal" ${cfg.orientation === 'horizontal' ? 'selected' : ''}>${t.horizontal}</option>
-                    </select>
-                </div>
-                <div class="param-item">
-                    <label>${t.thickness}</label>
-                    <input type="number" class="cb-thickness" value="${cfg.thickness}" min="6" max="60" step="1">
-                </div>
-                <div class="param-item">
-                    <label>${t.length}</label>
-                    <input type="number" class="cb-length" value="${cfg.length}" min="40" max="400" step="1">
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="cb-show-labels" ${cfg.showLabels ? 'checked' : ''}> ${t.showLabels}</label>
-                </div>
-                <div class="param-item">
-                    <label>${t.decimals}</label>
-                    <input type="number" class="cb-decimals" value="${cfg.decimals}" min="0" max="6" step="1">
-                </div>
-            </div>
+        c.innerHTML = ''
+            + '<div class="hm-subsection">' + t.appearance + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="cb-show" ' + (cfg.show ? 'checked' : '') + '> ' + t.show + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.title + '</label>'
+            + '    <input type="text" class="cb-title" value="' + escapeAttr(cfg.title) + '" style="width:100%;">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.orientation + '</label>'
+            + '    <select class="cb-orientation">'
+            + '      <option value="vertical" ' + (cfg.orientation === 'vertical' ? 'selected' : '') + '>' + t.vertical + '</option>'
+            + '      <option value="horizontal" ' + (cfg.orientation === 'horizontal' ? 'selected' : '') + '>' + t.horizontal + '</option>'
+            + '    </select>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.thickness + '</label>'
+            + '    <input type="number" class="cb-thickness" value="' + cfg.thickness + '" min="6" max="60" step="1">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.length + '</label>'
+            + '    <input type="number" class="cb-length" value="' + cfg.length + '" min="40" max="400" step="1">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="cb-show-labels" ' + (cfg.showLabels ? 'checked' : '') + '> ' + t.showLabels + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.tickSide + '</label>'
+            + '    <select class="cb-tick-side">'
+            + '      <option value="left" ' + (tickSide === 'left' ? 'selected' : '') + '>' + t.tickSideLeft + '</option>'
+            + '      <option value="right" ' + (tickSide === 'right' ? 'selected' : '') + '>' + t.tickSideRight + '</option>'
+            + '    </select>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.decimals + '</label>'
+            + '    <input type="number" class="cb-decimals" value="' + cfg.decimals + '" min="0" max="6" step="1">'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.range}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="cb-range-auto" ${cfg.rangeAuto ? 'checked' : ''}> ${t.auto}</label>
-                </div>
-                <div class="param-item">
-                    <label>${t.min}</label>
-                    <input type="number" class="cb-min" value="${cfg.min}" step="0.01" ${cfg.rangeAuto ? 'disabled' : ''}>
-                </div>
-                <div class="param-item">
-                    <label>${t.max}</label>
-                    <input type="number" class="cb-max" value="${cfg.max}" step="0.01" ${cfg.rangeAuto ? 'disabled' : ''}>
-                </div>
-            </div>
+            + '<div class="hm-subsection">' + t.range + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="cb-range-auto" ' + (cfg.rangeAuto ? 'checked' : '') + '> ' + t.auto + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.min + '</label>'
+            + '    <input type="number" class="cb-min" value="' + cfg.min + '" step="0.01" ' + (cfg.rangeAuto ? 'disabled' : '') + '>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.max + '</label>'
+            + '    <input type="number" class="cb-max" value="' + cfg.max + '" step="0.01" ' + (cfg.rangeAuto ? 'disabled' : '') + '>'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.ticks}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="cb-tick-auto" ${cfg.tickAuto ? 'checked' : ''}> ${t.tickAuto}</label>
-                </div>
-                <div class="param-item">
-                    <label>${t.tickCount}</label>
-                    <input type="number" class="cb-tick-count" value="${cfg.tickCount}" min="2" max="20" step="1" ${cfg.tickAuto ? '' : 'disabled'}>
-                </div>
-                <div class="param-item" style="grid-column: span 2;">
-                    <label>${t.tickCustom}</label>
-                    <input type="text" class="cb-tick-custom" value="${escapeAttr(cfg.tickCustom)}"
-                           placeholder="${escapeAttr(t.tickPlaceholder)}" style="flex:1;min-width:160px;" ${cfg.tickAuto ? 'disabled' : ''}>
-                </div>
-            </div>
+            + '<div class="hm-subsection">' + t.ticks + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="cb-tick-auto" ' + (cfg.tickAuto ? 'checked' : '') + '> ' + t.tickAuto + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.tickCount + '</label>'
+            + '    <input type="number" class="cb-tick-count" value="' + cfg.tickCount + '" min="2" max="20" step="1" ' + (cfg.tickAuto ? '' : 'disabled') + '>'
+            + '  </div>'
+            + '  <div class="param-item" style="grid-column: span 2;">'
+            + '    <label>' + t.tickCustom + '</label>'
+            + '    <input type="text" class="cb-tick-custom" value="' + escapeAttr(cfg.tickCustom) + '" placeholder="' + escapeAttr(t.tickPlaceholder) + '" style="flex:1;min-width:160px;" ' + (cfg.tickAuto ? 'disabled' : '') + '>'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.titleText}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label>${t.fontSize}</label>
-                    <input type="number" class="cb-title-fs" value="${cfg.titleFontSize}" min="6" max="36">
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="cb-title-bold" ${cfg.titleBold ? 'checked' : ''}> ${t.bold}</label>
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="cb-title-italic" ${cfg.titleItalic ? 'checked' : ''}> ${t.italic}</label>
-                </div>
-            </div>
+            + '<div class="hm-subsection">' + t.titleText + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label>' + t.fontSize + '</label>'
+            + '    <input type="number" class="cb-title-fs" value="' + cfg.titleFontSize + '" min="6" max="36">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="cb-title-bold" ' + (cfg.titleBold ? 'checked' : '') + '> ' + t.bold + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="cb-title-italic" ' + (cfg.titleItalic ? 'checked' : '') + '> ' + t.italic + '</label>'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.labelText}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label>${t.fontSize}</label>
-                    <input type="number" class="cb-label-fs" value="${cfg.labelFontSize}" min="6" max="36">
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="cb-label-bold" ${cfg.labelBold ? 'checked' : ''}> ${t.bold}</label>
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="cb-label-italic" ${cfg.labelItalic ? 'checked' : ''}> ${t.italic}</label>
-                </div>
-            </div>
-        `;
+            + '<div class="hm-subsection">' + t.labelText + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label>' + t.fontSize + '</label>'
+            + '    <input type="number" class="cb-label-fs" value="' + cfg.labelFontSize + '" min="6" max="36">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="cb-label-bold" ' + (cfg.labelBold ? 'checked' : '') + '> ' + t.bold + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="cb-label-italic" ' + (cfg.labelItalic ? 'checked' : '') + '> ' + t.italic + '</label>'
+            + '  </div>'
+            + '</div>';
     }
 
     function syncFromDom(containerOrId, cfg) {
@@ -205,6 +205,7 @@
         cfg.thickness = Math.max(6, num('.cb-thickness', cfg.thickness));
         cfg.length = Math.max(40, num('.cb-length', cfg.length));
         cfg.showLabels = chk('.cb-show-labels', cfg.showLabels);
+        cfg.tickSide = val('.cb-tick-side', cfg.tickSide || 'left');
         cfg.decimals = Math.max(0, Math.min(6, int('.cb-decimals', cfg.decimals)));
 
         cfg.rangeAuto = chk('.cb-range-auto', cfg.rangeAuto);
@@ -247,12 +248,12 @@
             if (opts.onChange) opts.onChange(cfg);
         };
 
-        c.querySelectorAll('input, select').forEach(function (el) {
+        const inputs = c.querySelectorAll('input, select');
+        for (let i = 0; i < inputs.length; i++) {
+            const el = inputs[i];
             el.addEventListener('change', fire);
-            if (el.type === 'text' || el.type === 'number') {
-                el.addEventListener('input', fire);
-            }
-        });
+            if (el.type === 'text' || el.type === 'number') el.addEventListener('input', fire);
+        }
 
         const orientSel = c.querySelector('.cb-orientation');
         if (orientSel) {
@@ -264,13 +265,8 @@
 
     function resolveRange(cfg, dataMin, dataMax) {
         let min, max;
-        if (cfg.rangeAuto) {
-            min = dataMin;
-            max = dataMax;
-        } else {
-            min = cfg.min;
-            max = cfg.max;
-        }
+        if (cfg.rangeAuto) { min = dataMin; max = dataMax; }
+        else { min = cfg.min; max = cfg.max; }
         if (!isFinite(min)) min = -1;
         if (!isFinite(max)) max = 1;
         if (min >= max) max = min + 0.01;
@@ -288,10 +284,7 @@
             return out;
         }
         if (cfg.tickCustom && String(cfg.tickCustom).trim()) {
-            const arr = String(cfg.tickCustom)
-                .split(/[,，\s]+/)
-                .map(function (s) { return parseFloat(s); })
-                .filter(function (v) { return isFinite(v); });
+            const arr = String(cfg.tickCustom).split(/[,，\s]+/).map(function (s) { return parseFloat(s); }).filter(function (v) { return isFinite(v); });
             if (arr.length) return arr;
         }
         return [min, max];

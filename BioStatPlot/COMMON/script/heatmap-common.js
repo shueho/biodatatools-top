@@ -6,7 +6,6 @@
 
     const SC = global.StatCommon;
 
-    /* ---------- i18n ---------- */
     function getLang() {
         return window.location.pathname.includes('/en/') ? 'en' : 'zh';
     }
@@ -14,7 +13,7 @@
     const I18N = {
         zh: {
             secFormat: '格式', secA: '区域 A', secB: '区域 B', secCell: '色块',
-            secMark: '格子内数字', secTh: '标记显示阈值', secDiag: '对角线',
+            secMark: '格子内文字', secTh: '标记显示阈值', secDiag: '对角线',
             secLab: '外围标签', secOrder: '顺序',
 
             diagDir: '对角线方向', fmtBLTR: '左下右上（主对角线分割）', fmtTLBR: '左上右下（副对角线分割）',
@@ -27,8 +26,11 @@
             shapeStrokeW: '色块描边宽', shapeStrokeC: '色块描边色',
             cellStrokeW: '格子描边宽', cellStrokeC: '格子描边色',
 
-            fontSize: '字号', bold: '粗', italic: '斜',
-            color: '颜色', colorAuto: '自动（跟随色块）', colorCustom: '自定义',
+            fontSize: '字号', bold: '粗', italic: '斜', decimals: '小数位数',
+            textColor: '文字颜色',
+            sameAsCorrFill: '同相关系数色块',
+            sameAsSigFill: '同 p 值色块',
+            colorCustom: '自定义',
             customColor: '自定义颜色',
 
             thAbsR: '|r| ≥', thP: 'p ≤', phEmpty: '留空不限制',
@@ -43,7 +45,7 @@
         },
         en: {
             secFormat: 'Format', secA: 'Area A', secB: 'Area B', secCell: 'Cell shape',
-            secMark: 'Number inside cell', secTh: 'Mark display threshold', secDiag: 'Diagonal',
+            secMark: 'Text inside cell', secTh: 'Mark display threshold', secDiag: 'Diagonal',
             secLab: 'Outer labels', secOrder: 'Order',
 
             diagDir: 'Diagonal split', fmtBLTR: 'Lower-left / Upper-right (main diagonal)', fmtTLBR: 'Upper-left / Lower-right (anti-diagonal)',
@@ -56,8 +58,11 @@
             shapeStrokeW: 'Fill stroke width', shapeStrokeC: 'Fill stroke color',
             cellStrokeW: 'Cell stroke width', cellStrokeC: 'Cell stroke color',
 
-            fontSize: 'Font size', bold: 'B', italic: 'I',
-            color: 'Color', colorAuto: 'Auto (follow fill)', colorCustom: 'Custom',
+            fontSize: 'Font size', bold: 'B', italic: 'I', decimals: 'Decimals',
+            textColor: 'Text color',
+            sameAsCorrFill: 'Same as correlation fill',
+            sameAsSigFill: 'Same as significance fill',
+            colorCustom: 'Custom',
             customColor: 'Custom color',
 
             thAbsR: '|r| ≥', thP: 'p ≤', phEmpty: 'Leave empty for no limit',
@@ -75,12 +80,15 @@
 
     /* ---------- 基础统计 ---------- */
     function mean(arr) {
-        let s = 0; for (const v of arr) s += v;
+        let s = 0;
+        for (let i = 0; i < arr.length; i++) s += arr[i];
         return arr.length ? s / arr.length : 0;
     }
     function rank(arr) {
         const n = arr.length;
-        const idx = arr.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
+        const idx = [];
+        for (let i = 0; i < n; i++) idx.push({ v: arr[i], i: i });
+        idx.sort(function (a, b) { return a.v - b.v; });
         const out = new Array(n);
         let i = 0;
         while (i < n) {
@@ -156,14 +164,16 @@
     }
     function computeCorrFromRaw(rawData, colNames, method) {
         if (!rawData || !rawData.length || !colNames || colNames.length < 2) return null;
-        const columns = colNames.map(function (name) {
-            return {
-                name: name,
-                values: rawData.map(function (row) {
-                    const v = parseFloat(row[name]); return isFinite(v) ? v : NaN;
-                })
-            };
-        });
+        const columns = [];
+        for (let ci = 0; ci < colNames.length; ci++) {
+            const name = colNames[ci];
+            const values = [];
+            for (let ri = 0; ri < rawData.length; ri++) {
+                const v = parseFloat(rawData[ri][name]);
+                values.push(isFinite(v) ? v : NaN);
+            }
+            columns.push({ name: name, values: values });
+        }
         const validIdx = [];
         for (let i = 0; i < rawData.length; i++) {
             let ok = true;
@@ -173,45 +183,50 @@
             if (ok) validIdx.push(i);
         }
         if (validIdx.length < 3) return null;
-        const cleaned = columns.map(function (c) {
-            return { name: c.name, values: validIdx.map(function (i) { return c.values[i]; }) };
-        });
+        const cleaned = [];
+        for (let ci = 0; ci < columns.length; ci++) {
+            const c = columns[ci];
+            const vals = [];
+            for (let vi = 0; vi < validIdx.length; vi++) vals.push(c.values[validIdx[vi]]);
+            cleaned.push({ name: c.name, values: vals });
+        }
         const res = corrMatrix(cleaned, method || 'pearson');
-        return { labels: cleaned.map(c => c.name), rMatrix: res.rMatrix, pMatrix: res.pMatrix, validCount: validIdx.length };
+        const labels = [];
+        for (let ci = 0; ci < cleaned.length; ci++) labels.push(cleaned[ci].name);
+        return { labels: labels, rMatrix: res.rMatrix, pMatrix: res.pMatrix, validCount: validIdx.length };
     }
-
     function parsePValue(v) {
         if (v == null) return null;
         const s = String(v).trim();
         if (s === '') return null;
-        if (s.startsWith('<')) {
+        if (s.charAt(0) === '<') {
             const n = parseFloat(s.slice(1));
             return isFinite(n) ? n * 0.5 : null;
         }
-        if (s.startsWith('>')) {
+        if (s.charAt(0) === '>') {
             const n = parseFloat(s.slice(1));
             return isFinite(n) ? n : null;
         }
         const n = parseFloat(s);
         return isFinite(n) ? n : null;
     }
-
     function computeCorrFromMatrix(rawData, headers, forceMode) {
         if (!rawData || !rawData.length || !headers || headers.length < 3) return null;
         const firstCol = headers[0];
         const varNames = headers.slice(1);
         const n = varNames.length;
         const idxMap = new Map();
-        varNames.forEach((v, i) => idxMap.set(v, i));
+        for (let i = 0; i < varNames.length; i++) idxMap.set(varNames[i], i);
 
         const raw = [];
         for (let i = 0; i < n; i++) raw.push(new Array(n).fill(null));
-        rawData.forEach(row => {
+        for (let ri = 0; ri < rawData.length; ri++) {
+            const row = rawData[ri];
             const rowLabel = String(row[firstCol] == null ? '' : row[firstCol]).trim();
             const i = idxMap.get(rowLabel);
-            if (i === undefined) return;
-            varNames.forEach((v, j) => { raw[i][j] = row[v]; });
-        });
+            if (i === undefined) continue;
+            for (let j = 0; j < n; j++) raw[i][j] = row[varNames[j]];
+        }
 
         let mode = forceMode || 'auto';
         if (mode === 'auto') {
@@ -256,33 +271,32 @@
                 }
             }
         }
-
         return { labels: varNames, rMatrix: rMatrix, pMatrix: pMatrix, validCount: n, mode: mode };
     }
-
     function detectMatrixFormat(headers, data) {
         if (!headers || headers.length < 3) return false;
         if (!data || data.length !== headers.length - 1) return false;
         const varNames = headers.slice(1);
         const n = varNames.length;
         const idxMap = new Map();
-        varNames.forEach((v, i) => idxMap.set(v, i));
+        for (let i = 0; i < varNames.length; i++) idxMap.set(varNames[i], i);
 
         let rowMatch = 0;
-        data.forEach(row => {
-            const rowLabel = String(row[headers[0]] == null ? '' : row[headers[0]]).trim();
+        for (let ri = 0; ri < data.length; ri++) {
+            const rowLabel = String(data[ri][headers[0]] == null ? '' : data[ri][headers[0]]).trim();
             if (idxMap.has(rowLabel)) rowMatch++;
-        });
+        }
         if (rowMatch !== n) return false;
 
         let diagOK = 0;
-        data.forEach(row => {
+        for (let ri = 0; ri < data.length; ri++) {
+            const row = data[ri];
             const rowLabel = String(row[headers[0]] == null ? '' : row[headers[0]]).trim();
             const i = idxMap.get(rowLabel);
-            if (i === undefined) return;
+            if (i === undefined) continue;
             const v = parseFloat(row[varNames[i]]);
             if (isFinite(v) && Math.abs(v - 1) < 0.01) diagOK++;
-        });
+        }
         return diagOK === n;
     }
 
@@ -298,9 +312,11 @@
         if (p < 0.001) return '<0.001';
         return p.toFixed(3);
     }
-    function formatR(r) {
+    /* 支持小数位数参数，默认 2 */
+    function formatR(r, decimals) {
         if (!isFinite(r)) return 'NA';
-        return r.toFixed(2);
+        const dec = (decimals != null && isFinite(decimals)) ? Math.max(0, Math.min(6, decimals)) : 2;
+        return r.toFixed(dec);
     }
     function sigColor(p) {
         if (!isFinite(p)) return '#f0f0f0';
@@ -312,7 +328,7 @@
     function textColorOn(bg) {
         if (!bg || bg === 'none' || bg === 'transparent') return '#333';
         let h = String(bg).replace('#', '');
-        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
         const n = parseInt(h, 16);
         if (!isFinite(n)) return '#333';
         const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
@@ -339,7 +355,7 @@
         }
         const n = labels.length;
         let html = '<table><thead><tr><th></th>';
-        labels.forEach(lb => { html += '<th>' + esc(lb) + '</th>'; });
+        for (let i = 0; i < n; i++) html += '<th>' + esc(labels[i]) + '</th>';
         html += '</tr></thead><tbody>';
         for (let i = 0; i < n; i++) {
             html += '<tr><th style="background:#f5f7fa;text-align:center;font-weight:600;color:#1f4068;">' + esc(labels[i]) + '</th>';
@@ -414,11 +430,14 @@
     function computeDataRange(rMatrix, dataKind) {
         if (dataKind === 'correlation') return { min: -1, max: 1 };
         let mn = Infinity, mx = -Infinity;
-        rMatrix.forEach(row => row.forEach(v => {
-            if (!isFinite(v)) return;
-            if (v < mn) mn = v;
-            if (v > mx) mx = v;
-        }));
+        for (let i = 0; i < rMatrix.length; i++) {
+            for (let j = 0; j < rMatrix[i].length; j++) {
+                const v = rMatrix[i][j];
+                if (!isFinite(v)) continue;
+                if (v < mn) mn = v;
+                if (v > mx) mx = v;
+            }
+        }
         if (!isFinite(mn) || !isFinite(mx)) { mn = -1; mx = 1; }
         return { min: Math.min(mn, -0.01), max: Math.max(mx, 0.01) };
     }
@@ -436,7 +455,7 @@
         let el;
         if (state.paletteMode === 'preset') el = app.$('colorPreview');
         else if (state.paletteMode === 'custom2') el = app.$('custom2Preview');
-        else el = app.$('colorPreview');
+        else el = app.$('custom3Preview');        
         if (el) el.style.background = grad;
     }
 
@@ -444,8 +463,8 @@
         return {
             format: 'BL_TR',
             areas: {
-                A: { colorBlock: 'corr', mark: 'value' },
-                B: { colorBlock: 'corr', mark: 'stars' }
+                A: { colorBlock: 'corr', mark: 'stars', markColorMode: 'custom', markColor: '#ffffff' },
+                B: { colorBlock: 'none', mark: 'value', markColorMode: 'same-corr', markColor: '#333333' }
             },
             cell: {
                 sizeMode: 'uniform',
@@ -454,28 +473,27 @@
                 shapeStrokeW: 0,
                 shapeStrokeColor: '#ffffff',
                 cellStrokeW: 1,
-                cellStrokeColor: '#ffffff',
+                cellStrokeColor: '#858585',
                 markFontSize: 12,
+                markDecimals: 3,
                 markBold: false,
-                markItalic: false,
-                markColorMode: 'auto',
-                markColor: '#333333'
+                markItalic: false
             },
             thresholds: { absR: '', pValue: '' },
             diag: {
                 fill: '#f7f7f7',
                 showGrid: true,
                 showText: true,
-                fontSize: 10,
+                fontSize: 12,
                 bold: false,
                 italic: false,
-                color: '#888888'
+                color: '#b93c3c'
             },
             labels: {
                 showTop: true, showBottom: false,
                 showLeft: true, showRight: false,
                 rotTop: -45, rotBottom: -45, rotLeft: 0, rotRight: 0,
-                fontSize: 12, bold: false, italic: false
+                fontSize: 12, bold: true, italic: false
             },
             orderText: ''
         };
@@ -493,18 +511,8 @@
         panelStyleInjected = true;
         const s = document.createElement('style');
         s.id = 'heatmap-panel-style';
-        s.textContent = `
-            .hm-subsection {
-                font-size: 13px;
-                font-weight: 700;
-                color: #1f4068;
-                margin: 14px 0 8px 0;
-                padding-bottom: 3px;
-                border-bottom: 1px solid #e3ebf3;
-                letter-spacing: 0.02em;
-            }
-            .hm-subsection:first-child { margin-top: 0; }
-        `;
+        s.textContent = '.hm-subsection{font-size:13px;font-weight:700;color:#1f4068;margin:14px 0 8px 0;padding-bottom:3px;border-bottom:1px solid #e3ebf3;letter-spacing:0.02em;}'
+            + '.hm-subsection:first-child{margin-top:0;}';
         document.head.appendChild(s);
     }
 
@@ -515,216 +523,237 @@
         display = display || defaultDisplay();
         const d = display;
         const cs = d.cell, lb = d.labels, dg = d.diag, th = d.thresholds;
+        const aA = d.areas.A, aB = d.areas.B;
         const t = T();
+        const markDec = (cs.markDecimals != null) ? cs.markDecimals : 3;
 
         const absRVal = (th.absR === '' || th.absR == null) ? '' : th.absR;
         const pVal = (th.pValue === '' || th.pValue == null) ? '' : th.pValue;
 
-        c.innerHTML = `
-            <div class="hm-subsection">${t.secFormat}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item" style="grid-column: span 2;">
-                    <label>${t.diagDir}</label>
-                    <select class="hd-format">
-                        <option value="BL_TR" ${d.format === 'BL_TR' ? 'selected' : ''}>${t.fmtBLTR}</option>
-                        <option value="TL_BR" ${d.format === 'TL_BR' ? 'selected' : ''}>${t.fmtTLBR}</option>
-                    </select>
-                </div>
-            </div>
+        function markColorOptions(cur) {
+            return ''
+                + '<option value="same-corr" ' + (cur === 'same-corr' ? 'selected' : '') + '>' + t.sameAsCorrFill + '</option>'
+                + '<option value="same-sig" ' + (cur === 'same-sig' ? 'selected' : '') + '>' + t.sameAsSigFill + '</option>'
+                + '<option value="custom" ' + (cur === 'custom' ? 'selected' : '') + '>' + t.colorCustom + '</option>';
+        }
 
-            <div class="hm-subsection">${t.secA}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label>${t.colorBlock}</label>
-                    <select class="hd-a-color">
-                        <option value="none" ${d.areas.A.colorBlock === 'none' ? 'selected' : ''}>${t.none}</option>
-                        <option value="corr" ${d.areas.A.colorBlock === 'corr' ? 'selected' : ''}>${t.corr}</option>
-                        <option value="sig"  ${d.areas.A.colorBlock === 'sig'  ? 'selected' : ''}>${t.sig}</option>
-                    </select>
-                </div>
-                <div class="param-item">
-                    <label>${t.markLabel}</label>
-                    <select class="hd-a-mark">
-                        <option value="none"  ${d.areas.A.mark === 'none'  ? 'selected' : ''}>${t.none}</option>
-                        <option value="value" ${d.areas.A.mark === 'value' ? 'selected' : ''}>${t.valR}</option>
-                        <option value="stars" ${d.areas.A.mark === 'stars' ? 'selected' : ''}>${t.valStars}</option>
-                        <option value="p"     ${d.areas.A.mark === 'p'     ? 'selected' : ''}>${t.valP}</option>
-                    </select>
-                </div>
-            </div>
+        c.innerHTML = ''
+            + '<div class="hm-subsection">' + t.secFormat + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item" style="grid-column: span 2;">'
+            + '    <label>' + t.diagDir + '</label>'
+            + '    <select class="hd-format">'
+            + '      <option value="BL_TR" ' + (d.format === 'BL_TR' ? 'selected' : '') + '>' + t.fmtBLTR + '</option>'
+            + '      <option value="TL_BR" ' + (d.format === 'TL_BR' ? 'selected' : '') + '>' + t.fmtTLBR + '</option>'
+            + '    </select>'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.secB}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label>${t.colorBlock}</label>
-                    <select class="hd-b-color">
-                        <option value="none" ${d.areas.B.colorBlock === 'none' ? 'selected' : ''}>${t.none}</option>
-                        <option value="corr" ${d.areas.B.colorBlock === 'corr' ? 'selected' : ''}>${t.corr}</option>
-                        <option value="sig"  ${d.areas.B.colorBlock === 'sig'  ? 'selected' : ''}>${t.sig}</option>
-                    </select>
-                </div>
-                <div class="param-item">
-                    <label>${t.markLabel}</label>
-                    <select class="hd-b-mark">
-                        <option value="none"  ${d.areas.B.mark === 'none'  ? 'selected' : ''}>${t.none}</option>
-                        <option value="value" ${d.areas.B.mark === 'value' ? 'selected' : ''}>${t.valR}</option>
-                        <option value="stars" ${d.areas.B.mark === 'stars' ? 'selected' : ''}>${t.valStars}</option>
-                        <option value="p"     ${d.areas.B.mark === 'p'     ? 'selected' : ''}>${t.valP}</option>
-                    </select>
-                </div>
-            </div>
+            + '<div class="hm-subsection">' + t.secA + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label>' + t.colorBlock + '</label>'
+            + '    <select class="hd-a-color">'
+            + '      <option value="none" ' + (aA.colorBlock === 'none' ? 'selected' : '') + '>' + t.none + '</option>'
+            + '      <option value="corr" ' + (aA.colorBlock === 'corr' ? 'selected' : '') + '>' + t.corr + '</option>'
+            + '      <option value="sig" ' + (aA.colorBlock === 'sig' ? 'selected' : '') + '>' + t.sig + '</option>'
+            + '    </select>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.markLabel + '</label>'
+            + '    <select class="hd-a-mark">'
+            + '      <option value="none" ' + (aA.mark === 'none' ? 'selected' : '') + '>' + t.none + '</option>'
+            + '      <option value="value" ' + (aA.mark === 'value' ? 'selected' : '') + '>' + t.valR + '</option>'
+            + '      <option value="stars" ' + (aA.mark === 'stars' ? 'selected' : '') + '>' + t.valStars + '</option>'
+            + '      <option value="p" ' + (aA.mark === 'p' ? 'selected' : '') + '>' + t.valP + '</option>'
+            + '    </select>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.textColor + '</label>'
+            + '    <select class="hd-a-mark-color-mode">' + markColorOptions(aA.markColorMode) + '</select>'
+            + '  </div>'
+            + '  <div class="param-item hd-a-mark-color-item" style="' + (aA.markColorMode === 'custom' ? '' : 'display:none;') + '">'
+            + '    <label>' + t.customColor + '</label>'
+            + '    <input type="color" class="hd-a-mark-color" value="' + aA.markColor + '">'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.secCell}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label>${t.sizeMode}</label>
-                    <select class="hd-size-mode">
-                        <option value="uniform" ${cs.sizeMode === 'uniform' ? 'selected' : ''}>${t.sizeUniform}</option>
-                        <option value="byCorr"  ${cs.sizeMode === 'byCorr'  ? 'selected' : ''}>${t.sizeByCorr}</option>
-                    </select>
-                </div>
-                <div class="param-item">
-                    <label>${t.shape}</label>
-                    <select class="hd-shape">
-                        <option value="square" ${cs.shape === 'square' ? 'selected' : ''}>${t.square}</option>
-                        <option value="circle" ${cs.shape === 'circle' ? 'selected' : ''}>${t.circle}</option>
-                    </select>
-                </div>
-                <div class="param-item">
-                    <label>${t.shapeStrokeW}</label>
-                    <input type="number" class="hd-shape-stroke-w" value="${cs.shapeStrokeW}" min="0" max="10" step="0.5">
-                </div>
-                <div class="param-item">
-                    <label>${t.shapeStrokeC}</label>
-                    <input type="color" class="hd-shape-stroke-c" value="${cs.shapeStrokeColor}">
-                </div>
-                <div class="param-item">
-                    <label>${t.cellStrokeW}</label>
-                    <input type="number" class="hd-cell-stroke-w" value="${cs.cellStrokeW}" min="0" max="10" step="0.5">
-                </div>
-                <div class="param-item">
-                    <label>${t.cellStrokeC}</label>
-                    <input type="color" class="hd-cell-stroke-c" value="${cs.cellStrokeColor}">
-                </div>
-            </div>
+            + '<div class="hm-subsection">' + t.secB + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label>' + t.colorBlock + '</label>'
+            + '    <select class="hd-b-color">'
+            + '      <option value="none" ' + (aB.colorBlock === 'none' ? 'selected' : '') + '>' + t.none + '</option>'
+            + '      <option value="corr" ' + (aB.colorBlock === 'corr' ? 'selected' : '') + '>' + t.corr + '</option>'
+            + '      <option value="sig" ' + (aB.colorBlock === 'sig' ? 'selected' : '') + '>' + t.sig + '</option>'
+            + '    </select>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.markLabel + '</label>'
+            + '    <select class="hd-b-mark">'
+            + '      <option value="none" ' + (aB.mark === 'none' ? 'selected' : '') + '>' + t.none + '</option>'
+            + '      <option value="value" ' + (aB.mark === 'value' ? 'selected' : '') + '>' + t.valR + '</option>'
+            + '      <option value="stars" ' + (aB.mark === 'stars' ? 'selected' : '') + '>' + t.valStars + '</option>'
+            + '      <option value="p" ' + (aB.mark === 'p' ? 'selected' : '') + '>' + t.valP + '</option>'
+            + '    </select>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.textColor + '</label>'
+            + '    <select class="hd-b-mark-color-mode">' + markColorOptions(aB.markColorMode) + '</select>'
+            + '  </div>'
+            + '  <div class="param-item hd-b-mark-color-item" style="' + (aB.markColorMode === 'custom' ? '' : 'display:none;') + '">'
+            + '    <label>' + t.customColor + '</label>'
+            + '    <input type="color" class="hd-b-mark-color" value="' + aB.markColor + '">'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.secMark}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label>${t.fontSize}</label>
-                    <input type="number" class="hd-mark-fs" value="${cs.markFontSize}" min="6" max="36" step="1">
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-mark-b" ${cs.markBold ? 'checked' : ''}> ${t.bold}</label>
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-mark-i" ${cs.markItalic ? 'checked' : ''}> ${t.italic}</label>
-                </div>
-                <div class="param-item">
-                    <label>${t.color}</label>
-                    <select class="hd-mark-color-mode">
-                        <option value="auto"   ${cs.markColorMode === 'auto'   ? 'selected' : ''}>${t.colorAuto}</option>
-                        <option value="custom" ${cs.markColorMode === 'custom' ? 'selected' : ''}>${t.colorCustom}</option>
-                    </select>
-                </div>
-                <div class="param-item hd-mark-color-item" style="${cs.markColorMode === 'custom' ? '' : 'display:none;'}">
-                    <label>${t.customColor}</label>
-                    <input type="color" class="hd-mark-color" value="${cs.markColor}">
-                </div>
-            </div>
+            + '<div class="hm-subsection">' + t.secCell + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label>' + t.sizeMode + '</label>'
+            + '    <select class="hd-size-mode">'
+            + '      <option value="uniform" ' + (cs.sizeMode === 'uniform' ? 'selected' : '') + '>' + t.sizeUniform + '</option>'
+            + '      <option value="byCorr" ' + (cs.sizeMode === 'byCorr' ? 'selected' : '') + '>' + t.sizeByCorr + '</option>'
+            + '    </select>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.shape + '</label>'
+            + '    <select class="hd-shape">'
+            + '      <option value="square" ' + (cs.shape === 'square' ? 'selected' : '') + '>' + t.square + '</option>'
+            + '      <option value="circle" ' + (cs.shape === 'circle' ? 'selected' : '') + '>' + t.circle + '</option>'
+            + '    </select>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.shapeStrokeW + '</label>'
+            + '    <input type="number" class="hd-shape-stroke-w" value="' + cs.shapeStrokeW + '" min="0" max="10" step="0.5">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.shapeStrokeC + '</label>'
+            + '    <input type="color" class="hd-shape-stroke-c" value="' + cs.shapeStrokeColor + '">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.cellStrokeW + '</label>'
+            + '    <input type="number" class="hd-cell-stroke-w" value="' + cs.cellStrokeW + '" min="0" max="10" step="0.5">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.cellStrokeC + '</label>'
+            + '    <input type="color" class="hd-cell-stroke-c" value="' + cs.cellStrokeColor + '">'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.secTh}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item" style="grid-column: span 2;">
-                    <label>${t.thAbsR}</label>
-                    <input type="number" class="hd-th-absr" value="${escapeAttr(absRVal)}"
-                           step="0.01" min="0" max="1" placeholder="${escapeAttr(t.phEmpty)}">
-                </div>
-                <div class="param-item" style="grid-column: span 2;">
-                    <label>${t.thP}</label>
-                    <input type="number" class="hd-th-p" value="${escapeAttr(pVal)}"
-                           step="0.001" min="0" max="1" placeholder="${escapeAttr(t.phEmpty)}">
-                </div>
-            </div>
-            <div style="font-size:11px;color:#999;margin-top:-4px;">${t.thHint}</div>
+            + '<div class="hm-subsection">' + t.secMark + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label>' + t.fontSize + '</label>'
+            + '    <input type="number" class="hd-mark-fs" value="' + cs.markFontSize + '" min="6" max="36" step="1">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.decimals + '</label>'
+            + '    <input type="number" class="hd-mark-dec" value="' + markDec + '" min="0" max="6" step="1">'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-mark-b" ' + (cs.markBold ? 'checked' : '') + '> ' + t.bold + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-mark-i" ' + (cs.markItalic ? 'checked' : '') + '> ' + t.italic + '</label>'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.secDiag}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-diag-grid" ${dg.showGrid !== false ? 'checked' : ''}> ${t.showGrid}</label>
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-diag-text" ${dg.showText !== false ? 'checked' : ''}> ${t.showText}</label>
-                </div>
-                <div class="param-item">
-                    <label>${t.diagFill}</label>
-                    <input type="color" class="hd-diag-fill" value="${dg.fill || '#f7f7f7'}">
-                </div>
-            </div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label>${t.fontSize}</label>
-                    <input type="number" class="hd-diag-fs" value="${dg.fontSize}" min="6" max="36" step="1">
-                </div>
-                <div class="param-item">
-                    <label>${t.color}</label>
-                    <input type="color" class="hd-diag-color" value="${dg.color}">
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-diag-b" ${dg.bold ? 'checked' : ''}> ${t.bold}</label>
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-diag-i" ${dg.italic ? 'checked' : ''}> ${t.italic}</label>
-                </div>
-            </div>
+            + '<div class="hm-subsection">' + t.secTh + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item" style="grid-column: span 2;">'
+            + '    <label>' + t.thAbsR + '</label>'
+            + '    <input type="number" class="hd-th-absr" value="' + escapeAttr(absRVal) + '" step="0.01" min="0" max="1" placeholder="' + escapeAttr(t.phEmpty) + '">'
+            + '  </div>'
+            + '  <div class="param-item" style="grid-column: span 2;">'
+            + '    <label>' + t.thP + '</label>'
+            + '    <input type="number" class="hd-th-p" value="' + escapeAttr(pVal) + '" step="0.001" min="0" max="1" placeholder="' + escapeAttr(t.phEmpty) + '">'
+            + '  </div>'
+            + '</div>'
+            + '<div style="font-size:11px;color:#999;margin-top:-4px;">' + t.thHint + '</div>'
 
-            <div class="hm-subsection">${t.secLab}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-lab-top"    ${lb.showTop    ? 'checked' : ''}> ${t.top}</label>
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-lab-bottom" ${lb.showBottom ? 'checked' : ''}> ${t.bottom}</label>
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-lab-left"   ${lb.showLeft   ? 'checked' : ''}> ${t.left}</label>
-                </div>
-                <div class="param-item">
-                    <label class="mini-check"><input type="checkbox" class="hd-lab-right"  ${lb.showRight  ? 'checked' : ''}> ${t.right}</label>
-                </div>
-            </div>
-            <div class="param-grid cols-4">
-                <div class="param-item"><label>${t.rotTop}</label>
-                    <input type="number" class="hd-rot-top" value="${lb.rotTop}" min="-90" max="90" step="1"></div>
-                <div class="param-item"><label>${t.rotBottom}</label>
-                    <input type="number" class="hd-rot-bottom" value="${lb.rotBottom}" min="-90" max="90" step="1"></div>
-                <div class="param-item"><label>${t.rotLeft}</label>
-                    <input type="number" class="hd-rot-left" value="${lb.rotLeft}" min="-90" max="90" step="1"></div>
-                <div class="param-item"><label>${t.rotRight}</label>
-                    <input type="number" class="hd-rot-right" value="${lb.rotRight}" min="-90" max="90" step="1"></div>
-            </div>
-            <div class="param-grid cols-4">
-                <div class="param-item"><label>${t.fontSize}</label>
-                    <input type="number" class="hd-lab-fs" value="${lb.fontSize}" min="6" max="36" step="1"></div>
-                <div class="param-item"><label class="mini-check"><input type="checkbox" class="hd-lab-b" ${lb.bold ? 'checked' : ''}> ${t.bold}</label></div>
-                <div class="param-item"><label class="mini-check"><input type="checkbox" class="hd-lab-i" ${lb.italic ? 'checked' : ''}> ${t.italic}</label></div>
-            </div>
+            + '<div class="hm-subsection">' + t.secDiag + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-diag-grid" ' + (dg.showGrid !== false ? 'checked' : '') + '> ' + t.showGrid + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-diag-text" ' + (dg.showText !== false ? 'checked' : '') + '> ' + t.showText + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label>' + t.diagFill + '</label>'
+            + '    <input type="color" class="hd-diag-fill" value="' + (dg.fill || '#f7f7f7') + '">'
+            + '  </div>'
+            + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label>' + t.fontSize + '</label>'
+            + '    <input type="number" class="hd-diag-fs" value="' + dg.fontSize + '" min="6" max="36" step="1">'
+            + '  </div>'
++ '  <div class="param-item">'
++ '    <label>' + t.textColor + '</label>'
++ '    <input type="color" class="hd-diag-color" value="' + dg.color + '">'
++ '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-diag-b" ' + (dg.bold ? 'checked' : '') + '> ' + t.bold + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-diag-i" ' + (dg.italic ? 'checked' : '') + '> ' + t.italic + '</label>'
+            + '  </div>'
+            + '</div>'
 
-            <div class="hm-subsection">${t.secOrder}</div>
-            <div class="param-grid cols-4">
-                <div class="param-item" style="grid-column: span 4;">
-                    <label>${t.orderLabel}</label>
-                    <input type="text" class="hd-order-text" value="${escapeAttr(d.orderText)}"
-                           placeholder="${escapeAttr(t.orderPlaceholder)}" style="flex:1;min-width:240px;">
-                </div>
-            </div>
-        `;
+            + '<div class="hm-subsection">' + t.secLab + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-lab-top" ' + (lb.showTop ? 'checked' : '') + '> ' + t.top + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-lab-bottom" ' + (lb.showBottom ? 'checked' : '') + '> ' + t.bottom + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-lab-left" ' + (lb.showLeft ? 'checked' : '') + '> ' + t.left + '</label>'
+            + '  </div>'
+            + '  <div class="param-item">'
+            + '    <label class="mini-check"><input type="checkbox" class="hd-lab-right" ' + (lb.showRight ? 'checked' : '') + '> ' + t.right + '</label>'
+            + '  </div>'
+            + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item"><label>' + t.rotTop + '</label>'
+            + '    <input type="number" class="hd-rot-top" value="' + lb.rotTop + '" min="-90" max="90" step="1"></div>'
+            + '  <div class="param-item"><label>' + t.rotBottom + '</label>'
+            + '    <input type="number" class="hd-rot-bottom" value="' + lb.rotBottom + '" min="-90" max="90" step="1"></div>'
+            + '  <div class="param-item"><label>' + t.rotLeft + '</label>'
+            + '    <input type="number" class="hd-rot-left" value="' + lb.rotLeft + '" min="-90" max="90" step="1"></div>'
+            + '  <div class="param-item"><label>' + t.rotRight + '</label>'
+            + '    <input type="number" class="hd-rot-right" value="' + lb.rotRight + '" min="-90" max="90" step="1"></div>'
+            + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item"><label>' + t.fontSize + '</label>'
+            + '    <input type="number" class="hd-lab-fs" value="' + lb.fontSize + '" min="6" max="36" step="1"></div>'
+            + '  <div class="param-item"><label class="mini-check"><input type="checkbox" class="hd-lab-b" ' + (lb.bold ? 'checked' : '') + '> ' + t.bold + '</label></div>'
+            + '  <div class="param-item"><label class="mini-check"><input type="checkbox" class="hd-lab-i" ' + (lb.italic ? 'checked' : '') + '> ' + t.italic + '</label></div>'
+            + '</div>'
 
-        const colorModeSel = c.querySelector('.hd-mark-color-mode');
-        const colorItem = c.querySelector('.hd-mark-color-item');
-        if (colorModeSel && colorItem) {
-            colorModeSel.addEventListener('change', function () {
-                colorItem.style.display = (this.value === 'custom') ? '' : 'none';
+            + '<div class="hm-subsection">' + t.secOrder + '</div>'
+            + '<div class="param-grid cols-4">'
+            + '  <div class="param-item" style="grid-column: span 4;">'
+            + '    <label>' + t.orderLabel + '</label>'
+            + '    <input type="text" class="hd-order-text" value="' + escapeAttr(d.orderText) + '" placeholder="' + escapeAttr(t.orderPlaceholder) + '" style="flex:1;min-width:240px;">'
+            + '  </div>'
+            + '</div>';
+
+        const aColorModeSel = c.querySelector('.hd-a-mark-color-mode');
+        const aColorItem = c.querySelector('.hd-a-mark-color-item');
+        if (aColorModeSel && aColorItem) {
+            aColorModeSel.addEventListener('change', function () {
+                aColorItem.style.display = (this.value === 'custom') ? '' : 'none';
+            });
+        }
+        const bColorModeSel = c.querySelector('.hd-b-mark-color-mode');
+        const bColorItem = c.querySelector('.hd-b-mark-color-item');
+        if (bColorModeSel && bColorItem) {
+            bColorModeSel.addEventListener('change', function () {
+                bColorItem.style.display = (this.value === 'custom') ? '' : 'none';
             });
         }
     }
@@ -732,11 +761,22 @@
     function syncDisplayFromDom(containerOrId, display) {
         const c = typeof containerOrId === 'string' ? document.getElementById(containerOrId) : containerOrId;
         if (!c) return display;
-        const q = s => c.querySelector(s);
-        const val = (s, fb) => { const e = q(s); return e ? e.value : fb; };
-        const chk = (s, fb) => { const e = q(s); return e ? e.checked : fb; };
-        const num = (s, fb) => { const e = q(s); if (!e) return fb; const v = parseFloat(e.value); return isFinite(v) ? v : fb; };
-        const optNum = (s) => {
+        const q = function (s) { return c.querySelector(s); };
+        const val = function (s, fb) { const e = q(s); return e ? e.value : fb; };
+        const chk = function (s, fb) { const e = q(s); return e ? e.checked : fb; };
+        const num = function (s, fb) {
+            const e = q(s);
+            if (!e) return fb;
+            const v = parseFloat(e.value);
+            return isFinite(v) ? v : fb;
+        };
+        const int = function (s, fb) {
+            const e = q(s);
+            if (!e) return fb;
+            const v = parseInt(e.value, 10);
+            return isFinite(v) ? v : fb;
+        };
+        const optNum = function (s) {
             const e = q(s);
             if (!e) return '';
             const raw = String(e.value).trim();
@@ -748,8 +788,12 @@
         display.format = val('.hd-format', display.format);
         display.areas.A.colorBlock = val('.hd-a-color', display.areas.A.colorBlock);
         display.areas.A.mark = val('.hd-a-mark', display.areas.A.mark);
+        display.areas.A.markColorMode = val('.hd-a-mark-color-mode', display.areas.A.markColorMode || 'same-corr');
+        display.areas.A.markColor = val('.hd-a-mark-color', display.areas.A.markColor || '#333333');
         display.areas.B.colorBlock = val('.hd-b-color', display.areas.B.colorBlock);
         display.areas.B.mark = val('.hd-b-mark', display.areas.B.mark);
+        display.areas.B.markColorMode = val('.hd-b-mark-color-mode', display.areas.B.markColorMode || 'same-corr');
+        display.areas.B.markColor = val('.hd-b-mark-color', display.areas.B.markColor || '#333333');
 
         const cs = display.cell;
         cs.sizeMode = val('.hd-size-mode', cs.sizeMode);
@@ -759,10 +803,9 @@
         cs.cellStrokeW = Math.max(0, num('.hd-cell-stroke-w', cs.cellStrokeW));
         cs.cellStrokeColor = val('.hd-cell-stroke-c', cs.cellStrokeColor);
         cs.markFontSize = Math.max(6, num('.hd-mark-fs', cs.markFontSize));
+        cs.markDecimals = Math.max(0, Math.min(6, int('.hd-mark-dec', cs.markDecimals != null ? cs.markDecimals : 3)));
         cs.markBold = chk('.hd-mark-b', cs.markBold);
         cs.markItalic = chk('.hd-mark-i', cs.markItalic);
-        cs.markColorMode = val('.hd-mark-color-mode', cs.markColorMode);
-        cs.markColor = val('.hd-mark-color', cs.markColor);
 
         display.thresholds.absR = optNum('.hd-th-absr');
         display.thresholds.pValue = optNum('.hd-th-p');
@@ -796,49 +839,73 @@
     function bindDisplayPanel(containerOrId, display, onChange) {
         const c = typeof containerOrId === 'string' ? document.getElementById(containerOrId) : containerOrId;
         if (!c) return;
-        const fire = () => {
+        const fire = function () {
             syncDisplayFromDom(c, display);
             if (onChange) onChange(display);
         };
-        c.querySelectorAll('input, select').forEach(el => {
+        const inputs = c.querySelectorAll('input, select');
+        for (let i = 0; i < inputs.length; i++) {
+            const el = inputs[i];
             el.addEventListener('change', fire);
-            if (el.type === 'text' || el.type === 'number') el.addEventListener('input', fire);
-        });
+            if (el.type === 'text' || el.type === 'number') {
+                el.addEventListener('input', fire);
+            }
+        }
     }
 
     function applyOrder(labels, rMatrix, pMatrix, orderText) {
-        if (!orderText || !orderText.trim()) return { labels, rMatrix, pMatrix };
+        if (!orderText || !orderText.trim()) return { labels: labels, rMatrix: rMatrix, pMatrix: pMatrix };
         const wanted = String(orderText).split(/[,，\s]+/).filter(Boolean);
         const idxMap = new Map();
-        labels.forEach((lb, i) => idxMap.set(lb, i));
+        for (let i = 0; i < labels.length; i++) idxMap.set(labels[i], i);
 
         const order = [];
         const used = new Set();
-        wanted.forEach(w => {
+        for (let wi = 0; wi < wanted.length; wi++) {
+            const w = wanted[wi];
             if (idxMap.has(w)) {
                 const i = idxMap.get(w);
                 if (!used.has(i)) { order.push(i); used.add(i); }
             }
-        });
-        labels.forEach((lb, i) => { if (!used.has(i)) order.push(i); });
+        }
+        for (let i = 0; i < labels.length; i++) {
+            if (!used.has(i)) order.push(i);
+        }
 
-        return {
-            labels: order.map(i => labels[i]),
-            rMatrix: order.map(i => order.map(j => rMatrix[i][j])),
-            pMatrix: order.map(i => order.map(j => pMatrix[i][j]))
-        };
+        const newLabels = [], newR = [], newP = [];
+        for (let oi = 0; oi < order.length; oi++) {
+            const i = order[oi];
+            newLabels.push(labels[i]);
+            const rRow = [], pRow = [];
+            for (let oj = 0; oj < order.length; oj++) {
+                const j = order[oj];
+                rRow.push(rMatrix[i][j]);
+                pRow.push(pMatrix[i][j]);
+            }
+            newR.push(rRow);
+            newP.push(pRow);
+        }
+        return { labels: newLabels, rMatrix: newR, pMatrix: newP };
     }
 
     function applyTLBRReverse(labels, rMatrix, pMatrix, format) {
-        if (format !== 'TL_BR') return { labels, rMatrix, pMatrix };
+        if (format !== 'TL_BR') return { labels: labels, rMatrix: rMatrix, pMatrix: pMatrix };
         const n = labels.length;
         const colOrder = [];
         for (let j = n - 1; j >= 0; j--) colOrder.push(j);
-        return {
-            labels: colOrder.map(j => labels[j]),
-            rMatrix: rMatrix.map(row => colOrder.map(j => row[j])),
-            pMatrix: pMatrix.map(row => colOrder.map(j => row[j]))
-        };
+        const newLabels = [], newR = [], newP = [];
+        for (let cj = 0; cj < colOrder.length; cj++) newLabels.push(labels[colOrder[cj]]);
+        for (let i = 0; i < n; i++) {
+            const rRow = [], pRow = [];
+            for (let cj = 0; cj < colOrder.length; cj++) {
+                const j = colOrder[cj];
+                rRow.push(rMatrix[i][j]);
+                pRow.push(pMatrix[i][j]);
+            }
+            newR.push(rRow);
+            newP.push(pRow);
+        }
+        return { labels: newLabels, rMatrix: newR, pMatrix: newP };
     }
 
     function drawHeatmap(root, opts) {
@@ -859,6 +926,7 @@
         const areas = d.areas;
         const format = d.format;
         const th = d.thresholds || {};
+        const markDec = (cs.markDecimals != null) ? cs.markDecimals : 3;
 
         const cellW = cs.baseSize;
         const cellH = cs.baseSize;
@@ -872,7 +940,7 @@
             if (format === 'BL_TR') return i > j ? 'A' : 'B';
             return (i + j) < (n - 1) ? 'A' : 'B';
         }
-        const cfgOf = area => area === 'A' ? areas.A : areas.B;
+        const cfgOf = function (area) { return area === 'A' ? areas.A : areas.B; };
 
         function isAreaEmpty(area) {
             if (area === 'diag') return false;
@@ -897,7 +965,7 @@
             return pOK;
         }
 
-        const fillOf = (i, j) => {
+        const fillOf = function (i, j) {
             const area = areaOf(i, j);
             if (area === 'diag') return dg.fill || '#f7f7f7';
             const cfg = cfgOf(area);
@@ -906,17 +974,30 @@
             if (cfg.colorBlock === 'corr') return isFinite(r) ? (colorScale ? colorScale(r) : '#cccccc') : '#f0f0f0';
             return sigColor(p);
         };
-        const textOf = (i, j) => {
+        const textOf = function (i, j) {
             const area = areaOf(i, j);
             if (area === 'diag') return '';
             const cfg = cfgOf(area);
             if (cfg.mark === 'none') return '';
             if (!shouldShowMark(i, j)) return '';
             const r = rMatrix[i][j], p = pMatrix[i][j];
-            if (cfg.mark === 'value') return formatR(r);
+            if (cfg.mark === 'value') return formatR(r, markDec);
             if (cfg.mark === 'stars') return pToStars(p);
             if (cfg.mark === 'p') return formatP(p);
             return '';
+        };
+
+        const markColorOf = function (i, j) {
+            const area = areaOf(i, j);
+            const cfg = cfgOf(area);
+            const mode = cfg.markColorMode || 'same-corr';
+            if (mode === 'custom') return cfg.markColor || '#333';
+            if (mode === 'same-sig') {
+                const p = pMatrix[i][j];
+                return sigColor(p);
+            }
+            const r = rMatrix[i][j];
+            return isFinite(r) ? (colorScale ? colorScale(r) : '#cccccc') : '#f0f0f0';
         };
 
         const gCells = root.append('g').attr('class', 'hm-cells');
@@ -990,13 +1071,6 @@
                 } else {
                     const txt = textOf(i, j);
                     if (txt) {
-                        let txtColor;
-                        if (cs.markColorMode === 'custom') {
-                            txtColor = cs.markColor;
-                        } else {
-                            const bg = fillOf(i, j);
-                            txtColor = (bg && bg !== 'transparent') ? textColorOn(bg) : '#333';
-                        }
                         gCells.append('text')
                             .attr('x', x + cellW / 2)
                             .attr('y', y + cellH / 2)
@@ -1005,7 +1079,7 @@
                             .attr('font-size', cs.markFontSize)
                             .attr('font-weight', cs.markBold ? 'bold' : 'normal')
                             .attr('font-style', cs.markItalic ? 'italic' : 'normal')
-                            .attr('fill', txtColor)
+                            .attr('fill', markColorOf(i, j))
                             .text(txt);
                     }
                 }
@@ -1131,7 +1205,8 @@
             state.rMatrix = null;
             state.pMatrix = null;
             renderCorrTable(app.$('corrTableWrap'), { labels: [], rMatrix: null, pMatrix: null, decimals: state.tableDecimals });
-            const btn = app.$('exportTableBtn'); if (btn) btn.disabled = true;
+            const btn = app.$('exportTableBtn');
+            if (btn) btn.disabled = true;
             const box = app.$('chartPreview');
             if (box) box.innerHTML = '<div class="placeholder">' + msg + '</div>';
             if (app.exportSvgBtn) app.exportSvgBtn.disabled = true;
@@ -1166,7 +1241,8 @@
             labels: finalData.labels, rMatrix: finalData.rMatrix, pMatrix: finalData.pMatrix,
             decimals: state.tableDecimals
         });
-        const btn = app.$('exportTableBtn'); if (btn) btn.disabled = false;
+        const btn = app.$('exportTableBtn');
+        if (btn) btn.disabled = false;
 
         const fontFamily = app.$('fontFamily') ? app.$('fontFamily').value : 'Times New Roman';
         const showCanvasBorder = app.$('showCanvasBorder') ? app.$('showCanvasBorder').checked : true;

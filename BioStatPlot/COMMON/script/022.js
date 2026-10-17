@@ -208,7 +208,7 @@
             });
         }
 
-        ['corrMethod', 'reverseColors', 'chartWidth', 'chartHeight', 'showCanvasBorder', 'fontFamily']
+        ['corrMethod', 'chartWidth', 'chartHeight', 'showCanvasBorder', 'fontFamily']
             .forEach(function (id) {
                 const el = app.$(id);
                 if (!el) return;
@@ -218,6 +218,15 @@
                     renderHeatmap(app);
                 });
             });
+
+        const reverseEl = app.$('reverseColors');
+        if (reverseEl) {
+            reverseEl.addEventListener('change', function () {
+                syncOtherFromDom(app);
+                HC.updateColorPreview(app, state);
+                renderHeatmap(app);
+            });
+        }
 
         ['custom2Low', 'custom2High', 'custom3Low', 'custom3Mid', 'custom3High']
             .forEach(function (id) {
