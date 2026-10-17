@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>相关性热图 - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+<div id="common-header"></div>
+
+<div class="main">
+    <div class="page-intro">
+        <h2>相关性热图</h2>
+        <p>计算多变量相关系数矩阵，支持导入原始数据或已算好的相关系数矩阵。</p>
+    </div>
+
+    <div id="importPanel"></div>
+
+    <!-- 第二步 -->
+    <div class="step-card">
+        <div class="step-title">第二步：选择分析列与相关系数类型</div>
+
+        <!-- 矩阵模式开关（顶部、加粗、醒目） -->
+        <div class="param-panel" style="background:#fffbe6;border:2px solid #f59e0b;margin-bottom:14px;">
+            <label style="font-size:15px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <input type="checkbox" id="inputIsMatrix" style="width:18px;height:18px;">
+                导入的是相关系数矩阵
+            </label>
+            <div id="inputIsMatrixHint" style="font-size:12px;color:#92400e;margin-top:6px;line-height:1.7;display:none;">
+                勾选后，本步骤其他设置将锁定，直接使用导入的矩阵作为结果。<br>
+                <strong>格式要求：</strong>第一行与第一列为变量名；<strong>左下三角</strong>为相关系数；<strong>右上三角</strong>为显著性p值；对角线为1。<br>
+                若矩阵填入的位置不对，将得不到正确结果。<br>
+                <strong>如果没有显著性p值（例如右上三角为空），仍可正常绘制热图，但图中不会显示显著性相关信息（星号/p值/显著性色块）。</strong>
+            </div>
+        </div>
+
+        <div id="step2Rest">
+            <div class="param-panel">
+                <div class="param-panel-title">分析列（至少选择 2 个数值列）</div>
+                <div id="colSelectBox" style="display:flex;flex-wrap:wrap;gap:10px 18px;padding:6px 0;"></div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">相关系数类型</div>
+                <div class="param-inline">
+                    <label>方法
+                        <select id="corrMethod">
+                            <option value="pearson" selected>Pearson（线性相关）</option>
+                            <option value="spearman">Spearman（秩相关）</option>
+                            <option value="kendall">Kendall（秩相关）</option>
+                        </select>
+                    </label>
+                    <label>表格小数位
+                        <select id="tableDecimals">
+                            <option value="2" selected>2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="exportTableBtn" disabled>导出相关系数表格</button>
+            </div>
+
+            <div class="param-panel-title" style="margin-top:16px;">相关系数表（左下：相关系数，右上：显著性p值）</div>
+            <div id="corrTableWrap" class="table-wrap">
+                <div class="empty-tip">选择至少 2 个数值列后将在此处显示相关系数表</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第三步 -->
+    <div class="step-card">
+        <div class="step-title">第三步：选择色板与颜色</div>
+
+        <div class="param-panel">
+            <div class="param-panel-title">色板模式</div>
+            <div class="param-inline">
+                <label><input type="radio" name="paletteMode" value="preset" checked> 预设连续色板</label>
+                <label><input type="radio" name="paletteMode" value="custom2"> 自定义二色渐变</label>
+                <label><input type="radio" name="paletteMode" value="custom3"> 自定义三色渐变</label>
+                <label class="mini-check"><input type="checkbox" id="reverseColors"> 反转色板顺序</label>
+            </div>
+        </div>
+
+        <div class="param-panel" id="presetPaletteWrap">
+            <div class="param-panel-title">预设连续色板</div>
+            <div id="paletteDropdownContainer"></div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:12px;color:#666;">预览：</span>
+                <div id="colorPreview" style="height:22px;flex:1;max-width:440px;border:1px solid #ccc;border-radius:3px;"></div>
+            </div>
+        </div>
+
+        <div class="param-panel" id="custom2PaletteWrap" style="display:none;">
+            <div class="param-panel-title">自定义二色渐变</div>
+            <div class="param-inline">
+                <label>低值颜色 <input type="color" id="custom2Low" value="#ffffff"></label>
+                <label>高值颜色 <input type="color" id="custom2High" value="#d73027"></label>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:12px;color:#666;">预览：</span>
+                <div id="custom2Preview" style="height:22px;flex:1;max-width:440px;border:1px solid #ccc;border-radius:3px;"></div>
+            </div>
+        </div>
+
+        <div class="param-panel" id="custom3PaletteWrap" style="display:none;">
+            <div class="param-panel-title">自定义三色渐变</div>
+            <div class="param-inline">
+                <label>低值颜色 <input type="color" id="custom3Low" value="#4575b4"></label>
+                <label>中间颜色 <input type="color" id="custom3Mid" value="#ffffff"></label>
+                <label>高值颜色 <input type="color" id="custom3High" value="#d73027"></label>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:12px;color:#666;">预览：</span>
+                <div id="custom3Preview" style="height:22px;flex:1;max-width:440px;border:1px solid #ccc;border-radius:3px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第四步 -->
+    <div class="step-card">
+        <div class="step-title">第四步：设置绘图参数</div>
+
+        <div id="globalSettingsPanel"></div>
+
+        <div class="param-panel">
+            <div class="param-panel-title">色条设置</div>
+            <div id="colorBarSettingsContainer"></div>
+        </div>
+
+        <div class="param-panel">
+            <div class="param-panel-title">相关性热图设置</div>
+            <div id="heatmapDisplayContainer"></div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn" id="drawBtn">重新绘制</button>
+        </div>
+        <div id="msgTip3" class="tip-text"></div>
+    </div>
+
+    <!-- 第五步 -->
+    <div class="step-card">
+        <div class="step-title">第五步：预览与导出</div>
+        <div class="result-toolbar">
+            <button class="btn" id="exportSvgBtn" disabled>导出 SVG</button>
+            <button class="btn" id="exportPngBtn" disabled>导出 PNG</button>
+            <span class="spacer"></span>
+            <span id="toolbarTip" class="tip-text"></span>
+        </div>
+        <div class="chart-preview" id="chartPreview">
+            <div class="placeholder">导入数据并完成设置后，热图将在此处自动生成</div>
+        </div>
+    </div>
+</div>
+
+<div id="common-footer"></div>
+
+<script src="../COMMON/script/plot-bootstrap.js"></script>
+<script src="../COMMON/script/plot-header.js"></script>
+<script src="../COMMON/script/plot-footer.js"></script>
+<script src="../COMMON/script/plot-common.js"></script>
+<script src="../COMMON/script/plot-continuous-palette.js"></script>
+<script src="../COMMON/script/plot-color-bar.js"></script>
+<script src="../COMMON/script/plot-axis.js"></script>
+<script src="../COMMON/script/stat-common.js"></script>
+<script src="../COMMON/script/plot-canvas.js"></script>
+<script src="../COMMON/script/plot-i18n.js"></script>
+<script src="../COMMON/script/plot-app.js"></script>
+<script src="../COMMON/script/plot-mini-preview.js"></script>
+<script src="../COMMON/script/heatmap-common.js"></script>
+<script src="../COMMON/script/022.js"></script>
+</body>
+</html>

@@ -29,7 +29,11 @@
             placeholderImport: '— 请先导入数据 —',
             inputOrder: '输入顺序',
             notSelected: '— 未选择 —',
-            noSvg: '❌ 没有可导出的 SVG'
+            noSvg: '❌ 没有可导出的 SVG',
+            corrEmpty: '选择至少 2 个数值列后将在此处显示相关系数表',
+            noDataPlaceholder: '导入数据并完成设置后，热图将在此处自动生成',
+            noColsPlaceholder: '选择至少 2 个数值列后将在此处显示热图',
+            noValidPlaceholder: '未能生成有效数据'
         },
         en: {
             noData: 'No data',
@@ -52,7 +56,11 @@
             placeholderImport: '— Please import data first —',
             inputOrder: 'Input order',
             notSelected: '— Not selected —',
-            noSvg: '❌ No SVG to export'
+            noSvg: '❌ No SVG to export',
+            corrEmpty: 'Select at least 2 numeric columns to display the correlation table',
+            noDataPlaceholder: 'The heatmap will appear here after importing data',
+            noColsPlaceholder: 'Select at least 2 numeric columns to display the heatmap',
+            noValidPlaceholder: 'Could not generate valid data'
         }
     };
 

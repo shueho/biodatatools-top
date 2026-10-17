@@ -58,6 +58,14 @@
                     { id: '020', zh: '棒棒糖图', en: 'Lollipop Chart' },
 
                 ]
+            },
+            {
+                zh: '热图',
+                en: 'Heatmap',
+                tools: [
+                    { id: '022', zh: '相关性热图', en: 'Correlation Heatmap' },
+
+                ]
             }
         ]
     },

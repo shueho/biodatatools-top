@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correlation Heatmap - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+<div id="common-header"></div>
+
+<div class="main">
+    <div class="page-intro">
+        <h2>Correlation Heatmap</h2>
+        <p>Compute a multivariate correlation matrix from raw data, or visualize a pre-computed correlation matrix.</p>
+    </div>
+
+    <div id="importPanel"></div>
+
+    <!-- Step 2 -->
+    <div class="step-card">
+        <div class="step-title">Step 2: Select analysis columns and correlation type</div>
+
+        <!-- Matrix mode switch (top, bold, highlighted) -->
+        <div class="param-panel" style="background:#fffbe6;border:2px solid #f59e0b;margin-bottom:14px;">
+            <label style="font-size:15px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <input type="checkbox" id="inputIsMatrix" style="width:18px;height:18px;">
+                Imported data is a correlation matrix
+            </label>
+            <div id="inputIsMatrixHint" style="font-size:12px;color:#92400e;margin-top:6px;line-height:1.7;display:none;">
+                Once checked, other settings in this step will be locked and the imported matrix will be used directly as the result.<br>
+                <strong>Format:</strong> the first row and the first column are variable names; the <strong>lower-left triangle</strong> holds correlation coefficients; the <strong>upper-right triangle</strong> holds significance p-values; the diagonal should be 1.<br>
+                If the matrix is placed incorrectly, the result will be wrong.<br>
+                <strong>If p-values are not available (e.g. the upper-right triangle is empty), the heatmap can still be drawn, but no significance information (stars / p-values / significance color blocks) will be shown.</strong>
+            </div>
+        </div>
+
+        <div id="step2Rest">
+            <div class="param-panel">
+                <div class="param-panel-title">Analysis columns (select at least 2 numeric columns)</div>
+                <div id="colSelectBox" style="display:flex;flex-wrap:wrap;gap:10px 18px;padding:6px 0;"></div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Correlation type</div>
+                <div class="param-inline">
+                    <label>Method
+                        <select id="corrMethod">
+                            <option value="pearson" selected>Pearson (linear)</option>
+                            <option value="spearman">Spearman (rank)</option>
+                            <option value="kendall">Kendall (rank)</option>
+                        </select>
+                    </label>
+                    <label>Table decimals
+                        <select id="tableDecimals">
+                            <option value="2" selected>2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="exportTableBtn" disabled>Export correlation table</button>
+            </div>
+
+            <div class="param-panel-title" style="margin-top:16px;">Correlation table (lower-left: r, upper-right: p-value)</div>
+            <div id="corrTableWrap" class="table-wrap">
+                <div class="empty-tip">The correlation table will appear here after selecting at least 2 numeric columns</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-card">
+        <div class="step-title">Step 3: Select palette and colors</div>
+
+        <div class="param-panel">
+            <div class="param-panel-title">Palette mode</div>
+            <div class="param-inline">
+                <label><input type="radio" name="paletteMode" value="preset" checked> Preset continuous palette</label>
+                <label><input type="radio" name="paletteMode" value="custom2"> Custom two-color gradient</label>
+                <label><input type="radio" name="paletteMode" value="custom3"> Custom three-color gradient</label>
+                <label class="mini-check"><input type="checkbox" id="reverseColors"> Reverse palette order</label>
+            </div>
+        </div>
+
+        <div class="param-panel" id="presetPaletteWrap">
+            <div class="param-panel-title">Preset continuous palette</div>
+            <div id="paletteDropdownContainer"></div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:12px;color:#666;">Preview:</span>
+                <div id="colorPreview" style="height:22px;flex:1;max-width:440px;border:1px solid #ccc;border-radius:3px;"></div>
+            </div>
+        </div>
+
+        <div class="param-panel" id="custom2PaletteWrap" style="display:none;">
+            <div class="param-panel-title">Custom two-color gradient</div>
+            <div class="param-inline">
+                <label>Low color <input type="color" id="custom2Low" value="#ffffff"></label>
+                <label>High color <input type="color" id="custom2High" value="#d73027"></label>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:12px;color:#666;">Preview:</span>
+                <div id="custom2Preview" style="height:22px;flex:1;max-width:440px;border:1px solid #ccc;border-radius:3px;"></div>
+            </div>
+        </div>
+
+        <div class="param-panel" id="custom3PaletteWrap" style="display:none;">
+            <div class="param-panel-title">Custom three-color gradient</div>
+            <div class="param-inline">
+                <label>Low color <input type="color" id="custom3Low" value="#4575b4"></label>
+                <label>Middle color <input type="color" id="custom3Mid" value="#ffffff"></label>
+                <label>High color <input type="color" id="custom3High" value="#d73027"></label>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:12px;color:#666;">Preview:</span>
+                <div id="custom3Preview" style="height:22px;flex:1;max-width:440px;border:1px solid #ccc;border-radius:3px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-card">
+        <div class="step-title">Step 4: Plot settings</div>
+
+        <div id="globalSettingsPanel"></div>
+
+        <div class="param-panel">
+            <div class="param-panel-title">Color bar settings</div>
+            <div id="colorBarSettingsContainer"></div>
+        </div>
+
+        <div class="param-panel">
+            <div class="param-panel-title">Correlation heatmap settings</div>
+            <div id="heatmapDisplayContainer"></div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn" id="drawBtn">Redraw</button>
+        </div>
+        <div id="msgTip3" class="tip-text"></div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-card">
+        <div class="step-title">Step 5: Preview &amp; export</div>
+        <div class="result-toolbar">
+            <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+            <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
+            <span class="spacer"></span>
+            <span id="toolbarTip" class="tip-text"></span>
+        </div>
+        <div class="chart-preview" id="chartPreview">
+            <div class="placeholder">The heatmap will appear here after importing data and configuring the settings</div>
+        </div>
+    </div>
+</div>
+
+<div id="common-footer"></div>
+
+<script src="../COMMON/script/plot-bootstrap.js"></script>
+<script src="../COMMON/script/plot-header.js"></script>
+<script src="../COMMON/script/plot-footer-en.js"></script>
+<script src="../COMMON/script/plot-common.js"></script>
+<script src="../COMMON/script/plot-continuous-palette.js"></script>
+<script src="../COMMON/script/plot-color-bar.js"></script>
+<script src="../COMMON/script/plot-axis.js"></script>
+<script src="../COMMON/script/stat-common.js"></script>
+<script src="../COMMON/script/plot-canvas.js"></script>
+<script src="../COMMON/script/plot-i18n.js"></script>
+<script src="../COMMON/script/plot-app.js"></script>
+<script src="../COMMON/script/plot-mini-preview.js"></script>
+<script src="../COMMON/script/heatmap-common.js"></script>
+<script src="../COMMON/script/022.js"></script>
+</body>
+</html>
