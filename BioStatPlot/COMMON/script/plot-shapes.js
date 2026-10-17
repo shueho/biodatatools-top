@@ -97,7 +97,7 @@
         const strokeWidth = (opts.strokeWidth != null) ? opts.strokeWidth : 1.5;
 
         if (hollow) {
-            const fill = (opts.hollowFill !== undefined) ? opts.hollowFill : '#ffffff';
+            const fill = (opts.hollowFill !== undefined) ? opts.hollowFill : 'none';
             pathSel
                 .attr('fill', fill)
                 .attr('stroke', color)

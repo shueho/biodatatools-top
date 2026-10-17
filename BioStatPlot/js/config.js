@@ -41,17 +41,19 @@
             },
 
             {
-                zh: '散点图',
+                zh: '点图',
                 en: 'Scatter Plot',
                 tools: [
                     { id: '017', zh: '分组拟合散点图', en: 'Grouped Fit Scatter Plot' },
                 ]
             },
             {
-                zh: '折线图',
+                zh: '线图',
                 en: 'Line Chart',
                 tools: [
-                    { id: '018', zh: '分组折线图', en: 'Grouped Line Chart' }
+                    { id: '018', zh: '分组折线图', en: 'Grouped Line Chart' },
+                    { id: '019', zh: '哑铃图', en: 'Dumbbell Chart' }
+
                 ]
             }
         ]

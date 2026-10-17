@@ -1145,12 +1145,12 @@ const markerW = isLineShape ? markerSize * 1.5 : markerSize;
                 const bw = markerSize;
                 const bh = markerSize;
                 const midX = bx + bw / 2;
-                const q1y = by + bh * 0.3;
-                const q3y = by + bh * 0.7;
+                const  q1y = by + bh * 0.22;
+                const  q3y = by + bh * 0.78;
                 const medY = by + bh * 0.5;
                 const topY = by;
                 const botY = by + bh;
-                const capHalf = bw * 0.28;
+                const  capHalf = bw * 0.32;
 
                 group.append('rect')
                     .attr('x', bx).attr('y', q1y)
@@ -1209,7 +1209,7 @@ const markerW = isLineShape ? markerSize * 1.5 : markerSize;
                     const p = group.append('path')
                         .attr('d', pathData)
                         .attr('transform', `translate(${midX}, ${lineY})`);
-                    PlotShapes.applyShapeStyle(p, pShape, colors[i]);
+                    PlotShapes.applyShapeStyle(p, pShape, colors[i], { hollowFill: '#ffffff' });
                 } else {
                     group.append('circle')
                         .attr('cx', midX).attr('cy', lineY)

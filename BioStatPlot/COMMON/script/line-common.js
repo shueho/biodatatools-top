@@ -783,7 +783,8 @@
                             .attr('d', pathData)
                             .attr('transform', 'translate(' + c[0] + ',' + c[1] + ')');
                         PlotShapes.applyShapeStyle(pe, pShape, pointColor, {
-                            strokeWidth: ls.pointStrokeWidth
+                            strokeWidth: ls.pointStrokeWidth,
+                            hollowFill: '#ffffff'
                         });
                         pe.attr('opacity', ls.pointAlpha);
                     } else {
