@@ -886,7 +886,7 @@ function renderBasicPanel(container) {
         <div class="param-item"><label>${I.t('timeScaleFactor')}</label>
           <input id="timeScaleFactorInput" type="number" value="${st.timeScaleFactor}" min="0.000001" step="0.001"></div>
       </div>
-      <div class="hint" style="margin-top:6px;">${I.t('timeTreeHint')}</div>
+      <div class="info-box" style="margin-top:6px;">${I.t('timeTreeHint')}</div>
     </div>
   `;
 
@@ -916,7 +916,7 @@ function renderBasicPanel(container) {
           <div class="param-item"><label>${I.t('panelLabelOffset')}</label>
             <input id="labelShift" type="number" value="${C.state.labelShift}" min="-160" max="260" step="1"></div>
         </div>
-        <div class="hint" style="margin-top:6px;">${I.t('panelArcHint')}</div>
+        <div class="info-box" style="margin-top:6px;">${I.t('panelArcHint')}</div>
       `;
       inner.querySelector('#rotation')?.addEventListener('input', e => { C.snapshot(); C.state.rotation = Number(e.target.value); global.TreeRenderer.draw(); });
       inner.querySelector('#arc')?.addEventListener('input', e => { C.snapshot(); C.state.arc = Math.max(1, Math.min(360, Number(e.target.value))); global.TreeRenderer.draw(); });
@@ -1007,58 +1007,58 @@ function renderAdvancedPanel(container) {
     return `
       <div class="node-label-item" data-nlid="${item.id}">
         <div class="nli-head">
-          <span>标签 #${index + 1}</span>
+          <span>${I.t('nodeLabelItemTitle')} #${index + 1}</span>
           <button class="nli-remove" data-remove="${item.id}" type="button">×</button>
         </div>
         <div class="param-grid cols-4">
-          <div class="param-item"><label>数据列</label>
+          <div class="param-item"><label>${I.t('nodeLabelDataColumn')}</label>
             <select data-prop="column" data-nlid="${item.id}">
-              <option value="">(请选择)</option>${opts}
+              <option value="">${I.t('trackUntitled')}</option>${opts}
             </select>
           </div>
-          <div class="param-item"><label>显示方式</label>
+          <div class="param-item"><label>${I.t('nodeLabelMode')}</label>
             <select data-prop="mode" data-nlid="${item.id}">
-              <option value="text" ${isText ? 'selected' : ''}>文字</option>
-              <option value="symbol" ${!isText ? 'selected' : ''}>符号</option>
+              <option value="text" ${isText ? 'selected' : ''}>${I.t('nodeLabelModeText')}</option>
+              <option value="symbol" ${!isText ? 'selected' : ''}>${I.t('nodeLabelModeSymbol')}</option>
             </select>
           </div>
-          <div class="param-item"><label>阈值条件</label>
+          <div class="param-item"><label>${I.t('nodeLabelThresholdLogic')}</label>
             <select data-prop="thresholdLogic" data-nlid="${item.id}">
-              <option value="" ${!item.thresholdLogic ? 'selected' : ''}>无</option>
-              <option value="gt" ${item.thresholdLogic === 'gt' ? 'selected' : ''}>大于</option>
-              <option value="gte" ${item.thresholdLogic === 'gte' ? 'selected' : ''}>不小于(≥)</option>
-              <option value="lt" ${item.thresholdLogic === 'lt' ? 'selected' : ''}>小于</option>
-              <option value="lte" ${item.thresholdLogic === 'lte' ? 'selected' : ''}>不大于(≤)</option>
+              <option value="" ${!item.thresholdLogic ? 'selected' : ''}>${I.t('optThresholdNone')}</option>
+              <option value="gt" ${item.thresholdLogic === 'gt' ? 'selected' : ''}>${I.t('optThresholdGt')}</option>
+              <option value="gte" ${item.thresholdLogic === 'gte' ? 'selected' : ''}>${I.t('optThresholdGte')}</option>
+              <option value="lt" ${item.thresholdLogic === 'lt' ? 'selected' : ''}>${I.t('optThresholdLt')}</option>
+              <option value="lte" ${item.thresholdLogic === 'lte' ? 'selected' : ''}>${I.t('optThresholdLte')}</option>
             </select>
           </div>
-          <div class="param-item"><label>阈值数值</label>
+          <div class="param-item"><label>${I.t('nodeLabelThresholdValue')}</label>
             <input type="number" data-prop="threshold" data-nlid="${item.id}" value="${item.threshold != null ? item.threshold : ''}" step="any" ${item.thresholdLogic ? '' : 'disabled'}>
           </div>
           ${isText ? `
-            <div class="param-item"><label>小数位数</label>
+            <div class="param-item"><label>${I.t('nodeLabelDecimals')}</label>
               <input type="number" data-prop="decimals" data-nlid="${item.id}" value="${item.decimals != null ? item.decimals : 2}" min="0" max="6">
             </div>
             <div class="param-item"><label class="mini-check">
-              <input type="checkbox" data-prop="asPercent" data-nlid="${item.id}" ${item.asPercent ? 'checked' : ''}> 作为百分数
+              <input type="checkbox" data-prop="asPercent" data-nlid="${item.id}" ${item.asPercent ? 'checked' : ''}> ${I.t('nodeLabelAsPercent')}
             </label></div>
           ` : `
-            <div class="param-item"><label>形状</label>
+            <div class="param-item"><label>${I.t('nodeLabelShape')}</label>
               <select data-prop="shape" data-nlid="${item.id}">
-                <option value="circle" ${item.shape === 'circle' ? 'selected' : ''}>圆形</option>
-                <option value="triangle" ${item.shape === 'triangle' ? 'selected' : ''}>三角形</option>
-                <option value="square" ${item.shape === 'square' ? 'selected' : ''}>正方形</option>
-                <option value="star" ${item.shape === 'star' ? 'selected' : ''}>星形</option>
+                <option value="circle" ${item.shape === 'circle' ? 'selected' : ''}>${I.t('optShapeCircle')}</option>
+                <option value="triangle" ${item.shape === 'triangle' ? 'selected' : ''}>${I.t('optShapeTriangle')}</option>
+                <option value="square" ${item.shape === 'square' ? 'selected' : ''}>${I.t('optShapeSquare')}</option>
+                <option value="star" ${item.shape === 'star' ? 'selected' : ''}>${I.t('optShapeStar')}</option>
               </select>
             </div>
-            <div class="param-item"><label>轮廓色</label>
+            <div class="param-item"><label>${I.t('nodeLabelStrokeColor')}</label>
               <input type="color" data-prop="strokeColor" data-nlid="${item.id}" value="${item.strokeColor || '#000000'}"></div>
-            <div class="param-item"><label>轮廓粗细</label>
+            <div class="param-item"><label>${I.t('nodeLabelStrokeWidth')}</label>
               <input type="number" data-prop="strokeWidth" data-nlid="${item.id}" value="${item.strokeWidth || 0}" min="0" max="6" step="0.5"></div>
-            <div class="param-item"><label>填充色</label>
+            <div class="param-item"><label>${I.t('nodeLabelFillColor')}</label>
               <input type="color" data-prop="fillColor" data-nlid="${item.id}" value="${item.fillColor || '#E64B35'}"></div>
-            <div class="param-item"><label>最大尺寸</label>
+            <div class="param-item"><label>${I.t('nodeLabelMaxSize')}</label>
               <input type="number" data-prop="maxSize" data-nlid="${item.id}" value="${item.maxSize || 10}" min="1" max="30"></div>
-            <div class="param-item"><label>最小尺寸</label>
+            <div class="param-item"><label>${I.t('nodeLabelMinSize')}</label>
               <input type="number" data-prop="minSize" data-nlid="${item.id}" value="${item.minSize || 2}" min="1" max="30"></div>
           `}
         </div>
@@ -1137,7 +1137,7 @@ function renderAdvancedPanel(container) {
           <input id="lenLabelTimeFactor" type="number" value="${st.lengthLabel.timeFactor}" step="0.001"></div>
         <div class="param-item"><label>${I.t('lengthLabelCiField')}</label>
           <select id="lenLabelCiField">
-            <option value="">(无)</option>
+            <option value="">${I.t('optThresholdNone')}</option>
             ${metaFields.map(f => `<option value="${escapeAttr(f)}" ${st.lengthLabel.ciField === f ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('')}
           </select>
         </div>
@@ -1160,21 +1160,21 @@ function renderAdvancedPanel(container) {
         <div class="param-item"><label>${I.t('nodeLabelOffsetY')}</label>
           <input id="nodeLabelOffsetY" type="number" value="${st.nodeLabelCommon.offsetY}" step="1"></div>
         <div class="param-item"><label class="mini-check">
-          <input id="nodeLabelMergeText" type="checkbox" ${st.nodeLabelCommon.mergeText !== false ? 'checked' : ''}> 合并文字标签
+          <input id="nodeLabelMergeText" type="checkbox" ${st.nodeLabelCommon.mergeText !== false ? 'checked' : ''}> ${I.t('nodeLabelMergeText')}
         </label></div>
-        <div class="param-item"><label>上色方式</label>
+        <div class="param-item"><label>${I.t('nodeLabelFillColorAs')}</label>
           <select id="nodeLabelFillColorAs">
-            <option value="text" ${st.nodeLabelCommon.fillColorAs !== 'background' ? 'selected' : ''}>文字上色</option>
-            <option value="background" ${st.nodeLabelCommon.fillColorAs === 'background' ? 'selected' : ''}>背景上色</option>
+            <option value="text" ${st.nodeLabelCommon.fillColorAs !== 'background' ? 'selected' : ''}>${I.t('nodeLabelFillAsText')}</option>
+            <option value="background" ${st.nodeLabelCommon.fillColorAs === 'background' ? 'selected' : ''}>${I.t('nodeLabelFillAsBackground')}</option>
           </select>
         </div>
-        <div class="param-item"><label>背景填充</label>
+        <div class="param-item"><label>${I.t('nodeLabelBgFillLabel')}</label>
           <input id="nodeLabelBgFill" type="color" value="${st.nodeLabelCommon.bgFill || '#eeeeee'}"></div>
-        <div class="param-item"><label>背景边框色</label>
+        <div class="param-item"><label>${I.t('nodeLabelBgBorderColorLabel')}</label>
           <input id="nodeLabelBgBorderColor" type="color" value="${st.nodeLabelCommon.bgBorderColor || '#cccccc'}"></div>
-        <div class="param-item"><label>背景边框宽</label>
+        <div class="param-item"><label>${I.t('nodeLabelBgBorderWidthLabel')}</label>
           <input id="nodeLabelBgBorderWidth" type="number" value="${st.nodeLabelCommon.bgBorderWidth || 0}" min="0" max="6" step="0.5"></div>
-        <div class="param-item"><label>背景上文字色</label>
+        <div class="param-item"><label>${I.t('nodeLabelTextColorOnBg')}</label>
           <input id="nodeLabelTextColorOnBg" type="color" value="${st.nodeLabelCommon.textColorOnBg || '#222222'}"></div>
         <div class="param-item"><label>${I.t('nodeLabelSeparator')}</label>
           <input id="nodeLabelSeparator" type="text" value="${escapeAttr(st.nodeLabelCommon.separator)}" style="white-space:pre;font-family:monospace"></div>
@@ -1198,7 +1198,7 @@ function renderAdvancedPanel(container) {
         </div>
         <div class="param-item"><label>${I.t('rangeLabelField')}</label>
           <select id="rangeLabelField">
-            <option value="">(无)</option>
+            <option value="">${I.t('optThresholdNone')}</option>
             ${rangeFields.map(f => `<option value="${escapeAttr(f)}" ${st.rangeLabelConfig.field === f ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('')}
           </select>
         </div>
@@ -1216,43 +1216,42 @@ function renderAdvancedPanel(container) {
     </div>
 
     <div class="param-panel" id="geoTimePanel">
-      <div class="param-panel-title">轴线色带轨道（时间 / 地质年代）</div>
+      <div class="param-panel-title">${I.t('geoPanelTitle')}</div>
       <div class="param-grid cols-4" style="margin-bottom:8px;">
         <div class="param-item"><label class="mini-check">
-          <input type="checkbox" id="geoTimeShowChk"> 显示轴线色带
+          <input type="checkbox" id="geoTimeShowChk"> ${I.t('geoShowToggle')}
         </label></div>
-        <div class="param-item"><label>倍数因子</label>
+        <div class="param-item"><label>${I.t('geoScaleFactor')}</label>
           <input id="geoScaleFactor" type="number" min="0.000001" step="any" value="${R.geoScaleFactor}">
         </div>
         <div class="param-item" style="grid-column: span 2;">
-          <label>导入等级（预设数据按 Ma 存储）</label>
+          <label>${I.t('geoImportLevels')}</label>
           <div style="display:flex;gap:12px;flex-wrap:wrap;padding:4px 0;">
-            <label class="mini-check"><input type="checkbox" data-geolevel="eon" checked> Eons</label>
-            <label class="mini-check"><input type="checkbox" data-geolevel="era" checked> Eras</label>
-            <label class="mini-check"><input type="checkbox" data-geolevel="period" checked> Periods</label>
-            <label class="mini-check"><input type="checkbox" data-geolevel="epoch"> Epochs</label>
-            <label class="mini-check"><input type="checkbox" data-geolevel="age"> Ages</label>
+            <label class="mini-check"><input type="checkbox" data-geolevel="eon" checked> ${I.t('geoLevelEon')}</label>
+            <label class="mini-check"><input type="checkbox" data-geolevel="era" checked> ${I.t('geoLevelEra')}</label>
+            <label class="mini-check"><input type="checkbox" data-geolevel="period" checked> ${I.t('geoLevelPeriod')}</label>
+            <label class="mini-check"><input type="checkbox" data-geolevel="epoch"> ${I.t('geoLevelEpoch')}</label>
+            <label class="mini-check"><input type="checkbox" data-geolevel="age"> ${I.t('geoLevelAge')}</label>
           </div>
         </div>
       </div>
-      <div class="hint" style="margin:4px 0 10px;padding:10px 12px;background:#f7fafd;border-left:3px solid #3b5bdb;border-radius:4px;line-height:1.7;">
-        <div><strong>如何使用</strong></div>
-        <div>· <b>自定义区间：</b>点"添加空轨道"新建一条轨道，再在轨道里点"+ 添加项目"，填写起始值、终止值、名称、颜色即可。可填任意数值，不限于地质年代。</div>
-        <div>· <b>导入预设：</b>勾选需要的等级后点"导入预设地质年代表"；导入后轨道里的每个项目都可以修改、删除，也可以继续添加。</div>
-        <div>· <b>倍数因子：</b>预设数据单位为百万年（Ma）。如果轴的刻度单位也是 Ma，填 1；轴单位是千年（ka）时填 1000，万年时填 10000。手动填写的自定义条目按轴值输入时，倍数因子保持 1。</div>
-        <div>· <b>轴线侧（矩形树）：</b>可选择轨道显示在轴线的"下侧/上侧"，轨道会自动避开刻度值，不会与数字重叠。</div>
-        <div>· <b>作为上色依据：</b>勾选后该轨道会同时给进化树区域对应区间上色，勾选后下方会显示"上色透明度"供调节。</div>
-        <div>· <b>圆形树：</b>所有色带条统一显示在轴线左侧，沿轴线方向排列，不与刻度值重叠。</div>
-        <div>· 超出轴线范围的区间会自动截断。</div>
+      <div class="info-box" style="margin:4px 0 10px;line-height:1.7;">
+        <div><strong>${I.t('geoHowTo')}</strong></div>
+        <div>· <b>${I.t('geoHowToCustom')}</b>${I.t('geoHowToCustomDesc')}</div>
+        <div>· <b>${I.t('geoHowToPreset')}</b>${I.t('geoHowToPresetDesc')}</div>
+        <div>· <b>${I.t('geoHowToScale')}</b>${I.t('geoHowToScaleDesc')}</div>
+        <div>· <b>${I.t('geoHowToAxisSide')}</b>${I.t('geoHowToAxisSideDesc')}</div>
+        <div>· <b>${I.t('geoHowToAsFill')}</b>${I.t('geoHowToAsFillDesc')}</div>
+        <div>· <b>${I.t('geoHowToRadial')}</b>${I.t('geoHowToRadialDesc')}</div>
+        <div>· ${I.t('geoHowToTruncate')}</div>
       </div>
       <div id="geoTimeTrackList" style="display:flex;flex-direction:column;gap:8px;max-height:520px;overflow:auto;"></div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn btn-outline" id="geoImportPresetBtn" type="button">导入预设地质年代表</button>
-        <button class="btn btn-outline" id="geoAddTrackBtn" type="button">+ 添加空轨道</button>
-        <button class="btn btn-outline" id="geoClearBtn" type="button">清空所有轨道</button>
+        <button class="btn" id="geoImportPresetBtn" type="button">${I.t('geoImportPresetBtn')}</button>
+        <button class="btn" id="geoAddTrackBtn" type="button">${I.t('geoAddTrackBtn')}</button>
+        <button class="btn" id="geoClearBtn" type="button">${I.t('geoClearBtn')}</button>
       </div>
     </div>
-
   `;
 
   const setLen = (k, v) => { st.lengthLabel[k] = v; C.snapshot(); global.TreeRenderer.draw(); };
@@ -1348,7 +1347,7 @@ function bindGeoTimeControls(container) {
   function render() {
     const tracks = R.geoTimeTracks;
     if (!tracks.length) {
-      list.innerHTML = '<div class="empty-tip" style="padding:12px;color:#999;">尚无轴线色带轨道。请点击下方按钮导入预设或添加空轨道。</div>';
+      list.innerHTML = `<div class="info-box" style="margin:8px 0;padding:8px;">${I.t('geoNoTracks')}</div>`;
       return;
     }
     list.innerHTML = tracks.map(t => {
@@ -1357,9 +1356,9 @@ function bindGeoTimeControls(container) {
       ).join('');
       const entriesHtml = t.entries.map(e => `
         <div class="rp-row" style="flex-wrap:wrap;gap:4px;padding:4px 0;" data-entry-id="${e.id}" data-track-id="${t.id}">
-          <input type="number" data-efield="start" data-eid="${e.id}" data-tid="${t.id}" value="${e.start}" placeholder="起始" style="width:80px;" step="any">
-          <input type="number" data-efield="end"   data-eid="${e.id}" data-tid="${t.id}" value="${e.end}"   placeholder="终止" style="width:80px;" step="any">
-          <input type="text"   data-efield="name"  data-eid="${e.id}" data-tid="${t.id}" value="${esc(e.name)}"  placeholder="标签" style="width:110px;">
+          <input type="number" data-efield="start" data-eid="${e.id}" data-tid="${t.id}" value="${e.start}" placeholder="${I.t('geoEntryStart')}" style="width:80px;" step="any">
+          <input type="number" data-efield="end"   data-eid="${e.id}" data-tid="${t.id}" value="${e.end}"   placeholder="${I.t('geoEntryEnd')}" style="width:80px;" step="any">
+          <input type="text"   data-efield="name"  data-eid="${e.id}" data-tid="${t.id}" value="${esc(e.name)}"  placeholder="${I.t('geoEntryName')}" style="width:110px;">
           <input type="color"  data-efield="color" data-eid="${e.id}" data-tid="${t.id}" value="${e.color}" style="width:40px;height:26px;padding:0;">
           <button class="rp-x" data-eremove="${e.id}" data-tid="${t.id}" type="button">×</button>
         </div>
@@ -1367,52 +1366,58 @@ function bindGeoTimeControls(container) {
       return `
       <div class="track-item" data-geo-track-id="${t.id}">
         <div class="track-header">
-          <span class="track-title">${R.GEO_LEVEL_LABELS[t.level] || t.level}：${esc(t.name || '(未命名)')}</span>
+          <span class="track-title">${R.GEO_LEVEL_LABELS[t.level] || t.level}：${esc(t.name || I.t('geoUntitled'))}</span>
           <button class="track-toggle" data-geo-toggle="${t.id}" type="button">${t.collapsed ? '▼' : '▲'}</button>
           <button class="track-remove" data-geo-remove="${t.id}" type="button">×</button>
         </div>
         <div class="track-body" style="${t.collapsed ? 'display:none;' : ''}">
           <div class="param-grid cols-4">
-            <div class="param-item"><label>等级</label>
+            <div class="param-item"><label>${I.t('geoLevelLabel')}</label>
               <select data-gtrack-field="level" data-tid="${t.id}">${levelOptions}</select></div>
-            <div class="param-item"><label>标题</label>
+            <div class="param-item"><label>${I.t('geoTitleLabel')}</label>
               <input type="text" data-gtrack-field="name" data-tid="${t.id}" value="${esc(t.name)}"></div>
             <div class="param-item"><label class="mini-check">
-              <input type="checkbox" data-gtrack-field="nameShow" data-tid="${t.id}" ${t.nameShow ? 'checked' : ''}> 显示标题</label></div>
-            <div class="param-item"><label>标题字号</label>
+              <input type="checkbox" data-gtrack-field="nameShow" data-tid="${t.id}" ${t.nameShow ? 'checked' : ''}> ${I.t('geoTitleShowLabel')}</label></div>
+            <div class="param-item"><label>${I.t('geoTitleFontSizeLabel')}</label>
               <input type="number" data-gtrack-field="nameFontSize" data-tid="${t.id}" value="${t.nameFontSize}" min="6" max="30"></div>
             <div class="param-item"><label class="mini-check">
-              <input type="checkbox" data-gtrack-field="nameBold" data-tid="${t.id}" ${t.nameBold ? 'checked' : ''}> 标题加粗</label></div>
+              <input type="checkbox" data-gtrack-field="nameBold" data-tid="${t.id}" ${t.nameBold ? 'checked' : ''}> ${I.t('geoTitleBoldLabel')}</label></div>
             <div class="param-item"><label class="mini-check">
-              <input type="checkbox" data-gtrack-field="nameItalic" data-tid="${t.id}" ${t.nameItalic ? 'checked' : ''}> 标题斜体</label></div>
-            <div class="param-item"><label>轮廓色</label>
+              <input type="checkbox" data-gtrack-field="nameItalic" data-tid="${t.id}" ${t.nameItalic ? 'checked' : ''}> ${I.t('geoTitleItalicLabel')}</label></div>
+            <div class="param-item"><label>${I.t('geoOutlineColorLabel')}</label>
               <input type="color" data-gtrack-field="outlineColor" data-tid="${t.id}" value="${t.outlineColor}"></div>
-            <div class="param-item"><label>轮廓粗细</label>
+            <div class="param-item"><label>${I.t('geoOutlineWidthLabel')}</label>
               <input type="number" data-gtrack-field="outlineWidth" data-tid="${t.id}" value="${t.outlineWidth}" min="0" max="6" step="0.5"></div>
-            <div class="param-item"><label>轨道透明度</label>
+            <div class="param-item"><label>${I.t('geoOpacityLabel')}</label>
               <input type="number" data-gtrack-field="opacity" data-tid="${t.id}" value="${t.opacity}" min="0" max="1" step="0.05"></div>
-            <div class="param-item"><label>轨道高度</label>
+            <div class="param-item"><label>${I.t('geoHeightLabel')}</label>
               <input type="number" data-gtrack-field="height" data-tid="${t.id}" value="${t.height}" min="4" max="120"></div>
-            <div class="param-item"><label>轨道间距</label>
+            <div class="param-item"><label>${I.t('geoGapLabel')}</label>
               <input type="number" data-gtrack-field="gap" data-tid="${t.id}" value="${t.gap}" min="0" max="60"></div>
-            <div class="param-item"><label>轴线侧（矩形树）</label>
+            <div class="param-item"><label>${I.t('geoOffsetLabel')}</label>
+              <input type="number" data-gtrack-field="offset" data-tid="${t.id}" value="${t.offset || 0}" step="1"></div>
+            <div class="param-item"><label>${I.t('geoTextOrientationLabel')}</label>
+              <select data-gtrack-field="textOrientation" data-tid="${t.id}">
+                <option value="horizontal" ${t.textOrientation !== 'vertical' ? 'selected' : ''}>${I.t('geoTextHorizontal')}</option>
+                <option value="vertical" ${t.textOrientation === 'vertical' ? 'selected' : ''}>${I.t('geoTextVertical')}</option>
+              </select></div>
+            <div class="param-item"><label>${I.t('geoAxisSideLabel')}</label>
               <select data-gtrack-field="position" data-tid="${t.id}">
-                <option value="bottom" ${t.position === 'bottom' ? 'selected' : ''}>下侧</option>
-                <option value="top"    ${t.position === 'top'    ? 'selected' : ''}>上侧</option>
+                <option value="bottom" ${t.position === 'bottom' ? 'selected' : ''}>${I.t('geoAxisSideBottom')}</option>
+                <option value="top" ${t.position === 'top' ? 'selected' : ''}>${I.t('geoAxisSideTop')}</option>
               </select></div>
             <div class="param-item"><label class="mini-check">
-              <input type="checkbox" data-gtrack-field="fillTree" data-tid="${t.id}" ${t.fillTree ? 'checked' : ''}> 作为上色依据</label></div>
-            <div class="param-item"><label>上色透明度</label>
+              <input type="checkbox" data-gtrack-field="fillTree" data-tid="${t.id}" ${t.fillTree ? 'checked' : ''}> ${I.t('geoFillTreeLabel')}</label></div>
+            <div class="param-item"><label>${I.t('geoFillTreeOpacityLabel')}</label>
               <input type="number" data-gtrack-field="fillTreeOpacity" data-tid="${t.id}" value="${t.fillTreeOpacity != null ? t.fillTreeOpacity : 0.14}" min="0" max="1" step="0.02" ${t.fillTree ? '' : 'disabled'}></div>
           </div>
-          <div class="sub-section-title" style="margin-top:8px;">轨道项目（${t.entries.length}）</div>
+          <div class="sub-section-title" style="margin-top:8px;">${I.t('geoEntriesTitle')}（${t.entries.length}）</div>
           <div style="display:flex;flex-direction:column;gap:2px;max-height:180px;overflow:auto;">
-            ${entriesHtml || '<div style="color:#999;font-size:12px;padding:4px;">暂无项目，点击下方添加。</div>'}
+            ${entriesHtml || `<div class="info-box" style="margin:6px 0;padding:6px;">${I.t('geoNoEntries')}</div>`}
           </div>
-          <button class="btn btn-outline" data-geo-add-entry="${t.id}" type="button" style="margin-top:6px;">+ 添加项目</button>
+          <button class="btn" data-geo-add-entry="${t.id}" type="button" style="margin-top:6px;">${I.t('geoAddEntryBtn')}</button>
         </div>
       </div>`;
-
     }).join('');
 
     list.querySelectorAll('[data-gtrack-field]').forEach(el => {
@@ -1426,7 +1431,7 @@ function bindGeoTimeControls(container) {
         else t[field] = el.value;
         if (field === 'level') {
           const header = list.querySelector(`[data-geo-track-id="${id}"] .track-title`);
-          if (header) header.textContent = `${R.GEO_LEVEL_LABELS[t.level] || t.level}：${t.name || '(未命名)'}`;
+          if (header) header.textContent = `${R.GEO_LEVEL_LABELS[t.level] || t.level}：${t.name || I.t('geoUntitled')}`;
         }
         global.TreeRenderer.draw();
       });
@@ -1495,7 +1500,6 @@ function bindGeoTimeControls(container) {
         if (opInput) opInput.disabled = !chk.checked;
       });
     });
-
   }
 
   render();
@@ -1503,14 +1507,14 @@ function bindGeoTimeControls(container) {
   container.querySelector('#geoImportPresetBtn')?.addEventListener('click', async () => {
     const levels = [];
     container.querySelectorAll('[data-geolevel]:checked').forEach(c => levels.push(c.dataset.geolevel));
-    if (!levels.length) { alert('请至少选择一个等级'); return; }
+    if (!levels.length) { alert(I.t('geoAlertSelectLevel')); return; }
     try {
       await R.importGeoPreset(levels);
       const chk = container.querySelector('#geoTimeShowChk');
       if (chk) chk.checked = true;
       render();
     } catch (err) {
-      alert('导入失败: ' + (err && err.message || err));
+      alert(I.t('geoAlertImportFail') + ': ' + (err && err.message || err));
     }
   });
 
@@ -1525,7 +1529,7 @@ function bindGeoTimeControls(container) {
   });
 
   container.querySelector('#geoClearBtn')?.addEventListener('click', () => {
-    if (!confirm('清空所有轴线色带轨道？')) return;
+    if (!confirm(I.t('geoConfirmClear'))) return;
     C.snapshot();
     const arr = R.geoTimeTracks;
     arr.length = 0;
@@ -1539,67 +1543,67 @@ function renderDatasetsPanel(container) {
 
   container.innerHTML = `
     <div class="param-panel" id="trackCommonPanel">
-      <div class="param-panel-title">轨道通用设置</div>
-      ${subTitle('图例通用')}
+      <div class="param-panel-title">${I.t('trackCommonPanel')}</div>
+      ${subTitle(I.t('trackLegendCommon'))}
       <div class="param-grid cols-4">
-        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleShow" checked> 显示图例标题</label></div>
-        <div class="param-item"><label>图例字号</label><input id="tcLegendFontSize" type="number" min="6" max="40" value="11"></div>
-        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendBold"> 图例加粗</label></div>
-        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendItalic"> 图例斜体</label></div>
-        <div class="param-item"><label>图例标题字号</label><input id="tcLegendTitleFontSize" type="number" min="6" max="40" value="12"></div>
-        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleBold" checked> 标题加粗</label></div>
-        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleItalic"> 标题斜体</label></div>
-        <div class="param-item"><label>图例每行最多项目数</label><input id="tcLegendMaxPerRow" type="number" min="0" max="20" value="0" placeholder="0=不限制"></div>
-        <div class="param-item"><label>图例缩放</label><input id="tcLegendScale" type="number" min="0.3" max="3" step="0.1" value="1"></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleShow" checked> ${I.t('trackLegendTitleShow')}</label></div>
+        <div class="param-item"><label>${I.t('trackLegendFontSize')}</label><input id="tcLegendFontSize" type="number" min="6" max="40" value="11"></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendBold"> ${I.t('trackLegendBold')}</label></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendItalic"> ${I.t('trackLegendItalic')}</label></div>
+        <div class="param-item"><label>${I.t('trackLegendTitleFontSize')}</label><input id="tcLegendTitleFontSize" type="number" min="6" max="40" value="12"></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleBold" checked> ${I.t('trackLegendTitleBold')}</label></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleItalic"> ${I.t('trackLegendTitleItalic')}</label></div>
+        <div class="param-item"><label>${I.t('trackLegendMaxPerRow')}</label><input id="tcLegendMaxPerRow" type="number" min="0" max="20" value="0" placeholder="0"></div>
+        <div class="param-item"><label>${I.t('trackLegendScale')}</label><input id="tcLegendScale" type="number" min="0.3" max="3" step="0.1" value="1"></div>
       </div>
-      ${subTitle('轨道名称与间隔')}
+      ${subTitle(I.t('trackNameAndGap'))}
       <div class="param-grid cols-4">
-        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcTrackNameShow" checked> 显示轨道名称</label></div>
-        <div class="param-item"><label>轨道名称字号</label><input id="tcTrackNameFontSize" type="number" min="6" max="40" value="11"></div>
-        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcTrackNameBold" checked> 轨道名称加粗</label></div>
-        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcTrackNameItalic"> 轨道名称斜体</label></div>
-        <div class="param-item"><label>轨道名称角度(°)</label><input id="tcTrackNameAngle" type="number" min="-90" max="90" step="1" value="-45"></div>
-        <div class="param-item"><label>轨道通用间隔(px)</label><input id="tcTrackGap" type="number" min="0" step="1" value="50"></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcTrackNameShow" checked> ${I.t('trackNameShow')}</label></div>
+        <div class="param-item"><label>${I.t('trackNameFontSize')}</label><input id="tcTrackNameFontSize" type="number" min="6" max="40" value="11"></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcTrackNameBold" checked> ${I.t('trackNameBold')}</label></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcTrackNameItalic"> ${I.t('trackNameItalic')}</label></div>
+        <div class="param-item"><label>${I.t('trackNameAngle')}</label><input id="tcTrackNameAngle" type="number" min="-90" max="90" step="1" value="-45"></div>
+        <div class="param-item"><label>${I.t('trackGap')}</label><input id="tcTrackGap" type="number" min="0" step="1" value="50"></div>
       </div>
     </div>
 
     <div class="param-panel" id="leafLabelPanel">
-      <div class="param-panel-title">叶标签</div>
+      <div class="param-panel-title">${I.t('leafLabelPanel')}</div>
       <div class="param-grid cols-4">
         <div class="param-item" style="grid-column: span 2;">
-          <label>标签数据列</label>
-          <select id="leafLabelColumn"><option value="">(使用叶名)</option></select>
+          <label>${I.t('leafLabelDataColumn')}</label>
+          <select id="leafLabelColumn"><option value="">${I.t('leafLabelUseLeafName')}</option></select>
         </div>
         <div class="param-item" style="align-self:end;">
-          <button class="btn" id="applyLeafLabelColumn" type="button">应用标签</button>
-          <button class="btn btn-outline" id="resetLeafLabelColumn" type="button">恢复叶名</button>
+          <button class="btn" id="applyLeafLabelColumn" type="button">${I.t('applyLeafLabel')}</button>
+          <button class="btn btn-outline" id="resetLeafLabelColumn" type="button">${I.t('resetLeafLabel')}</button>
         </div>
       </div>
     </div>
 
     <div class="param-panel" id="rangeBackgroundPanel">
-      <div class="param-panel-title">叶标签背景色</div>
+      <div class="param-panel-title">${I.t('rangeBackgroundPanel')}</div>
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>分组数据列</label>
-          <select id="groupByColumn"><option value="">(请先在第2步生成数据)</option></select>
+          <label>${I.t('groupDataColumn')}</label>
+          <select id="groupByColumn"><option value="">${I.t('groupChooseColumn')}</option></select>
         </div>
         <div class="param-item" style="grid-column: span 2;">
-          <label>色板</label>
+          <label>${I.t('groupPaletteLabel')}</label>
           <div id="groupPaletteContainer"></div>
         </div>
         <div class="param-item" style="align-self:end;">
-          <button class="btn" id="applyGroupByColumn" type="button">应用分组</button>
-          <button class="btn btn-outline" id="clearGroupsBtn" type="button">清空分组</button>
+          <button class="btn" id="applyGroupByColumn" type="button">${I.t('applyGroup')}</button>
+          <button class="btn btn-outline" id="clearGroupsBtn" type="button">${I.t('clearGroup')}</button>
         </div>
       </div>
 
       <div class="rp-list" id="rpList"
            style="max-height:220px;overflow:auto;margin-top:10px;border:1px solid #eef1f0;border-radius:4px;"></div>
 
-      ${subTitle('叶标签色带样式')}
+      ${subTitle(I.t('rangeStyleTitle'))}
       <div class="param-grid cols-4">
-        <div class="param-item"><label>覆盖范围</label>
+        <div class="param-item"><label>${I.t('rangeCoverLabel')}</label>
           <select id="rangeCoverSelect">
             <option value="label">Label</option>
             <option value="clade">Clade</option>
@@ -1607,101 +1611,101 @@ function renderDatasetsPanel(container) {
             <option value="off">Off</option>
           </select>
         </div>
-        <div class="param-item"><label>边框宽度</label>
+        <div class="param-item"><label>${I.t('rangeBorderWidth')}</label>
           <input id="rpBorder" type="number" min="0" max="8" step="1" value="0">
         </div>
-        <div class="param-item"><label>边框颜色</label>
+        <div class="param-item"><label>${I.t('rangeBorderColor2')}</label>
           <input id="rpBorderColor" type="color" value="#333333">
         </div>
-        <div class="param-item"><label>背景填充</label>
+        <div class="param-item"><label>${I.t('rangeFillStyle')}</label>
           <select id="rangeGradient">
-            <option value="false">实色</option>
-            <option value="true">渐变</option>
+            <option value="false">${I.t('rangeFillSolid')}</option>
+            <option value="true">${I.t('rangeFillGradient')}</option>
           </select>
         </div>
-        <div class="param-item"><label>透明度</label>
+        <div class="param-item"><label>${I.t('rangeOpacity2')}</label>
           <input id="rangeOpacity" type="number" min="0" max="1" step="0.05" value="0.15">
         </div>
       </div>
 
-      ${subTitle('分组标签轨道')}
+      ${subTitle(I.t('rangeLabelTrackTitle2'))}
       <div class="param-grid cols-4">
         <div class="param-item"><label class="mini-check">
-          <input type="checkbox" id="rangeLabelTrackShowChk" checked> 显示分组标签轨道
+          <input type="checkbox" id="rangeLabelTrackShowChk" checked> ${I.t('rangeLabelTrackShowChk')}
         </label></div>
         <div class="param-item"><label class="mini-check">
-          <input type="checkbox" id="rangeLabelTrackTitleShowChk" checked> 显示轨道标题
+          <input type="checkbox" id="rangeLabelTrackTitleShowChk" checked> ${I.t('rangeLabelTrackTitleShowChk')}
         </label></div>
-        <div class="param-item"><label>轨道标题</label>
+        <div class="param-item"><label>${I.t('rangeLabelTrackTitleLabel')}</label>
           <input id="rangeLabelTrackTitle" type="text" value="Groups">
         </div>
-        <div class="param-item"><label>轨道偏移(px)</label>
+        <div class="param-item"><label>${I.t('rangeLabelTrackOffsetLabel')}</label>
           <input id="rangeLabelTrackOffset" type="number" step="1" value="0">
         </div>
         <div class="param-item"><label class="mini-check">
-          <input type="checkbox" id="rangeLabelTrackAutoWidthChk"> 宽度适配文字
+          <input type="checkbox" id="rangeLabelTrackAutoWidthChk"> ${I.t('rangeLabelTrackAutoWidthChk')}
         </label></div>
-        <div class="param-item"><label>轨道宽度(px)</label>
+        <div class="param-item"><label>${I.t('rangeLabelTrackWidthLabel')}</label>
           <input id="rangeLabelTrackWidth" type="number" min="10" max="300" step="1" value="60">
         </div>
-        <div class="param-item"><label>轨道透明度</label>
+        <div class="param-item"><label>${I.t('rangeLabelTrackOpacityLabel')}</label>
           <input id="rangeLabelTrackOpacity" type="number" min="0" max="1" step="0.05" value="1">
         </div>
-        <div class="param-item"><label>文字方向</label>
+        <div class="param-item"><label>${I.t('rangeLabelTrackTextOrientation')}</label>
           <select id="rangeLabelTrackTextOrientation">
-            <option value="horizontal">横向</option>
-            <option value="vertical">竖向</option>
+            <option value="horizontal">${I.t('rangeLabelTextHorizontal')}</option>
+            <option value="vertical">${I.t('rangeLabelTextVertical')}</option>
           </select>
         </div>
         <div class="param-item"><label class="mini-check">
-          <input type="checkbox" id="rangeShowLabelsSelect" checked> 显示组名文字
+          <input type="checkbox" id="rangeShowLabelsSelect" checked> ${I.t('rangeShowLabelsChk')}
         </label></div>
-        <div class="param-item"><label>字号</label>
+        <div class="param-item"><label>${I.t('rangeLabelSizeLabel')}</label>
           <input id="rpLabelSize" type="number" min="6" max="60" step="1" value="13">
         </div>
         <div class="param-item"><label class="mini-check">
-          <input type="checkbox" id="rpLabelBoldChk" checked> 加粗
+          <input type="checkbox" id="rpLabelBoldChk" checked> ${I.t('rangeLabelBoldChk')}
         </label></div>
         <div class="param-item"><label class="mini-check">
-          <input type="checkbox" id="rpLabelItalicChk"> 斜体
+          <input type="checkbox" id="rpLabelItalicChk"> ${I.t('rangeLabelItalicChk')}
         </label></div>
-        <div class="param-item"><label>文字颜色</label>
+        <div class="param-item"><label>${I.t('rangeLabelColorLabel')}</label>
           <input id="rpLabelColor" type="color" value="#333333">
         </div>
       </div>
 
-      ${subTitle('图例')}
+      ${subTitle(I.t('legendPanelTitle'))}
       <div class="param-grid cols-4">
         <div class="param-item"><label class="mini-check">
-          <input type="checkbox" id="showLegendChk"> 显示图例
+          <input type="checkbox" id="showLegendChk"> ${I.t('legendShowChk')}
         </label></div>
-        <div class="param-item"><label>标题</label>
+        <div class="param-item"><label>${I.t('legendTitleLabel')}</label>
           <input id="legendTitle" type="text" value="Groups">
         </div>
-        <div class="param-item"><label>颜色</label>
+        <div class="param-item"><label>${I.t('legendColorLabel')}</label>
           <input id="legendColor" type="color" value="#222222">
         </div>
       </div>
     </div>
 
     <div class="param-panel" id="customTrackPanel">
-      <div class="param-panel-title">自定义轨道</div>
+      <div class="param-panel-title">${I.t('customTrackPanel')}</div>
       <div id="trackList" class="track-list"></div>
       <div class="param-grid cols-4" style="margin-top:12px;">
-        <div class="param-item"><label>轨道类型</label>
+        <div class="param-item"><label>${I.t('customTrackType')}</label>
           <select id="newTrackType">
-            <option value="colorstrip">色带</option>
-            <option value="binary">二元符号</option>
-            <option value="multisymbol">多元符号</option>
-            <option value="heatstrip">热图色带</option>
-            <option value="bar">柱状图</option>
-            <option value="stackedbar">堆积柱状图</option>
-            <option value="pie">饼图</option>
-            <option value="text">文本</option>
+            <option value="colorstrip">${I.t('optColorstrip')}</option>
+            <option value="binary">${I.t('optBinary')}</option>
+            <option value="multisymbol">${I.t('optSymbols')}</option>
+            <option value="heatstrip">${I.t('optGradient')}</option>
+            <option value="bar">${I.t('optSimpleBar')}</option>
+            <option value="stackedbar">${I.t('optMultibar')}</option>
+            <option value="pie">${I.t('optPiechart')}</option>
+            <option value="text">${I.t('optText')}</option>
           </select>
         </div>
         <div class="param-item" style="align-self:end;">
-          <button class="btn" id="addTrackBtn" type="button">+ 添加轨道</button>
+          <button class="btn" id="addTrackBtn" type="button">${I.t('customTrackAddBtn')}</button>
         </div>
       </div>
     </div>
@@ -1725,7 +1729,7 @@ function renderDatasetsPanel(container) {
     const ld = global.TreeApp && global.TreeApp.leafData;
     const headers = (ld && ld.headers) ? ld.headers.filter(h => h !== 'Leaf') : [];
     const cur = leafLabelSel.value;
-    leafLabelSel.innerHTML = '<option value="">(使用叶名)</option>' +
+    leafLabelSel.innerHTML = `<option value="">${I.t('leafLabelUseLeafName')}</option>` +
       headers.map(h => `<option value="${escapeAttr(h)}" ${h === cur ? 'selected' : ''}>${escapeHtml(h)}</option>`).join('');
   };
   if (leafLabelSel) {
@@ -1745,7 +1749,7 @@ function renderDatasetsPanel(container) {
     const ld = global.TreeApp && global.TreeApp.leafData;
     const headers = (ld && ld.headers) ? ld.headers.slice() : [];
     const cur = groupSel.value;
-    groupSel.innerHTML = '<option value="">(选择列)</option>' +
+    groupSel.innerHTML = `<option value="">${I.t('groupChooseColumn')}</option>` +
       headers.map(h => `<option value="${escapeAttr(h)}" ${h === cur ? 'selected' : ''}>${escapeHtml(h)}</option>`).join('');
   };
   if (groupSel) {
@@ -1756,7 +1760,7 @@ function renderDatasetsPanel(container) {
 
   container.querySelector('#applyGroupByColumn')?.addEventListener('click', () => {
     const col = groupSel ? groupSel.value : '';
-    if (!col) { alert('请先选择分组数据列'); return; }
+    if (!col) { alert(I.t('groupChooseColumn')); return; }
     global.TreeRanges.applyGroupsByColumn(col);
   });
 
@@ -1830,20 +1834,20 @@ function bindTrackCommonControls(container) {
 function subTitle(text) { return `<div class="sub-section-title">${text}</div>`; }
 
 function legendBlock(t) {
-  return subTitle('图例') + `
+  return subTitle(I.t('legendPanelTitle')) + `
     <div class="param-grid cols-4">
-      <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showLegend" data-tid="${t.id}" ${t.showLegend?'checked':''}> 显示图例</label></div>
-      <div class="param-item"><label>图例标题</label><input type="text" data-tprop="legendTitle" data-tid="${t.id}" value="${escapeAttr(t.legendTitle || '')}" placeholder="(默认列名)"></div>
-      ${t.type === 'heatstrip' ? `<div class="param-item"><label>方向</label><select data-tprop="legendOrientation" data-tid="${t.id}">
-        <option value="horizontal" ${t.legendOrientation!=='vertical'?'selected':''}>横向</option>
-        <option value="vertical" ${t.legendOrientation==='vertical'?'selected':''}>纵向</option></select></div>` : ''}
+      <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showLegend" data-tid="${t.id}" ${t.showLegend?'checked':''}> ${I.t('legendShowChk')}</label></div>
+      <div class="param-item"><label>${I.t('legendTitleLabel')}</label><input type="text" data-tprop="legendTitle" data-tid="${t.id}" value="${escapeAttr(t.legendTitle || '')}" placeholder="${I.t('trackUntitled')}"></div>
+      ${t.type === 'heatstrip' ? `<div class="param-item"><label>${I.t('legendDirection')}</label><select data-tprop="legendOrientation" data-tid="${t.id}">
+        <option value="horizontal" ${t.legendOrientation!=='vertical'?'selected':''}>${I.t('legendHorizontal')}</option>
+        <option value="vertical" ${t.legendOrientation==='vertical'?'selected':''}>${I.t('legendVertical')}</option></select></div>` : ''}
     </div>`;
 }
 
 function customColorBlock(t, values) {
   if (!values.length) return '';
   const cur = t.customColors || {};
-  return subTitle('单独颜色') + `
+  return subTitle(I.t('trackCustomColors')) + `
     <div class="custom-color-list" style="display:flex;flex-wrap:wrap;gap:8px;">
       ${values.map(v => `
         <label style="display:flex;align-items:center;gap:4px;font-size:12px;">
@@ -1851,14 +1855,14 @@ function customColorBlock(t, values) {
                  value="${escapeAttr(cur[v] || '#cccccc')}"
                  style="width:30px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;">
           <span>${escapeHtml(v)}</span>
-          <button class="btn-del-color" data-tdelcolor="${t.id}" data-cval="${escapeAttr(v)}" type="button" title="删除自定义颜色">×</button>
+          <button class="btn-del-color" data-tdelcolor="${t.id}" data-cval="${escapeAttr(v)}" type="button" title="delete">×</button>
         </label>`).join('')}
     </div>`;
 }
 
 function shapeMapBlock(t, values) {
   if (!values.length) return '';
-  return subTitle('形状设置') + `
+  return subTitle(I.t('trackShapeSettings')) + `
     <div class="shape-map-list" style="display:flex;flex-wrap:wrap;gap:8px;">
       ${values.map(v => `
         <label style="display:flex;align-items:center;gap:4px;font-size:12px;">
@@ -1876,7 +1880,7 @@ function shapeMapBlock(t, values) {
 
 function paletteWithColors(t, vals) {
   return `
-    <div class="param-item"><label>色板</label><div class="palette-slot" data-palette="${t.id}"></div></div>
+    <div class="param-item"><label>${I.t('groupPaletteLabel')}</label><div class="palette-slot" data-palette="${t.id}"></div></div>
     ${customColorBlock(t, vals)}
   `;
 }
@@ -1890,7 +1894,7 @@ function refreshTrackList(container) {
   const cols = (ld && ld.headers) ? ld.headers.slice() : [];
 
   box.innerHTML = TT.tracks.map(t => {
-    const colOpts = (sel) => `<option value="">(选择列)</option>` +
+    const colOpts = (sel) => `<option value="">${I.t('trackDataColumn')}</option>` +
       cols.map(c => `<option value="${escapeAttr(c)}" ${c === sel ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
     const typeLabel = TT.TRACK_TYPE_LABELS[t.type] || t.type;
     let body = '';
@@ -1899,65 +1903,65 @@ function refreshTrackList(container) {
       const vals = TT.collectUniqueValues(t);
       body = `
         <div class="param-grid cols-4">
-          <div class="param-item"><label>数据列</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
-          <div class="param-item"><label>轨道名称</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
-          <div class="param-item"><label>合并方式</label><select data-tprop="mergeGroups" data-tid="${t.id}">
-            <option value="true" ${t.mergeGroups?'selected':''}>合并色块</option>
-            <option value="false" ${!t.mergeGroups?'selected':''}>不合并</option>
+          <div class="param-item"><label>${I.t('trackDataColumn')}</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackMergeGroups')}</label><select data-tprop="mergeGroups" data-tid="${t.id}">
+            <option value="true" ${t.mergeGroups?'selected':''}>${I.t('trackMergeGroupsOn')}</option>
+            <option value="false" ${!t.mergeGroups?'selected':''}>${I.t('trackMergeGroupsOff')}</option>
           </select></div>
-          <div class="param-item"><label>色带宽度</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 20}" min="4" max="400" ${t.textAutoWidth?'disabled':''}></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textAutoWidth" data-tid="${t.id}" ${t.textAutoWidth?'checked':''}> 文字宽度适配</label></div>
-          <div class="param-item"><label>偏移</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
-          <div class="param-item"><label>边框色</label><input type="color" data-tprop="borderColor" data-tid="${t.id}" value="${t.borderColor}"></div>
-          <div class="param-item"><label>边框宽</label><input type="number" data-tprop="borderWidth" data-tid="${t.id}" value="${t.borderWidth}" min="0" max="6"></div>
-          <div class="param-item"><label>色块透明度</label><input type="number" data-tprop="fillOpacity" data-tid="${t.id}" value="${t.fillOpacity != null ? t.fillOpacity : 1}" min="0" max="1" step="0.05"></div>
+          <div class="param-item"><label>${I.t('trackStripWidth')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 20}" min="4" max="400" ${t.textAutoWidth?'disabled':''}></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textAutoWidth" data-tid="${t.id}" ${t.textAutoWidth?'checked':''}> ${I.t('trackTextAutoWidth')}</label></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('trackBorderColor')}</label><input type="color" data-tprop="borderColor" data-tid="${t.id}" value="${t.borderColor}"></div>
+          <div class="param-item"><label>${I.t('trackBorderWidth')}</label><input type="number" data-tprop="borderWidth" data-tid="${t.id}" value="${t.borderWidth}" min="0" max="6"></div>
+          <div class="param-item"><label>${I.t('trackBlockOpacity')}</label><input type="number" data-tprop="fillOpacity" data-tid="${t.id}" value="${t.fillOpacity != null ? t.fillOpacity : 1}" min="0" max="1" step="0.05"></div>
         </div>
-        ${subTitle('色带文字')}
+        ${subTitle(I.t('trackColorText'))}
         <div class="param-grid cols-4">
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showText" data-tid="${t.id}" ${t.showText?'checked':''}> 显示文字</label></div>
-          <div class="param-item"><label>字号</label><input type="number" data-tprop="textFontSize" data-tid="${t.id}" value="${t.textFontSize || 10}" min="6" max="40"></div>
-          <div class="param-item"><label>文字颜色</label><input type="color" data-tprop="textColor" data-tid="${t.id}" value="${t.textColor || '#333333'}"></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textBold" data-tid="${t.id}" ${t.textBold?'checked':''}> 加粗</label></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textItalic" data-tid="${t.id}" ${t.textItalic?'checked':''}> 斜体</label></div>
-          <div class="param-item"><label>文字方向</label><select data-tprop="textOrientation" data-tid="${t.id}">
-            <option value="horizontal" ${t.textOrientation!=='vertical'?'selected':''}>横向</option>
-            <option value="vertical" ${t.textOrientation==='vertical'?'selected':''}>竖向</option>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showText" data-tid="${t.id}" ${t.showText?'checked':''}> ${I.t('trackShowText')}</label></div>
+          <div class="param-item"><label>${I.t('trackFontSize')}</label><input type="number" data-tprop="textFontSize" data-tid="${t.id}" value="${t.textFontSize || 10}" min="6" max="40"></div>
+          <div class="param-item"><label>${I.t('trackTextColor')}</label><input type="color" data-tprop="textColor" data-tid="${t.id}" value="${t.textColor || '#333333'}"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textBold" data-tid="${t.id}" ${t.textBold?'checked':''}> ${I.t('trackTextBold')}</label></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textItalic" data-tid="${t.id}" ${t.textItalic?'checked':''}> ${I.t('trackTextItalic')}</label></div>
+          <div class="param-item"><label>${I.t('trackTextOrientation')}</label><select data-tprop="textOrientation" data-tid="${t.id}">
+            <option value="horizontal" ${t.textOrientation!=='vertical'?'selected':''}>${I.t('trackTextHorizontal')}</option>
+            <option value="vertical" ${t.textOrientation==='vertical'?'selected':''}>${I.t('trackTextVertical')}</option>
           </select></div>
         </div>
         <div class="param-grid cols-4" style="margin-top:8px;">${paletteWithColors(t, vals)}</div>
         ${legendBlock(t)}
       `;
     } else if (t.type === 'binary') {
-      const valOpts = `<option value="eq" ${t.binaryLogic==='eq'?'selected':''}>等于</option>
-        <option value="ne" ${t.binaryLogic==='ne'?'selected':''}>不等于</option>
-        <option value="gt" ${t.binaryLogic==='gt'?'selected':''}>大于</option>
-        <option value="gte" ${t.binaryLogic==='gte'?'selected':''}>不小于(≥)</option>
-        <option value="lt" ${t.binaryLogic==='lt'?'selected':''}>小于</option>
-        <option value="lte" ${t.binaryLogic==='lte'?'selected':''}>不大于(≤)</option>
-        <option value="truthy" ${t.binaryLogic==='truthy'?'selected':''}>为真(1/true/yes)</option>
-        <option value="falsy" ${t.binaryLogic==='falsy'?'selected':''}>为假(0/false/no)</option>
-        <option value="contains" ${t.binaryLogic==='contains'?'selected':''}>包含</option>
-        <option value="startswith" ${t.binaryLogic==='startswith'?'selected':''}>以…开头</option>
-        <option value="endswith" ${t.binaryLogic==='endswith'?'selected':''}>以…结尾</option>`;
+      const valOpts = `<option value="eq" ${t.binaryLogic==='eq'?'selected':''}>${I.t('optEq')}</option>
+        <option value="ne" ${t.binaryLogic==='ne'?'selected':''}>${I.t('optNe')}</option>
+        <option value="gt" ${t.binaryLogic==='gt'?'selected':''}>${I.t('optGt')}</option>
+        <option value="gte" ${t.binaryLogic==='gte'?'selected':''}>${I.t('optGte')}</option>
+        <option value="lt" ${t.binaryLogic==='lt'?'selected':''}>${I.t('optLt')}</option>
+        <option value="lte" ${t.binaryLogic==='lte'?'selected':''}>${I.t('optLte')}</option>
+        <option value="truthy" ${t.binaryLogic==='truthy'?'selected':''}>${I.t('optTruthy')}</option>
+        <option value="falsy" ${t.binaryLogic==='falsy'?'selected':''}>${I.t('optFalsy')}</option>
+        <option value="contains" ${t.binaryLogic==='contains'?'selected':''}>${I.t('optContains')}</option>
+        <option value="startswith" ${t.binaryLogic==='startswith'?'selected':''}>${I.t('optStartsWith')}</option>
+        <option value="endswith" ${t.binaryLogic==='endswith'?'selected':''}>${I.t('optEndsWith')}</option>`;
       body = `
         <div class="param-grid cols-4">
-          <div class="param-item"><label>数据列</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
-          <div class="param-item"><label>轨道名称</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
-          <div class="param-item"><label>逻辑</label><select data-tprop="binaryLogic" data-tid="${t.id}">${valOpts}</select></div>
-          <div class="param-item"><label>阈值/文本</label><input type="text" data-tprop="binaryValue" data-tid="${t.id}" value="${escapeAttr(t.binaryValue || '')}"></div>
-          <div class="param-item"><label>True 填充色</label><input type="color" data-tprop="binaryTrueColor" data-tid="${t.id}" value="${t.binaryTrueColor}"></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="binaryShowFalse" data-tid="${t.id}" ${t.binaryShowFalse?'checked':''}> False 也填充</label></div>
-          <div class="param-item"><label>False 填充色</label><input type="color" data-tprop="binaryFalseColor" data-tid="${t.id}" value="${t.binaryFalseColor}"></div>
-          <div class="param-item"><label>形状</label><select data-tprop="shape" data-tid="${t.id}">
-            <option value="square" ${t.shape==='square'?'selected':''}>正方形</option>
-            <option value="triangle" ${t.shape==='triangle'?'selected':''}>三角形</option>
-            <option value="circle" ${t.shape==='circle'?'selected':''}>圆形</option>
-            <option value="star" ${t.shape==='star'?'selected':''}>星形</option>
-            <option value="diamond2" ${t.shape==='diamond2'?'selected':''}>菱形</option>
+          <div class="param-item"><label>${I.t('trackDataColumn')}</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackBinaryLogic')}</label><select data-tprop="binaryLogic" data-tid="${t.id}">${valOpts}</select></div>
+          <div class="param-item"><label>${I.t('trackBinaryValue')}</label><input type="text" data-tprop="binaryValue" data-tid="${t.id}" value="${escapeAttr(t.binaryValue || '')}"></div>
+          <div class="param-item"><label>${I.t('trackBinaryTrueColor')}</label><input type="color" data-tprop="binaryTrueColor" data-tid="${t.id}" value="${t.binaryTrueColor}"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="binaryShowFalse" data-tid="${t.id}" ${t.binaryShowFalse?'checked':''}> ${I.t('trackBinaryShowFalse')}</label></div>
+          <div class="param-item"><label>${I.t('trackBinaryFalseColor')}</label><input type="color" data-tprop="binaryFalseColor" data-tid="${t.id}" value="${t.binaryFalseColor}"></div>
+          <div class="param-item"><label>${I.t('trackShape')}</label><select data-tprop="shape" data-tid="${t.id}">
+            <option value="square" ${t.shape==='square'?'selected':''}>${I.t('optShapeSquare')}</option>
+            <option value="triangle" ${t.shape==='triangle'?'selected':''}>${I.t('optShapeTriangle')}</option>
+            <option value="circle" ${t.shape==='circle'?'selected':''}>${I.t('optShapeCircle')}</option>
+            <option value="star" ${t.shape==='star'?'selected':''}>${I.t('optShapeStar')}</option>
+            <option value="diamond2" ${t.shape==='diamond2'?'selected':''}>${I.t('optShapeDiamond')}</option>
           </select></div>
-          <div class="param-item"><label>轮廓色</label><input type="color" data-tprop="outlineColor" data-tid="${t.id}" value="${t.outlineColor}"></div>
-          <div class="param-item"><label>轮廓宽</label><input type="number" data-tprop="outlineWidth" data-tid="${t.id}" value="${t.outlineWidth}" min="0" max="6"></div>
-          <div class="param-item"><label>偏移</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('trackOutlineColor')}</label><input type="color" data-tprop="outlineColor" data-tid="${t.id}" value="${t.outlineColor}"></div>
+          <div class="param-item"><label>${I.t('trackOutlineWidth')}</label><input type="number" data-tprop="outlineWidth" data-tid="${t.id}" value="${t.outlineWidth}" min="0" max="6"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
         ${legendBlock(t)}
       `;
@@ -1966,69 +1970,69 @@ function refreshTrackList(container) {
       const stops = useCustom ? t.gradientStops : ['#ffffff', '#888888', '#000000'];
       body = `
         <div class="param-grid cols-4">
-          <div class="param-item"><label>数据列</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
-          <div class="param-item"><label>轨道名称</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
-          <div class="param-item" style="grid-column: span 2;"><label>连续色板</label><div class="palette-slot" data-palette-continuous="${t.id}"></div></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tcustom="${t.id}" ${useCustom?'checked':''}> 自定义渐变</label></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showBorder" data-tid="${t.id}" ${t.showBorder!==false?'checked':''}> 显示轮廓</label></div>
-          <div class="param-item"><label>轮廓颜色</label><input type="color" data-tprop="borderColor" data-tid="${t.id}" value="${t.borderColor}"></div>
-          <div class="param-item"><label>轮廓宽度</label><input type="number" data-tprop="borderWidth" data-tid="${t.id}" value="${t.borderWidth}" min="0" max="6"></div>
-          <div class="param-item"><label>色带宽度</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 20}" min="4" max="80"></div>
-          <div class="param-item"><label>偏移</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('trackDataColumn')}</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item" style="grid-column: span 2;"><label>${I.t('trackContinuousPalette')}</label><div class="palette-slot" data-palette-continuous="${t.id}"></div></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tcustom="${t.id}" ${useCustom?'checked':''}> ${I.t('trackCustomGradient')}</label></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showBorder" data-tid="${t.id}" ${t.showBorder!==false?'checked':''}> ${I.t('trackShowBorder')}</label></div>
+          <div class="param-item"><label>${I.t('trackOutlineColorLabel')}</label><input type="color" data-tprop="borderColor" data-tid="${t.id}" value="${t.borderColor}"></div>
+          <div class="param-item"><label>${I.t('trackOutlineWidthLabel')}</label><input type="number" data-tprop="borderWidth" data-tid="${t.id}" value="${t.borderWidth}" min="0" max="6"></div>
+          <div class="param-item"><label>${I.t('trackStripWidth')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 20}" min="4" max="80"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
-        ${subTitle('颜色设置')}
+        ${subTitle(I.t('trackColorSettings'))}
         <div class="param-grid cols-4">
-          <div class="param-item"><label>最小值</label><input type="number" data-tprop="gradientMin" data-tid="${t.id}" value="${t.gradientMin != null ? t.gradientMin : ''}" placeholder="自动"></div>
-          <div class="param-item"><label>最大值</label><input type="number" data-tprop="gradientMax" data-tid="${t.id}" value="${t.gradientMax != null ? t.gradientMax : ''}" placeholder="自动"></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="gradientReverse" data-tid="${t.id}" ${t.gradientReverse?'checked':''}> 反向</label></div>
+          <div class="param-item"><label>${I.t('trackMinValue')}</label><input type="number" data-tprop="gradientMin" data-tid="${t.id}" value="${t.gradientMin != null ? t.gradientMin : ''}" placeholder="auto"></div>
+          <div class="param-item"><label>${I.t('trackMaxValue')}</label><input type="number" data-tprop="gradientMax" data-tid="${t.id}" value="${t.gradientMax != null ? t.gradientMax : ''}" placeholder="auto"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="gradientReverse" data-tid="${t.id}" ${t.gradientReverse?'checked':''}> ${I.t('trackReverse')}</label></div>
         </div>
         <div class="param-grid cols-4" style="${useCustom?'':'display:none;'}" data-customgrad="${t.id}">
-          <div class="param-item"><label>左端色</label><input type="color" data-tgrad="0" data-tid="${t.id}" value="${stops[0] || '#ffffff'}"></div>
-          <div class="param-item"><label>中间色</label><input type="color" data-tgrad="1" data-tid="${t.id}" value="${stops[1] || '#888888'}"></div>
-          <div class="param-item"><label>右端色</label><input type="color" data-tgrad="2" data-tid="${t.id}" value="${stops[2] || stops[1] || '#000000'}"></div>
+          <div class="param-item"><label>${I.t('trackLeftColor')}</label><input type="color" data-tgrad="0" data-tid="${t.id}" value="${stops[0] || '#ffffff'}"></div>
+          <div class="param-item"><label>${I.t('trackMidColor')}</label><input type="color" data-tgrad="1" data-tid="${t.id}" value="${stops[1] || '#888888'}"></div>
+          <div class="param-item"><label>${I.t('trackRightColor')}</label><input type="color" data-tgrad="2" data-tid="${t.id}" value="${stops[2] || stops[1] || '#000000'}"></div>
         </div>
         ${legendBlock(t)}
       `;
     } else if (t.type === 'bar') {
       body = `
         <div class="param-grid cols-4">
-          <div class="param-item"><label>数据列</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
-          <div class="param-item"><label>轨道名称</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
-          <div class="param-item"><label>柱颜色</label><input type="color" data-tprop="barColor" data-tid="${t.id}" value="${t.barColor}"></div>
-          <div class="param-item"><label>轨道长度</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 100}" min="20" max="400"></div>
-          <div class="param-item"><label>柱宽</label><input type="number" data-tprop="barWidth" data-tid="${t.id}" value="${t.barWidth || 0}" min="0" max="40" placeholder="0=自动"></div>
-          <div class="param-item"><label>偏移</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('trackDataColumn')}</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackBarColor')}</label><input type="color" data-tprop="barColor" data-tid="${t.id}" value="${t.barColor}"></div>
+          <div class="param-item"><label>${I.t('trackTrackLength')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 100}" min="20" max="400"></div>
+          <div class="param-item"><label>${I.t('trackBarWidth')}</label><input type="number" data-tprop="barWidth" data-tid="${t.id}" value="${t.barWidth || 0}" min="0" max="40" placeholder="0"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
-        ${subTitle('柱轮廓')}
+        ${subTitle(I.t('trackBarOutline'))}
         <div class="param-grid cols-4">
-          <div class="param-item"><label>轮廓颜色</label><input type="color" data-tprop="barOutlineColor" data-tid="${t.id}" value="${t.barOutlineColor}"></div>
-          <div class="param-item"><label>轮廓粗细</label><input type="number" data-tprop="barOutlineWidth" data-tid="${t.id}" value="${t.barOutlineWidth}" min="0" max="6"></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="barOutlineDashed" data-tid="${t.id}" ${t.barOutlineDashed?'checked':''}> 虚线</label></div>
+          <div class="param-item"><label>${I.t('trackBarOutlineColor')}</label><input type="color" data-tprop="barOutlineColor" data-tid="${t.id}" value="${t.barOutlineColor}"></div>
+          <div class="param-item"><label>${I.t('trackBarOutlineWidth')}</label><input type="number" data-tprop="barOutlineWidth" data-tid="${t.id}" value="${t.barOutlineWidth}" min="0" max="6"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="barOutlineDashed" data-tid="${t.id}" ${t.barOutlineDashed?'checked':''}> ${I.t('trackBarOutlineDashed')}</label></div>
         </div>
-        ${subTitle('框线')}
+        ${subTitle(I.t('trackBox'))}
         <div class="param-grid cols-4">
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showBox" data-tid="${t.id}" ${t.showBox?'checked':''}> 显示框线</label></div>
-          <div class="param-item"><label>框线颜色</label><input type="color" data-tprop="boxColor" data-tid="${t.id}" value="${t.boxColor || '#bbbbbb'}"></div>
-          <div class="param-item"><label>框线粗细</label><input type="number" data-tprop="boxWidth" data-tid="${t.id}" value="${t.boxWidth || 0.5}" min="0" max="6" step="0.1"></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="boxDashed" data-tid="${t.id}" ${t.boxDashed?'checked':''}> 虚线</label></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showBox" data-tid="${t.id}" ${t.showBox?'checked':''}> ${I.t('trackShowBox')}</label></div>
+          <div class="param-item"><label>${I.t('trackBoxColor')}</label><input type="color" data-tprop="boxColor" data-tid="${t.id}" value="${t.boxColor || '#bbbbbb'}"></div>
+          <div class="param-item"><label>${I.t('trackBoxWidth')}</label><input type="number" data-tprop="boxWidth" data-tid="${t.id}" value="${t.boxWidth || 0.5}" min="0" max="6" step="0.1"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="boxDashed" data-tid="${t.id}" ${t.boxDashed?'checked':''}> ${I.t('trackBoxDashed')}</label></div>
         </div>
-        ${subTitle('X 轴')}
+        ${subTitle(I.t('trackXAxis'))}
         <div class="param-grid cols-4">
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showValues" data-tid="${t.id}" ${t.showValues?'checked':''}> 顶部显示数值</label></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showAxisNumbers" data-tid="${t.id}" ${t.showAxisNumbers!==false?'checked':''}> 显示轴刻度值</label></div>
-          <div class="param-item"><label>最小值</label><input type="number" data-tprop="axisMin" data-tid="${t.id}" value="${t.axisMin != null ? t.axisMin : ''}" placeholder="自动"></div>
-          <div class="param-item"><label>最大值</label><input type="number" data-tprop="axisMax" data-tid="${t.id}" value="${t.axisMax != null ? t.axisMax : ''}" placeholder="自动"></div>
-          <div class="param-item"><label>刻度间隔</label><input type="number" data-tprop="axisInterval" data-tid="${t.id}" value="${t.axisInterval != null ? t.axisInterval : ''}" placeholder="自动"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showValues" data-tid="${t.id}" ${t.showValues?'checked':''}> ${I.t('trackShowTopValues')}</label></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showAxisNumbers" data-tid="${t.id}" ${t.showAxisNumbers!==false?'checked':''}> ${I.t('trackShowAxisTicks')}</label></div>
+          <div class="param-item"><label>${I.t('trackMinValue')}</label><input type="number" data-tprop="axisMin" data-tid="${t.id}" value="${t.axisMin != null ? t.axisMin : ''}" placeholder="auto"></div>
+          <div class="param-item"><label>${I.t('trackMaxValue')}</label><input type="number" data-tprop="axisMax" data-tid="${t.id}" value="${t.axisMax != null ? t.axisMax : ''}" placeholder="auto"></div>
+          <div class="param-item"><label>${I.t('trackAxisInterval')}</label><input type="number" data-tprop="axisInterval" data-tid="${t.id}" value="${t.axisInterval != null ? t.axisInterval : ''}" placeholder="auto"></div>
         </div>
-        ${subTitle('参考线')}<div style="margin-top:4px;"><button class="btn btn-outline" data-add-refline="${t.id}" type="button" style="padding:2px 8px;font-size:12px;">+ 添加参考线</button></div>
+        ${subTitle(I.t('trackRefLine'))}<div style="margin-top:4px;"><button class="btn btn-outline" data-add-refline="${t.id}" type="button" style="padding:2px 8px;font-size:12px;">${I.t('trackAddRefLine')}</button></div>
         <div class="refline-list">
           ${(t.refLines || []).map((rl, i) => `
             <div class="param-grid cols-4" style="margin-top:6px;">
-              <div class="param-item"><label>值</label><input type="number" data-rlidx="${i}" data-rlprop="value" data-tid="${t.id}" value="${rl.value != null ? rl.value : ''}"></div>
-              <div class="param-item"><label>颜色</label><input type="color" data-rlidx="${i}" data-rlprop="color" data-tid="${t.id}" value="${rl.color || '#e74c3c'}"></div>
-              <div class="param-item"><label>宽度</label><input type="number" data-rlidx="${i}" data-rlprop="width" data-tid="${t.id}" value="${rl.width || 1}" min="0.5" max="4" step="0.5"></div>
+              <div class="param-item"><label>${I.t('trackRefValue')}</label><input type="number" data-rlidx="${i}" data-rlprop="value" data-tid="${t.id}" value="${rl.value != null ? rl.value : ''}"></div>
+              <div class="param-item"><label>${I.t('trackRefColor')}</label><input type="color" data-rlidx="${i}" data-rlprop="color" data-tid="${t.id}" value="${rl.color || '#e74c3c'}"></div>
+              <div class="param-item"><label>${I.t('trackRefWidth')}</label><input type="number" data-rlidx="${i}" data-rlprop="width" data-tid="${t.id}" value="${rl.width || 1}" min="0.5" max="4" step="0.5"></div>
               <div class="param-item" style="align-self:end;display:flex;gap:4px;">
-                <label class="mini-check"><input type="checkbox" data-rlidx="${i}" data-rlprop="dashed" data-tid="${t.id}" ${rl.dashed?'checked':''}> 虚线</label>
+                <label class="mini-check"><input type="checkbox" data-rlidx="${i}" data-rlprop="dashed" data-tid="${t.id}" ${rl.dashed?'checked':''}> ${I.t('trackBarOutlineDashed')}</label>
                 <button class="btn btn-outline" data-del-refline="${t.id}" data-rlidx="${i}" type="button" style="padding:2px 6px;font-size:12px;">×</button>
               </div>
             </div>`).join('')}
@@ -2039,17 +2043,17 @@ function refreshTrackList(container) {
       const vals = TT.collectUniqueValues(t);
       body = `
         <div class="param-grid cols-4">
-          <div class="param-item"><label>数据列</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
-          <div class="param-item"><label>轨道名称</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
-          <div class="param-item"><label>对齐</label><select data-tprop="textAlign" data-tid="${t.id}">
-            <option value="left" ${t.textAlign==='left'?'selected':''}>左对齐</option>
-            <option value="center" ${t.textAlign==='center'?'selected':''}>居中</option>
-            <option value="right" ${t.textAlign==='right'?'selected':''}>右对齐</option>
+          <div class="param-item"><label>${I.t('trackDataColumn')}</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column)}</select></div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackAlign')}</label><select data-tprop="textAlign" data-tid="${t.id}">
+            <option value="left" ${t.textAlign==='left'?'selected':''}>${I.t('trackAlignLeft')}</option>
+            <option value="center" ${t.textAlign==='center'?'selected':''}>${I.t('trackAlignCenter')}</option>
+            <option value="right" ${t.textAlign==='right'?'selected':''}>${I.t('trackAlignRight')}</option>
           </select></div>
-          <div class="param-item"><label>字号</label><input type="number" data-tprop="textFontSize" data-tid="${t.id}" value="${t.textFontSize}" min="6" max="40"></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textBold" data-tid="${t.id}" ${t.textBold?'checked':''}> 加粗</label></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textItalic" data-tid="${t.id}" ${t.textItalic?'checked':''}> 斜体</label></div>
-          <div class="param-item"><label>偏移</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('trackFontSize')}</label><input type="number" data-tprop="textFontSize" data-tid="${t.id}" value="${t.textFontSize}" min="6" max="40"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textBold" data-tid="${t.id}" ${t.textBold?'checked':''}> ${I.t('trackTextBold')}</label></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textItalic" data-tid="${t.id}" ${t.textItalic?'checked':''}> ${I.t('trackTextItalic')}</label></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
         <div class="param-grid cols-4" style="margin-top:8px;">${paletteWithColors(t, vals)}</div>
       `;
@@ -2057,21 +2061,21 @@ function refreshTrackList(container) {
       const vals = TT.collectUniqueValues(t);
       body = `
         <div class="param-grid cols-4">
-          <div class="param-item"><label>数据列（值同时决定形状和颜色）</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column || t.shapeColumn)}</select></div>
-          <div class="param-item"><label>轨道名称</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
-          <div class="param-item"><label>偏移</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('trackMultiColHint')}</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column || t.shapeColumn)}</select></div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
-        ${subTitle('统一形状（未设置时使用）')}
+        ${subTitle(I.t('trackUniformShape'))}
         <div class="param-grid cols-4">
-          <div class="param-item"><label>形状</label><select data-tprop="uniformShape" data-tid="${t.id}">
-            <option value="square" ${t.uniformShape==='square'?'selected':''}>正方形</option>
-            <option value="triangle" ${t.uniformShape==='triangle'?'selected':''}>三角形</option>
-            <option value="circle" ${t.uniformShape==='circle'?'selected':''}>圆形</option>
-            <option value="star" ${t.uniformShape==='star'?'selected':''}>星形</option>
-            <option value="diamond2" ${t.uniformShape==='diamond2'?'selected':''}>菱形</option>
+          <div class="param-item"><label>${I.t('trackShape')}</label><select data-tprop="uniformShape" data-tid="${t.id}">
+            <option value="square" ${t.uniformShape==='square'?'selected':''}>${I.t('optShapeSquare')}</option>
+            <option value="triangle" ${t.uniformShape==='triangle'?'selected':''}>${I.t('optShapeTriangle')}</option>
+            <option value="circle" ${t.uniformShape==='circle'?'selected':''}>${I.t('optShapeCircle')}</option>
+            <option value="star" ${t.uniformShape==='star'?'selected':''}>${I.t('optShapeStar')}</option>
+            <option value="diamond2" ${t.uniformShape==='diamond2'?'selected':''}>${I.t('optShapeDiamond')}</option>
           </select></div>
-          <div class="param-item"><label>轮廓色</label><input type="color" data-tprop="outlineColor" data-tid="${t.id}" value="${t.outlineColor}"></div>
-          <div class="param-item"><label>轮廓宽</label><input type="number" data-tprop="outlineWidth" data-tid="${t.id}" value="${t.outlineWidth}" min="0" max="6"></div>
+          <div class="param-item"><label>${I.t('trackOutlineColor')}</label><input type="color" data-tprop="outlineColor" data-tid="${t.id}" value="${t.outlineColor}"></div>
+          <div class="param-item"><label>${I.t('trackOutlineWidth')}</label><input type="number" data-tprop="outlineWidth" data-tid="${t.id}" value="${t.outlineWidth}" min="0" max="6"></div>
         </div>
         ${shapeMapBlock(t, vals)}
         <div class="param-grid cols-4" style="margin-top:8px;">${paletteWithColors(t, vals)}</div>
@@ -2081,20 +2085,20 @@ function refreshTrackList(container) {
       const colorVals = t.columns || [];
       body = `
         <div class="param-grid cols-4">
-          <div class="param-item" style="grid-column: span 2;"><label>数据列（可多选）</label>
+          <div class="param-item" style="grid-column: span 2;"><label>${I.t('trackMultiColData')}</label>
             <div class="multi-col-checks" style="max-height:120px;overflow:auto;border:1px solid #ddd;border-radius:4px;padding:6px;">
               ${cols.map(c => `<label class="mini-check" style="display:block;padding:2px 0;">
                 <input type="checkbox" data-tcol="${t.id}" data-cname="${escapeAttr(c)}" ${(t.columns||[]).includes(c)?'checked':''}> ${escapeHtml(c)}
               </label>`).join('')}
             </div>
           </div>
-          <div class="param-item"><label>轨道名称</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
-          <div class="param-item"><label>偏移</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
-          ${t.type === 'pie' ? `<div class="param-item"><label>半径</label><input type="number" data-tprop="pieRadius" data-tid="${t.id}" value="${t.pieRadius || 9}" min="2" max="40"></div>` : ''}
-          ${t.type === 'stackedbar' ? `<div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="percentMode" data-tid="${t.id}" ${t.percentMode?'checked':''}> 百分比堆积</label></div>` : ''}
-          <div class="param-item"><label>色板</label><div class="palette-slot" data-palette="${t.id}"></div></div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          ${t.type === 'pie' ? `<div class="param-item"><label>${I.t('trackPieRadius')}</label><input type="number" data-tprop="pieRadius" data-tid="${t.id}" value="${t.pieRadius || 9}" min="2" max="40"></div>` : ''}
+          ${t.type === 'stackedbar' ? `<div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="percentMode" data-tid="${t.id}" ${t.percentMode?'checked':''}> ${I.t('trackPercentMode')}</label></div>` : ''}
+          <div class="param-item"><label>${I.t('groupPaletteLabel')}</label><div class="palette-slot" data-palette="${t.id}"></div></div>
         </div>
-        ${subTitle('各列颜色')}
+        ${subTitle(I.t('trackColumnColors'))}
         <div class="custom-color-list" style="display:flex;flex-wrap:wrap;gap:8px;">
           ${colorVals.map((c, i) => {
             const cols2 = global.TreePalette.getCategoricalScheme(t.palette || 'tableau10');
@@ -2103,24 +2107,24 @@ function refreshTrackList(container) {
               <input type="color" data-tcolcolor="${t.id}" data-cname="${escapeAttr(c)}" value="${escapeAttr(defColor)}"
                 style="width:30px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;">
               <span>${escapeHtml(c)}</span>
-              <button class="btn-del-color" data-tdelcolcolor="${t.id}" data-cname="${escapeAttr(c)}" type="button" title="删除自定义颜色">×</button>
+              <button class="btn-del-color" data-tdelcolcolor="${t.id}" data-cname="${escapeAttr(c)}" type="button" title="delete">×</button>
             </label>`;
           }).join('')}
         </div>
         ${t.type === 'stackedbar' ? `
-          ${subTitle('框线')}
+          ${subTitle(I.t('trackBox'))}
           <div class="param-grid cols-4">
-            <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showBox" data-tid="${t.id}" ${t.showBox?'checked':''}> 显示框线</label></div>
-            <div class="param-item"><label>框线颜色</label><input type="color" data-tprop="boxColor" data-tid="${t.id}" value="${t.boxColor || '#bbbbbb'}"></div>
-            <div class="param-item"><label>框线粗细</label><input type="number" data-tprop="boxWidth" data-tid="${t.id}" value="${t.boxWidth || 0.5}" min="0" max="6" step="0.1"></div>
-            <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="boxDashed" data-tid="${t.id}" ${t.boxDashed?'checked':''}> 虚线</label></div>
+            <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showBox" data-tid="${t.id}" ${t.showBox?'checked':''}> ${I.t('trackShowBox')}</label></div>
+            <div class="param-item"><label>${I.t('trackBoxColor')}</label><input type="color" data-tprop="boxColor" data-tid="${t.id}" value="${t.boxColor || '#bbbbbb'}"></div>
+            <div class="param-item"><label>${I.t('trackBoxWidth')}</label><input type="number" data-tprop="boxWidth" data-tid="${t.id}" value="${t.boxWidth || 0.5}" min="0" max="6" step="0.1"></div>
+            <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="boxDashed" data-tid="${t.id}" ${t.boxDashed?'checked':''}> ${I.t('trackBoxDashed')}</label></div>
           </div>
-          ${subTitle('X 轴')}
+          ${subTitle(I.t('trackXAxis'))}
           <div class="param-grid cols-4">
-            <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showAxisNumbers" data-tid="${t.id}" ${t.showAxisNumbers!==false?'checked':''}> 显示轴刻度值</label></div>
-            <div class="param-item"><label>最小值</label><input type="number" data-tprop="axisMin" data-tid="${t.id}" value="${t.axisMin != null ? t.axisMin : ''}" placeholder="自动"></div>
-            <div class="param-item"><label>最大值</label><input type="number" data-tprop="axisMax" data-tid="${t.id}" value="${t.axisMax != null ? t.axisMax : ''}" placeholder="自动"></div>
-            <div class="param-item"><label>刻度间隔</label><input type="number" data-tprop="axisInterval" data-tid="${t.id}" value="${t.axisInterval != null ? t.axisInterval : ''}" placeholder="自动"></div>
+            <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showAxisNumbers" data-tid="${t.id}" ${t.showAxisNumbers!==false?'checked':''}> ${I.t('trackShowAxisTicks')}</label></div>
+            <div class="param-item"><label>${I.t('trackMinValue')}</label><input type="number" data-tprop="axisMin" data-tid="${t.id}" value="${t.axisMin != null ? t.axisMin : ''}" placeholder="auto"></div>
+            <div class="param-item"><label>${I.t('trackMaxValue')}</label><input type="number" data-tprop="axisMax" data-tid="${t.id}" value="${t.axisMax != null ? t.axisMax : ''}" placeholder="auto"></div>
+            <div class="param-item"><label>${I.t('trackAxisInterval')}</label><input type="number" data-tprop="axisInterval" data-tid="${t.id}" value="${t.axisInterval != null ? t.axisInterval : ''}" placeholder="auto"></div>
           </div>
         ` : ''}
         ${legendBlock(t)}
@@ -2130,7 +2134,7 @@ function refreshTrackList(container) {
     return `
       <div class="track-item" data-track-id="${t.id}">
         <div class="track-header">
-          <span class="track-title">${escapeHtml(typeLabel)}：${escapeHtml(t.name || '(未命名)')}</span>
+          <span class="track-title">${escapeHtml(typeLabel)}：${escapeHtml(t.name || I.t('trackUntitled'))}</span>
           <button class="track-toggle" data-tid="${t.id}" type="button">${t.collapsed ? '▼' : '▲'}</button>
           <button class="track-remove" data-tid="${t.id}" type="button">×</button>
         </div>

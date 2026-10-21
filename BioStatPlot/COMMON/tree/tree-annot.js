@@ -371,7 +371,7 @@ function escapeAttr(s) { return String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;
 
 function renderRangesPanel() {
   const list = document.getElementById("rpList"); if (!list) return;
-  if (!colorRanges.length) { list.innerHTML = '<div class="empty-tip" style="padding:8px;">尚未创建分组色带。</div>'; return; }
+  if (!colorRanges.length) { list.innerHTML = '<div class="info-box" style="margin:8px 0;padding:8px;">尚未创建分组色带。</div>'; return; }
   const existing = list.querySelectorAll(".rp-row");
   if (existing.length !== colorRanges.length) {
     list.innerHTML = colorRanges.map(r =>
@@ -499,13 +499,9 @@ function resetLeafLabels() {
   global.TreeRenderer.draw();
 }
 
-/* ============================================================
-   轴线色带轨道（时间 / 地质年代）
-   ============================================================ */
 const GEO_LEVELS = ['eon', 'era', 'period', 'epoch', 'age'];
 const GEO_LEVEL_LABELS = { eon: 'Eon', era: 'Era', period: 'Period', epoch: 'Epoch', age: 'Age' };
 
-// 极简兜底：仅当 TreeGeoPresetData 未加载且 fetch JSON 失败时使用
 const GEO_FALLBACK = { children: [
   { name: "Phanerozoic", color: "#9AD9DD", start: 538.8, end: 0, children: [
     { name: "Paleozoic", color: "#99C08D", start: 538.8, end: 251.902, children: [
@@ -612,8 +608,10 @@ function addGeoTrack(cfg) {
     fillTree: !!cfg.fillTree,
     fillTreeOpacity: cfg.fillTreeOpacity != null ? Number(cfg.fillTreeOpacity) : 0.14,
     position: cfg.position === 'top' ? 'top' : 'bottom',
+    offset: Number(cfg.offset) || 0,
     height: Number(cfg.height) || 18,
     gap: Number(cfg.gap) || 4,
+    textOrientation: cfg.textOrientation === 'vertical' ? 'vertical' : 'horizontal',
     collapsed: false,
     entries: (cfg.entries || []).map(e => ({
       id: ++geoEntrySeq,
@@ -762,7 +760,6 @@ function drawGeoTimeTracks(radial) {
   const axisSide = st.axisPos === 'top' ? 'top' : 'bottom';
   const yAxis = axisSide === 'top' ? (yTop - 20) : (yBot + 30);
 
-  // fillTree：插入到 SVG 最底层作为背景，避免遮挡树枝和标签
   const fillBg = C.el("g", { class: "geotime-filltree" });
   C.getSvg().insertBefore(fillBg, C.getSvg().firstChild);
   geoTimeTracks.forEach(track => {
@@ -817,7 +814,7 @@ function drawGeoTimeTracks(radial) {
     });
   }
 }
-/* 圆形树：所有色带条统一放在轴线视觉左侧（逆时针），沿轴线方向排列、垂直于轴线偏移 */
+
 function drawGeoTimeTracksRadial(leaves) {
   const st = C.state;
   const root = C.getRoot();
@@ -840,7 +837,6 @@ function drawGeoTimeTracksRadial(leaves) {
     return 24 + maxR * (vv / maxD);
   }
 
-  // fillTree：插入 SVG 最底层作为背景；半径取环的中心、stroke-width 取环宽，才能内外缘准确落在 [a, b]
   const fillBg = C.el("g", { class: "geotime-filltree" });
   C.getSvg().insertBefore(fillBg, C.getSvg().firstChild);
   geoTimeTracks.forEach(track => {
@@ -861,21 +857,24 @@ function drawGeoTimeTracksRadial(leaves) {
     });
   });
 
-  // 色条紧贴轴线，留一点间隙避开刻度值
   const baseGap = 10;
-
-  function textRotForAxis() {
-    let rot = axisAngle;
-    if (rot > 90) rot -= 180;
-    if (rot < -90) rot += 180;
-    return rot;
-  }
 
   let cursor = baseGap;
   geoTimeTracks.forEach(track => {
     const h = track.height;
-    const off1 = cursor;
-    const off2 = cursor + h;
+    const trackOffset = Number(track.offset) || 0;
+    const off1 = cursor + trackOffset;
+    const off2 = off1 + h;
+    const vertical = track.textOrientation === 'vertical';
+
+    function textRot() {
+      let rot;
+      if (vertical) rot = axisAngle;
+      else rot = axisAngle - 90;
+      while (rot > 90) rot -= 180;
+      while (rot < -90) rot += 180;
+      return rot;
+    }
 
     track.entries.forEach(e => {
       const r1 = radiusOf(e.start * geoScaleFactor);
@@ -904,7 +903,7 @@ function drawGeoTimeTracksRadial(leaves) {
         const midOff = (off1 + off2) / 2;
         const tx = cx + midR * ux + midOff * perpX;
         const ty = cy + midR * uy + midOff * perpY;
-        const rot = textRotForAxis();
+        const rot = textRot();
         C.el("text", {
           x: tx, y: ty,
           "font-size": Math.min(11, h * 0.7),
@@ -919,7 +918,7 @@ function drawGeoTimeTracksRadial(leaves) {
       const titleMidR = (24 + rOuter) / 2;
       const tx = cx + titleMidR * ux + off2 * perpX;
       const ty = cy + titleMidR * uy + off2 * perpY;
-      const rot = textRotForAxis();
+      const rot = textRot();
       C.el("text", {
         x: tx, y: ty,
         "font-size": track.nameFontSize,
@@ -931,7 +930,7 @@ function drawGeoTimeTracksRadial(leaves) {
       }).textContent = track.name;
     }
 
-    cursor = off2 + track.gap;
+    cursor += h + track.gap;
   });
 }
 
@@ -1011,9 +1010,6 @@ global.TreeRanges = {
   applyLeafLabelColumn, resetLeafLabels
 };
 
-/* ============================================================
-   数据轨道（customTracks）——与上一版一致，未改动
-   ============================================================ */
 let customTracks = [];
 let trackSeq = 0;
 let trackCommon = {

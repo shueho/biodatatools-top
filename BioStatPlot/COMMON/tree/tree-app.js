@@ -150,7 +150,6 @@ const I = global.TreeI18N;
     '#treeSidebar .tsb-nav a:hover{background:#eef3f9;border-left-color:#1e3a8a;}',
     '.step-card,.param-panel{scroll-margin-top:120px;}',
     '@media (max-width:900px){#treeSidebar{top:auto !important;bottom:60px;max-height:280px;}}',
-    /* 捐赠 / 弹窗：拉高 z-index，避免被 #treeSidebar 遮挡 */
     '.donate-popup, .donate-modal, .donate-box, #donateModal, #donatePopup { z-index: 20000 !important; position: fixed !important; }',
     '.donate-popup *, .donate-modal *, #donateModal *, #donatePopup * { z-index: inherit; }',
     '.modal-backdrop, .popup-backdrop { z-index: 19000 !important; }'
@@ -352,7 +351,7 @@ function renderLeafDataPreview() {
     '<tr>' + headers.map(h => `<td>${escapeHtml(row[h] == null ? '' : row[h])}</td>`).join('') + '</tr>'
   ).join('');
   const more = leafData.rows.length > rows.length
-    ? `<div class="hint">${I.t('tableFiltered', { shown: rows.length, total: leafData.rows.length })}</div>` : '';
+    ? `<div class="info-box" style="margin:6px 0 0;">${I.t('tableFiltered', { shown: rows.length, total: leafData.rows.length })}</div>` : '';
   box.innerHTML = `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>${more}`;
 }
 function refreshDataSummary() {
@@ -746,8 +745,8 @@ function renderNodeTable() {
     return '<tr data-id="' + cell(r._id) + '" style="cursor:pointer;"' + cls + '>' + cells.map(c => '<td>' + c + '</td>').join('') + '</tr>';
   }).join('');
   const more = rows.length > toShow.length
-    ? `<div class="hint">${I.t('tableFiltered', { shown: MAX_ROWS, total: rows.length })}</div>`
-    : `<div class="hint">${I.t('tableTotal', { n: rows.length })}</div>`;
+    ? `<div class="info-box" style="margin:6px 0 0;">${I.t('tableFiltered', { shown: MAX_ROWS, total: rows.length })}</div>`
+    : `<div class="info-box" style="margin:6px 0 0;">${I.t('tableTotal', { n: rows.length })}</div>`;
   box.innerHTML = `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>${more}`;
   box.querySelectorAll('tbody tr[data-id]').forEach(tr => {
     const id = tr.dataset.id;
@@ -1139,11 +1138,20 @@ function renderTreeImportPanel() {
       loadTree(textarea.value);
     }
   });
-  document.getElementById("loadExampleBtn")?.addEventListener("click", () => {
+  document.getElementById("loadExampleBtn")?.addEventListener("click", async () => {
     const textRadio = c.querySelector('input[name="treeMode"][value="text"]');
     if (textRadio && !textRadio.checked) { textRadio.checked = true; textRadio.dispatchEvent(new Event("change")); }
-    textarea.value = global.TreeParser.fallbackNewick;
-    loadTree(textarea.value);
+    showTreeMsg('正在加载示例…', 'warn');
+    try {
+      const r = await fetch('https://cdn.jsdelivr.net/gh/shueho/biodatatools-top@main/BioStatPlot/COMMON/tree/time.tree');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const text = await r.text();
+      if (!text || !text.trim()) throw new Error('示例内容为空');
+      textarea.value = text;
+      loadTree(text);
+    } catch (err) {
+      showTreeMsg('示例加载失败：' + (err && err.message ? err.message : err), 'error');
+    }
   });
   document.getElementById("loadTreeStateBtn")?.addEventListener("click", () => {
     document.getElementById("treeStateFile")?.click();

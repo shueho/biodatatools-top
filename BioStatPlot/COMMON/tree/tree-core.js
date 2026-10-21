@@ -115,10 +115,6 @@ function applySnapshot(raw) {
 }
 function undo() { const s = ctx.undoStack.pop(); if (!s) return false; applySnapshot(s); return true; }
 function resetToInitial() { if (!ctx.initialSnapshot) return false; snapshot(); applySnapshot(ctx.initialSnapshot); ctx.selectedId = null; return true; }
-const i18n = { en: { selected: "Selected", copied: "Node ID copied.", restored: "All deleted/collapsed nodes restored." }, zh: { selected: "已选中", copied: "节点 ID 已复制。", restored: "已恢复所有删除/折叠节点。" } };
-let lang = 'zh';
-try { const s = localStorage.getItem('bm_phylo_lang'); if (s === 'zh' || s === 'en') lang = s; } catch (_) {}
-const t = k => (i18n[lang] && i18n[lang][k]) || i18n.en[k] || k;
 global.TreeCore = {
   ctx,
   get state() { return ctx.state; },
@@ -133,13 +129,8 @@ global.TreeCore = {
   get undoStack() { return ctx.undoStack; }, get initialSnapshot() { return ctx.initialSnapshot; },
   setInitialSnapshot: s => { ctx.initialSnapshot = s; },
   nextId, resetIdSeq, restoreParents, branchLen, alignedLabelX, el,
-  snapshot, captureSnapshot, applySnapshot, undo, resetToInitial, registerSnapshot, buildSnapshotObj,
-  get lang() { return lang; },
-  setLang: l => { lang = (l === 'en') ? 'en' : 'zh'; try { localStorage.setItem('bm_phylo_lang', lang); } catch (_) {} },
-  t, i18n
+  snapshot, captureSnapshot, applySnapshot, undo, resetToInitial, registerSnapshot, buildSnapshotObj
 };
-
-const fallbackNewick = "((((((AtWRKY01:0.080,AtWRKY02:0.086)92:0.045,(AtWRKY03:0.091,AtWRKY04:0.082)88:0.050)90:0.060,(AtWRKY05:0.096,AtWRKY06:0.088)84:0.055)95:0.120,(((OsWRKY01:0.084,OsWRKY02:0.090)91:0.046,(OsWRKY03:0.095,OsWRKY04:0.086)87:0.051)89:0.061,(OsWRKY05:0.100,OsWRKY06:0.092)83:0.056)94:0.125)93:0.180,((((ZmWRKY01:0.088,ZmWRKY02:0.094)90:0.047,(ZmWRKY03:0.099,ZmWRKY04:0.090)86:0.052)88:0.062,(ZmWRKY05:0.104,ZmWRKY06:0.096)82:0.057)93:0.130,(((BdWRKY01:0.092,BdWRKY02:0.098)89:0.048,(BdWRKY03:0.103,BdWRKY04:0.094)85:0.053)87:0.063,(BdWRKY05:0.108,BdWRKY06:0.100)81:0.058)92:0.135)90:0.170)88:0.220,((((((HvWRKY01:0.096,HvWRKY02:0.102)88:0.049,(HvWRKY03:0.107,HvWRKY04:0.098)84:0.054)86:0.064,(HvWRKY05:0.112,HvWRKY06:0.104)80:0.059)91:0.140,(((TaWRKY01:0.100,TaWRKY02:0.106)87:0.050,(TaWRKY03:0.111,TaWRKY04:0.102)83:0.055)85:0.065,(TaWRKY05:0.116,TaWRKY06:0.108)79:0.060)90:0.145)91:0.165,((((SbWRKY01:0.104,SbWRKY02:0.110)86:0.051,(SbWRKY03:0.115,SbWRKY04:0.106)82:0.056)84:0.066,(SbWRKY05:0.120,SbWRKY06:0.112)78:0.061)89:0.150,(((SiWRKY01:0.108,SiWRKY02:0.114)85:0.052,(SiWRKY03:0.119,SiWRKY04:0.110)81:0.057)83:0.067,(SiWRKY05:0.124,SiWRKY06:0.116)77:0.062)88:0.155)89:0.160)87:0.210,((((SlWRKY01:0.112,SlWRKY02:0.118)84:0.053,(SlWRKY03:0.123,SlWRKY04:0.114)80:0.058)82:0.068,(SlWRKY05:0.128,SlWRKY06:0.120)76:0.063)87:0.160,(((VvWRKY01:0.116,VvWRKY02:0.122)83:0.054,(VvWRKY03:0.127,VvWRKY04:0.118)79:0.059)81:0.069,(VvWRKY05:0.132,VvWRKY06:0.124)75:0.064)86:0.165)92:0.175)89:0.190);";
 
 function emptyNode(parent) { return { name: "", length: 0.12, children: [], parent, collapsed: false, deleted: false, color: null, label: null, highlight: false, support: "", meta: [], _hasExplicitLength: false }; }
 function splitTopLevel(str, sepChar) {
@@ -172,7 +163,7 @@ function parseNewick(input, translateMap) {
   let rootFlag = null;
   const flagMatch = s.match(/^\s*\[&([RU])\]/i);
   if (flagMatch) rootFlag = flagMatch[1].toUpperCase() === 'R';
-  if (!s.trim()) s = fallbackNewick;
+  if (!s.trim()) throw new Error("Newick 输入为空");
   s = s.replace(/^\s*\[&[RU]\]\s*/i, "").replace(/;\s*$/, "");
   let i = 0; const N = s.length;
   function skipWhite() { while (i < N) { const c = s.charCodeAt(i); if (c === 32 || c === 9 || c === 10 || c === 13) i++; else break; } }
@@ -329,16 +320,12 @@ function parseTree(text) {
   const fmt = detectTreeFormat(text);
   if (fmt === "nexus") return parseNexus(text);
   if (fmt === "phyloxml") return parsePhyloXML(text);
-  if (fmt === "empty") return parseNewick("");
+  if (fmt === "empty") throw new Error("输入为空");
   if (fmt === "xml") throw new Error("不支持的 XML 格式");
   return parseNewick(text);
 }
 function assign(n, parent) { n.parent = parent; n.id = nextId(); n.uid = n.name || n.support || n.id; (n.children || []).forEach(c => assign(c, n)); }
-function initTree(text) {
-  let root; try { root = parseTree(text); } catch (_) { root = parseNewick(fallbackNewick); }
-  resetIdSeq(); assign(root, null); ctx.root = root; return root;
-}
-global.TreeParser = { parseNewick, parseNexus, parsePhyloXML, parseTree, detectTreeFormat, splitTopLevel, assign, initTree, fallbackNewick };
+global.TreeParser = { parseNewick, parseNexus, parsePhyloXML, parseTree, detectTreeFormat, splitTopLevel, assign };
 
 function walk(n, fn) { if (!n || n.deleted) return; fn(n); if (!n.collapsed) (n.children || []).forEach(c => walk(c, fn)); }
 function allWalk(n, fn) { if (!n) return; fn(n); (n.children || []).forEach(c => allWalk(c, fn)); }
