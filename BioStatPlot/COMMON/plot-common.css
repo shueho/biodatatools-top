@@ -834,3 +834,19 @@ input[type="color"] {
     font-weight: 400;
     color: var(--text-muted);
 }
+
+
+details.param-panel > summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding: 10px 14px;
+  background: #f4f7f6;
+  border-bottom: 1px solid #e3ebf3;
+  user-select: none;
+}
+details.param-panel[open] > summary {
+  border-bottom: 1px solid #dce6e3;
+}
+details.param-panel > summary::marker {
+  color: #1f4068;
+}
