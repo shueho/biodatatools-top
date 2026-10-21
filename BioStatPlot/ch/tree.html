@@ -155,11 +155,11 @@
 <div class="main">
     <div class="page-intro">
         <h2>进化树可视化</h2>
-        <p>读取 Newick / NEXUS / PhyloXML 格式进化树，导入叶标签信息表；支持矩形、圆形两种布局。</p>
+        <p>读取Newick/NEXUS/PhyloXML格式进化树文件，进行可视化绘图。</p>
     </div>
 
 <div class="step-card" id="step1">
-  <div class="step-title">第一步 · 上传进化树</div>
+  <div class="step-title">第一步：导入进化树</div>
   <div id="treeImportPanel"></div>
   <div id="treeMsg" class="tip-text"></div>
 
@@ -170,27 +170,27 @@
         <label class="mini-check"><input type="checkbox" id="showLeafNodes" checked> 叶节点</label>
         <label class="mini-check"><input type="checkbox" id="showInternalNodes" checked> 内部节点</label>
         <label class="mini-check"><input type="checkbox" id="showOnlyWithSupport"> 仅显示含支持率</label>
-        <input type="text" id="nodeTableSearch" placeholder="搜索 ID / 标签 / 父节点 / 元数据"
+        <input type="text" id="nodeTableSearch" placeholder="搜索ID/标签/父节点/元数据"
                style="flex:1;min-width:220px;">
       </div>
       <div id="nodeTableWrap" class="table-wrap" style="max-height:420px;overflow:auto;">
         <div class="empty-tip">加载树后将在此显示节点数据</div>
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="exportNodeTableBtn" type="button">导出节点表 (CSV)</button>
+        <button class="btn" id="exportNodeTableBtn" type="button">导出节点数据表格</button>
       </div>
     </div>
   </details>
 </div>
 
 <div class="step-card" id="step2">
-  <div class="step-title">第二步：叶子标签数据表</div>
+  <div class="step-title">第二步：导入叶标签数据表格</div>
   <div class="info-box">
-    树加载后自动为每个叶节点生成一行数据。可通过以下折叠框向该表添加列，最终结果展示在下方表格中。
+    若需在进化树上为各叶节点关联数据或重命名标签，可在此处上传数据表。您可以在Excel中整理好数据后导入，也可利用内置算法自动生成。通过下方的折叠区域向表中添加新列，处理后的最终结果将在页面底部的表格中呈现。
   </div>
 
   <details class="param-panel">
-    <summary>① 导入外部数据（可自动填入当前叶标签）</summary>
+    <summary>① 导入外部数据（也可以生成数据示例）</summary>
     <div style="padding:10px 12px;">
       <div class="mode-tabs">
         <label><input type="radio" name="extDataMode" value="text" checked> 粘贴文本</label>
@@ -201,14 +201,14 @@
       </div>
       <div class="ext-text-input">
         <textarea id="externalDataText" class="import-text" spellcheck="false"
-          placeholder="第一列必须为叶名（Leaf），其余列可任意。可点击下方「填入当前叶标签」快速填充第一列。"></textarea>
+          placeholder="第一列必须为叶名（Leaf），其余列可以为数值也可以是普通文本。"></textarea>
       </div>
       <div class="info-box" style="margin-top:8px;">
-        第一列需与树上叶名一致。缺失值将按列类型补充（数值列补 <code>0</code>，文本列补 <code>NA</code>）。
+        第一列需与进化树上的叶标签一致。缺失值将按列类型补充（如有缺失将填入NA）。
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="autoFillLeavesBtn" type="button">填入当前叶标签</button>
-        <button class="btn" id="generateRandomBtn" type="button">生成随机数列</button>
+        <button class="btn" id="autoFillLeavesBtn" type="button">填入所有叶标签</button>
+        <button class="btn" id="generateRandomBtn" type="button">生成随机数据</button>
         <button class="btn" id="mergeExternalBtn" type="button">合并到表格</button>
       </div>
     </div>
@@ -221,13 +221,13 @@
         <div class="param-item">
           <label>提取规则</label>
           <select id="prefixRule">
-            <option value="chars">前 N 个字符</option>
+            <option value="chars">前N个字符</option>
             <option value="delimiter">分隔符之前</option>
             <option value="digit">数字之前</option>
           </select>
         </div>
         <div class="param-item">
-          <label>参数（N 或分隔符）</label>
+          <label>参数（N或分隔符）</label>
           <input type="text" id="prefixParam" value="3">
         </div>
       </div>
@@ -243,7 +243,7 @@
       <div class="param-grid cols-4">
         <div class="param-item">
           <label>层级深度（从根开始，1 = 一级分支）</label>
-          <input type="number" id="cladeDepth" value="1" min="1" max="10">
+          <input type="number" id="cladeDepth" value="1" min="1" max="20">
         </div>
       </div>
       <div class="btn-group" style="margin-top:8px;">
@@ -257,7 +257,7 @@
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>分组数目 N</label>
+          <label>聚类分组数目N</label>
           <input type="number" id="clusterN" value="5" min="2" max="20">
         </div>
       </div>
@@ -295,17 +295,17 @@
 </div>
 
     <div class="step-card" id="step3">
-        <div class="step-title">第三步：基础绘图</div>
+        <div class="step-title">第三步：设置基础样式</div>
         <div id="basicStylePanel"></div>
     </div>
 
     <div class="step-card" id="step4">
-        <div class="step-title">第四步：高级设置</div>
+        <div class="step-title">第四步：添加节点数据</div>
         <div id="advancedStylePanel"></div>
     </div>
 
     <div class="step-card" id="step5">
-        <div class="step-title">第五步：数据轨道与色带</div>
+        <div class="step-title">第五步：添加数据轨道</div>
         <div id="datasetsPanel"></div>
     </div>
 
@@ -313,8 +313,8 @@
         <div class="step-title">第六步：预览与导出</div>
 <div class="result-toolbar">
     <button class="btn" id="drawBtn" type="button">绘制树</button>
-    <button class="btn" id="exportSvgBtn" type="button" disabled>导出 SVG</button>
-    <button class="btn" id="exportPngBtn" type="button" disabled>导出 PNG</button>
+    <button class="btn" id="exportSvgBtn" type="button" disabled>导出SVG</button>
+    <button class="btn" id="exportPngBtn" type="button" disabled>导出PNG</button>
     <button class="btn" id="saveExportStateBtn" type="button">保存导出状态</button>
     <span class="spacer"></span>
     <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
@@ -386,7 +386,6 @@
 
 <script src="../COMMON/script/plot-header.js"></script>
 <script src="../COMMON/script/plot-footer.js"></script>
-<script src="../COMMON/donate-widget-left.js"></script>
 
 <script src="../COMMON/tree/tree-bootstrap.js"></script>
 <script src="../COMMON/tree/tree-i18n.js"></script>
@@ -401,6 +400,8 @@
 <script src="../COMMON/tree/tree-ui.js"></script>
 <script src="../COMMON/tree/tree-app.js"></script>
 <script src="../COMMON/tree/tree-mini-preview.js"></script>
+<script src="../COMMON/donate-widget-left.js"></script>
+
 
 <script>
 (function() {
