@@ -106,7 +106,6 @@ function renderGroupPaletteDropdown(container, opts) {
         trigger.querySelector(".palette-preview-slot").innerHTML = swatchesHtml(name);
         dropdown.querySelectorAll(".palette-option").forEach(o =>
           o.classList.toggle("active", o.dataset.value === name));
-        container.classList.remove("open");
         if (opts.onSelect) opts.onSelect(name);
       });
       dropdown.appendChild(opt);
@@ -2105,7 +2104,10 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
           ${t.type === 'pie' ? `<div class="param-item"><label>${I.t('trackPieRadius')}</label><input type="number" data-tprop="pieRadius" data-tid="${t.id}" value="${t.pieRadius || 9}" min="2" max="40"></div>` : ''}
-          ${t.type === 'stackedbar' ? `<div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="percentMode" data-tid="${t.id}" ${t.percentMode?'checked':''}> ${I.t('trackPercentMode')}</label></div>` : ''}
+          ${t.type === 'stackedbar' ? `
+            <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="percentMode" data-tid="${t.id}" ${t.percentMode?'checked':''}> ${I.t('trackPercentMode')}</label></div>
+            <div class="param-item"><label>${I.t('trackTrackLength')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 80}" min="20" max="400"></div>
+          ` : ''}
           <div class="param-item"><label>${I.t('groupPaletteLabel')}</label><div class="palette-slot" data-palette="${t.id}"></div></div>
         </div>
         ${subTitle(I.t('trackColumnColors'))}
@@ -2357,7 +2359,6 @@ function refreshTrackList(container) {
         t.customColors = {};
         vals.forEach((v, i) => { t.customColors[v] = pal[i % pal.length]; });
         TT.updateCustomTrack(id, { palette: name, customColors: t.customColors, _colorCache: null });
-        refreshTrackList(container);
         global.TreeRenderer.draw();
       }
     });

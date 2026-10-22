@@ -56,7 +56,15 @@ trackTypeStackedbar:'堆积柱状图', trackTypePie:'饼图',
  defaultRangeName:'色带',  defaultGroupTrackTitle:'分组',
 importLoadState:'加载绘图状态',
 importStateLoaded:'绘图状态已加载',
-importStateLoadFail:'加载状态失败: {msg}'
+importStateLoadFail:'加载状态失败: {msg}',
+    importLoadExampleTime:'时间树示例',
+    importLoadExampleBI:'BI树示例',
+    importLoadExampleML:'ML树示例',
+    importLoadState:'加载绘图状态',
+    importLoading:'加载中...',
+    treeMsgLoadingExample:'正在加载示例…',
+    treeMsgLoadExampleFail:'示例在线加载失败（{msg}），是否打开 GitHub 页面手动下载 {filename}？',
+    treeMsgLoadExampleFailNoErr:'示例在线加载失败，是否打开 GitHub 页面手动下载 {filename}？',
 },
 en: {
 treeMsgEmpty:'❌ Please paste or upload a tree first',treeMsgEmpty2:'❌ Input is empty',treeMsgXmlUnsupport:'❌ Unsupported XML format',treeMsgParseFail:'❌ Failed to parse tree',treeMsgTooFew:'❌ Too few leaves ({n})',treeMsgLoaded:'✅ {fmt} tree loaded: {n} leaves',treeMsgLoadedTime:'✅ {fmt} tree loaded: {n} leaves (time tree)',treeMsgFileLoaded:'✅ Loaded: {name}',treeMsgNoFile:'❌ Please select a file first',treeMsgD3Loading:'Loading d3...',treeMsgD3Fail:'❌ Failed to load d3',treeMsgNoTree:'❌ Please upload a tree first',treeMsgDrawOK:'✅ Drawn',treeMsgExportSvg:'✅ SVG exported',treeMsgExportPng:'✅ PNG exported',treeMsgExportPngErr:'❌ PNG export failed',treeMsgHasRoot:' (rooted)',treeMsgNoRoot:' (unrooted)',
@@ -113,7 +121,15 @@ trackTypeStackedbar:'Stacked bar', trackTypePie:'Pie',
 defaultTrackName:'Track', defaultRangeName:'Range', defaultLegendTitle:'Groups', defaultGroupTrackTitle:'Groups',
 importLoadState:'Load drawing state',
 importStateLoaded:'Drawing state loaded',
-importStateLoadFail:'Failed to load state: {msg}'
+importStateLoadFail:'Failed to load state: {msg}',
+    importLoadExampleTime:'Time Tree Example',
+    importLoadExampleBI:'BI Tree Example',
+    importLoadExampleML:'ML Tree Example',
+    importLoadState:'Load drawing state',
+    importLoading:'Loading...',
+    treeMsgLoadingExample:'Loading example...',
+    treeMsgLoadExampleFail:'Example load failed ({msg}). Open GitHub page to download {filename} manually?',
+    treeMsgLoadExampleFailNoErr:'Example load failed. Open GitHub page to download {filename} manually?',
 }
 };
 function lang() { return window.location.pathname.indexOf('/en/') >= 0 ? 'en' : 'zh'; }

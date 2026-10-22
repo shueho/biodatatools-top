@@ -52,12 +52,8 @@ function drawLegend(customX, customY) {
   const colorRanges = global.TreeRanges.colorRanges;
   if (!colorRanges.length) return;
   const tc = (global.TreeTracks && global.TreeTracks.trackCommon) || {};
-const lx = st.legendMoved
-  ? (Number(st.legendX) || 760)
-  : ((customX != null) ? Number(customX) : (Number(st.legendX) || 760));
-const ly = st.legendMoved
-  ? (Number(st.legendY) || 60)
-  : ((customY != null) ? Number(customY) : (Number(st.legendY) || 60));
+  const lx = (customX != null) ? Number(customX) : (Number(st.legendX) || 760);
+  const ly = (customY != null) ? Number(customY) : (Number(st.legendY) || 60);
   const scale = tc.legendScale || 1;
   const fs = Math.max(6, Number(tc.legendFontSize) || 11) * scale;
   const pad = 10;
@@ -82,6 +78,13 @@ const ly = st.legendMoved
     tt.textContent = title;
     yy = titleFS + 6;
   }
+
+  let maxItemW = 0;
+  items.forEach(it => {
+    const w = fs + 8 + it.label.length * fs * 0.6;
+    if (w > maxItemW) maxItemW = w;
+  });
+
   let maxX = 0;
   items.forEach(it => {
     const wItem = fs + 8 + it.label.length * fs * 0.6;
@@ -90,13 +93,16 @@ const ly = st.legendMoved
     const lt = C.el("text", { x: xx + fs + 6, y: yy + fs * 0.85, "font-size": fs,
       "font-weight": bw, "font-style": fsStyle, fill: fc, "font-family": ff }, g);
     lt.textContent = it.label;
-    xx += wItem + 8; rowItems++;
+    
+    const stepW = (maxPerRow > 0) ? maxItemW : wItem;
+    xx += stepW + 8; rowItems++;
     maxX = Math.max(maxX, xx);
   });
   yy += fs + pad;
   C.el("rect", { x: 0, y: 0, width: maxX + pad, height: yy,
     fill: "transparent", "pointer-events": "all" }, g).setAttribute("class", "legend-hit");
 }
+
 global.TreeLegend = { drawLegend };
 
 let colorRanges = [];
@@ -133,7 +139,7 @@ const RING_PALETTES = (function () {
 function paletteColor(i) {
   const name = ringPalette || "tableau10";
   if (global.TreePalette && global.TreePalette.getCategoricalColors) {
-    const pal = global.TreePalette.getCategoricalColors(name, 20);
+    const pal = global.TreePalette.getCategoricalColors(name, 0); 
     return pal[i % Math.max(1, pal.length)] || "#cccccc";
   }
   const pal = RING_PALETTES[name] || RING_PALETTES.npg || ["#cccccc"];
@@ -1739,6 +1745,13 @@ function drawTrackLegend(track, x, y, colorMap) {
     const tt = C.el('text', { x: 0, y: titleFS, 'font-size': titleFS, 'font-weight': titleBold, 'font-style': titleItalic, fill: '#333', 'font-family': ff }, g);
     tt.textContent = title; yy = titleFS + 6;
   }
+
+  let maxItemW = 0;
+  items.forEach(it => {
+    const w = fs + 8 + it.label.length * fs * 0.6;
+    if (w > maxItemW) maxItemW = w;
+  });
+
   items.forEach(it => {
     const wItem = fs + 8 + it.label.length * fs * 0.6;
     if (maxPerRow > 0 && rowItems >= maxPerRow) { xx = 0; yy += fs + 6; rowItems = 0; }
@@ -1749,7 +1762,9 @@ function drawTrackLegend(track, x, y, colorMap) {
     }
     const t = C.el('text', { x: xx + fs + 4, y: yy + fs * 0.85, 'font-size': fs, 'font-weight': bold, 'font-style': italic, fill: '#333', 'font-family': ff }, g);
     t.textContent = it.label;
-    xx += wItem + 8; rowItems++;
+    
+    const stepW = (maxPerRow > 0) ? maxItemW : wItem;
+    xx += stepW + 8; rowItems++;
   });
   return yy + fs + 8;
 }

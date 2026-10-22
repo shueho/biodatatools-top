@@ -1117,13 +1117,17 @@ function renderTreeImportPanel() {
     <div class="info-box">${I.t('importInfoBox')}</div>
     <div class="btn-group">
       <button type="button" class="btn" id="loadTreeBtn">${I.t('importLoadTree')}</button>
-      <button type="button" class="btn" id="loadExampleBtn">${I.t('importLoadExample')}</button>
+      <button type="button" class="btn" id="loadExampleTimeBtn">${I.t('importLoadExampleTime')}</button>
+      <button type="button" class="btn" id="loadExampleBIBtn">${I.t('importLoadExampleBI')}</button>
+      <button type="button" class="btn" id="loadExampleMLBtn">${I.t('importLoadExampleML')}</button>
       <button type="button" class="btn" id="loadTreeStateBtn">${I.t('importLoadState')}</button>
       <input type="file" id="treeStateFile" accept=".json" style="display:none;">
     </div>
   `;
+
   const textarea = document.getElementById("treeInput");
   const fileInput = document.getElementById("treeFileInput");
+
   function applyTreeMode() {
     const mode = c.querySelector('input[name="treeMode"]:checked').value;
     if (mode === "file") { fileInput.disabled = false; textarea.disabled = true; }
@@ -1131,12 +1135,14 @@ function renderTreeImportPanel() {
   }
   applyTreeMode();
   c.querySelectorAll('input[name="treeMode"]').forEach(r => r.addEventListener("change", applyTreeMode));
+
   fileInput?.addEventListener("change", e => {
     const f = e.target.files[0]; if (!f) return;
     const reader = new FileReader();
     reader.onload = ev => { loadTree(ev.target.result); showTreeMsg(I.t('treeMsgFileLoaded', { name: f.name }), "success"); };
     reader.readAsText(f);
   });
+
   document.getElementById("loadTreeBtn")?.addEventListener("click", () => {
     const mode = c.querySelector('input[name="treeMode"]:checked').value;
     if (mode === "file") {
@@ -1148,71 +1154,77 @@ function renderTreeImportPanel() {
       loadTree(textarea.value);
     }
   });
-document.getElementById("loadExampleBtn")?.addEventListener("click", async () => {
-  const textRadio = c.querySelector('input[name="treeMode"][value="text"]');
-  if (textRadio && !textRadio.checked) { textRadio.checked = true; textRadio.dispatchEvent(new Event("change")); }
 
-  const REMOTE_RAW = 'https://raw.githubusercontent.com/shueho/biodatatools-top/main/BioStatPlot/COMMON/tree/time.tree';
-  const JSDELIVR_PATH = 'shueho/biodatatools-top@main/BioStatPlot/COMMON/tree/time.tree';
+  // 通用多源加载示例函数
+  const loadExample = async (filename, btn) => {
+    const textRadio = c.querySelector('input[name="treeMode"][value="text"]');
+    if (textRadio && !textRadio.checked) { textRadio.checked = true; textRadio.dispatchEvent(new Event("change")); }
+    
+    const oldText = btn.textContent;
+    btn.textContent = I.t('importLoading');
+    btn.disabled = true;
+    showTreeMsg(I.t('treeMsgLoadingExample'), 'warn');
+    
+    const JSDELIVR_PATH = `shueho/biodatatools-top@main/BioStatPlot/COMMON/tree/${filename}`;
+    const REMOTE_RAW = `https://raw.githubusercontent.com/shueho/biodatatools-top/main/BioStatPlot/COMMON/tree/${filename}`;
 
-  const candidates = [
-    `https://jsd.onmicrosoft.cn/gh/${JSDELIVR_PATH}`,
-    `https://fastly.jsdelivr.net/gh/${JSDELIVR_PATH}`,
-    `https://gcore.jsdelivr.net/gh/${JSDELIVR_PATH}`,
-    `https://cdn.jsdelivr.net/gh/${JSDELIVR_PATH}`,
-    REMOTE_RAW
-  ];
-
-  showTreeMsg('正在加载示例…', 'warn');
-
-  async function fetchWithTimeout(url, ms = 6000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), ms);
-    try {
-      const res = await fetch(url, {
-        signal: controller.signal,
-        cache: 'no-store'
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return await res.text();
-    } finally {
-      clearTimeout(timer);
+    const candidates = [
+      `https://jsd.onmicrosoft.cn/gh/${JSDELIVR_PATH}`,
+      `https://fastly.jsdelivr.net/gh/${JSDELIVR_PATH}`,
+      `https://gcore.jsdelivr.net/gh/${JSDELIVR_PATH}`,
+      `https://cdn.jsdelivr.net/gh/${JSDELIVR_PATH}`,
+      REMOTE_RAW
+    ];
+    
+    async function fetchWithTimeout(url, ms = 8000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), ms);
+      try {
+        const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.text();
+      } finally {
+        clearTimeout(timer);
+      }
     }
-  }
-
-  let text = '';
-  let lastErr = null;
-  for (const url of candidates) {
-    try {
-      text = await fetchWithTimeout(url);
-      if (text && text.trim()) break;
-      throw new Error('内容为空');
-    } catch (err) {
-      lastErr = err;
-      console.warn('[LoadExample] 失败:', url, err);
+    
+    let text = '';
+    let lastErr = null;
+    for (const url of candidates) {
+      try {
+        text = await fetchWithTimeout(url);
+        if (text && text.trim()) break;
+      } catch (err) {
+        lastErr = err;
+      }
     }
-  }
-
-  if (!text || !text.trim()) {
-    const msg = lastErr
-      ? `示例在线加载失败（${lastErr.message || lastErr}），是否打开 GitHub 页面手动下载 time.tree？`
-      : '示例在线加载失败，是否打开 GitHub 页面手动下载 time.tree？';
-    if (confirm(msg)) {
-      window.open(
-        'https://github.com/shueho/biodatatools-top/blob/main/BioStatPlot/COMMON/tree/time.tree',
-        '_blank'
-      );
+    
+    btn.textContent = oldText;
+    btn.disabled = false;
+    
+    if (!text || !text.trim()) {
+      const msg = lastErr 
+        ? I.t('treeMsgLoadExampleFail', { msg: lastErr.message, filename })
+        : I.t('treeMsgLoadExampleFailNoErr', { filename });
+      if (confirm(msg)) {
+        window.open(`https://github.com/shueho/biodatatools-top/blob/main/BioStatPlot/COMMON/tree/${filename}`, '_blank');
+      }
+      showTreeMsg(I.t('treeMsgLoadExampleFailNoErr', { filename }), 'error');
+      return;
     }
-    showTreeMsg('示例加载失败，已引导至手动下载页', 'error');
-    return;
-  }
+    
+    textarea.value = text;
+    loadTree(text);
+  };
+  
+  document.getElementById("loadExampleTimeBtn")?.addEventListener("click", (e) => loadExample('time.tree', e.target));
+  document.getElementById("loadExampleBIBtn")?.addEventListener("click", (e) => loadExample('BI.tre', e.target));
+  document.getElementById("loadExampleMLBtn")?.addEventListener("click", (e) => loadExample('ml.contree', e.target));
 
-  textarea.value = text;
-  loadTree(text);
-});
   document.getElementById("loadTreeStateBtn")?.addEventListener("click", () => {
     document.getElementById("treeStateFile")?.click();
   });
+  
   document.getElementById("treeStateFile")?.addEventListener("change", e => {
     const f = e.target.files[0]; if (!f) return;
     const reader = new FileReader();
@@ -1733,7 +1745,15 @@ function rebuildSidebarNav() {
     a.href = "#" + card.id;
     a.className = "tsb-card-link";
     a.textContent = titleEl.textContent.trim();
+    
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+      card.classList.add("flash-highlight");
+      setTimeout(() => card.classList.remove("flash-highlight"), 1200);
+    });
     nav.appendChild(a);
+    
     const seen = new Set();
     card.querySelectorAll(".param-panel-title").forEach((mt, mi) => {
       const panel = mt.closest(".param-panel");
@@ -1746,6 +1766,13 @@ function rebuildSidebarNav() {
       ma.href = "#" + panel.id;
       ma.className = "tsb-mod-link";
       ma.textContent = txt;
+      
+      ma.addEventListener("click", (e) => {
+        e.preventDefault();
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
+        panel.classList.add("flash-highlight");
+        setTimeout(() => panel.classList.remove("flash-highlight"), 1200);
+      });
       nav.appendChild(ma);
     });
   });
