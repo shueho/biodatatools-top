@@ -412,21 +412,30 @@ function enableDrag(svg) {
           }
         }
       }
+      let autoX = Number(st.legendX) || 760;
+      let autoY = Number(st.legendY) || 60;
+      const tr = legendEl.getAttribute("transform") || "";
+      const m = tr.match(/translate\(([-\d.]+)\s+([-\d.]+)\)/);
+      if (m) {
+        autoX = parseFloat(m[1]) - (st.legendOffsetX || 0);
+        autoY = parseFloat(m[2]) - (st.legendOffsetY || 0);
+      }
       legendDrag = {
         el: legendEl,
         trackId: trackId ? Number(trackId) : null,
         startX: e.clientX,
         startY: e.clientY,
-        x0: trackId ? initialX : (Number(st.legendX) || 760),
-        y0: trackId ? initialY : (Number(st.legendY) || 60),
+        x0: trackId ? initialX : (autoX + (st.legendOffsetX || 0)),
+        y0: trackId ? initialY : (autoY + (st.legendOffsetY || 0)),
+        autoX: autoX,
+        autoY: autoY,
         unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
         unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
         moved: false
       };
       e.preventDefault();
       e.stopPropagation();
-      return;
-    }
+      return;    }
 
     const rect = svg.getBoundingClientRect();
     drag = {
@@ -462,14 +471,13 @@ function enableDrag(svg) {
           if (!legendDrag || !p) return;
           const newX = legendDrag.x0 + p.dx;
           const newY = legendDrag.y0 + p.dy;
-if (legendDrag.trackId) {
-  const t = global.TreeTracks && global.TreeTracks.tracks.find(x => x.id === legendDrag.trackId);
-  if (t) { t.legendX = newX; t.legendY = newY; }
-} else {
-  st.legendX = newX;
-  st.legendY = newY;
-  st.legendMoved = true;
-}
+            if (legendDrag.trackId) {
+              const t = global.TreeTracks && global.TreeTracks.tracks.find(x => x.id === legendDrag.trackId);
+              if (t) { t.legendX = newX; t.legendY = newY; }
+            } else {
+              st.legendOffsetX = newX - (legendDrag.autoX || 0);
+              st.legendOffsetY = newY - (legendDrag.autoY || 0);
+            }
           if (legendDrag.el) {
             legendDrag.el.setAttribute("transform", `translate(${newX} ${newY})`);
           }

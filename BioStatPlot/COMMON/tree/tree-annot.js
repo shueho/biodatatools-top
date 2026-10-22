@@ -52,8 +52,15 @@ function drawLegend(customX, customY) {
   const colorRanges = global.TreeRanges.colorRanges;
   if (!colorRanges.length) return;
   const tc = (global.TreeTracks && global.TreeTracks.trackCommon) || {};
-  const lx = (customX != null) ? Number(customX) : (Number(st.legendX) || 760);
-  const ly = (customY != null) ? Number(customY) : (Number(st.legendY) || 60);
+
+  // ======== 修改的部分：基准坐标 + 偏移量 ========
+  const baseX = (customX != null) ? Number(customX) : (Number(st.legendX) || 760);
+  const baseY = (customY != null) ? Number(customY) : (Number(st.legendY) || 60);
+  const lx = baseX + (st.legendOffsetX || 0);
+  const ly = baseY + (st.legendOffsetY || 0);
+  // ===============================================
+
+  // ======== 下面全部保持原样 ========
   const scale = tc.legendScale || 1;
   const fs = Math.max(6, Number(tc.legendFontSize) || 11) * scale;
   const pad = 10;
@@ -79,6 +86,7 @@ function drawLegend(customX, customY) {
     yy = titleFS + 6;
   }
 
+  // 先找出所有项目里的最大宽度，用于多行对齐
   let maxItemW = 0;
   items.forEach(it => {
     const w = fs + 8 + it.label.length * fs * 0.6;
@@ -1862,7 +1870,9 @@ function renderCustomTracks(radial) {
     customTracks.forEach(track => {
       const ringW = Math.max(6, computeTrackWidth(track, { radial: true }));
       const colorMap = getTrackColorMap(track);
-      rBase += gap;
+      const trackOffset = Number(track.offset) || 0;
+
+      rBase += gap + trackOffset; 
       const ringStart = rBase;
       const rMid = ringStart + ringW / 2;
       leaves.forEach(l => {
@@ -1883,26 +1893,7 @@ function renderCustomTracks(radial) {
             d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${ringStart + ringW} ${ringStart + ringW} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${ringStart} ${ringStart} 0 0 0 ${p0i.x} ${p0i.y} Z`,
             fill: colorOf(track, v, colorMap), opacity: fillOpacity
           });
-          if (track.showText) {
-            const midAngle = (a0 + a1) / 2;
-            const p = L.polar(cx, cy, rMid, midAngle);
-            const vertical = track.textOrientation === 'vertical';
-            const arcLength = Math.max(2, (a1 - a0) * Math.PI / 180 * rMid);
-            const availLength = vertical ? Math.max(4, ringW - 4) : Math.max(4, arcLength - 4);
-            let fontSize = Number(track.textFontSize) || 10;
-            let text = String(v);
-            let textWidth = estimateTextWidth(text, fontSize);
-            if (textWidth > availLength) { const ratio = availLength / textWidth; fontSize = Math.max(5, fontSize * ratio); textWidth = estimateTextWidth(text, fontSize); }
-            if (textWidth > availLength) { const ratio = availLength / textWidth; const keepLen = Math.max(1, Math.floor(text.length * ratio)); text = text.slice(0, keepLen) + (text.length > keepLen ? '…' : ''); }
-            let rot;
-            if (vertical) { rot = midAngle; if (midAngle > 90 && midAngle < 270) rot += 180; }
-            else { rot = midAngle - 90; if (rot > 90) rot -= 180; if (rot < -90) rot += 180; }
-            C.el("text", { x: p.x, y: p.y, "text-anchor": "middle", "dominant-baseline": "middle",
-              "font-size": fontSize, "font-weight": track.textBold ? 700 : 400,
-              "font-style": track.textItalic ? 'italic' : 'normal',
-              fill: track.textColor || '#333333', "font-family": ff,
-              "pointer-events": "none", transform: `rotate(${rot} ${p.x} ${p.y})` }).textContent = text;
-          }
+
         } else if (track.type === 'heatstrip') {
           const nums = leaves.map(x => parseFloat(datasetValue(track, x))).filter(Number.isFinite);
           let mn = track.gradientMin, mx = track.gradientMax;
@@ -1993,6 +1984,52 @@ function renderCustomTracks(radial) {
           });
         }
       });
+      // 环形色带的文字处理（单独抽出来，支持合并）
+      if (track.type === 'colorstrip' && track.showText) {
+        const drawOneText = (angle0, angle1, textVal) => {
+          const midAngle = (angle0 + angle1) / 2;
+          const p = L.polar(cx, cy, rMid, midAngle);
+          const vertical = track.textOrientation === 'vertical';
+          const arcLength = Math.max(2, (angle1 - angle0) * Math.PI / 180 * rMid);
+          const availLength = vertical ? Math.max(4, ringW - 4) : Math.max(4, arcLength - 4);
+          const fontSize = Number(track.textFontSize) || 10;
+          const text = fitText(String(textVal), availLength, fontSize);
+          if (!text) return;
+          let rot;
+          if (vertical) { rot = midAngle; if (midAngle > 90 && midAngle < 270) rot += 180; }
+          else { rot = midAngle - 90; if (rot > 90) rot -= 180; if (rot < -90) rot += 180; }
+          C.el("text", { x: p.x, y: p.y, "text-anchor": "middle", "dominant-baseline": "middle",
+            "font-size": fontSize, "font-weight": track.textBold ? 700 : 400,
+            "font-style": track.textItalic ? 'italic' : 'normal',
+            fill: track.textColor || '#333333', "font-family": ff,
+            "pointer-events": "none", transform: `rotate(${rot} ${p.x} ${p.y})` }).textContent = text;
+        };
+
+        if (track.mergeGroups) {
+          let i = 0;
+          while (i < leaves.length) {
+            let j = i + 1;
+            const v = String(datasetValue(track, leaves[i]) || '');
+            while (j < leaves.length && String(datasetValue(track, leaves[j]) || '') === v) {
+              j++;
+            }
+            if (v !== '' && leaves[i].angle != null) {
+              const startL = leaves[i], endL = leaves[j - 1];
+              const a0 = startL.angle - halfStep;
+              const a1 = endL.angle + halfStep;
+              drawOneText(a0, a1, v);
+            }
+            i = j;
+          }
+        } else {
+          leaves.forEach(l => {
+            const v = datasetValue(track, l);
+            if (v == null || v === '' || l.angle == null) return;
+            const a0 = l.angle - halfStep, a1 = l.angle + halfStep;
+            drawOneText(a0, a1, v);
+          });
+        }
+      }
       placed.push({ track, ringW, ringStart });
       rBase = ringStart + ringW;
     });

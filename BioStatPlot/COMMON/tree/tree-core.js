@@ -99,7 +99,11 @@ let alignedLabelXCache = 690;
 function alignedLabelX() { return alignedLabelXCache; }
 function nextId() { return "n" + (++ctx.idSeq); }
 function resetIdSeq() { ctx.idSeq = 0; }
-function restoreParents(n, parent) { n.parent = parent; (n.children || []).forEach(c => restoreParents(c, n)); }
+function restoreParents(n, parent) { 
+  if (!n) return;
+  n.parent = parent; 
+  (n.children || []).forEach(c => restoreParents(c, n)); 
+}
 function buildSnapshotObj() {
   const extras = {};
   providers.forEach(p => { try { extras[p.name] = p.get(); } catch (_) {} });
@@ -109,7 +113,12 @@ function snapshot() { ctx.undoStack.push(JSON.stringify(buildSnapshotObj())); if
 function captureSnapshot() { return JSON.stringify(buildSnapshotObj()); }
 function applySnapshot(raw) {
   const snap = JSON.parse(raw);
-  ctx.root = snap.root; restoreParents(ctx.root, null);
+  if (snap.root) {
+    ctx.root = snap.root; 
+    restoreParents(ctx.root, null);
+  } else {
+    if (!ctx.root) ctx.root = null;
+  }
   if (snap.state) Object.assign(ctx.state, snap.state);
   if (snap.extras) providers.forEach(p => { if (p.name in snap.extras) { try { p.set(snap.extras[p.name]); } catch (_) {} } });
 }
