@@ -59,6 +59,7 @@
 
                 ]
             },
+
             {
                 zh: '热图',
                 en: 'Heatmap',
@@ -66,7 +67,15 @@
                     { id: '022', zh: '相关性热图', en: 'Correlation Heatmap' },
 
                 ]
-            }
+            },
+            {
+                zh: '系统进化树',
+                en: 'phylogenetic tree',
+                tools: [
+                    { id: 't001', zh: '进化树可视化', en: 'Phylogenetic Tree Visualization' },
+
+                ]
+            },
         ]
     },
 
