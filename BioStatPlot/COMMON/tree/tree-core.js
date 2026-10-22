@@ -429,13 +429,49 @@ function assignInnerY(n, startY, endY) {
   });
   n.y = kids.reduce((s, c) => s + (c.y || 0), 0) / kids.length;
 }
+
+function getRadialInnerBase() {
+  const st = ctx.state;
+  const root = ctx.root;
+  if (!root) return 0;
+  const maxR = 285 * (st.scaleH || 1);
+  const maxD = Math.max(maxDepth(root, 0), 1e-9);
+  if (maxD <= 0) return 0;
+
+  let vMin = 0, vMax = maxD;
+  const rl = st.rangeLabelConfig;
+  if (rl && rl.show && rl.field) {
+    allWalk(root, n => {
+      const hasKids = (n.children || []).some(c => !c.deleted);
+      if (!hasKids) return;
+      const m = (n.meta || []).find(mm => mm.field === rl.field);
+      if (!m) return;
+      const v = m.value;
+      if (!Array.isArray(v) || v.length < 2) return;
+      const lo = Number(v[0]), hi = Number(v[1]);
+      if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
+      vMin = Math.min(vMin, lo);
+      vMax = Math.max(vMax, hi);
+    });
+  }
+
+  const isRev = (st.axisReverse === true || st.axisReverse === "true");
+  const tMin = isRev ? (maxD - vMax) : vMin;
+  if (tMin >= -1e-9) return 0;
+  return Math.max(0, -tMin * maxR / maxD);
+}
+
 function layoutRadial() {
   sortTreeByMode();
   const st = ctx.state; const cx = 470, cy = 380;
+
+  const innerBase = getRadialInnerBase();
   const maxR = 285 * (st.scaleH || 1);
   const maxD = Math.max(maxDepth(ctx.root), .01);
+
   const openGap = Math.max(0, 360 - (st.arc || 348));
   const start = st.rotation + openGap / 2; const span = 360 - openGap;
+
   const units = [];
   (function collect(n) {
     if (n.deleted) return;
@@ -444,15 +480,25 @@ function layoutRadial() {
     if (n.collapsed) { units.push({ node: n, isCollapsed: true, occ: collapsedOcc(n) }); return; }
     kids.forEach(collect);
   })(ctx.root);
+
   const totalOcc = units.reduce((s, u) => s + u.occ, 0) || 1;
   const slotW = span / totalOcc; let order = 0;
   units.forEach(u => {
     const slotStart = start + order * slotW;
     const slotEnd = start + (order + u.occ) * slotW;
-    if (u.isCollapsed) { u.node.angle = (slotStart + slotEnd) / 2; u.node._slotStartA = slotStart; u.node._slotEndA = slotEnd; assignInnerAngle(u.node, slotStart, slotEnd); }
-    else { u.node.angle = slotStart; u.node._slotStartA = slotStart; u.node._slotEndA = slotStart + slotW; }
+    if (u.isCollapsed) {
+      u.node.angle = (slotStart + slotEnd) / 2;
+      u.node._slotStartA = slotStart;
+      u.node._slotEndA = slotEnd;
+      assignInnerAngle(u.node, slotStart, slotEnd);
+    } else {
+      u.node.angle = slotStart;
+      u.node._slotStartA = slotStart;
+      u.node._slotEndA = slotStart + slotW;
+    }
     order += u.occ;
   });
+
   (function assign(n, depth) {
     if (n.deleted) return;
     n.depth = depth;
@@ -461,18 +507,25 @@ function layoutRadial() {
       kids.forEach(c => assign(c, depth + branchLen(c)));
       if (!n.collapsed) n.angle = kids.reduce((a, c) => a + (c.angle || 0), 0) / kids.length;
     }
-    let r = 24 + maxR * (depth / maxD);
-    if (n === ctx.root) r = 0;
+    const r = innerBase + maxR * (depth / maxD);
     const p = polar(cx, cy, r, n.angle || 0);
     n.x = p.x; n.y = p.y; n.r = r;
   })(ctx.root, 0);
+
   const visLeaves = visibleLeaves(ctx.root);
-  const labelR = Math.max(...visLeaves.map(l => l.r || 0), 260) + 12;
+  const R_base = innerBase + maxR;
+  const geoExtra = (global.TreeRanges && typeof global.TreeRanges.getGeoExtra === 'function')
+    ? global.TreeRanges.getGeoExtra() : 0;
+  const R_total = R_base + geoExtra;
+  const labelR = Math.max(...visLeaves.map(l => l.r || 0), R_total) + 12;
   ctx.radialLabelR = labelR;
+
   const maxT = Math.max(0, ...visLeaves.map(l => labelOf(l).length * st.fontSize * (l.labelSizeFactor || 1) * 0.6));
-  const ext = Math.max(380, labelR + maxT + 14);
+
+  const ext = Math.max(380, labelR + maxT + 14) + 20;
   ctx.viewBox = { x: 470 - ext - 16, y: 380 - ext - 16, w: (ext + 16) * 2, h: (ext + 16) * 2 };
 }
+
 function assignInnerAngle(n, startA, endA) {
   const kids = (n.children || []).filter(c => !c.deleted);
   if (!kids.length) { n.angle = (startA + endA) / 2; return; }
@@ -487,7 +540,7 @@ function assignInnerAngle(n, startA, endA) {
   });
   n.angle = kids.reduce((s, c) => s + (c.angle || 0), 0) / kids.length;
 }
-global.TreeLayout = { polar, shiftSubtreeY, sortTreeByMode, layoutRect, layoutRadial, collapsedOcc };
+global.TreeLayout = { polar, shiftSubtreeY, sortTreeByMode, layoutRect, layoutRadial, collapsedOcc, getRadialInnerBase };
 
 function suppressUnary(node, rt) {
   (node.children || []).slice().forEach(c => suppressUnary(c, rt));

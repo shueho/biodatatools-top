@@ -4,6 +4,7 @@ const C = global.TreeCore;
 const T = global.TreeTraverse;
 const L = global.TreeLayout;
 const N = global.TreeDrawNode;
+const I = global.TreeI18N;
 
 function fontFam() { return C.state.fontFamily || 'Times New Roman'; }
 function hasRealChildren(n) { return !!(n && (n.children || []).some(c => !c.deleted)); }
@@ -19,6 +20,31 @@ function estimateTextWidth(text, fontSize) {
   }
   return w;
 }
+function fitText(text, maxW, fs) {
+  if (!text) return '';
+  const getW = (s) => {
+    let w = 0;
+    for (let i = 0; i < s.length; i++) {
+      const code = s.charCodeAt(i);
+      w += (code >= 0x4e00 && code <= 0x9fff) || (code >= 0x3000 && code <= 0x303f) || (code >= 0xff00 && code <= 0xffef) ? fs : fs * 0.6;
+    }
+    return w;
+  };
+  if (getW(text) <= maxW) return text;
+  
+  const ellipsis = '.'; 
+  const ellW = getW(ellipsis);
+  let curW = 0;
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    const cW = (code >= 0x4e00 && code <= 0x9fff) || (code >= 0x3000 && code <= 0x303f) || (code >= 0xff00 && code <= 0xffef) ? fs : fs * 0.6;
+    if (curW + cW + ellW > maxW) break;
+    curW += cW;
+    out += text[i];
+  }
+  return out ? out + ellipsis : '';
+}
 
 function drawLegend(customX, customY) {
   const st = C.state;
@@ -26,8 +52,12 @@ function drawLegend(customX, customY) {
   const colorRanges = global.TreeRanges.colorRanges;
   if (!colorRanges.length) return;
   const tc = (global.TreeTracks && global.TreeTracks.trackCommon) || {};
-  const lx = (customX != null) ? Number(customX) : (Number(st.legendX) || 760);
-  const ly = (customY != null) ? Number(customY) : (Number(st.legendY) || 60);
+const lx = st.legendMoved
+  ? (Number(st.legendX) || 760)
+  : ((customX != null) ? Number(customX) : (Number(st.legendX) || 760));
+const ly = st.legendMoved
+  ? (Number(st.legendY) || 60)
+  : ((customY != null) ? Number(customY) : (Number(st.legendY) || 60));
   const scale = tc.legendScale || 1;
   const fs = Math.max(6, Number(tc.legendFontSize) || 11) * scale;
   const pad = 10;
@@ -370,8 +400,14 @@ function drawRadialRangeLabelTrack(rBase, leaves) {
 function escapeAttr(s) { return String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
 
 function renderRangesPanel() {
-  const list = document.getElementById("rpList"); if (!list) return;
-  if (!colorRanges.length) { list.innerHTML = '<div class="info-box" style="margin:8px 0;padding:8px;">尚未创建分组色带。</div>'; return; }
+  const list = document.getElementById("rpList");
+  if (!list) return;
+
+  if (!colorRanges.length) {
+    list.innerHTML = `<div class="info-box" style="margin:8px 0;padding:8px;">${I.t('rangesEmpty')}</div>`;
+    return;
+  }
+
   const existing = list.querySelectorAll(".rp-row");
   if (existing.length !== colorRanges.length) {
     list.innerHTML = colorRanges.map(r =>
@@ -427,7 +463,7 @@ function applyGroupsByColumn(colName) {
   if (!colName) return;
   const tree = C.getRoot(); if (!tree) return;
   const ld = global.TreeApp && global.TreeApp.leafData;
-  if (!ld || !ld.rows || !ld.rows.length) { alert("第2步数据表为空，请先生成/导入数据。"); return; }
+  if (!ld || !ld.rows || !ld.rows.length) { alert(I.t('alertNeedDataTable')); return; }
   const nameToLeaf = new Map();
   T.visibleLeaves(tree).forEach(l => {
     const k = String(l.name || T.labelOf(l) || "").trim();
@@ -442,7 +478,7 @@ function applyGroupsByColumn(colName) {
     if (!groups.has(gv)) groups.set(gv, []);
     groups.get(gv).push(leaf);
   });
-  if (!groups.size) { alert("所选列没有可用的分组数据。"); return; }
+  if (!groups.size) { alert(I.t('alertNoGroupData')); return; }
   C.snapshot(); clearAllColorRanges();
   const sorted = Array.from(groups.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
   let palette = null;
@@ -461,7 +497,7 @@ function applyLeafLabelColumn(colName) {
   if (!colName) return;
   const tree = C.getRoot(); if (!tree) return;
   const ld = global.TreeApp && global.TreeApp.leafData;
-  if (!ld || !ld.rows || !ld.rows.length) { alert("第2步数据表为空，请先生成/导入数据。"); return; }
+  if (!ld || !ld.rows || !ld.rows.length) { alert(I.t('alertNeedDataTable')); return; }
   const nameToLeaf = new Map();
   T.allWalk(tree, n => {
     if (n.deleted) return;
@@ -477,7 +513,7 @@ function applyLeafLabelColumn(colName) {
     const val = String(row[colName] == null ? "" : row[colName]).trim();
     if (leafName && val) dataMap.set(leafName, val);
   });
-  if (!dataMap.size) { alert("所选列没有可用数据。"); return; }
+  if (!dataMap.size) { alert(I.t('alertNoColumnData')); return; }
   C.snapshot();
   let count = 0;
   dataMap.forEach((val, leafName) => {
@@ -535,7 +571,15 @@ let geoTimeShow = false;
 let geoPresetDataCache = null;
 let geoPresetLoading = null;
 let geoScaleFactor = 1;
-
+function getGeoExtra() {
+  if (!geoTimeShow || !geoTimeTracks.length) return 0;
+  let maxBand = 0;
+  geoTimeTracks.forEach(t => {
+    const w = (Number(t.offset) || 0) + (Number(t.height) || 18);
+    if (w > maxBand) maxBand = w;
+  });
+  return maxBand + 20;
+}
 function geoJsonCandidates() {
   const list = ['geo-timescale-intervals.json', './geo-timescale-intervals.json'];
   try {
@@ -550,6 +594,11 @@ function geoJsonCandidates() {
     }
   }
   return Array.from(new Set(list));
+}
+
+function makeTimeToDepth(tracks, maxD) {
+  const gsf = Number(geoScaleFactor) || 1;
+  return t => t * gsf;
 }
 
 function loadGeoPresetData() {
@@ -596,8 +645,8 @@ function buildGeoLevelBuckets(dataRoot) {
 function addGeoTrack(cfg) {
   const t = {
     id: ++geoTrackSeq,
-    level: cfg.level || 'period',
-    name: cfg.name != null ? cfg.name : (GEO_LEVEL_LABELS[cfg.level] || 'Track') + ' ' + geoTrackSeq,
+    level: cfg.level || '',
+    name: cfg.name != null ? cfg.name : 'Track ' + geoTrackSeq,
     nameShow: cfg.nameShow !== false,
     nameFontSize: Number(cfg.nameFontSize) || 11,
     nameBold: cfg.nameBold !== false,
@@ -643,7 +692,7 @@ function removeGeoEntry(trackId, entryId) {
 
 async function importGeoPreset(levels) {
   const root = C.getRoot();
-  if (!root) { alert('请先加载进化树'); return 0; }
+  if (!root) { alert(I.t('alertNeedTree')); return 0; }
   const data = await loadGeoPresetData();
   const buckets = buildGeoLevelBuckets(data);
   const want = Array.isArray(levels) && levels.length ? levels : ['eon', 'era', 'period'];
@@ -666,21 +715,27 @@ async function importGeoPreset(levels) {
   return geoTimeTracks.length;
 }
 
-function drawGeoTrackRectBand(track, y, tickPx, axisLo, axisHi) {
+function drawGeoTrackRectBand(track, y, tickPx, axisLo, axisHi, timeToDepth) {
   const h = track.height;
   const lo = Math.min(axisLo, axisHi);
   const hi = Math.max(axisLo, axisHi);
   track.entries.forEach(e => {
-    const v1 = e.start * geoScaleFactor;
-    const v2 = e.end * geoScaleFactor;
+    const v1 = timeToDepth(e.start);
+    const v2 = timeToDepth(e.end);
     let px1 = tickPx(v1);
     let px2 = tickPx(v2);
     if (!isFinite(px1) || !isFinite(px2)) return;
     px1 = Math.max(lo, Math.min(hi, px1));
     px2 = Math.max(lo, Math.min(hi, px2));
-    const left = Math.min(px1, px2);
-    const width = Math.abs(px2 - px1);
-    if (width < 0.5) return;
+    let left = Math.min(px1, px2);
+    let width = Math.abs(px2 - px1);
+    
+    if (width < 1.5) {
+      const center = left + width / 2;
+      left = center - 0.75;
+      width = 1.5;
+    }
+    
     const attrs = { x: left, y, width, height: h,
       fill: e.color, opacity: track.opacity, class: "geotime-band" };
     if (track.outlineWidth > 0) {
@@ -688,13 +743,19 @@ function drawGeoTrackRectBand(track, y, tickPx, axisLo, axisHi) {
       attrs["stroke-width"] = track.outlineWidth;
     }
     C.el("rect", attrs);
-    if (width > 20 && e.name) {
+    
+    if (width > 4 && e.name) {
       const fs = Math.min(11, h * 0.7);
-      C.el("text", {
-        x: left + width / 2, y: y + h / 2,
-        "font-size": fs, "text-anchor": "middle", "dominant-baseline": "middle",
-        fill: "#222", "pointer-events": "none", "font-family": C.state.fontFamily
-      }).textContent = e.name;
+      const maxW = width - 4;
+      const txt = fitText(e.name, maxW, fs);
+      if (txt) {
+        C.el("text", {
+          x: left + width / 2, y: y + h / 2 + fs * 0.35,
+          "font-size": fs, "text-anchor": "middle",
+          "font-weight": "700",
+          fill: "#222", "pointer-events": "none", "font-family": C.state.fontFamily
+        }).textContent = txt;
+      }
     }
   });
 }
@@ -760,23 +821,29 @@ function drawGeoTimeTracks(radial) {
   const axisSide = st.axisPos === 'top' ? 'top' : 'bottom';
   const yAxis = axisSide === 'top' ? (yTop - 20) : (yBot + 30);
 
+  const timeToDepth = makeTimeToDepth(geoTimeTracks, maxD);
+
   const fillBg = C.el("g", { class: "geotime-filltree" });
   C.getSvg().insertBefore(fillBg, C.getSvg().firstChild);
   geoTimeTracks.forEach(track => {
     if (!track.fillTree) return;
     const op = track.fillTreeOpacity != null ? Number(track.fillTreeOpacity) : 0.14;
     track.entries.forEach(e => {
-      const v1 = e.start * geoScaleFactor;
-      const v2 = e.end * geoScaleFactor;
+      const v1 = timeToDepth(e.start);
+      const v2 = timeToDepth(e.end);
       let px1 = tickPx(v1);
       let px2 = tickPx(v2);
       if (!isFinite(px1) || !isFinite(px2)) return;
       px1 = Math.max(axisLo, Math.min(axisHi, px1));
       px2 = Math.max(axisLo, Math.min(axisHi, px2));
-      const left = Math.min(px1, px2), width = Math.abs(px2 - px1);
-      if (width < 0.5) return;
-      C.el("rect", { x: left, y: yTop, width, height: yBot - yTop,
-        fill: e.color, opacity: op, "pointer-events": "none" }, fillBg);
+let left = Math.min(px1, px2), width = Math.abs(px2 - px1);
+if (width < 1.5) {
+  const center = left + width / 2;
+  left = center - 0.75;
+  width = 1.5;
+}
+C.el("rect", { x: left, y: yTop, width, height: yBot - yTop,
+  fill: e.color, opacity: op, "pointer-events": "none" }, fillBg);
     });
   });
 
@@ -796,7 +863,7 @@ function drawGeoTimeTracks(radial) {
   sortTracks(sameSide).forEach(track => {
     const h = track.height;
     const y = awaySign > 0 ? cursorAway : (cursorAway - h);
-    drawGeoTrackRectBand(track, y, tickPx, axisLo, axisHi);
+    drawGeoTrackRectBand(track, y, tickPx, axisLo, axisHi, timeToDepth);
     drawGeoTrackTitleRect(track, axisLo - 8, y + h / 2, 'end');
     cursorAway = awaySign > 0 ? (y + h + track.gap) : (y - track.gap);
   });
@@ -808,46 +875,83 @@ function drawGeoTimeTracks(radial) {
     sortTracks(otherSide).forEach(track => {
       const h = track.height;
       const y = inSign > 0 ? cursorIn : (cursorIn - h);
-      drawGeoTrackRectBand(track, y, tickPx, axisLo, axisHi);
+      drawGeoTrackRectBand(track, y, tickPx, axisLo, axisHi, timeToDepth);
       drawGeoTrackTitleRect(track, axisLo - 8, y + h / 2, 'end');
       cursorIn = inSign > 0 ? (y + h + track.gap) : (y - track.gap);
     });
   }
 }
 
+
+function calcRadialInnerBase(root, maxD, maxR) {
+  const st = C.state;
+  let vMin = 0, vMax = maxD;
+  const rl = st.rangeLabelConfig;
+  if (rl && rl.show && rl.field) {
+    T.allWalk(root, n => {
+      const hasKids = (n.children || []).some(c => !c.deleted);
+      if (!hasKids) return;
+      const m = (n.meta || []).find(mm => mm.field === rl.field);
+      if (!m) return;
+      const v = m.value;
+      if (!Array.isArray(v) || v.length < 2) return;
+      const lo = Number(v[0]), hi = Number(v[1]);
+      if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
+      vMin = Math.min(vMin, lo);
+      vMax = Math.max(vMax, hi);
+    });
+  }
+  const isRev = (st.axisReverse === true || st.axisReverse === "true");
+  const tMin = isRev ? (maxD - vMax) : vMin;
+  if (tMin >= -1e-9) return 0;
+  return Math.max(0, -tMin * maxR / maxD);
+}
+
 function drawGeoTimeTracksRadial(leaves) {
   const st = C.state;
   const root = C.getRoot();
   const maxD = Math.max(T.maxDepth(root, 0), 1e-9);
+
+  const innerBase = (global.TreeLayout && typeof global.TreeLayout.getRadialInnerBase === 'function')
+    ? global.TreeLayout.getRadialInnerBase() : 0;
   const maxR = 285 * (st.scaleH || 1);
+  const R_base = innerBase + maxR;
+
   const cx = 470, cy = 380;
   const isReverse = (st.axisReverse === true || st.axisReverse === "true");
   const baseAngle = Number(st.rotation) || 0;
   const axisAngle = baseAngle + (Number(st.axisRotation) || 0);
-  const rOuter = 24 + maxR;
 
   const axisRad = (axisAngle - 90) * Math.PI / 180;
   const ux = Math.cos(axisRad), uy = Math.sin(axisRad);
-
   const perpRad = (axisAngle - 180) * Math.PI / 180;
   const perpX = Math.cos(perpRad), perpY = Math.sin(perpRad);
 
-  function radiusOf(v) {
-    const vv = isReverse ? (maxD - v) : v;
-    return 24 + maxR * (vv / maxD);
+  const timeToDepth = makeTimeToDepth(geoTimeTracks, maxD);
+
+  function radiusOfTime(t) {
+    const d = timeToDepth(t);
+    const vv = isReverse ? (maxD - d) : d;
+    return innerBase + maxR * (vv / maxD);
   }
 
+  // 1. 背景填色 (fillTree) - 限制在树的范围内
   const fillBg = C.el("g", { class: "geotime-filltree" });
   C.getSvg().insertBefore(fillBg, C.getSvg().firstChild);
   geoTimeTracks.forEach(track => {
     if (!track.fillTree) return;
     const op = track.fillTreeOpacity != null ? Number(track.fillTreeOpacity) : 0.14;
     track.entries.forEach(e => {
-      const r1 = radiusOf(e.start * geoScaleFactor);
-      const r2 = radiusOf(e.end * geoScaleFactor);
-      const a = Math.max(0, Math.min(r1, r2));
-      const b = Math.min(rOuter, Math.max(r1, r2));
-      if (b - a < 0.5) return;
+      const r1 = radiusOfTime(e.start);
+      const r2 = radiusOfTime(e.end);
+      let a = Math.max(innerBase, Math.min(r1, r2));
+      let b = Math.min(R_base, Math.max(r1, r2));
+      if (b <= a + 1e-9) return;
+      if (b - a < 1.5) {
+        const center = (a + b) / 2;
+        a = Math.max(innerBase, center - 0.75);
+        b = Math.min(R_base, center + 0.75);
+      }
       C.el("circle", {
         cx, cy, r: (a + b) / 2,
         fill: "none", stroke: e.color,
@@ -857,7 +961,10 @@ function drawGeoTimeTracksRadial(leaves) {
     });
   });
 
-  const baseGap = 10;
+  const unifyFs = Math.max(6, Number(st.tickLabelFontSize) || 11);
+  const tickLen = 5;
+  const labelGap = 4;
+  const baseGap = tickLen + labelGap + unifyFs + 6;
 
   let cursor = baseGap;
   geoTimeTracks.forEach(track => {
@@ -876,12 +983,50 @@ function drawGeoTimeTracksRadial(leaves) {
       return rot;
     }
 
+    // 2. 画圆心到根节点 [0, innerBase] 的延伸色带，保证随轴线延长
+    if (!isReverse && innerBase > 0.5 && track.entries.length > 0) {
+      let innerColor = null;
+      let vMinAbs = Infinity;
+      track.entries.forEach(e => {
+        const d1 = timeToDepth(Number(e.start));
+        const d2 = timeToDepth(Number(e.end));
+        const vLo = Math.min(d1, d2);
+        if (isFinite(vLo) && vLo < vMinAbs) {
+          vMinAbs = vLo;
+          innerColor = e.color;
+        }
+      });
+      if (innerColor) {
+        const p1 = { x: cx + off1 * perpX, y: cy + off1 * perpY };
+        const p2 = { x: cx + innerBase * ux + off1 * perpX, y: cy + innerBase * uy + off1 * perpY };
+        const p3 = { x: cx + innerBase * ux + off2 * perpX, y: cy + innerBase * uy + off2 * perpY };
+        const p4 = { x: cx + off2 * perpX, y: cy + off2 * perpY };
+        const extAttrs = {
+          points: `${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y} ${p4.x},${p4.y}`,
+          fill: innerColor,
+          opacity: track.opacity,
+          class: "geotime-band geotime-band-ext"
+        };
+        if (track.outlineWidth > 0) {
+          extAttrs.stroke = track.outlineColor;
+          extAttrs["stroke-width"] = track.outlineWidth;
+        }
+        C.el("polygon", extAttrs);
+      }
+    }
+
+    // 3. 画正常色块（放开 0 的底线，允许延展到圆心）
     track.entries.forEach(e => {
-      const r1 = radiusOf(e.start * geoScaleFactor);
-      const r2 = radiusOf(e.end * geoScaleFactor);
-      const rLo = Math.max(0, Math.min(r1, r2));
-      const rHi = Math.min(rOuter, Math.max(r1, r2));
-      if (rHi - rLo < 0.5) return;
+      const r1 = radiusOfTime(e.start);
+      const r2 = radiusOfTime(e.end);
+      let rLo = Math.max(0, Math.min(r1, r2));
+      let rHi = Math.min(R_base, Math.max(r1, r2));
+      if (rHi <= rLo + 1e-9) return;
+      if (rHi - rLo < 1.5) {
+        const center = (rLo + rHi) / 2;
+        rLo = Math.max(0, center - 0.75);
+        rHi = Math.min(R_base, center + 0.75);
+      }
 
       const p1 = { x: cx + rLo * ux + off1 * perpX, y: cy + rLo * uy + off1 * perpY };
       const p2 = { x: cx + rHi * ux + off1 * perpX, y: cy + rHi * uy + off1 * perpY };
@@ -898,26 +1043,36 @@ function drawGeoTimeTracksRadial(leaves) {
       }
       C.el("polygon", attrs);
 
-      if (rHi - rLo > 24 && e.name) {
+      const isV = track.textOrientation === 'vertical';
+      const availLen = isV ? (h - 4) : (rHi - rLo - 4);
+
+      if (availLen > 4 && e.name) {
         const midR = (rLo + rHi) / 2;
         const midOff = (off1 + off2) / 2;
         const tx = cx + midR * ux + midOff * perpX;
         const ty = cy + midR * uy + midOff * perpY;
         const rot = textRot();
-        C.el("text", {
-          x: tx, y: ty,
-          "font-size": Math.min(11, h * 0.7),
-          "text-anchor": "middle", "dominant-baseline": "middle",
-          fill: "#222", "pointer-events": "none", "font-family": st.fontFamily,
-          transform: `rotate(${rot} ${tx} ${ty})`
-        }).textContent = e.name;
+        const fs = Math.min(11, h * 0.7);
+        const txt = fitText(e.name, availLen, fs);
+        if (txt) {
+          C.el("text", {
+            x: tx, y: ty,
+            "font-size": fs, "text-anchor": "middle", "dominant-baseline": "middle",
+"font-weight": "700",
+            fill: "#222", "pointer-events": "none", "font-family": st.fontFamily,
+            transform: `rotate(${rot} ${tx} ${ty})`
+          }).textContent = txt;
+        }
       }
     });
 
     if (track.nameShow && track.name) {
-      const titleMidR = (24 + rOuter) / 2;
-      const tx = cx + titleMidR * ux + off2 * perpX;
-      const ty = cy + titleMidR * uy + off2 * perpY;
+      const nameLen = String(track.name || '').length * track.nameFontSize * 0.6;
+      const halfAlong = vertical ? track.nameFontSize * 0.5 : nameLen / 2;
+      const titleR = R_base + 10 + halfAlong;
+      const titlePerp = (off1 + off2) / 2;
+      const tx = cx + titleR * ux + titlePerp * perpX;
+      const ty = cy + titleR * uy + titlePerp * perpY;
       const rot = textRot();
       C.el("text", {
         x: tx, y: ty,
@@ -998,6 +1153,8 @@ global.TreeRanges = {
   get geoTrackSeq() { return geoTrackSeq; }, set geoTrackSeq(v) { geoTrackSeq = v; },
   get geoEntrySeq() { return geoEntrySeq; }, set geoEntrySeq(v) { geoEntrySeq = v; },
   get geoScaleFactor() { return geoScaleFactor; }, set geoScaleFactor(v) { geoScaleFactor = (Number(v) > 0) ? Number(v) : 1; },
+  getGeoExtra,
+
   GEO_LEVELS, GEO_LEVEL_LABELS, GEO_FALLBACK,
   addGeoTrack, removeGeoTrack, addGeoEntry, removeGeoEntry, importGeoPreset,
   drawGeoTimeTracks, loadGeoPresetData,
@@ -1013,20 +1170,33 @@ global.TreeRanges = {
 let customTracks = [];
 let trackSeq = 0;
 let trackCommon = {
-  legendTitleShow: true, legendFontSize: 11, legendBold: false, legendItalic: false,
+  legendTitleShow: true, legendFontSize: 30, legendBold: false, legendItalic: false,
   legendTitleFontSize: 12, legendTitleBold: true, legendTitleItalic: false,
   trackGap: 50, legendMaxPerRow: 0, legendScale: 1,
   trackNameShow: true, trackNameFontSize: 11, trackNameBold: true,
   trackNameItalic: false, trackNameAngle: -45
 };
-const TRACK_TYPE_LABELS = {
-  colorstrip:'色带', binary:'二元符号', heatstrip:'热图色带',
-  bar:'柱状图', text:'文本', multisymbol:'多元符号',
-  stackedbar:'堆积柱状图', pie:'饼图'
+const TRACK_TYPE_LABEL_KEYS = {
+  colorstrip: 'trackTypeColorstrip',
+  binary: 'trackTypeBinary',
+  heatstrip: 'trackTypeHeatstrip',
+  bar: 'trackTypeBar',
+  text: 'trackTypeText',
+  multisymbol: 'trackTypeMultisymbol',
+  stackedbar: 'trackTypeStackedbar',
+  pie: 'trackTypePie'
 };
+
+function trackTypeLabel(type) {
+  const k = TRACK_TYPE_LABEL_KEYS[type];
+  return k ? I.t(k) : type;
+}
+
 const TRACK_SHAPES = ['square','triangle','circle','star','diamond2'];
 
-function trackDefaultName(type, column) { return column ? column : (TRACK_TYPE_LABELS[type] || type); }
+function trackDefaultName(type, column) {
+  return column ? column : trackTypeLabel(type);
+}
 
 function newTrackDefaults(type) {
   return {
@@ -1843,7 +2013,7 @@ C.registerSnapshot('customTracks', () => ({
 global.TreeTracks = {
   get tracks() { return customTracks; },
   get trackCommon() { return trackCommon; }, set trackCommon(v) { Object.assign(trackCommon, v); },
-  TRACK_TYPE_LABELS, TRACK_SHAPES,
+  trackTypeLabel, TRACK_SHAPES,
   trackDefaultName, newTrackDefaults,
   addCustomTrack, updateCustomTrack, removeCustomTrack, toggleCustomTrack,
   buildTrackData, buildMultiTrackData, refreshTrackData,

@@ -30,11 +30,34 @@ function branchLenDisplay(n) {
   }
   return n.length || 0;
 }
-function timeTickText(v) {
+function timeTickText(v, interval) {
   const st = C.state;
   const rootTick = Number(st.rootTickValue) || 0;
   const timeFactor = Number(st.timeScaleFactor) || 1;
-  return (st.timeTreeMode ? (rootTick + v * timeFactor) : v).toFixed(2);
+  const val = st.timeTreeMode ? (rootTick + v * timeFactor) : v;
+
+  let prec = 2;
+  if (interval != null && isFinite(interval) && interval > 0) {
+    if (interval >= 10) prec = 0;
+    else if (interval >= 1) prec = 1;
+    else {
+      const exp = Math.floor(Math.log10(interval));
+      prec = -exp + 1; 
+      if (prec < 2) prec = 2;
+      if (prec > 12) prec = 12;
+    }
+  } else {
+    if (Math.abs(val) > 0 && Math.abs(val) < 0.01) {
+      prec = Math.max(2, -Math.floor(Math.log10(Math.abs(val))) + 1);
+    }
+  }
+
+  let s = val.toFixed(prec);
+  if (s.indexOf('.') >= 0) {
+    s = s.replace(/\.?0+$/, '');
+    if (s === '' || s === '-0') s = '0';
+  }
+  return s;
 }
 function showRootLine() {
   const st = C.state;
@@ -103,7 +126,7 @@ function formatLabelText(v, it) {
   if (it.asPercent) {
     const num = parseFloat(v);
     if (!Number.isFinite(num)) return String(v);
-    return (num * 100).toFixed(d) + "%";
+    return (num * 100).toFixed(d); 
   }
   if (!isNaN(parseFloat(v)) && Number.isFinite(Number(v))) {
     return Number(v).toFixed(d);
@@ -315,16 +338,34 @@ function drawRectBranch(parent, child) {
 function drawRadialBranch(parent, child) {
   const st = C.state;
   const shape = st.lineShape || "straight";
-  if (shape !== "slanted" && parent !== C.getRoot()) {
-    const large = Math.abs(child.angle - parent.angle) > 180 ? 1 : 0;
-    const sweep = child.angle > parent.angle ? 1 : 0;
+
+  const parentAtCenter = (parent.r || 0) < 0.5;
+
+  if (shape === "slanted" || parentAtCenter) {
+    C.el("line", {
+      x1: parent.x, y1: parent.y,
+      x2: child.x, y2: child.y,
+      ...commonLineAttrs(child, { branchId: child.id })
+    });
+  } else {
     const arcStart = L.polar(470, 380, parent.r, parent.angle);
     const arcEnd = L.polar(470, 380, parent.r, child.angle);
-    C.el("path", { d: `M ${arcStart.x} ${arcStart.y} A ${parent.r} ${parent.r} 0 ${large} ${sweep} ${arcEnd.x} ${arcEnd.y}`, ...commonLineAttrs(child, { branchId: child.id }), opacity: .94 });
-    C.el("line", { x1: arcEnd.x, y1: arcEnd.y, x2: child.x, y2: child.y, ...commonLineAttrs(child, { branchId: child.id }) });
-  } else {
-    C.el("line", { x1: parent.x, y1: parent.y, x2: child.x, y2: child.y, ...commonLineAttrs(child, { branchId: child.id }) });
+    let diff = child.angle - parent.angle;
+    while (diff > 180) diff -= 360;
+    while (diff < -180) diff += 360;
+    const sweep = diff > 0 ? 1 : 0;
+    C.el("path", {
+      d: `M ${arcStart.x} ${arcStart.y} A ${parent.r} ${parent.r} 0 0 ${sweep} ${arcEnd.x} ${arcEnd.y}`,
+      ...commonLineAttrs(child, { branchId: child.id }),
+      opacity: .94
+    });
+    C.el("line", {
+      x1: arcEnd.x, y1: arcEnd.y,
+      x2: child.x, y2: child.y,
+      ...commonLineAttrs(child, { branchId: child.id })
+    });
   }
+
   if (st.extendBranches && T.isLeaf(child) && !child.collapsed) {
     let rEnd;
     if (st.labelPosition === "aligned") rEnd = C.getRadialLabelR() - 8;
@@ -335,11 +376,13 @@ function drawRadialBranch(parent, child) {
       C.el("line", { x1: tip.x, y1: tip.y, x2: end.x, y2: end.y, ...gapLineAttrs() });
     }
   }
+
   if (child.truncated) {
     const mx = (parent.x + child.x) / 2, my = (parent.y + child.y) / 2;
     C.el("line", { x1: mx-5, y1: my+5, x2: mx-1, y2: my-5, stroke:"#3a3a3a", "stroke-width":1.8, "stroke-linecap":"round" });
     C.el("line", { x1: mx+1, y1: my+5, x2: mx+5, y2: my-5, stroke:"#3a3a3a", "stroke-width":1.8, "stroke-linecap":"round" });
   }
+
   if (st.lengthLabel && st.lengthLabel.show) {
     drawLengthLabel(parent, child, true);
   } else if (st.showLength) {
@@ -349,6 +392,7 @@ function drawRadialBranch(parent, child) {
       .textContent = lenVal.toFixed(lenVal < 0.1 ? 3 : 2);
   }
 }
+
 global.TreeDrawBranch = { branchStroke, commonLineAttrs, gapLineAttrs, drawRectBranch, drawRadialBranch };
 
 function collectHiddenLeaves(n) {
@@ -578,22 +622,29 @@ function drawNodeLabels(n, radial) {
   let baseX, baseY, rot = 0;
   if (radial) {
     const angle = n.angle || 0;
-    const parent = n.parent;
-    const midR = parent ? ((parent.r || 0) + (n.r || 0)) / 2 : (n.r || 0);
-    const gap = Math.max(fs * 0.5, 4);
-    const maxOuterR = (n.r || 0) - gap;
-    const centerR = Math.max(0, Math.min(midR, maxOuterR - totalW / 2));
-    const midP = L.polar(470, 380, centerR, angle);
-    const tangentOffset = Math.max(fs * 1.2, 8);
+    const gap = Math.max(fs * 0.6, 6);
+    const pNode = L.polar(470, 380, n.r || 0, angle);
+    
+    const tangentOffset = gap + totalW / 2;
     const offP = L.polar(0, 0, tangentOffset, angle + 90);
-    baseX = midP.x + offP.x;
-    baseY = midP.y + offP.y;
+    
+    baseX = pNode.x + offP.x + offX;
+    baseY = pNode.y + offP.y + offY;
+    
     rot = angle - 90;
     if (rot > 90) rot -= 180;
     if (rot < -90) rot += 180;
   } else {
-    baseX = n.x + offX;
-    baseY = n.y + offY;
+    const inv = isInvert();
+    const dx = Number(offX) || 0;
+    const dy = Number(offY) || 0;
+    
+    if (inv) {
+      baseX = n.x - dx;
+    } else {
+      baseX = n.x + dx;
+    }
+    baseY = n.y + dy;
   }
   const group = C.el("g", { transform: `translate(${baseX} ${baseY})${rot ? " rotate(" + rot + ")" : ""}` });
   const commonAttrs = {
@@ -681,7 +732,11 @@ function drawRangeLabels(radial) {
   const field = cfg.field;
   const maxD = Math.max(T.maxDepth(root, 0), 0.01);
   const treeW = 560 * (st.scaleH || 1);
+
+  const innerBase = (global.TreeLayout && typeof global.TreeLayout.getRadialInnerBase === 'function')
+    ? global.TreeLayout.getRadialInnerBase() : 24;
   const maxR = 285 * (st.scaleH || 1);
+
   const isInv = (st.invert === true || st.invert === "true");
   const left = 90;
   const scale = treeW / maxD;
@@ -690,6 +745,7 @@ function drawRangeLabels(radial) {
   const outlineW = Math.max(0, Number(cfg.outlineWidth) || 0);
   const outlineColor = cfg.outlineColor || "#333333";
   const opacity = Math.max(0, Math.min(1, Number(cfg.opacity != null ? cfg.opacity : 0.8)));
+
   T.allWalk(root, n => {
     if (n.deleted) return;
     if (!hasRealChildren(n)) return;
@@ -699,6 +755,7 @@ function drawRangeLabels(radial) {
     if (!Array.isArray(v) || v.length < 2) return;
     const lo = Number(v[0]), hi = Number(v[1]);
     if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
+
     if (!radial) {
       const posLo = isInv ? (left + lo * scale) : (left + treeW - lo * scale);
       const posHi = isInv ? (left + hi * scale) : (left + treeW - hi * scale);
@@ -709,8 +766,10 @@ function drawRangeLabels(radial) {
       }
       C.el("line", { x1: x0, x2: x3, y1: y, y2: y, stroke: color, "stroke-width": lineH, "stroke-linecap": "butt", "pointer-events": "none", opacity });
     } else {
-      const rLo = 24 + maxR * (1 - lo / maxD);
-      const rHi = 24 + maxR * (1 - hi / maxD);
+      const isRev = (st.axisReverse === true || st.axisReverse === "true");
+      const r1 = innerBase + maxR * ((isRev ? maxD - lo : lo) / maxD);
+      const r2 = innerBase + maxR * ((isRev ? maxD - hi : hi) / maxD);
+      const rLo = Math.min(r1, r2), rHi = Math.max(r1, r2);
       const angle = n.angle || 0;
       const p1 = L.polar(470, 380, rLo, angle);
       const p2 = L.polar(470, 380, rHi, angle);
@@ -721,7 +780,6 @@ function drawRangeLabels(radial) {
     }
   });
 }
-
 function drawNodesAndLabels(radial) {
   const st = C.state, selId = C.getSelectedId(), branchSel = C.getSelectedBranchId();
   if (st.lengthLabel && st.lengthLabel.show && st.lengthLabel.asTime) {
@@ -883,16 +941,16 @@ function drawRectTicks(root) {
       const ty = isTop ? (yAxis - tickLen - 4) : (yAxis + tickLen + 4);
       const anchor = isTop ? "start" : "end";
       const t = C.el("text", { x: px, y: ty, dy: fs * 0.35, "font-size": fs, "font-family": st.fontFamily, "font-weight": bold ? "700" : "400", "font-style": italic ? "italic" : "normal", "text-anchor": anchor, fill: color, transform: `rotate(-90 ${px} ${ty})` });
-      t.textContent = timeTickText(v);
+      t.textContent = opts.labelText != null ? opts.labelText : timeTickText(v, opts.precInterval);
     }
   }
   const unifyFs = Math.max(6, Number(st.tickLabelFontSize) || 11);
-  const interval = (tP.interval && tP.interval > 0) ? tP.interval : (maxD / 10);
+  const interval = (tP.interval && tP.interval > 0) ? tP.interval : niceRound(maxD / 10);
   if (!extended) {
     const steps = Math.ceil(maxD / interval) + 1;
     for (let i = 0; i < steps; i++) {
       const v = i * interval; if (v > maxD + 1e-6) break;
-      drawOneTick(v, { fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic, showLabel: tP.showLabels !== false, showGrid: tP.showGrid, gridColor: tP.gridColor, gridWidth: tP.gridWidth, gridDashed: tP.gridDashed });
+      drawOneTick(v, { fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic, showLabel: tP.showLabels !== false, showGrid: tP.showGrid, gridColor: tP.gridColor, gridWidth: tP.gridWidth, gridDashed: tP.gridDashed, precInterval: interval });
     }
   } else {
     const vA = pxToV(axisMinX), vB = pxToV(axisMaxX);
@@ -902,7 +960,7 @@ function drawRectTicks(root) {
     for (let i = 0; ; i++) {
       const v = vStart + i * interval;
       if (v > vEnd + 1e-6) break;
-      drawOneTick(v, { fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic, showLabel: tP.showLabels !== false, showGrid: tP.showGrid, gridColor: tP.gridColor, gridWidth: tP.gridWidth, gridDashed: tP.gridDashed });
+      drawOneTick(v, { fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic, showLabel: tP.showLabels !== false, showGrid: tP.showGrid, gridColor: tP.gridColor, gridWidth: tP.gridWidth, gridDashed: tP.gridDashed, precInterval: interval });
     }
   }
   const interval2 = (tS.interval && tS.interval > 0) ? tS.interval : (interval / 2);
@@ -911,7 +969,7 @@ function drawRectTicks(root) {
     const steps2 = Math.ceil(maxD / interval2) + 1;
     for (let i = 0; i < steps2; i++) {
       const v = i * interval2; if (v > maxD + 1e-6) break; if (isMajor(v)) continue;
-      drawOneTick(v, { fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic, tickLen: 3, showLabel: tS.showLabels, showGrid: tS.showGrid, gridColor: tS.gridColor, gridWidth: tS.gridWidth, gridDashed: tS.gridDashed });
+      drawOneTick(v, { fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic, tickLen: 3, showLabel: tS.showLabels, showGrid: tS.showGrid, gridColor: tS.gridColor, gridWidth: tS.gridWidth, gridDashed: tS.gridDashed, precInterval: interval2 });
     }
   } else {
     const vA = pxToV(axisMinX), vB = pxToV(axisMaxX);
@@ -922,7 +980,7 @@ function drawRectTicks(root) {
       const v = vStart2 + i * interval2;
       if (v > vEnd2 + 1e-6) break;
       if (isMajor(v)) continue;
-      drawOneTick(v, { fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic, tickLen: 3, showLabel: tS.showLabels, showGrid: tS.showGrid, gridColor: tS.gridColor, gridWidth: tS.gridWidth, gridDashed: tS.gridDashed });
+      drawOneTick(v, { fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic, tickLen: 3, showLabel: tS.showLabels, showGrid: tS.showGrid, gridColor: tS.gridColor, gridWidth: tS.gridWidth, gridDashed: tS.gridDashed, precInterval: interval2 });
     }
   }
   if (Array.isArray(tP.customTicks)) {
@@ -936,100 +994,146 @@ function drawRectTicks(root) {
 function drawCircularTicks(root) {
   const st = C.state;
   const tP = st.tickPrimary || {};
+  const tS = st.tickSecondary || {};
   if (!st.axisShow) return;
+
   const maxD = T.maxDepth(root, 0) || 1;
+  const innerBase = (global.TreeLayout && typeof global.TreeLayout.getRadialInnerBase === 'function')
+    ? global.TreeLayout.getRadialInnerBase() : 0;
   const maxR = 285 * (st.scaleH || 1);
-  const interval = (tP.interval && tP.interval > 0) ? tP.interval : (maxD / 10);
+  const R_total = innerBase + maxR;
+
   const cx = 470, cy = 380;
-  const arc = Number(st.arc) || 348;
-  const openGap = Math.max(0, 360 - arc);
-  const userRot = Number(st.rotation) || 0;
-  const userAxisAdj = Number(st.axisRotation) || 0;
-  // 修改：轴线放在豁口正中心（rotation），axisRotation 为用户额外微调
-  const axisAngle = userRot + userAxisAdj;
+  const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
   const unifyFs = Math.max(6, Number(st.tickLabelFontSize) || 11);
-  const rOuter = 24 + maxR;
   const isReverse = (st.axisReverse === true || st.axisReverse === "true");
-  function radiusOf(v) {
-    const vv = isReverse ? (maxD - v) : v;
-    if (vv <= 1e-9) return 0;
-    return 24 + maxR * (vv / maxD);
-  }
-  const pOut = L.polar(cx, cy, rOuter, axisAngle);
-  C.el("line", { x1: cx, y1: cy, x2: pOut.x, y2: pOut.y, stroke: "#333", "stroke-width": 1 });
-  const tickPerpRad = (axisAngle + 90) * Math.PI / 180;
-  const labelPerpRad = (axisAngle - 90) * Math.PI / 180;
-  const labelOffsetDist = 8;
-  function textRotation(a) {
-    let rot = a;
-    while (rot > 90) rot -= 180;
-    while (rot < -90) rot += 180;
-    return rot;
-  }
-  const steps = Math.ceil(maxD / interval) + 1;
-  for (let i = 0; i < steps; i++) {
-    const v = i * interval;
-    if (v > maxD + 1e-6) break;
-    const r = radiusOf(v);
-    if (r < 0 || r > rOuter + 5) continue;
-    const center = L.polar(cx, cy, r, axisAngle);
-    if (tP.showGrid) {
-      C.el("circle", { cx, cy, r, fill: "none", stroke: tP.gridColor || "#dddddd", "stroke-width": tP.gridWidth || 1, "stroke-dasharray": tP.gridDashed ? "4 3" : "" });
+  
+  // 不使用 niceRound，直接均分 10 等份，保证圆周上绝对均匀
+  const interval = (tP.interval && tP.interval > 0) ? tP.interval : (maxD / 10);
+  const tCircle = -innerBase * maxD / maxR;
+
+  const axisRad = (axisAngle - 90) * Math.PI / 180;
+  const ux = Math.cos(axisRad), uy = Math.sin(axisRad);
+  const leftRad = (axisAngle - 180) * Math.PI / 180;
+  const lx = Math.cos(leftRad), ly = Math.sin(leftRad);
+
+  C.el("line", {
+    x1: cx, y1: cy,
+    x2: cx + R_total * ux, y2: cy + R_total * uy,
+    stroke: "#333", "stroke-width": 1
+  });
+
+  const tickLen = 5;
+  const labelGap = 4;
+
+  function drawOneTickAtT(t, opts) {
+    const r = innerBase + maxR * t / maxD;
+    if (!isFinite(r) || r < -0.5 || r > R_total + 0.5) return;
+    
+    const centerX = cx + r * ux;
+    const centerY = cy + r * uy;
+
+    if (tP.showGrid && !opts.isSecondary && r > 0.5) {
+      C.el("circle", {
+        cx, cy, r,
+        fill: "none",
+        stroke: tP.gridColor || "#dddddd",
+        "stroke-width": tP.gridWidth || 1,
+        "stroke-dasharray": tP.gridDashed ? "4 3" : ""
+      });
     }
-    const dShort = 4;
+
+    const color = opts.color || "#333";
+    const tickSize = opts.tickSize || tickLen;
+
     C.el("line", {
-      x1: center.x + dShort * Math.cos(tickPerpRad),
-      y1: center.y + dShort * Math.sin(tickPerpRad),
-      x2: center.x - dShort * Math.cos(tickPerpRad),
-      y2: center.y - dShort * Math.sin(tickPerpRad),
-      stroke: "#333", "stroke-width": 1
+      x1: centerX, y1: centerY,
+      x2: centerX + tickSize * lx, y2: centerY + tickSize * ly,
+      stroke: color, "stroke-width": 1
     });
-    if (tP.showLabels !== false) {
-      const tx = center.x + labelOffsetDist * Math.cos(labelPerpRad);
-      const ty = center.y + labelOffsetDist * Math.sin(labelPerpRad);
-      const rot = textRotation(axisAngle);
-      const t = C.el("text", {
+
+    if (opts.showLabel !== false) {
+      const tx = centerX + (tickSize + labelGap) * lx;
+      const ty = centerY + (tickSize + labelGap) * ly;
+      const rot = axisAngle - 90;
+      
+      const vVal = isReverse ? (maxD - t) : t;
+      
+      const tEl = C.el("text", {
         x: tx, y: ty,
-        "font-size": unifyFs, "font-family": st.fontFamily,
-        "font-weight": st.tickLabelBold ? "700" : "400",
-        "font-style": st.tickLabelItalic ? "italic" : "normal",
-        "text-anchor": "middle", "dominant-baseline": "middle",
-        fill: TICK_FONT,
+        "font-size": opts.fs || unifyFs,
+        "font-family": st.fontFamily,
+        "font-weight": opts.bold ? "700" : (st.tickLabelBold ? "700" : "400"),
+        "font-style": opts.italic ? "italic" : (st.tickLabelItalic ? "italic" : "normal"),
+        "text-anchor": "middle",
+        "dominant-baseline": "middle",
+        fill: color,
         transform: `rotate(${rot} ${tx} ${ty})`
       });
-      t.textContent = timeTickText(v);
+      tEl.textContent = opts.labelText != null ? opts.labelText : timeTickText(vVal, opts.precInterval);
     }
   }
+
+  // 1. 圆心刻度（如果有置信区间延伸）
+  if (tCircle < -1e-9) {
+    drawOneTickAtT(tCircle, {
+      fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic,
+      showLabel: tP.showLabels !== false, precInterval: interval
+    });
+  }
+
+  // 2. 画主刻度（均分）
+  const tStart = Math.ceil(tCircle / interval - 1e-9) * interval;
+  const totalSteps = Math.floor((maxD - tStart) / interval + 1e-9);
+  for (let i = 0; i <= totalSteps; i++) {
+    const tVal = tStart + i * interval;
+    if (tVal > maxD + 1e-6) break;
+    if (tVal < tCircle - 1e-6) continue;
+    drawOneTickAtT(tVal, {
+      fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic,
+      showLabel: tP.showLabels !== false, precInterval: interval
+    });
+  }
+
+  // 3. 防止浮点误差导致最后一个刻度缺失（因均分，基本不会触发）
+  const lastRegular = tStart + totalSteps * interval;
+  if (maxD - lastRegular > interval * 0.01) {
+    drawOneTickAtT(maxD, {
+      fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic,
+      showLabel: tP.showLabels !== false, precInterval: interval
+    });
+  }
+
+  // 4. 画次刻度（半刻度）
+  const interval2 = (tS.interval && tS.interval > 0) ? tS.interval : (interval / 2);
+  const isMajor = t => Math.abs(t / interval - Math.round(t / interval)) < 1e-6;
+  const tStart2 = Math.ceil(tCircle / interval2 - 1e-9) * interval2;
+  const totalSteps2 = Math.floor((maxD - tStart2) / interval2 + 1e-9);
+  for (let i = 0; i <= totalSteps2; i++) {
+    const tVal = tStart2 + i * interval2;
+    if (tVal > maxD + 1e-6) break;
+    if (tVal < tCircle - 1e-6) continue;
+    if (isMajor(tVal)) continue;
+    drawOneTickAtT(tVal, {
+      fs: Math.max(6, unifyFs * 0.9), bold: false, italic: st.tickLabelItalic,
+      tickSize: 3, showLabel: tS.showLabels === true,
+      isSecondary: true, precInterval: interval2
+    });
+  }
+
+  // 5. 自定义刻度
   if (Array.isArray(tP.customTicks)) {
     tP.customTicks.forEach(v => {
       if (!isFinite(v)) return;
-      const r = radiusOf(v);
-      if (r < 0 || r > rOuter + 5) return;
-      const center = L.polar(cx, cy, r, axisAngle);
-      const dShort = 6;
-      C.el("line", {
-        x1: center.x + dShort * Math.cos(tickPerpRad),
-        y1: center.y + dShort * Math.sin(tickPerpRad),
-        x2: center.x - dShort * Math.cos(tickPerpRad),
-        y2: center.y - dShort * Math.sin(tickPerpRad),
-        stroke: st.customTickColor || "#c0392b", "stroke-width": 1.2
+      const tVal = isReverse ? (maxD - v) : v;
+      drawOneTickAtT(tVal, {
+        fs: unifyFs, bold: st.customTickBold, italic: st.tickLabelItalic,
+        color: st.customTickColor || "#c0392b", tickSize: 7, showLabel: true
       });
-      const tx = center.x + labelOffsetDist * Math.cos(labelPerpRad);
-      const ty = center.y + labelOffsetDist * Math.sin(labelPerpRad);
-      const rot = textRotation(axisAngle);
-      const t = C.el("text", {
-        x: tx, y: ty,
-        "font-size": unifyFs, "font-family": st.fontFamily,
-        "font-weight": st.customTickBold ? "700" : "400",
-        "font-style": st.tickLabelItalic ? "italic" : "normal",
-        "text-anchor": "middle", "dominant-baseline": "middle",
-        fill: st.customTickColor || "#c0392b",
-        transform: `rotate(${rot} ${tx} ${ty})`
-      });
-      t.textContent = timeTickText(v);
     });
   }
 }
+
 
 function drawScaleBox(root, radial) {
   const st = C.state;
@@ -1082,19 +1186,34 @@ function drawRect() {
   if (global.TreeRanges) global.TreeRanges.drawColoredRanges(false);
   drawRangeLabels(false);
   if (global.TreeDatasets) global.TreeDatasets.drawDatasets(false);
-  // 修改：使用新版地质年代表（水平色块条）
   if (global.TreeRanges && global.TreeRanges.drawGeoTimeTracks) global.TreeRanges.drawGeoTimeTracks(false);
 }
 function drawRadial() {
   L.layoutRadial(); clearSvg();
+  const st = C.state;
   const root = C.getRoot();
+  const kids = T.visibleChildren(root);
+
   drawCircularTicks(root);
+
+  if (showRootLine() && kids.length && root) {
+    const rootR = root.r || 0;
+    if (rootR > 0.5) {
+      C.el("line", {
+        x1: 470, y1: 380,
+        x2: root.x, y2: root.y,
+        stroke: st.branchColor,
+        "stroke-width": st.branchWidth,
+        "stroke-linecap": "round"
+      });
+    }
+  }
+
   T.walk(root, n => T.visibleChildren(n).forEach(c => TreeDrawBranch.drawRadialBranch(n, c)));
   drawNodesAndLabels(true);
   if (global.TreeRanges) global.TreeRanges.drawColoredRanges(true);
   drawRangeLabels(true);
   if (global.TreeDatasets) global.TreeDatasets.drawDatasets(true);
-  // 修改：圆形树的地质年代表
   if (global.TreeRanges && global.TreeRanges.drawGeoTimeTracks) global.TreeRanges.drawGeoTimeTracks(true);
 }
 function draw() {

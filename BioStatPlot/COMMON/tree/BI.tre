@@ -1,0 +1,235 @@
+#NEXUS
+[ID: 8974897597]
+begin taxa;
+	dimensions ntax=108;
+	taxlabels
+		Alectoris_chukar_NC_020585
+		Alectoris_magna_s1
+		Arborophila_ardens_NC_022683
+		Arborophila_atrogularis_MN868239
+		Arborophila_brunneopectus_NC_022684
+		Arborophila_cambodiana_MN868241
+		Arborophila_crudigularis_MN868242
+		Arborophila_gingica_FJ752425
+		Arborophila_hyperythra_MN868244
+		Arborophila_javanica_MN868245
+		Arborophila_mandellii_MN868246
+		Arborophila_orientalis_MN868247
+		Arborophila_rufipectus_NC_012453
+		Arborophila_rufogularis_NC_020584
+		Arborophila_torqueola_MN868249
+		Argusianus_argus_OP132141
+		Bambusicola_fytchii_NC_020583
+		Bambusicola_thoracicus_NC_011816
+		Caloperdix_oculeus_NC_024619
+		Centrocercus_urophasianus_MW574357
+		Chrysolophus_amherstiae_NC_020590
+		Chrysolophus_pictus_NC_014576
+		Coturnix_coturnix_MW574359
+		Coturnix_delegorguei_MW574360
+		Coturnix_japonica_NC_003408
+		Coturnix_pectoralis_MW574362
+		Coturnix_ypsilophora_MW574363
+		Crossoptilon_auritum_NC_015897
+		Crossoptilon_crossoptilon_NC_016679
+		Crossoptilon_harmani_NC_026547
+		Crossoptilon_mantchuricum_NC_026548
+		Dendragapus_fuliginosus_MW574366
+		Dendroperdix_sephaena_MW574367
+		Excalfactoria_chinensis_NC_004575
+		Falcipennis_canadensis_MW574369
+		Falcipennis_falcipennis_MW574370
+		Francolinus_pintadeanus_NC_011817
+		Gallus_gallus_AY235570
+		Gallus_gallus_gallus_MN013407
+		Gallus_gallus_jabouillei_GU261696
+		Gallus_gallus_murghi_GU261707
+		Gallus_gallus_spadiceus_NC_040902
+		Gallus_lafayettii_NC_007239
+		Gallus_sonneratii_NC_007240
+		Gallus_varius_NC_007238
+		Haematortyx_sanguiniceps_NC_034001
+		Ithaginis_cruentus_NC_018033
+		Lagopus_lagopus_NC_035568
+		Lagopus_muta_NC_034002
+		Lagopus_muta_islandorum_OQ580988
+		Lagopus_muta_pyrenaica_MW836951
+		Lerwa_lerwa_KY411594
+		Lophophorus_impejanus_NC_040850
+		Lophophorus_lhuysii_NC_013979
+		Lophophorus_sclateri_NC_020589
+		Lophura_bulweri_MW574373
+		Lophura_edwardsi_KY411595
+		Lophura_erythrophthalma_MW574374
+		Lophura_ignita_NC_010781
+		Lophura_nycthemera_NC_012895
+		Lophura_swinhoii_NC_023779
+		Lyrurus_mlokosiewiczi_MW574375
+		Lyrurus_tetrix_NC_024554
+		Margaroperdix_madagarensis_MW574377
+		Meleagris_gallopavo_NC_010195
+		Meleagris_ocellata_KU094576
+		Numida_meleagris_NC_034374
+		Pavo_cristatus_NC_024533
+		Pavo_muticus_NC_012897
+		Perdix_dauurica_NC_020588
+		Perdix_hodgsoniae_NC_023940
+		Perdix_perdix_NC_039843
+		Phasianus_colchicus_NC_015526
+		Phasianus_colchicus_alaschanicus_KU049722
+		Phasianus_colchicus_kiangsuensis_KP637175
+		Phasianus_versicolor_NC_010778
+		Polyplectron_bicalcaratum_NC_012900
+		Polyplectron_germaini_NC_023264
+		Polyplectron_malacense_NC_044743
+		Polyplectron_napoleonis_NC_024615
+		Pternistis_ahantensis_MW574385
+		Pternistis_bicalcaratus_MW574386
+		Pternistis_swainsonii_MW574387
+		Ptilopachus_petrosus_NC_024616
+		Pucrasia_macrolopha_NC_020587
+		Rhizothera_longirostris_KY411597
+		Rollulus_rouloul_MW574388
+		Scleroptila_afra_MW574389
+		Syrmaticus_ellioti_NC_010771
+		Syrmaticus_humiae_NC_010774
+		Syrmaticus_reevesii_NC_010770
+		Syrmaticus_soemmerringii_ijimae_NC_010767
+		Tetrao_parvirostris_kamtschaticus_NC_043950
+		Tetrao_parvirostris_parvirostris_NC_043949
+		Tetrao_urogalloides_MW574392
+		Tetrao_urogallus_aquitanicus_MG583885
+		Tetraogallus_altaicus_MW574391
+		Tetraogallus_himalayensis_NC_027279
+		Tetraogallus_tibetanus_NC_023939
+		Tetraophasis_obscurus_NC_018034
+		Tetraophasis_szechenyii_NC_020613
+		Tetrastes_bonasia_NC_020591
+		Tetrastes_sewerzowi_NC_025318
+		Tragopan_caboti_NC_013619
+		Tragopan_temminckii_NC_020586
+		Tropicoperdix_chloropus_MW574393
+		Tympanuchus_cupido_MW574394
+		Xenoperdix_udzungwensis_MW574395
+		;
+end;
+begin trees;
+	translate
+		1	Alectoris_chukar_NC_020585,
+		2	Alectoris_magna_s1,
+		3	Arborophila_ardens_NC_022683,
+		4	Arborophila_atrogularis_MN868239,
+		5	Arborophila_brunneopectus_NC_022684,
+		6	Arborophila_cambodiana_MN868241,
+		7	Arborophila_crudigularis_MN868242,
+		8	Arborophila_gingica_FJ752425,
+		9	Arborophila_hyperythra_MN868244,
+		10	Arborophila_javanica_MN868245,
+		11	Arborophila_mandellii_MN868246,
+		12	Arborophila_orientalis_MN868247,
+		13	Arborophila_rufipectus_NC_012453,
+		14	Arborophila_rufogularis_NC_020584,
+		15	Arborophila_torqueola_MN868249,
+		16	Argusianus_argus_OP132141,
+		17	Bambusicola_fytchii_NC_020583,
+		18	Bambusicola_thoracicus_NC_011816,
+		19	Caloperdix_oculeus_NC_024619,
+		20	Centrocercus_urophasianus_MW574357,
+		21	Chrysolophus_amherstiae_NC_020590,
+		22	Chrysolophus_pictus_NC_014576,
+		23	Coturnix_coturnix_MW574359,
+		24	Coturnix_delegorguei_MW574360,
+		25	Coturnix_japonica_NC_003408,
+		26	Coturnix_pectoralis_MW574362,
+		27	Coturnix_ypsilophora_MW574363,
+		28	Crossoptilon_auritum_NC_015897,
+		29	Crossoptilon_crossoptilon_NC_016679,
+		30	Crossoptilon_harmani_NC_026547,
+		31	Crossoptilon_mantchuricum_NC_026548,
+		32	Dendragapus_fuliginosus_MW574366,
+		33	Dendroperdix_sephaena_MW574367,
+		34	Excalfactoria_chinensis_NC_004575,
+		35	Falcipennis_canadensis_MW574369,
+		36	Falcipennis_falcipennis_MW574370,
+		37	Francolinus_pintadeanus_NC_011817,
+		38	Gallus_gallus_AY235570,
+		39	Gallus_gallus_gallus_MN013407,
+		40	Gallus_gallus_jabouillei_GU261696,
+		41	Gallus_gallus_murghi_GU261707,
+		42	Gallus_gallus_spadiceus_NC_040902,
+		43	Gallus_lafayettii_NC_007239,
+		44	Gallus_sonneratii_NC_007240,
+		45	Gallus_varius_NC_007238,
+		46	Haematortyx_sanguiniceps_NC_034001,
+		47	Ithaginis_cruentus_NC_018033,
+		48	Lagopus_lagopus_NC_035568,
+		49	Lagopus_muta_NC_034002,
+		50	Lagopus_muta_islandorum_OQ580988,
+		51	Lagopus_muta_pyrenaica_MW836951,
+		52	Lerwa_lerwa_KY411594,
+		53	Lophophorus_impejanus_NC_040850,
+		54	Lophophorus_lhuysii_NC_013979,
+		55	Lophophorus_sclateri_NC_020589,
+		56	Lophura_bulweri_MW574373,
+		57	Lophura_edwardsi_KY411595,
+		58	Lophura_erythrophthalma_MW574374,
+		59	Lophura_ignita_NC_010781,
+		60	Lophura_nycthemera_NC_012895,
+		61	Lophura_swinhoii_NC_023779,
+		62	Lyrurus_mlokosiewiczi_MW574375,
+		63	Lyrurus_tetrix_NC_024554,
+		64	Margaroperdix_madagarensis_MW574377,
+		65	Meleagris_gallopavo_NC_010195,
+		66	Meleagris_ocellata_KU094576,
+		67	Numida_meleagris_NC_034374,
+		68	Pavo_cristatus_NC_024533,
+		69	Pavo_muticus_NC_012897,
+		70	Perdix_dauurica_NC_020588,
+		71	Perdix_hodgsoniae_NC_023940,
+		72	Perdix_perdix_NC_039843,
+		73	Phasianus_colchicus_NC_015526,
+		74	Phasianus_colchicus_alaschanicus_KU049722,
+		75	Phasianus_colchicus_kiangsuensis_KP637175,
+		76	Phasianus_versicolor_NC_010778,
+		77	Polyplectron_bicalcaratum_NC_012900,
+		78	Polyplectron_germaini_NC_023264,
+		79	Polyplectron_malacense_NC_044743,
+		80	Polyplectron_napoleonis_NC_024615,
+		81	Pternistis_ahantensis_MW574385,
+		82	Pternistis_bicalcaratus_MW574386,
+		83	Pternistis_swainsonii_MW574387,
+		84	Ptilopachus_petrosus_NC_024616,
+		85	Pucrasia_macrolopha_NC_020587,
+		86	Rhizothera_longirostris_KY411597,
+		87	Rollulus_rouloul_MW574388,
+		88	Scleroptila_afra_MW574389,
+		89	Syrmaticus_ellioti_NC_010771,
+		90	Syrmaticus_humiae_NC_010774,
+		91	Syrmaticus_reevesii_NC_010770,
+		92	Syrmaticus_soemmerringii_ijimae_NC_010767,
+		93	Tetrao_parvirostris_kamtschaticus_NC_043950,
+		94	Tetrao_parvirostris_parvirostris_NC_043949,
+		95	Tetrao_urogalloides_MW574392,
+		96	Tetrao_urogallus_aquitanicus_MG583885,
+		97	Tetraogallus_altaicus_MW574391,
+		98	Tetraogallus_himalayensis_NC_027279,
+		99	Tetraogallus_tibetanus_NC_023939,
+		100	Tetraophasis_obscurus_NC_018034,
+		101	Tetraophasis_szechenyii_NC_020613,
+		102	Tetrastes_bonasia_NC_020591,
+		103	Tetrastes_sewerzowi_NC_025318,
+		104	Tragopan_caboti_NC_013619,
+		105	Tragopan_temminckii_NC_020586,
+		106	Tropicoperdix_chloropus_MW574393,
+		107	Tympanuchus_cupido_MW574394,
+		108	Xenoperdix_udzungwensis_MW574395
+		;
+   [Note: This tree contains information on the topology, 
+          branch lengths (if present), and the probability
+          of the partition indicated by the branch.]
+   tree con_all_compat = (67:1.838160e-01,84:2.291597e-01,((((((1:2.961872e-03,2:2.671217e-03)1.000:1.636640e-01,((81:3.517456e-02,82:4.220863e-02)1.000:9.394186e-03,83:3.401517e-02)1.000:8.558483e-02)0.997:9.966581e-03,((97:1.103027e-02,98:9.081875e-03)1.000:3.747406e-02,99:3.285588e-02)1.000:8.690721e-02)0.908:5.468746e-03,((((23:1.392985e-02,25:1.451702e-02)1.000:4.735144e-02,(24:2.820163e-02,26:3.134693e-02)1.000:2.274151e-02)1.000:2.799830e-02,64:5.630419e-02)1.000:3.783391e-02,(27:5.654541e-02,34:8.267463e-02)1.000:4.422068e-02)1.000:7.277245e-02)1.000:3.980397e-02,((((16:1.179166e-01,(68:1.544866e-02,69:2.600071e-02)1.000:1.148956e-01)0.793:1.389922e-02,106:2.213075e-01)0.489:4.389273e-03,(((17:5.073114e-02,18:5.155197e-02)1.000:5.180865e-02,((((((38:1.496151e-04,39:3.584613e-04)1.000:1.379512e-03,40:1.005662e-03)0.994:7.110483e-04,(41:2.296750e-04,42:4.100501e-04)1.000:6.780145e-04)1.000:1.951134e-02,45:2.296588e-02)1.000:1.220726e-02,43:2.757186e-02)0.995:6.735474e-03,44:2.723462e-02)1.000:7.113804e-02)1.000:1.387858e-02,((33:9.912574e-02,37:1.212354e-01)1.000:1.347108e-02,88:1.108165e-01)1.000:6.841841e-03)1.000:3.923760e-02)0.819:4.039955e-03,(((((((((20:4.973240e-02,(32:3.674634e-02,107:4.209329e-02)1.000:1.452176e-02)1.000:1.855284e-02,((35:5.514716e-02,((62:1.485723e-02,63:1.216816e-02)1.000:2.415105e-02,(((93:1.821345e-04,95:5.614271e-05)0.535:2.076016e-04,94:4.771154e-04)1.000:2.165521e-02,96:1.759994e-02)1.000:1.683341e-02)1.000:1.676935e-02)1.000:6.359359e-03,36:6.073822e-02)1.000:8.529585e-03)1.000:8.914854e-03,(48:2.919854e-02,((49:9.960431e-04,50:6.497909e-04)1.000:2.676399e-03,51:3.781554e-03)1.000:2.263261e-02)1.000:3.815355e-02)1.000:5.908441e-02,(102:3.517808e-02,103:3.983476e-02)1.000:8.978986e-02)1.000:6.122745e-02,(65:2.080663e-02,66:2.668592e-02)1.000:1.504118e-01)1.000:1.348117e-02,((((((21:1.020466e-02,22:8.508997e-03)1.000:5.328126e-02,(((73:3.138335e-04,75:1.683465e-04)1.000:4.038186e-03,74:3.022102e-03)1.000:1.239525e-02,76:1.461621e-02)1.000:6.407706e-02)0.932:5.681135e-03,(((28:1.131510e-03,31:8.156720e-04)1.000:1.742582e-02,(29:8.650811e-04,30:1.066912e-03)1.000:1.402908e-02)1.000:4.757765e-02,((56:3.090424e-02,((57:1.357871e-02,61:1.316370e-02)1.000:2.039666e-02,60:2.540246e-02)1.000:5.416625e-03)0.891:2.515115e-03,(58:2.719583e-02,59:2.623343e-02)1.000:9.977845e-03)1.000:2.987200e-02)1.000:7.485732e-03)1.000:2.028987e-02,(((89:2.747274e-04,90:1.011599e-03)1.000:6.294645e-02,91:8.127393e-02)0.934:5.431476e-03,92:7.670311e-02)1.000:2.568410e-02)1.000:4.521375e-02,((70:2.000483e-02,72:2.708024e-02)1.000:1.126973e-02,71:2.353140e-02)1.000:1.689951e-01)1.000:1.267496e-02,85:1.282038e-01)1.000:6.826128e-03)1.000:5.070944e-03,(((((53:3.188602e-02,54:3.019000e-02)1.000:5.980024e-03,55:3.877392e-02)1.000:5.709731e-02,(100:1.610448e-02,101:1.445699e-02)1.000:7.465216e-02)1.000:3.322684e-02,(104:2.115496e-02,105:2.415626e-02)1.000:1.107395e-01)0.999:5.356975e-03,86:1.099732e-01)0.590:2.849530e-03)1.000:2.325699e-02,(47:1.474859e-01,52:1.383520e-01)0.992:1.048050e-02)1.000:1.566839e-02,(46:1.040761e-01,(((77:1.767560e-02,78:1.777138e-02)1.000:2.648562e-02,79:4.263164e-02)1.000:1.415076e-02,80:4.932310e-02)1.000:4.334118e-02)1.000:6.984167e-02)0.451:1.974773e-03)1.000:8.069251e-03)1.000:1.517648e-02,(((((3:1.436845e-02,7:1.393208e-02)1.000:1.060071e-02,((4:2.602464e-02,(5:1.745002e-02,(9:1.052372e-02,(10:2.969631e-03,12:2.727207e-03)1.000:7.289010e-03)1.000:6.551898e-03)1.000:7.575958e-03)0.975:1.915021e-03,6:2.429169e-02)1.000:6.021133e-03)1.000:4.831439e-02,(((8:2.807287e-02,14:3.219659e-02)1.000:2.778805e-02,11:6.635533e-02)1.000:1.075817e-02,(13:2.595368e-02,15:2.465504e-02)1.000:4.671586e-02)1.000:1.890991e-02)1.000:9.402607e-02,(19:1.566480e-01,87:1.123269e-01)1.000:5.131565e-02)1.000:4.853768e-02,108:2.113743e-01)1.000:3.398821e-02)1.000:5.142813e-02);
+
+   [Note: This tree contains information only on the topology
+          and branch lengths (median of the posterior probability density).]
+   tree con_all_compat = (67:1.838160e-01,84:2.291597e-01,((((((1:2.961872e-03,2:2.671217e-03):1.636640e-01,((81:3.517456e-02,82:4.220863e-02):9.394186e-03,83:3.401517e-02):8.558483e-02):9.966581e-03,((97:1.103027e-02,98:9.081875e-03):3.747406e-02,99:3.285588e-02):8.690721e-02):5.468746e-03,((((23:1.392985e-02,25:1.451702e-02):4.735144e-02,(24:2.820163e-02,26:3.134693e-02):2.274151e-02):2.799830e-02,64:5.630419e-02):3.783391e-02,(27:5.654541e-02,34:8.267463e-02):4.422068e-02):7.277245e-02):3.980397e-02,((((16:1.179166e-01,(68:1.544866e-02,69:2.600071e-02):1.148956e-01):1.389922e-02,106:2.213075e-01):4.389273e-03,(((17:5.073114e-02,18:5.155197e-02):5.180865e-02,((((((38:1.496151e-04,39:3.584613e-04):1.379512e-03,40:1.005662e-03):7.110483e-04,(41:2.296750e-04,42:4.100501e-04):6.780145e-04):1.951134e-02,45:2.296588e-02):1.220726e-02,43:2.757186e-02):6.735474e-03,44:2.723462e-02):7.113804e-02):1.387858e-02,((33:9.912574e-02,37:1.212354e-01):1.347108e-02,88:1.108165e-01):6.841841e-03):3.923760e-02):4.039955e-03,(((((((((20:4.973240e-02,(32:3.674634e-02,107:4.209329e-02):1.452176e-02):1.855284e-02,((35:5.514716e-02,((62:1.485723e-02,63:1.216816e-02):2.415105e-02,(((93:1.821345e-04,95:5.614271e-05):2.076016e-04,94:4.771154e-04):2.165521e-02,96:1.759994e-02):1.683341e-02):1.676935e-02):6.359359e-03,36:6.073822e-02):8.529585e-03):8.914854e-03,(48:2.919854e-02,((49:9.960431e-04,50:6.497909e-04):2.676399e-03,51:3.781554e-03):2.263261e-02):3.815355e-02):5.908441e-02,(102:3.517808e-02,103:3.983476e-02):8.978986e-02):6.122745e-02,(65:2.080663e-02,66:2.668592e-02):1.504118e-01):1.348117e-02,((((((21:1.020466e-02,22:8.508997e-03):5.328126e-02,(((73:3.138335e-04,75:1.683465e-04):4.038186e-03,74:3.022102e-03):1.239525e-02,76:1.461621e-02):6.407706e-02):5.681135e-03,(((28:1.131510e-03,31:8.156720e-04):1.742582e-02,(29:8.650811e-04,30:1.066912e-03):1.402908e-02):4.757765e-02,((56:3.090424e-02,((57:1.357871e-02,61:1.316370e-02):2.039666e-02,60:2.540246e-02):5.416625e-03):2.515115e-03,(58:2.719583e-02,59:2.623343e-02):9.977845e-03):2.987200e-02):7.485732e-03):2.028987e-02,(((89:2.747274e-04,90:1.011599e-03):6.294645e-02,91:8.127393e-02):5.431476e-03,92:7.670311e-02):2.568410e-02):4.521375e-02,((70:2.000483e-02,72:2.708024e-02):1.126973e-02,71:2.353140e-02):1.689951e-01):1.267496e-02,85:1.282038e-01):6.826128e-03):5.070944e-03,(((((53:3.188602e-02,54:3.019000e-02):5.980024e-03,55:3.877392e-02):5.709731e-02,(100:1.610448e-02,101:1.445699e-02):7.465216e-02):3.322684e-02,(104:2.115496e-02,105:2.415626e-02):1.107395e-01):5.356975e-03,86:1.099732e-01):2.849530e-03):2.325699e-02,(47:1.474859e-01,52:1.383520e-01):1.048050e-02):1.566839e-02,(46:1.040761e-01,(((77:1.767560e-02,78:1.777138e-02):2.648562e-02,79:4.263164e-02):1.415076e-02,80:4.932310e-02):4.334118e-02):6.984167e-02):1.974773e-03):8.069251e-03):1.517648e-02,(((((3:1.436845e-02,7:1.393208e-02):1.060071e-02,((4:2.602464e-02,(5:1.745002e-02,(9:1.052372e-02,(10:2.969631e-03,12:2.727207e-03):7.289010e-03):6.551898e-03):7.575958e-03):1.915021e-03,6:2.429169e-02):6.021133e-03):4.831439e-02,(((8:2.807287e-02,14:3.219659e-02):2.778805e-02,11:6.635533e-02):1.075817e-02,(13:2.595368e-02,15:2.465504e-02):4.671586e-02):1.890991e-02):9.402607e-02,(19:1.566480e-01,87:1.123269e-01):5.131565e-02):4.853768e-02,108:2.113743e-01):3.398821e-02):5.142813e-02);
+end;

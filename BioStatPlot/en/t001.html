@@ -1,10 +1,10 @@
 <!-- tree.html -->
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>进化树可视化 - BioDataTools</title>
+<title>Phylogenetic Tree Visualization - BioDataTools</title>
 <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon">
 <link rel="stylesheet" href="../COMMON/plot-common.css">
 <style>
@@ -133,6 +133,7 @@
 .track-item { overflow: visible !important; }
 .track-list { overflow: visible; }
 .track-body { overflow: visible; }
+.bdt-donate-l { z-index: 10000 !important; }
 
 @media (max-width: 900px) {
     #treeSidebar {
@@ -148,180 +149,182 @@
 <div id="common-header"></div>
 
 <div id="treeSidebar">
-    <button class="tsb-toggle" id="tsbToggle" type="button" title="折叠/展开导航">☰</button>
+    <button class="tsb-toggle" id="tsbToggle" type="button" title="Collapse / expand navigation">☰</button>
     <nav class="tsb-nav"></nav>
 </div>
 
 <div class="main">
     <div class="page-intro">
-        <h2>进化树可视化</h2>
-        <p>读取Newick/NEXUS/PhyloXML格式进化树文件，进行可视化绘图。</p>
+        <h2>Phylogenetic Tree Visualization</h2>
+        <p>Read Newick / NEXUS / PhyloXML tree files and visualize them interactively.</p>
     </div>
 
 <div class="step-card" id="step1">
-  <div class="step-title">第一步：导入进化树</div>
+  <div class="step-title">Step 1: Import a phylogenetic tree</div>
   <div id="treeImportPanel"></div>
   <div id="treeMsg" class="tip-text"></div>
 
   <details class="param-panel" id="nodeTableBox" style="margin-top:12px;">
-    <summary>节点数据表（加载树后自动生成）</summary>
+    <summary>Node table (auto-generated after loading a tree)</summary>
     <div style="padding:10px 12px;">
       <div class="param-inline" style="margin-bottom:8px;flex-wrap:wrap;gap:10px;">
-        <label class="mini-check"><input type="checkbox" id="showLeafNodes" checked> 叶节点</label>
-        <label class="mini-check"><input type="checkbox" id="showInternalNodes" checked> 内部节点</label>
-        <label class="mini-check"><input type="checkbox" id="showOnlyWithSupport"> 仅显示含支持率</label>
-        <input type="text" id="nodeTableSearch" placeholder="搜索ID/标签/父节点/元数据"
+        <label class="mini-check"><input type="checkbox" id="showLeafNodes" checked> Leaf nodes</label>
+        <label class="mini-check"><input type="checkbox" id="showInternalNodes" checked> Internal nodes</label>
+        <label class="mini-check"><input type="checkbox" id="showOnlyWithSupport"> Only nodes with support values</label>
+        <input type="text" id="nodeTableSearch" placeholder="Search ID / label / parent / metadata"
                style="flex:1;min-width:220px;">
       </div>
       <div id="nodeTableWrap" class="table-wrap" style="max-height:420px;overflow:auto;">
-        <div class="empty-tip">加载树后将在此显示节点数据</div>
+        <div class="empty-tip">The node table will appear here after loading a tree.</div>
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="exportNodeTableBtn" type="button">导出节点数据表格</button>
+        <button class="btn" id="exportNodeTableBtn" type="button">Export node table</button>
       </div>
     </div>
   </details>
 </div>
 
 <div class="step-card" id="step2">
-  <div class="step-title">第二步：导入叶标签数据表格</div>
+  <div class="step-title">Step 2: Import leaf label data table</div>
   <div class="info-box">
-    若需在进化树上为各叶节点关联数据或重命名标签，可在此处上传数据表。您可以在Excel中整理好数据后导入，也可利用内置算法自动生成。通过下方的折叠区域向表中添加新列，处理后的最终结果将在页面底部的表格中呈现。
+    If you want to associate data with leaf nodes or rename labels on the tree, upload a data table here.
+    You can prepare the table in Excel and import it, or use the built-in tools below to generate columns automatically.
+    Use the collapsible sections below to add new columns; the final result appears in the table at the bottom of this step.
   </div>
 
   <details class="param-panel">
-    <summary>① 导入外部数据（也可以生成数据示例）</summary>
+    <summary>① Import external data (or generate sample data)</summary>
     <div style="padding:10px 12px;">
       <div class="mode-tabs">
-        <label><input type="radio" name="extDataMode" value="text" checked> 粘贴文本</label>
-        <label><input type="radio" name="extDataMode" value="file"> 上传文件</label>
+        <label><input type="radio" name="extDataMode" value="text" checked> Paste text</label>
+        <label><input type="radio" name="extDataMode" value="file"> Upload file</label>
       </div>
       <div class="ext-file-input" style="display:none;">
         <input type="file" id="extDataFile" class="import-file" accept=".csv,.tsv,.txt">
       </div>
       <div class="ext-text-input">
         <textarea id="externalDataText" class="import-text" spellcheck="false"
-          placeholder="第一列必须为叶名（Leaf），其余列可以为数值也可以是普通文本。"></textarea>
+          placeholder="The first column must be the leaf name (Leaf); other columns may be numeric or text."></textarea>
       </div>
       <div class="info-box" style="margin-top:8px;">
-        第一列需与进化树上的叶标签一致。缺失值将按列类型补充（如有缺失将填入NA）。
+        The first column must match the leaf labels on the tree. Missing values will be filled according to column type (NA for missing entries).
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="autoFillLeavesBtn" type="button">填入所有叶标签</button>
-        <button class="btn" id="generateRandomBtn" type="button">生成随机数据</button>
-        <button class="btn" id="mergeExternalBtn" type="button">合并到表格</button>
+        <button class="btn" id="autoFillLeavesBtn" type="button">Fill all leaf names</button>
+        <button class="btn" id="generateRandomBtn" type="button">Generate random data</button>
+        <button class="btn" id="mergeExternalBtn" type="button">Merge into table</button>
       </div>
     </div>
   </details>
 
   <details class="param-panel">
-    <summary>② 按叶名前缀生成列</summary>
+    <summary>② Generate column from leaf name prefix</summary>
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>提取规则</label>
+          <label>Extraction rule</label>
           <select id="prefixRule">
-            <option value="chars">前N个字符</option>
-            <option value="delimiter">分隔符之前</option>
-            <option value="digit">数字之前</option>
+            <option value="chars">First N characters</option>
+            <option value="delimiter">Before delimiter</option>
+            <option value="digit">Before digits</option>
           </select>
         </div>
         <div class="param-item">
-          <label>参数（N或分隔符）</label>
+          <label>Parameter (N or delimiter)</label>
           <input type="text" id="prefixParam" value="3">
         </div>
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="applyPrefixBtn" type="button">生成前缀列</button>
+        <button class="btn" id="applyPrefixBtn" type="button">Generate prefix column</button>
       </div>
     </div>
   </details>
 
   <details class="param-panel">
-    <summary>③ 按分支深度分组</summary>
+    <summary>③ Group by clade depth</summary>
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>层级深度（从根开始，1 = 一级分支）</label>
+          <label>Depth level (from root, 1 = first-level clade)</label>
           <input type="number" id="cladeDepth" value="1" min="1" max="20">
         </div>
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="applyCladeBtn" type="button">生成分支列</button>
+        <button class="btn" id="applyCladeBtn" type="button">Generate clade column</button>
       </div>
     </div>
   </details>
 
   <details class="param-panel">
-    <summary>④ 按聚类分组</summary>
+    <summary>④ Group by clustering</summary>
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>聚类分组数目N</label>
+          <label>Cluster count N</label>
           <input type="number" id="clusterN" value="5" min="2" max="20">
         </div>
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="applyClusterBtn" type="button">生成聚类列</button>
+        <button class="btn" id="applyClusterBtn" type="button">Generate cluster column</button>
       </div>
     </div>
   </details>
 
   <details class="param-panel">
-    <summary>⑤ 添加前缀作为新列</summary>
+    <summary>⑤ Add prefix as a new column</summary>
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>前缀内容（与叶标签拼接）</label>
+          <label>Prefix (concatenated with leaf labels)</label>
           <input type="text" id="customPrefixInput" value="Sample_">
         </div>
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="applyCustomPrefixBtn" type="button">生成前缀列</button>
+        <button class="btn" id="applyCustomPrefixBtn" type="button">Generate prefix column</button>
       </div>
     </div>
   </details>
 
   <div id="leafDataPreview" class="table-wrap">
-    <div class="empty-tip">加载进化树后，表格会自动填充每个叶节点。</div>
+    <div class="empty-tip">After loading a tree, this table will be automatically filled with every leaf node.</div>
   </div>
 
   <div class="btn-group" style="margin-top:12px;">
-    <button class="btn" id="exportLeafTemplateBtn" type="button">导出表格文件</button>
-    <button class="btn" id="copyTableBtn" type="button">复制表格</button>
-    <button class="btn" id="clearTableBtn" type="button">清空表格</button>
+    <button class="btn" id="exportLeafTemplateBtn" type="button">Export table file</button>
+    <button class="btn" id="copyTableBtn" type="button">Copy table</button>
+    <button class="btn" id="clearTableBtn" type="button">Clear table</button>
     <span id="dataSummary" class="tip-text" style="margin-left:auto;"></span>
   </div>
 </div>
 
     <div class="step-card" id="step3">
-        <div class="step-title">第三步：设置基础样式</div>
+        <div class="step-title">Step 3: Set basic styles</div>
         <div id="basicStylePanel"></div>
     </div>
 
     <div class="step-card" id="step4">
-        <div class="step-title">第四步：添加节点数据</div>
+        <div class="step-title">Step 4: Add node data</div>
         <div id="advancedStylePanel"></div>
     </div>
 
     <div class="step-card" id="step5">
-        <div class="step-title">第五步：添加数据轨道</div>
+        <div class="step-title">Step 5: Add data tracks</div>
         <div id="datasetsPanel"></div>
     </div>
 
     <div class="step-card" id="step6">
-        <div class="step-title">第六步：预览与导出</div>
+        <div class="step-title">Step 6: Preview and export</div>
 <div class="result-toolbar">
-    <button class="btn" id="drawBtn" type="button">绘制树</button>
-    <button class="btn" id="exportSvgBtn" type="button" disabled>导出SVG</button>
-    <button class="btn" id="exportPngBtn" type="button" disabled>导出PNG</button>
-    <button class="btn" id="saveExportStateBtn" type="button">保存导出状态</button>
+    <button class="btn" id="drawBtn" type="button">Refresh single canvas</button>
+    <button class="btn" id="exportSvgBtn" type="button" disabled>Export SVG</button>
+    <button class="btn" id="exportPngBtn" type="button" disabled>Export PNG</button>
+    <button class="btn" id="saveExportStateBtn" type="button">Export plot state</button>
     <span class="spacer"></span>
     <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
 </div>
         <div id="msgTip3" class="tip-text"></div>
         <div class="chart-preview" id="chartPreview">
-            <div class="placeholder">上传进化树后，点击"绘制树"查看结果</div>
+            <div class="placeholder">Upload a tree, then click "Draw tree" to see the result.</div>
         </div>
     </div>
 </div>
@@ -385,7 +388,7 @@
 </div>
 
 <script src="../COMMON/script/plot-header.js"></script>
-<script src="../COMMON/script/plot-footer.js"></script>
+<script src="../COMMON/script/plot-footer-en.js"></script>
 
 <script src="../COMMON/tree/tree-bootstrap.js"></script>
 <script src="../COMMON/tree/tree-i18n.js"></script>
@@ -411,8 +414,8 @@
     var missing = need.filter(function(k) { return !window[k]; });
     if (missing.length) {
         var box = document.getElementById('msgTip3');
-        if (box) { box.className = 'tip-text error'; box.textContent = '❌ 缺少模块：' + missing.join(', '); }
-        console.error('[TreeApp] 缺少模块：', missing);
+        if (box) { box.className = 'tip-text error'; box.textContent = '❌ Missing modules: ' + missing.join(', '); }
+        console.error('[TreeApp] Missing modules:', missing);
     }
 })();
 </script>

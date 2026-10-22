@@ -1,4 +1,3 @@
-/* tree-common.js —— tree 专属的最小公共工具集（只含 tree 用到的） */
 (function (global) {
     'use strict';
 

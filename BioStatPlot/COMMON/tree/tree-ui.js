@@ -52,9 +52,9 @@ function renderGroupPaletteDropdown(container, opts) {
   ensurePaletteDropdownStyles();
 
   const groups = [
-    { key: "d3", label: "D3 配色",
+    { key: "d3", label: "D3配色",
       names: ["tableau10","category10","set1","set2","set3","paired","dark2","accent","pastel1","pastel2"] },
-    { key: "ggsci", label: "GGSCI 配色",
+    { key: "ggsci", label: "GGSCI配色",
       names: ["npg","aaas","nejm","lancet","jama","bmj","jco","locuszoom","uchicago","startrek","tron","futurama","rickandmorty","simpsons"] },
     { key: "other", label: "其他配色",
       names: ["okabeito","ibm","tolBright","tolVibrant","tolMuted","tolLight","tolHighContrast","tolMediumContrast","kelly","ggplotHue"] }
@@ -463,13 +463,14 @@ function enableDrag(svg) {
           if (!legendDrag || !p) return;
           const newX = legendDrag.x0 + p.dx;
           const newY = legendDrag.y0 + p.dy;
-          if (legendDrag.trackId) {
-            const t = global.TreeTracks && global.TreeTracks.tracks.find(x => x.id === legendDrag.trackId);
-            if (t) { t.legendX = newX; t.legendY = newY; }
-          } else {
-            st.legendX = newX;
-            st.legendY = newY;
-          }
+if (legendDrag.trackId) {
+  const t = global.TreeTracks && global.TreeTracks.tracks.find(x => x.id === legendDrag.trackId);
+  if (t) { t.legendX = newX; t.legendY = newY; }
+} else {
+  st.legendX = newX;
+  st.legendY = newY;
+  st.legendMoved = true;
+}
           if (legendDrag.el) {
             legendDrag.el.setAttribute("transform", `translate(${newX} ${newY})`);
           }
@@ -520,15 +521,19 @@ function enableDrag(svg) {
     global.TreeRenderer.draw();
   });
 
-  const endDrag = e => {
-    if (legendDrag) {
-      if (legendRaf) { cancelAnimationFrame(legendRaf); legendRaf = null; }
-      legendPending = null;
-      try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
-      legendDrag = null;
-      setTimeout(() => suppressSvgClick = false, 0);
-      return;
-    }
+const endDrag = e => {
+  if (legendDrag) {
+    if (legendRaf) { cancelAnimationFrame(legendRaf); legendRaf = null; }
+    legendPending = null;
+    try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+    const wasMoved = legendDrag.moved;
+    legendDrag = null;
+    setTimeout(() => {
+      suppressSvgClick = false;
+      if (wasMoved) global.TreeRenderer.draw();
+    }, 0);
+    return;
+  }
     if (moveDrag) {
       const moved = moveDrag.moved;
       const srcId = moveDrag.srcId;
@@ -1351,9 +1356,11 @@ function bindGeoTimeControls(container) {
       return;
     }
     list.innerHTML = tracks.map(t => {
-      const levelOptions = R.GEO_LEVELS.map(l =>
-        `<option value="${l}" ${t.level === l ? 'selected' : ''}>${R.GEO_LEVEL_LABELS[l]}</option>`
-      ).join('');
+const hasLevel = !!t.level;
+const levelOptions = hasLevel ? R.GEO_LEVELS.map(l =>
+  `<option value="${l}" ${t.level === l ? 'selected' : ''}>${R.GEO_LEVEL_LABELS[l]}</option>`
+).join('') : '';
+const titlePrefix = hasLevel ? `${R.GEO_LEVEL_LABELS[t.level] || t.level}：` : '';
       const entriesHtml = t.entries.map(e => `
         <div class="rp-row" style="flex-wrap:wrap;gap:4px;padding:4px 0;" data-entry-id="${e.id}" data-track-id="${t.id}">
           <input type="number" data-efield="start" data-eid="${e.id}" data-tid="${t.id}" value="${e.start}" placeholder="${I.t('geoEntryStart')}" style="width:80px;" step="any">
@@ -1366,14 +1373,14 @@ function bindGeoTimeControls(container) {
       return `
       <div class="track-item" data-geo-track-id="${t.id}">
         <div class="track-header">
-          <span class="track-title">${R.GEO_LEVEL_LABELS[t.level] || t.level}：${esc(t.name || I.t('geoUntitled'))}</span>
+          <span class="track-title">${titlePrefix}${esc(t.name || I.t('geoUntitled'))}</span>
           <button class="track-toggle" data-geo-toggle="${t.id}" type="button">${t.collapsed ? '▼' : '▲'}</button>
           <button class="track-remove" data-geo-remove="${t.id}" type="button">×</button>
         </div>
         <div class="track-body" style="${t.collapsed ? 'display:none;' : ''}">
           <div class="param-grid cols-4">
-            <div class="param-item"><label>${I.t('geoLevelLabel')}</label>
-              <select data-gtrack-field="level" data-tid="${t.id}">${levelOptions}</select></div>
+${hasLevel ? `<div class="param-item"><label>${I.t('geoLevelLabel')}</label>
+  <select data-gtrack-field="level" data-tid="${t.id}">${levelOptions}</select></div>` : ''}
             <div class="param-item"><label>${I.t('geoTitleLabel')}</label>
               <input type="text" data-gtrack-field="name" data-tid="${t.id}" value="${esc(t.name)}"></div>
             <div class="param-item"><label class="mini-check">
@@ -1429,10 +1436,13 @@ function bindGeoTimeControls(container) {
         if (el.type === 'checkbox') t[field] = el.checked;
         else if (el.type === 'number') t[field] = Number(el.value);
         else t[field] = el.value;
-        if (field === 'level') {
-          const header = list.querySelector(`[data-geo-track-id="${id}"] .track-title`);
-          if (header) header.textContent = `${R.GEO_LEVEL_LABELS[t.level] || t.level}：${t.name || I.t('geoUntitled')}`;
-        }
+if (field === 'level') {
+  const header = list.querySelector(`[data-geo-track-id="${id}"] .track-title`);
+  if (header) {
+    const pre = t.level ? `${R.GEO_LEVEL_LABELS[t.level] || t.level}：` : '';
+    header.textContent = pre + (t.name || I.t('geoUntitled'));
+  }
+}
         global.TreeRenderer.draw();
       });
     });
@@ -1520,7 +1530,7 @@ function bindGeoTimeControls(container) {
 
   container.querySelector('#geoAddTrackBtn')?.addEventListener('click', () => {
     C.snapshot();
-    R.addGeoTrack({ level: 'period', name: '', entries: [] });
+    R.addGeoTrack({ name: '', entries: [] });
     R.geoTimeShow = true;
     const chk = container.querySelector('#geoTimeShowChk');
     if (chk) chk.checked = true;
@@ -1554,7 +1564,7 @@ function renderDatasetsPanel(container) {
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleBold" checked> ${I.t('trackLegendTitleBold')}</label></div>
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleItalic"> ${I.t('trackLegendTitleItalic')}</label></div>
         <div class="param-item"><label>${I.t('trackLegendMaxPerRow')}</label><input id="tcLegendMaxPerRow" type="number" min="0" max="20" value="0" placeholder="0"></div>
-        <div class="param-item"><label>${I.t('trackLegendScale')}</label><input id="tcLegendScale" type="number" min="0.3" max="3" step="0.1" value="1"></div>
+        <div class="param-item"><label>${I.t('trackLegendScale')}</label><input id="tcLegendScale" type="number" min="0.3" max="50" step="0.1" value="1"></div>
       </div>
       ${subTitle(I.t('trackNameAndGap'))}
       <div class="param-grid cols-4">
@@ -1896,7 +1906,7 @@ function refreshTrackList(container) {
   box.innerHTML = TT.tracks.map(t => {
     const colOpts = (sel) => `<option value="">${I.t('trackDataColumn')}</option>` +
       cols.map(c => `<option value="${escapeAttr(c)}" ${c === sel ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
-    const typeLabel = TT.TRACK_TYPE_LABELS[t.type] || t.type;
+    const typeLabel = TT.trackTypeLabel(t.type);
     let body = '';
 
     if (t.type === 'colorstrip') {

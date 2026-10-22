@@ -201,10 +201,13 @@ function exportSvgString() {
   const k = 1600 / Math.max(vb.w, vb.h, 1);
   clone.setAttribute("width", Math.round(vb.w * k));
   clone.setAttribute("height", Math.round(vb.h * k));
+  
+  clone.querySelectorAll('.node-hotspot').forEach(el => el.remove());
+  clone.querySelectorAll('.legend-hit').forEach(el => el.remove());
+
   bmLastFrame = { x: vb.x, y: vb.y, w: vb.w * k, h: vb.h * k };
   return new XMLSerializer().serializeToString(clone);
-}
-function download(filename, content, type) {
+}function download(filename, content, type) {
   const blob = new Blob([content], { type });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = filename; a.click();
@@ -1081,14 +1084,21 @@ function applyLoadedState(raw, opts) {
   }
   C.setSelectedId(null);
   C.setSelectedBranchId(null);
-  refreshTreeView();
   renderNodeTable();
   rebuildLeafRowsFromTree();
   renderLeafDataPreview();
   refreshDataSummary();
-  if (global.TreeRenderer) global.TreeRenderer.draw();
+  
+  if (global.TreeUI) {
+    if (global.TreeUI.renderBasicPanel) global.TreeUI.renderBasicPanel(document.getElementById("basicStylePanel"));
+    if (global.TreeUI.renderAdvancedPanel) global.TreeUI.renderAdvancedPanel(document.getElementById("advancedStylePanel"));
+    if (global.TreeUI.renderDatasetsPanel) global.TreeUI.renderDatasetsPanel(document.getElementById("datasetsPanel"));
+    if (typeof bindAllControls === 'function') bindAllControls();
+    if (typeof syncControls === 'function') syncControls();
+  }
+  
+  drawTree();
 }
-
 function renderTreeImportPanel() {
   const c = document.getElementById("treeImportPanel");
   if (!c) return;
@@ -1108,7 +1118,7 @@ function renderTreeImportPanel() {
     <div class="btn-group">
       <button type="button" class="btn" id="loadTreeBtn">${I.t('importLoadTree')}</button>
       <button type="button" class="btn" id="loadExampleBtn">${I.t('importLoadExample')}</button>
-      <button type="button" class="btn" id="loadTreeStateBtn">加载绘图状态</button>
+      <button type="button" class="btn" id="loadTreeStateBtn">${I.t('importLoadState')}</button>
       <input type="file" id="treeStateFile" accept=".json" style="display:none;">
     </div>
   `;
@@ -1138,21 +1148,68 @@ function renderTreeImportPanel() {
       loadTree(textarea.value);
     }
   });
-  document.getElementById("loadExampleBtn")?.addEventListener("click", async () => {
-    const textRadio = c.querySelector('input[name="treeMode"][value="text"]');
-    if (textRadio && !textRadio.checked) { textRadio.checked = true; textRadio.dispatchEvent(new Event("change")); }
-    showTreeMsg('正在加载示例…', 'warn');
+document.getElementById("loadExampleBtn")?.addEventListener("click", async () => {
+  const textRadio = c.querySelector('input[name="treeMode"][value="text"]');
+  if (textRadio && !textRadio.checked) { textRadio.checked = true; textRadio.dispatchEvent(new Event("change")); }
+
+  const REMOTE_RAW = 'https://raw.githubusercontent.com/shueho/biodatatools-top/main/BioStatPlot/COMMON/tree/time.tree';
+  const JSDELIVR_PATH = 'shueho/biodatatools-top@main/BioStatPlot/COMMON/tree/time.tree';
+
+  const candidates = [
+    `https://jsd.onmicrosoft.cn/gh/${JSDELIVR_PATH}`,
+    `https://fastly.jsdelivr.net/gh/${JSDELIVR_PATH}`,
+    `https://gcore.jsdelivr.net/gh/${JSDELIVR_PATH}`,
+    `https://cdn.jsdelivr.net/gh/${JSDELIVR_PATH}`,
+    REMOTE_RAW
+  ];
+
+  showTreeMsg('正在加载示例…', 'warn');
+
+  async function fetchWithTimeout(url, ms = 6000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
     try {
-      const r = await fetch('https://cdn.jsdelivr.net/gh/shueho/biodatatools-top@main/BioStatPlot/COMMON/tree/time.tree');
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const text = await r.text();
-      if (!text || !text.trim()) throw new Error('示例内容为空');
-      textarea.value = text;
-      loadTree(text);
-    } catch (err) {
-      showTreeMsg('示例加载失败：' + (err && err.message ? err.message : err), 'error');
+      const res = await fetch(url, {
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.text();
+    } finally {
+      clearTimeout(timer);
     }
-  });
+  }
+
+  let text = '';
+  let lastErr = null;
+  for (const url of candidates) {
+    try {
+      text = await fetchWithTimeout(url);
+      if (text && text.trim()) break;
+      throw new Error('内容为空');
+    } catch (err) {
+      lastErr = err;
+      console.warn('[LoadExample] 失败:', url, err);
+    }
+  }
+
+  if (!text || !text.trim()) {
+    const msg = lastErr
+      ? `示例在线加载失败（${lastErr.message || lastErr}），是否打开 GitHub 页面手动下载 time.tree？`
+      : '示例在线加载失败，是否打开 GitHub 页面手动下载 time.tree？';
+    if (confirm(msg)) {
+      window.open(
+        'https://github.com/shueho/biodatatools-top/blob/main/BioStatPlot/COMMON/tree/time.tree',
+        '_blank'
+      );
+    }
+    showTreeMsg('示例加载失败，已引导至手动下载页', 'error');
+    return;
+  }
+
+  textarea.value = text;
+  loadTree(text);
+});
   document.getElementById("loadTreeStateBtn")?.addEventListener("click", () => {
     document.getElementById("treeStateFile")?.click();
   });
@@ -1163,8 +1220,8 @@ function renderTreeImportPanel() {
       try {
         const raw = ev.target.result;
         applyLoadedState(raw, { keepRoot: !sameTree(raw) });
-        showTreeMsg("绘图状态已加载", "success");
-      } catch (err) { showTreeMsg("加载状态失败: " + err.message, "error"); }
+        showTreeMsg(I.t('importStateLoaded'), "success");
+      } catch (err) { showTreeMsg(I.t('importStateLoadFail', { msg: err.message }), "error"); }
     };
     reader.readAsText(f);
     e.target.value = "";
@@ -1706,14 +1763,14 @@ function initSidebar() {
   });
   function updatePos() {
     const header = document.getElementById("common-header");
-    let top = 80;
+    let top = 130;
     if (header) {
       const cs = getComputedStyle(header);
       const rect = header.getBoundingClientRect();
       if (cs.position === "fixed" || cs.position === "sticky") {
-        top = Math.max(0, rect.bottom) + 16;
+        top = Math.max(0, rect.bottom) + 48;
       } else {
-        top = Math.max(8, rect.bottom + 16);
+        top = Math.max(8, rect.bottom + 32);
       }
     }
     if (window.innerWidth <= 900) return;

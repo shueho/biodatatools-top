@@ -1,4 +1,3 @@
-/* tree-bootstrap.js —— 仅 d3 加载，供 tree 系列独立使用 */
 (function (global) {
     'use strict';
 
@@ -36,7 +35,7 @@
                     console.warn('[TreeBootstrap] 失败:', url);
                 }
             }
-            throw new Error('所有 d3 源均加载失败');
+            throw new Error('所有d3源均加载失败');
         })();
         return loadPromise;
     }
