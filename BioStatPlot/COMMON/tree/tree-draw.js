@@ -479,28 +479,16 @@ function richTspans(text, runs) {
   return groups;
 }
 
-function rangeTextColorOf(n) {
-  if (!global.TreeRanges || global.TreeRanges.rangeColorMode !== "text") return null;
-  let cur = n;
-  while (cur) {
-    if (cur.rangeId != null) {
-      const r = global.TreeRanges.rangeById(cur.rangeId);
-      if (r) return r.color;
-    }
-    cur = cur.parent;
-  }
-  return null;
-}
-
 function drawLeafLabel(n, radial) {
   const st = C.state;
   const text = T.labelOf(n);
   const size = st.fontSize * (n.labelSizeFactor || 1);
-  const rangeColor = rangeTextColorOf(n);
-  const color = rangeColor || n.labelColor || st.labelColor;
+  const color = n.labelColor || st.labelColor;
   const inv = isInvert();
   const isAligned = st.labelPosition === "aligned";
   const GAP = 8; const shift = Number(st.labelShift || 0);
+  const gapX = Number.isFinite(Number(st.leafLabelOffsetX)) ? Number(st.leafLabelOffsetX) : 8;
+  const gapCirc = Number.isFinite(Number(st.leafLabelOffsetCirc)) ? Number(st.leafLabelOffsetCirc) : 8;
   let x, y, anchor = "start", rotate = 0;
   if (!radial) {
     y = n.y + size * .34;
@@ -511,7 +499,7 @@ function drawLeafLabel(n, radial) {
       if (!inv) { if (la === "left") { x = alignX + GAP; anchor = "start"; } else { x = alignX + maxW + GAP * 2; anchor = "end"; } }
       else { if (la === "left") { x = alignX - maxW - GAP * 2; anchor = "start"; } else { x = alignX - GAP; anchor = "end"; } }
     } else {
-      if (!inv) { x = n.x + GAP; anchor = "start"; } else { x = n.x - GAP; anchor = "end"; }
+      if (!inv) { x = n.x + gapX; anchor = "start"; } else { x = n.x - gapX; anchor = "end"; }
       if (st.extendBranches) C.el("line", { x1: n.x, y1: n.y, x2: x, y2: n.y, ...gapLineAttrs() });
     }
   } else {
@@ -519,8 +507,8 @@ function drawLeafLabel(n, radial) {
     let rLabel;
     if (isAligned) rLabel = C.getRadialLabelR() + shift;
     else {
-      rLabel = (n.r || 0) + GAP + shift;
-      const tipR = n.r || 0, endR = tipR + GAP + shift;
+      rLabel = (n.r || 0) + gapCirc + shift;                   
+      const tipR = n.r || 0, endR = tipR + gapCirc + shift; 
       if (st.extendBranches && endR > tipR + 0.5) {
         const pA = L.polar(470, 380, tipR, angle);
         const pB = L.polar(470, 380, endR, angle);
@@ -620,21 +608,26 @@ function drawNodeLabels(n, radial) {
     }, 0);
   }
   let baseX, baseY, rot = 0;
-  if (radial) {
+if (radial) {
     const angle = n.angle || 0;
     const gap = Math.max(fs * 0.6, 6);
     const pNode = L.polar(470, 380, n.r || 0, angle);
-    
-    const tangentOffset = gap + totalW / 2;
-    const offP = L.polar(0, 0, tangentOffset, angle + 90);
-    
-    baseX = pNode.x + offP.x + offX;
-    baseY = pNode.y + offP.y + offY;
-    
+
+    const radialOffset = gap + totalW / 2;
+    const offP = L.polar(0, 0, radialOffset, angle);
+
+    const offTangent = Number(cfg.offsetTangent) || 0;
+    const offRadial  = Number(cfg.offsetRadial)  || 0;
+    const tangentUser = L.polar(0, 0, offTangent, angle + 90);
+    const radialUser  = L.polar(0, 0, offRadial,  angle);
+
+    baseX = pNode.x + offP.x + tangentUser.x + radialUser.x;
+    baseY = pNode.y + offP.y + tangentUser.y + radialUser.y;
+
     rot = angle - 90;
     if (rot > 90) rot -= 180;
     if (rot < -90) rot += 180;
-  } else {
+} else {
     const inv = isInvert();
     const dx = Number(offX) || 0;
     const dy = Number(offY) || 0;
@@ -757,8 +750,12 @@ function drawRangeLabels(radial) {
     if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
 
     if (!radial) {
-      const posLo = isInv ? (left + lo * scale) : (left + treeW - lo * scale);
-      const posHi = isInv ? (left + hi * scale) : (left + treeW - hi * scale);
+      const ciPx = (v) => {
+        const t = st.axisReverse ? (maxD - v) : v;
+        return isInv ? (left + treeW - t * scale) : (left + t * scale);
+      };
+      const posLo = ciPx(lo);
+      const posHi = ciPx(hi);
       const x0 = Math.min(posLo, posHi), x3 = Math.max(posLo, posHi);
       const y = n.y;
       if (outlineW > 0) {
@@ -867,18 +864,6 @@ function labelRightEdge() {
 global.TreeDrawNode = { formatBootstrapValue, drawSymbol, richTspans, drawLeafLabel,
   drawNodesAndLabels, labelRightEdge, drawNodeLabels, drawRangeLabels, drawLengthLabel };
 
-function drawRootMarker() {
-  const root = C.getRoot(); if (!root) return;
-  const st = C.state;
-  const radial = st.mode !== "rectangular";
-  const inv = isInvert();
-  let mx, my;
-  if (radial) { mx = 470; my = 380; } else { const offset = inv ? 20 : -20; mx = root.x + offset; my = root.y; }
-  const marker = C.el("circle", { cx: mx, cy: my, r: 6, fill: "rgba(255,255,255,0.9)", stroke: "#c0392b", "stroke-width": 1.5, class: "root-marker clickable", "data-root-marker": "1", style: "cursor:pointer" });
-  C.el("path", { d: `M ${mx-3} ${my-2} L ${mx+3} ${my-2} L ${mx} ${my+3} Z`, fill: "#c0392b", "pointer-events": "none" });
-  C.el("title", {}, marker).textContent = "Reroot";
-  marker.addEventListener("click", (e) => { e.stopPropagation(); if (global.TreeMenu) { const root = C.getRoot(); if (root) global.TreeMenu.showMenu(root, e.clientX, e.clientY); } });
-}
 
 function drawRectTicks(root) {
   const st = C.state;
@@ -1033,13 +1018,14 @@ function drawCircularTicks(root) {
     const centerX = cx + r * ux;
     const centerY = cy + r * uy;
 
-    if (tP.showGrid && !opts.isSecondary && r > 0.5) {
+    const gridOn = opts.isSecondary ? tS.showGrid : tP.showGrid;
+    if (gridOn && r > 0.5) {
       C.el("circle", {
         cx, cy, r,
         fill: "none",
-        stroke: tP.gridColor || "#dddddd",
-        "stroke-width": tP.gridWidth || 1,
-        "stroke-dasharray": tP.gridDashed ? "4 3" : ""
+        stroke: (opts.isSecondary ? (tS.gridColor || "#dddddd") : (tP.gridColor || "#dddddd")),
+        "stroke-width": (opts.isSecondary ? (tS.gridWidth || 1) : (tP.gridWidth || 1)),
+        "stroke-dasharray": (opts.isSecondary ? (tS.gridDashed ? "4 3" : "") : (tP.gridDashed ? "4 3" : ""))
       });
     }
 
@@ -1165,12 +1151,15 @@ function refitViewBox() {
   const svg = C.getSvg(); if (!svg) return;
   try {
     const bb = svg.getBBox();
-    if (bb && isFinite(bb.width) && isFinite(bb.height) && bb.width > 1 && bb.height > 1) {
+    if (bb && isFinite(bb.x) && isFinite(bb.y) &&
+        isFinite(bb.width) && isFinite(bb.height) &&
+        bb.width > 1 && bb.height > 1) {
       const m = Math.max(16, Math.max(bb.width, bb.height) * 0.02);
       C.setViewBox({ x: bb.x - m, y: bb.y - m, w: bb.width + 2*m, h: bb.height + 2*m });
     }
   } catch (_) {}
 }
+
 function drawRect() {
   L.layoutRect(); clearSvg();
   const st = C.state, root = C.getRoot();
@@ -1219,7 +1208,6 @@ function drawRadial() {
 function draw() {
   _nodeValueRangeCache = {};
   const svg = C.getSvg(); if (!svg || !C.getRoot()) return;
-  const menu = document.getElementById("contextMenu"); if (menu) menu.style.display = "none";
   if (C.state.mode === "rectangular") drawRect(); else drawRadial();
   refitViewBox();
   drawScaleBox(C.getRoot(), false);

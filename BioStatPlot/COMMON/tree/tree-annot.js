@@ -215,6 +215,7 @@ function drawRectangularRanges() {
   const vb = C.getViewBox();
   segments.forEach((segment, index) => {
     const range = rangeById(segment.id);
+    if (!range) return;    
     let x0, width;
     if (isInv) {
       const alignedX = C.alignedLabelX();
@@ -394,8 +395,9 @@ function drawRadialRangeLabelTrack(rBase, leaves) {
     }
   });
   if (rangeLabelTrackTitleShow && rangeLabelTrackTitle) {
-    const lastA1 = groups[groups.length-1].a1;
-    const firstA0 = groups[0].a0;
+    const sortedGroups = [...groups].sort((a, b) => a.a0 - b.a0);
+    const lastA1 = sortedGroups[sortedGroups.length-1].a1;
+    const firstA0 = sortedGroups[0].a0;
     let gapMid = (lastA1 + (firstA0 + 360)) / 2;
     if (gapMid >= 360) gapMid -= 360;
     const titleR = (rIn + rOut) / 2;
@@ -517,7 +519,7 @@ function applyLeafLabelColumn(colName) {
     if (n.deleted) return;
     const kids = (n.children || []).filter(c => !c.deleted);
     if (kids.length === 0) {
-      const k = String(n.name || T.labelOf(n) || "").trim();
+      const k = String(n.name || "").trim();
       if (k && !nameToLeaf.has(k)) nameToLeaf.set(k, n);
     }
   });
@@ -587,12 +589,14 @@ let geoPresetLoading = null;
 let geoScaleFactor = 1;
 function getGeoExtra() {
   if (!geoTimeShow || !geoTimeTracks.length) return 0;
-  let maxBand = 0;
+  const st = C.state;
+  const unifyFs = Math.max(6, Number(st.tickLabelFontSize) || 11);
+  const baseGap = 5 + 4 + unifyFs + 6;   
+  let sum = 0;
   geoTimeTracks.forEach(t => {
-    const w = (Number(t.offset) || 0) + (Number(t.height) || 18);
-    if (w > maxBand) maxBand = w;
+    sum += (Number(t.height) || 18) + (Number(t.gap) || 4) + (Number(t.offset) || 0);
   });
-  return maxBand + 20;
+  return baseGap + sum + 20;
 }
 function geoJsonCandidates() {
   const list = ['geo-timescale-intervals.json', './geo-timescale-intervals.json'];
@@ -736,20 +740,23 @@ function drawGeoTrackRectBand(track, y, tickPx, axisLo, axisHi, timeToDepth) {
   track.entries.forEach(e => {
     const v1 = timeToDepth(e.start);
     const v2 = timeToDepth(e.end);
-    let px1 = tickPx(v1);
-    let px2 = tickPx(v2);
-    if (!isFinite(px1) || !isFinite(px2)) return;
-    px1 = Math.max(lo, Math.min(hi, px1));
-    px2 = Math.max(lo, Math.min(hi, px2));
+    const rawX1 = tickPx(v1);
+    const rawX2 = tickPx(v2);
+    if (!isFinite(rawX1) || !isFinite(rawX2)) return;
+
+    if ((rawX1 < lo && rawX2 < lo) || (rawX1 > hi && rawX2 > hi)) return;
+
+    let px1 = Math.max(lo, Math.min(hi, rawX1));
+    let px2 = Math.max(lo, Math.min(hi, rawX2));
     let left = Math.min(px1, px2);
     let width = Math.abs(px2 - px1);
-    
+
     if (width < 1.5) {
       const center = left + width / 2;
       left = center - 0.75;
       width = 1.5;
     }
-    
+
     const attrs = { x: left, y, width, height: h,
       fill: e.color, opacity: track.opacity, class: "geotime-band" };
     if (track.outlineWidth > 0) {
@@ -757,7 +764,7 @@ function drawGeoTrackRectBand(track, y, tickPx, axisLo, axisHi, timeToDepth) {
       attrs["stroke-width"] = track.outlineWidth;
     }
     C.el("rect", attrs);
-    
+
     if (width > 4 && e.name) {
       const fs = Math.min(11, h * 0.7);
       const maxW = width - 4;
@@ -896,31 +903,6 @@ C.el("rect", { x: left, y: yTop, width, height: yBot - yTop,
   }
 }
 
-
-function calcRadialInnerBase(root, maxD, maxR) {
-  const st = C.state;
-  let vMin = 0, vMax = maxD;
-  const rl = st.rangeLabelConfig;
-  if (rl && rl.show && rl.field) {
-    T.allWalk(root, n => {
-      const hasKids = (n.children || []).some(c => !c.deleted);
-      if (!hasKids) return;
-      const m = (n.meta || []).find(mm => mm.field === rl.field);
-      if (!m) return;
-      const v = m.value;
-      if (!Array.isArray(v) || v.length < 2) return;
-      const lo = Number(v[0]), hi = Number(v[1]);
-      if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
-      vMin = Math.min(vMin, lo);
-      vMax = Math.max(vMax, hi);
-    });
-  }
-  const isRev = (st.axisReverse === true || st.axisReverse === "true");
-  const tMin = isRev ? (maxD - vMax) : vMin;
-  if (tMin >= -1e-9) return 0;
-  return Math.max(0, -tMin * maxR / maxD);
-}
-
 function drawGeoTimeTracksRadial(leaves) {
   const st = C.state;
   const root = C.getRoot();
@@ -949,7 +931,6 @@ function drawGeoTimeTracksRadial(leaves) {
     return innerBase + maxR * (vv / maxD);
   }
 
-  // 1. 背景填色 (fillTree) - 限制在树的范围内
   const fillBg = C.el("g", { class: "geotime-filltree" });
   C.getSvg().insertBefore(fillBg, C.getSvg().firstChild);
   geoTimeTracks.forEach(track => {
@@ -1184,10 +1165,10 @@ global.TreeRanges = {
 let customTracks = [];
 let trackSeq = 0;
 let trackCommon = {
-  legendTitleShow: true, legendFontSize: 30, legendBold: false, legendItalic: false,
-  legendTitleFontSize: 12, legendTitleBold: true, legendTitleItalic: false,
+  legendTitleShow: true, legendFontSize: 15, legendBold: false, legendItalic: false,
+  legendTitleFontSize: 30, legendTitleBold: true, legendTitleItalic: false,
   trackGap: 50, legendMaxPerRow: 0, legendScale: 1,
-  trackNameShow: true, trackNameFontSize: 11, trackNameBold: true,
+  trackNameShow: true, trackNameFontSize: 26, trackNameBold: true,
   trackNameItalic: false, trackNameAngle: -45
 };
 const TRACK_TYPE_LABEL_KEYS = {
@@ -1226,6 +1207,9 @@ function newTrackDefaults(type) {
     binaryTrueColor: '#E64B35', binaryFalseColor: '#cccccc',
     binaryShowFalse: false,
     gradient: 'Viridis', gradientMin: null, gradientMax: null, gradientReverse: false, gradientStops: null,
+    legendTickInterval: null, legendTickDecimals: 2,
+    legendTickCount: 3,        
+    legendTickBold: true, 
     barColor: '#4DBBD5',
     barOutlineColor: '#333333', barOutlineWidth: 0, barOutlineDashed: false,
     boxColor: '#bbbbbb', boxWidth: 0.5, boxDashed: false, showBox: false,
@@ -1609,7 +1593,7 @@ function drawStackedBarAdvanced(track, x, w, leaves, rowOf, invert) {
   const baseX = pos(mn);
   C.el('line', { x1: baseX, y1: yTop, x2: baseX, y2: yAxis, stroke: '#333', 'stroke-width': 0.8 });
   if (track.showAxisNumbers) {
-    const interval = track.axisInterval || (mx - mn) / 5;
+    const interval = track.axisInterval || (mx - mn) / 2;
     const ticks = [];
     const start = Math.ceil(mn / interval) * interval;
     for (let v = start; v <= mx + 1e-9; v += interval) ticks.push(v);
@@ -1664,7 +1648,7 @@ function drawBarTrackAdvanced(track, x, w, leaves, rowOf, invert) {
   const baseX = pos(mn);
   C.el('line', { x1: baseX, y1: yTop, x2: baseX, y2: yAxis, stroke: '#333', 'stroke-width': 0.8 });
   if (track.showAxisNumbers) {
-    const interval = track.axisInterval || (mx - mn) / 5;
+    const interval = track.axisInterval || (mx - mn) / 2;
     const ticks = [];
     const start = Math.ceil(mn / interval) * interval;
     for (let v = start; v <= mx + 1e-9; v += interval) ticks.push(v);
@@ -1714,18 +1698,45 @@ function drawTrackLegend(track, x, y, colorMap) {
     items = (track.columns || []).map((c, i) => ({ label: c, color: (track.columnColors && track.columnColors[c]) || cols[i % cols.length] }));
   } else if (track.type === 'heatstrip') {
     const nums = Object.values(track.data || {}).map(parseFloat).filter(Number.isFinite);
-    let mn = track.gradientMin, mx = track.gradientMax;
-    if (!Number.isFinite(mn)) mn = Math.min(...nums);
-    if (!Number.isFinite(mx)) mx = Math.max(...nums);
+    let mn = Number(track.gradientMin);
+    let mx = Number(track.gradientMax);
+    if (!Number.isFinite(mn)) mn = nums.length ? Math.min(...nums) : 0;
+    if (!Number.isFinite(mx)) mx = nums.length ? Math.max(...nums) : 1;
     if (mn === mx) mx = mn + 1;
+
     const isVertical = track.legendOrientation === 'vertical';
-    const stops = getGradientStops(track);
+    const tickDecimals = Math.max(0, Math.min(6,
+      track.legendTickDecimals != null && Number.isFinite(Number(track.legendTickDecimals))
+        ? Number(track.legendTickDecimals) : 2));
+    const tickInterval = Number(track.legendTickInterval);
+
+    let stops = getGradientStops(track);
+    if (track.gradientReverse) stops = stops.slice().reverse();
+
+    let ticks;
+    if (Number.isFinite(tickInterval) && tickInterval > 0) {
+      ticks = [];
+      const start = Math.ceil(mn / tickInterval - 1e-9) * tickInterval;
+      for (let v = start; v <= mx + 1e-9; v += tickInterval) {
+        ticks.push(Number(v.toFixed(10)));
+        if (ticks.length > 200) break;
+      }
+      if (!ticks.length) ticks = [mn, mx];
+    } else {
+      const tickCount = Math.max(2, Math.min(11, Number(track.legendTickCount) || 3));
+      ticks = [];
+      for (let i = 0; i < tickCount; i++) ticks.push(mn + (mx - mn) * i / (tickCount - 1));
+    }
+
     const gid = 'tkl-grad-' + track.id + '-' + Math.random().toString(36).slice(2, 8);
     const defs = C.getSvg().querySelector('defs') || C.el('defs');
-    const grad = C.el('linearGradient', { id: gid,
-      x1: isVertical ? '0%' : '0%', y1: isVertical ? '100%' : '0%',
-      x2: isVertical ? '0%' : '100%', y2: isVertical ? '0%' : '0%' }, defs);
+    const grad = C.el('linearGradient', {
+      id: gid,
+      x1: '0%', y1: isVertical ? '100%' : '0%',
+      x2: isVertical ? '0%' : '100%', y2: '0%'
+    }, defs);
     stops.forEach((c, i) => C.el('stop', { offset: (i / (stops.length-1) * 100) + '%', 'stop-color': c }, grad));
+
     const barW = (isVertical ? 12 : 80) * scale;
     const barH = (isVertical ? 80 : 12) * scale;
     const g = C.el('g', { class: 'track-legend legend-box', 'data-legend': '1', 'data-track-id': track.id, style: 'cursor:move', transform: `translate(${x} ${y})` });
@@ -1735,15 +1746,21 @@ function drawTrackLegend(track, x, y, colorMap) {
       tt.textContent = title; cursorY = titleFS + 4;
     }
     C.el('rect', { x: 0, y: cursorY, width: barW, height: barH, fill: `url(#${gid})`, stroke: '#999', 'stroke-width': 0.5 }, g);
-    for (let i = 0; i <= 4; i++) {
-      const t = i / 4;
-      const val = mx - (mx - mn) * t;
-      const text = C.el('text', { x: isVertical ? barW + 4 : t * barW,
-        y: isVertical ? cursorY + t * barH + fs * 0.34 : cursorY + barH + fs + 3,
-        'font-size': fs, 'font-weight': bold, 'font-style': italic, fill: '#333',
-        'font-family': ff, 'text-anchor': isVertical ? 'start' : 'middle' }, g);
-      text.textContent = Number(val).toFixed(2);
-    }
+
+    ticks.forEach(v => {
+      const t = Math.max(0, Math.min(1, (v - mn) / (mx - mn)));
+      const pos = isVertical ? (cursorY + (1 - t) * barH) : (t * barW);
+      const labelX = isVertical ? (barW + 4) : pos;
+      const labelY = isVertical ? (pos + fs * 0.34) : (cursorY + barH + fs + 3);
+      const anchor = isVertical ? 'start' : 'middle';
+      const text = C.el('text', {
+        x: labelX, y: labelY,
+        'font-size': fs, 'font-weight': bold, 'font-style': italic,
+        fill: '#333', 'font-family': ff, 'text-anchor': anchor
+      }, g);
+      text.textContent = Number(v).toFixed(tickDecimals);
+    });
+
     return cursorY + barH + fs + 8;
   }
   if (!items.length) return 0;
@@ -2053,13 +2070,19 @@ function renderCustomTracks(radial) {
 }
 
 C.registerSnapshot('customTracks', () => ({
-  tracks: JSON.parse(JSON.stringify(customTracks)),
+  tracks: JSON.parse(JSON.stringify(customTracks, (k, v) => {
+    if (k === '_colorCache' || k === '_shapeCache' || k === 'data') return undefined;
+    return v;
+  })),
   trackSeq,
   trackCommon: { ...trackCommon }
 }), s => {
   if (Array.isArray(s.tracks)) customTracks = s.tracks;
   if (typeof s.trackSeq === 'number') trackSeq = s.trackSeq;
   if (s.trackCommon) Object.assign(trackCommon, s.trackCommon);
+  if (global.TreeTracks && global.TreeTracks.tracks) {
+    global.TreeTracks.tracks.forEach(t => global.TreeTracks.refreshTrackData(t));
+  }
 });
 
 global.TreeTracks = {

@@ -10,24 +10,6 @@ const I = global.TreeI18N;
 (function injectFloatStyles() {
   if (document.getElementById('tree-float-style')) return;
   var css = [
-    '.tree-context-menu{position:fixed;z-index:9000;width:270px;background:#f8f8f8;border:1px solid #d4d4d4;border-radius:4px;box-shadow:0 20px 45px rgba(8,41,45,.16);display:none;font-size:14px;}',
-    '.tree-context-menu .menu-title{font-weight:700;padding:8px 12px;background:linear-gradient(180deg,#f5f5f5,#dcdcdc);}',
-    '.tree-context-menu .menu-row{padding:8px 12px 8px 34px;cursor:pointer;position:relative;min-height:34px;}',
-    '.tree-context-menu .menu-row:before{position:absolute;left:12px;color:#6b7474;}',
-    '.tree-context-menu .menu-row[data-action="restore-hidden"]:before{content:"\\271A";}',
-    '.tree-context-menu .menu-row[data-action="copy"]:before{content:"\\25A3";}',
-    '.tree-context-menu .menu-row[data-panel="ranges"]:before{content:"\\25CC";}',
-    '.tree-context-menu .menu-row[data-panel="branch"]:before{content:"\\2517";}',
-    '.tree-context-menu .menu-row[data-panel="label"]:before{content:"T";font-weight:700;}',
-    '.tree-context-menu .menu-row[data-panel="structure"]:before{content:"\\25E2";}',
-    '.tree-context-menu .menu-row.has-submenu:after{content:"\\25B6";position:absolute;right:10px;color:#344;}',
-    '.tree-context-menu .menu-row:hover,.tree-context-menu .menu-row.active{background:#cfcac6;color:#111;}',
-    '.tree-context-menu .menu-submenu{display:none;position:absolute;left:calc(100% - 1px);top:0;width:310px;border:1px solid #d4d4d4;border-radius:5px;background:#fff;box-shadow:0 20px 45px rgba(8,41,45,.16);padding:10px 12px;color:#1d2c2e;}',
-    '.tree-context-menu .menu-submenu.active{display:block;}',
-    '.tree-context-menu .submenu-row{display:grid;grid-template-columns:112px minmax(0,1fr);gap:8px;align-items:center;margin:6px 0;}',
-    '.tree-context-menu .submenu-actions{display:grid;gap:6px;}',
-    '.tree-context-menu .submenu-btn{border:1px solid #d2d8d6;background:#f3f5f4;border-radius:4px;padding:7px 9px;text-align:left;cursor:pointer;font:inherit;}',
-    '.tree-context-menu .submenu-btn:hover{background:#fff0f0;border-color:#ff9a9a;}',
     '.rp-list{max-height:200px;overflow:auto;}',
     '.rp-row{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #f0f2f1;}',
     '.rp-sw{width:22px;height:18px;flex:0 0 22px;padding:0;border-radius:3px;border:1px solid rgba(0,0,0,.15);background:transparent;cursor:pointer;}',
@@ -77,6 +59,8 @@ const I = global.TreeI18N;
     '.selected-card .inner{padding:10px 12px;display:grid;gap:8px;}',
     '.selected-card .inner label{display:flex;flex-direction:column;font-size:13px;color:#666;gap:4px;}',
     '.node-hotspot,.node-label,.leaf-label,.branch-line{cursor:pointer;}',
+    '.editable-cell{cursor:cell;display:inline-block;min-width:8px;border-radius:3px;padding:1px 3px;margin:-1px -3px;}',
+    '.editable-cell:hover{background:rgba(255,214,102,.35);box-shadow:inset 0 0 0 1px rgba(200,150,0,.35);}',
     '.node-hotspot:hover,.node-label:hover,.leaf-label:hover{filter:drop-shadow(0 0 2px rgba(255,75,75,.7));}',
     '.node-selected{stroke:#ff4b4b !important;stroke-width:3 !important;}',
     '#leafDataPreview table{width:100%;border-collapse:collapse;font-family:Consolas,monospace;font-size:13px;}',
@@ -94,7 +78,7 @@ const I = global.TreeI18N;
     'details.param-panel > summary + *{border:1px solid #a9c9ec;border-top:none;border-radius:0 0 8px 8px;background:#fff;box-sizing:border-box;}',
     '.param-panel-title{font-size:15px !important;font-weight:700 !important;color:#1a2233 !important;margin:0 0 10px 0 !important;padding:0 !important;border:none !important;background:transparent !important;letter-spacing:.02em;}',
     '.sub-section-title{display:block;width:100%;box-sizing:border-box;font-size:13px;font-weight:700;color:#3b5bdb;margin:10px 0 6px;padding:0;border:none;background:transparent;letter-spacing:.01em;}',
-    '.node-action-panel{position:fixed;z-index:9100;width:270px;background:#f8f8f8;border:1px solid #d4d4d4;border-radius:4px;box-shadow:0 20px 45px rgba(8,41,45,.16);display:none;font-size:13px;padding:4px 0;}',
+    '.node-action-panel{position:fixed;z-index:9100;width:270px;max-height:calc(100vh - 20px);overflow-y:auto;background:#f8f8f8;border:1px solid #d4d4d4;border-radius:4px;box-shadow:0 20px 45px rgba(8,41,45,.16);display:none;font-size:13px;padding:4px 0;}',
     '.node-action-panel .nap-title{padding:6px 12px;font-weight:700;font-size:12.5px;color:#1f4068;border-bottom:1px solid #ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:246px;}',
     '.node-action-panel .nap-btn{display:block;width:100%;text-align:left;border:0;background:none;padding:7px 14px;cursor:pointer;font:inherit;color:#1d2c2e;position:relative;}',
     '.node-action-panel .nap-btn:hover{background:#cfcac6;}',
@@ -195,6 +179,7 @@ function enableWheelZoom(svg) {
 let bmLastFrame = null;
 function exportSvgString() {
   const svg = C.getSvg(); const vb = C.getViewBox();
+  if (!svg) return '';     
   const clone = svg.cloneNode(true);
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
@@ -202,7 +187,16 @@ function exportSvgString() {
   clone.setAttribute("width", Math.round(vb.w * k));
   clone.setAttribute("height", Math.round(vb.h * k));
   
-  clone.querySelectorAll('.node-hotspot').forEach(el => el.remove());
+  clone.querySelectorAll('.node-hotspot').forEach(el => {
+    const fill = el.getAttribute('fill');
+    const stroke = el.getAttribute('stroke');
+    if (fill === 'transparent' || stroke === 'transparent') {
+      el.remove();                         
+    } else {
+      el.removeAttribute('class');         
+      el.removeAttribute('data-id');
+    }
+  });
   clone.querySelectorAll('.legend-hit').forEach(el => el.remove());
 
   bmLastFrame = { x: vb.x, y: vb.y, w: vb.w * k, h: vb.h * k };
@@ -236,6 +230,7 @@ async function downloadPng(scale, filename) {
   canvas.toBlob(blob => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }, "image/png");
 }
 global.TreeExport = { exportSvgString, download, renderSvgToCanvas, downloadPng };
@@ -288,13 +283,7 @@ C.registerSnapshot('leafData', () => ({
 });
 function getTreeLeafNames() {
   if (!C.getRoot()) return [];
-  const out = [];
-  T.allWalk(C.getRoot(), n => {
-    if (n.deleted) return;
-    const hasChildren = (n.children || []).some(c => !c.deleted);
-    if (!hasChildren) out.push(n.name || T.labelOf(n));
-  });
-  return out;
+  return T.visibleLeaves(C.getRoot()).map(n => n.name || T.labelOf(n));
 }
 function rebuildLeafMap() {
   leafData.leafMap = new Map();
@@ -489,6 +478,7 @@ function generateRandomColumns() {
 }
 function mergeExternalData(parsed) {
   if (!parsed || !parsed.headers.length) return;
+  C.snapshot();  
   const leafCol = parsed.headers[0];
   const extraCols = parsed.headers.slice(1);
   extraCols.forEach(col => { if (!leafData.headers.includes(col)) leafData.headers.push(col); });
@@ -508,6 +498,7 @@ function mergeExternalData(parsed) {
 }
 function applyPrefixColumn() {
   if (!leafData.rows.length) { alert(I.t('alertNeedTree')); return; }
+  C.snapshot();    
   const rule = document.getElementById("prefixRule")?.value || "chars";
   const param = (document.getElementById("prefixParam")?.value || "").trim();
   let base;
@@ -535,6 +526,7 @@ function applyPrefixColumn() {
 function applyCladeColumn() {
   const root = C.getRoot();
   if (!root) { alert(I.t('alertNeedTree')); return; }
+  C.snapshot();   
   const depth = Math.max(1, Math.min(10, parseInt(document.getElementById("cladeDepth")?.value, 10) || 1));
   const colName = uniqueColName("clade-L" + depth);
   leafData.headers.push(colName);
@@ -557,6 +549,7 @@ function applyCladeColumn() {
 function applyClusterColumn() {
   const root = C.getRoot();
   if (!root) { alert(I.t('alertNeedTree')); return; }
+  C.snapshot();   
   const N = Math.max(2, Math.min(20, parseInt(document.getElementById("clusterN")?.value, 10) || 5));
   const colName = uniqueColName("cluster-" + N);
   leafData.headers.push(colName);
@@ -580,6 +573,7 @@ function applyClusterColumn() {
 }
 function applyCustomPrefixColumn() {
   if (!leafData.rows.length) { alert(I.t('alertNeedTree')); return; }
+  C.snapshot();  
   const prefix = (document.getElementById("customPrefixInput")?.value || "").trim();
   if (!prefix) { alert(I.t('alertNeedPrefix')); return; }
   const base = "prefix-" + prefix.replace(/\s+/g, "_");
@@ -719,17 +713,21 @@ function renderNodeTable() {
   const MAX_ROWS = 2000;
   const toShow = rows.slice(0, MAX_ROWS);
   const cell = v => escapeHtml(v == null ? "" : v);
+  const editableCell = (id, kind, content, extraStyle) => {
+    const st = extraStyle ? ` style="${extraStyle}"` : "";
+    return `<span class="editable-cell" data-id="${cell(id)}" data-edit="${kind}"${st}>${content}</span>`;
+  };
   const selId = C.getSelectedId();
   const tbody = toShow.map(r => {
     const cells = [
       r._idx,
       "<code>" + cell(r._id) + "</code>",
-      cell(r.label),
+      editableCell(r._id, "label", cell(r.label)),
       r._isLeaf ? '<span style="color:#2e7d32;">leaf</span>' : '<span style="color:#1f4068;">internal</span>',
       r.depth,
       r.cumLength.toFixed(4),
-      r.length === "" ? "" : Number(r.length).toFixed(4),
-      cell(r.supportStr),
+      editableCell(r._id, "length", r.length === "" ? "" : Number(r.length).toFixed(4)),
+      editableCell(r._id, "support", cell(r.supportStr)),
       cell(r.parent),
       r.children,
       r.status === "deleted" ? '<span style="color:#999;">deleted</span>' :
@@ -742,7 +740,8 @@ function renderNodeTable() {
     metaFields.forEach(f => {
       const v = cell(r._meta[f] || "");
       const isHPD = /95%|HPD|posterior/i.test(f);
-      cells.push(isHPD ? `<span style="color:#c0392b;font-weight:600;">${v}</span>` : v);
+      const inner = editableCell(r._id, "meta:" + f, v);
+      cells.push(isHPD ? `<span style="color:#c0392b;font-weight:600;">${inner}</span>` : inner);
     });
     const cls = (r._id === selId) ? ' class="row-selected"' : "";
     return '<tr data-id="' + cell(r._id) + '" style="cursor:pointer;"' + cls + '>' + cells.map(c => '<td>' + c + '</td>').join('') + '</tr>';
@@ -756,6 +755,7 @@ function renderNodeTable() {
     tr.addEventListener('mouseenter', () => highlightSvgNode(id));
     tr.addEventListener('mouseleave', () => highlightSvgNode(null));
     tr.addEventListener('click', (e) => {
+      if (e.detail > 1) return;  
       const cx = e.clientX, cy = e.clientY;
       C.setSelectedId(id);
       refreshTreeView();
@@ -764,8 +764,108 @@ function renderNodeTable() {
       setTimeout(() => showNodeActionPanel(id, cx, cy), 0);
     });
   });
+  box.querySelectorAll('.editable-cell').forEach(span => {
+    span.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      startEditCell(span);
+    });
+  });
 }
+function startEditCell(span) {
+  if (!span || span.querySelector('input')) return;
+  const id = span.dataset.id;
+  const edit = span.dataset.edit;
+  const n = T.nodeById(id);
+  if (!n) return;
 
+  let raw = '';
+  let apply = null;
+
+  if (edit === 'label') {
+    raw = n.label != null ? String(n.label) : (n.name || '');
+    apply = (v) => { n.label = v === '' ? null : v; };
+  } else if (edit === 'length') {
+    raw = (n.length != null) ? String(n.length) : '';
+    apply = (v) => {
+      const num = Number(v);
+      if (Number.isFinite(num) && num >= 0) n.length = num;
+    };
+  } else if (edit === 'support') {
+    raw = (n.support != null) ? String(n.support) : '';
+    apply = (v) => { n.support = v; };
+  } else if (edit.indexOf('meta:') === 0) {
+    const field = edit.slice(5);
+    const list = (n.meta || []).filter(mm => mm.field === field);
+    if (list.length === 0) {
+      raw = '';
+    } else if (list.length === 1) {
+      const v = list[0].value;
+      raw = (typeof v === 'string') ? v : JSON.stringify(v);
+    } else {
+      raw = JSON.stringify(list.map(mm => mm.value));
+    }
+    apply = (v) => {
+      n.meta = (n.meta || []).filter(mm => mm.field !== field);
+      if (v === '') return;
+      let val = v;
+      try { val = JSON.parse(v); } catch (_) { /* 非 JSON 按纯字符串处理 */ }
+      if (list.length > 1 && Array.isArray(val)) {
+        val.forEach(x => n.meta.push({ field, value: x }));
+      } else {
+        n.meta.push({ field, value: val });
+      }
+    };
+  }
+
+  if (!apply) return;
+
+  const original = span.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = raw;
+  input.style.cssText =
+    'width:100%;box-sizing:border-box;font-family:Consolas,Monaco,monospace;' +
+    'font-size:12px;padding:1px 4px;border:1px solid #1f4068;border-radius:3px;' +
+    'background:#fff;color:#222;outline:none;';
+
+  span.innerHTML = '';
+  span.appendChild(input);
+  input.focus();
+  input.select();
+
+  let done = false;
+
+  function commit() {
+    if (done) return;
+    done = true;
+    const v = input.value;
+    if (v !== raw) {
+      C.snapshot();
+      apply(v);
+      const wrap = document.getElementById('nodeTableWrap');
+      const scrollTop = wrap ? wrap.scrollTop : 0;
+      global.TreeRenderer.draw();
+      renderNodeTable();
+      if (wrap) wrap.scrollTop = scrollTop;
+      const statusEl = document.getElementById('status');
+      if (statusEl) statusEl.textContent = '已更新单元格：' + (edit.split(':')[0] === 'meta' ? edit.slice(5) : edit);
+    } else {
+      span.textContent = original;
+    }
+  }
+
+  function cancel() {
+    if (done) return;
+    done = true;
+    span.textContent = original;
+  }
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+  });
+}
 function showNodeActionPanel(nodeId, clientX, clientY) {
   const n = T.nodeById(nodeId);
   if (!n) return;
@@ -794,6 +894,15 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
   const modeTooltip = canExtend ? "" : ` title="${I.t('napExtendTooltip')}"`;
   const kindLabel = isLeaf ? I.t('napLeaf') : I.t('napInternal');
 
+  let ownerRange = null;
+  for (let cur = n; cur; cur = cur.parent) {
+    if (cur.rangeId != null) {
+      ownerRange = global.TreeRanges.colorRanges.find(r => r.id === cur.rangeId) || null;
+      break;
+    }
+  }
+  const allRanges = global.TreeRanges.colorRanges;
+
   panel.innerHTML = `
     <div class="nap-title">${I.t('napTitle', { kind: kindLabel, name: escapeHtml(T.labelOf(n)) })}</div>
     <button class="nap-btn" data-nap="delete">${isLeaf ? I.t('napDeleteLeaf') : I.t('napDeleteClade')}</button>
@@ -815,6 +924,25 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
     </div>
     <button class="nap-btn" data-nap="reverse" ${isLeaf ? "disabled" : ""}>${I.t('napReverse')}</button>
     <button class="nap-btn" data-nap="dash">${I.t('napDash')}</button>
+    <button class="nap-btn has-sub" data-nap="range-toggle">色带管理</button>
+    <div class="nap-sub" data-sub="range">
+      <div class="nap-sub-title">分组色带</div>
+      ${ownerRange ? `<div class="nap-hint" style="padding:2px 22px 6px;">当前属于：<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${ownerRange.color};margin-right:4px;vertical-align:middle;"></span>${escapeHtml(ownerRange.label || ('Range ' + ownerRange.id))}</div>` : ''}
+      <button class="nap-sub-btn" data-range-action="create">
+        <span class="nap-sub-radio">＋</span> 创建新色带
+      </button>
+      ${allRanges.map(r => `
+        <button class="nap-sub-btn" data-range-action="add:${r.id}">
+          <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${r.color};flex-shrink:0;"></span>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.label || ('Range ' + r.id))}</span>
+          ${n.rangeId === r.id ? '<span style="color:#c0392b;font-weight:700;">✓</span>' : ''}
+        </button>
+      `).join('')}
+      <button class="nap-sub-btn" data-range-action="remove" ${n.rangeId == null ? 'disabled' : ''}>
+        <span class="nap-sub-radio">−</span> 从色带中移除
+      </button>
+      <div class="nap-hint">创建后可在第五步“叶标签背景色”里统一改颜色和名称。</div>
+    </div>
     <div class="nap-row"><label>${I.t('napSubtreeColor')}</label><input type="color" class="nap-color" value="${curColor}"></div>
     <div class="nap-row"><label>${I.t('napWidthFactor')}</label><input type="number" class="nap-width" min="0.2" max="8" step="0.1" value="${curWidth}"></div>
     <button class="nap-btn nap-close" data-nap="close">${I.t('napClose')}</button>
@@ -833,6 +961,8 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
   const compressLeafCountInput = panel.querySelector(".nap-compress-leafcount");
   const fillInput = panel.querySelector(".nap-fill");
   const fillOpacityInput = panel.querySelector(".nap-fill-opacity");
+  const rangeToggle = panel.querySelector('[data-nap="range-toggle"]');
+  const rangeSub = panel.querySelector('[data-sub="range"]');
 
   if (collapseToggle) {
     collapseToggle.addEventListener("click", (e) => {
@@ -900,9 +1030,44 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
     C.snapshot(); C.state.collapsedFillOpacity = v;
     if (n.collapsed) refreshTreeView();
   });
+
+  if (rangeToggle && rangeSub) {
+    rangeToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const willOpen = !rangeSub.classList.contains("open");
+      rangeSub.classList.toggle("open", willOpen);
+      rangeToggle.classList.toggle("open", willOpen);
+      if (willOpen) reposition();
+    });
+  }
+
+  panel.querySelectorAll("[data-range-action]").forEach(rbtn => {
+    rbtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (rbtn.disabled) return;
+      const ract = rbtn.dataset.rangeAction;
+      if (ract === "create") {
+        global.TreeRanges.openRangeModal();
+      } else if (ract.indexOf("add:") === 0) {
+        const id = Number(ract.split(":")[1]);
+        C.snapshot();
+        n.rangeId = id;
+        refreshTreeView();
+        renderNodeTable();
+      } else if (ract === "remove") {
+        C.snapshot();
+        n.rangeId = null;
+        refreshTreeView();
+        renderNodeTable();
+      }
+      panel.style.display = "none";
+    });
+  });
+
   panel.querySelectorAll("[data-nap]").forEach(btn => {
     const act = btn.dataset.nap;
     if (act === "collapse-toggle") return;
+    if (act === "range-toggle") return;   
     if (act === "close") {
       btn.addEventListener("click", (e) => { e.stopPropagation(); panel.style.display = "none"; });
       return;
@@ -913,6 +1078,7 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
       handleNodeAction(act, n);
     });
   });
+
   const colorInput = panel.querySelector(".nap-color");
   if (colorInput) colorInput.addEventListener("change", () => {
     const val = colorInput.value || "#262626";
@@ -928,6 +1094,7 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
     T.allWalk(n, x => { x.branchWidthFactor = v; });
     refreshTreeView(); renderNodeTable();
   });
+
   function reposition() {
     const w2 = panel.offsetWidth, h2 = panel.offsetHeight;
     const left = Math.min(parseFloat(panel.style.left) || clientX + 8, window.innerWidth - w2 - 8);
@@ -936,7 +1103,6 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
     panel.style.top = Math.max(8, top) + "px";
   }
 }
-
 function showBranchActionPanel(branchNodeId, clientX, clientY) {
   const n = T.nodeById(branchNodeId);
   if (!n || !n.parent) return;
@@ -1047,7 +1213,7 @@ function sameTree(raw) {
   if (!C.getRoot()) return false;
   const snapSet = snapshotLeafSet(raw);
   if (!snapSet) return false;
-  const currentSet = new Set(T.visibleLeaves(C.getRoot()).map(l => String(T.labelOf(l))));
+  const currentSet = new Set(T.visibleLeaves(C.getRoot()).map(l => String(l.name || l.label || l.id)));
   if (snapSet.size !== currentSet.size) return false;
   for (const s of snapSet) if (!currentSet.has(s)) return false;
   return true;
@@ -1068,6 +1234,9 @@ function applyLoadedState(raw, opts) {
     }
   } catch (_) {}
   C.applySnapshot(raw);
+  C.state.zoom = 1;
+  C.state.panX = 0;
+  C.state.panY = 0;
   if (keepRoot && currentRoot) {
     C.setRoot(currentRoot);
     C.restoreParents(currentRoot, null);
@@ -1085,7 +1254,7 @@ function applyLoadedState(raw, opts) {
   C.setSelectedId(null);
   C.setSelectedBranchId(null);
   renderNodeTable();
-  rebuildLeafRowsFromTree();
+  if (!leafData.rows.length) rebuildLeafRowsFromTree();
   renderLeafDataPreview();
   refreshDataSummary();
   
@@ -1228,13 +1397,13 @@ function renderTreeImportPanel() {
   document.getElementById("treeStateFile")?.addEventListener("change", e => {
     const f = e.target.files[0]; if (!f) return;
     const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const raw = ev.target.result;
-        applyLoadedState(raw, { keepRoot: !sameTree(raw) });
-        showTreeMsg(I.t('importStateLoaded'), "success");
-      } catch (err) { showTreeMsg(I.t('importStateLoadFail', { msg: err.message }), "error"); }
-    };
+reader.onload = ev => {
+  try {
+    const raw = ev.target.result;
+    applyLoadedState(raw, { keepRoot: sameTree(raw) });
+    showTreeMsg(I.t('importStateLoaded'), "success");
+  } catch (err) { showTreeMsg(I.t('importStateLoadFail', { msg: err.message }), "error"); }
+};
     reader.readAsText(f);
     e.target.value = "";
   });
@@ -1471,6 +1640,8 @@ function bindAllControls() {
   bindChk("forceMidpointRoot", "forceMidpointRoot");
   bindSel("labelsSelect", "labels", "bool");
   bindSel("labelPositionSelect", "labelPosition");
+  bindInp("leafLabelOffsetX", "leafLabelOffsetX", "num");
+  bindInp("leafLabelOffsetCirc", "leafLabelOffsetCirc", "num");
   bindInp("fontSize", "fontSize", "num");
   bindInp("labelColor", "labelColor");
   bindChk("boldChk", "bold");

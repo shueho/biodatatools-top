@@ -4,7 +4,10 @@
    ============================================================ */
 (function (global) {
     'use strict';
-
+function tr(key) {
+    const I = global.TreeI18N;
+    return (I && typeof I.t === 'function') ? I.t(key) : key;
+}
     const VERSION = '1.6.1';
 
     function getInterpFn(name) {
@@ -14,53 +17,52 @@
         return typeof f === 'function' ? f : function () { return '#cccccc'; };
     }
 
-    const GROUPS = [
-        {
-            key: 'div',
-            title: '发散色板（双方向数值）',
-            color: '#7c3aed',
-            items: [
-                { id: 'RdBu',     desc: '红-蓝' },
-                { id: 'PiYG',     desc: '粉-黄绿' },
-                { id: 'PRGn',     desc: '紫-绿' },
-                { id: 'PuOr',     desc: '紫-橙' },
-                { id: 'RdYlBu',   desc: '红-黄-蓝' },
-                { id: 'RdYlGn',   desc: '红-黄-绿' },
-                { id: 'BrBG',     desc: '棕-蓝绿' },
-                { id: 'Spectral', desc: '彩虹光谱' }
-            ]
-        },
-        {
-            key: 'seq',
-            title: '顺序色板（单方向数值）',
-            color: '#b45309',
-            items: [
-                { id: 'Viridis', desc: '蓝→绿→黄' },
-                { id: 'Magma',   desc: '黑→红→黄' },
-                { id: 'Inferno', desc: '黑→橙→黄' },
-                { id: 'Plasma',  desc: '紫→红→黄' },
-                { id: 'Cividis', desc: '蓝→黄' },
-                { id: 'Turbo',   desc: '彩虹高对比' },
-                { id: 'YlOrRd',  desc: '黄→橙→红' },
-                { id: 'YlGnBu',  desc: '黄→绿→蓝' },
-                { id: 'YlGn',    desc: '黄→绿' },
-                { id: 'OrRd',    desc: '橙→红' },
-                { id: 'BuGn',    desc: '蓝→绿' },
-                { id: 'PuBu',    desc: '紫→蓝' },
-                { id: 'BuPu',    desc: '蓝→紫' },
-                { id: 'GnBu',    desc: '绿→蓝' },
-                { id: 'Oranges', desc: '白→橙' },
-                { id: 'Blues',   desc: '白→蓝' },
-                { id: 'Greens',  desc: '白→绿' },
-                { id: 'Greys',   desc: '白→灰' },
-                { id: 'Purples', desc: '白→紫' },
-                { id: 'Reds',    desc: '白→红' },
-                { id: 'Warm',    desc: '暖色系' },
-                { id: 'Cool',    desc: '冷色系' }
-            ]
-        }
-    ];
-
+const GROUPS = [
+    {
+        key: 'div',
+        titleKey: 'paletteGroupDivergent',
+        color: '#7c3aed',
+        items: [
+            { id: 'RdBu',     descKey: 'contPal_RdBu' },
+            { id: 'PiYG',     descKey: 'contPal_PiYG' },
+            { id: 'PRGn',     descKey: 'contPal_PRGn' },
+            { id: 'PuOr',     descKey: 'contPal_PuOr' },
+            { id: 'RdYlBu',   descKey: 'contPal_RdYlBu' },
+            { id: 'RdYlGn',   descKey: 'contPal_RdYlGn' },
+            { id: 'BrBG',     descKey: 'contPal_BrBG' },
+            { id: 'Spectral', descKey: 'contPal_Spectral' }
+        ]
+    },
+    {
+        key: 'seq',
+        titleKey: 'paletteGroupSequential',
+        color: '#b45309',
+        items: [
+            { id: 'Viridis', descKey: 'contPal_Viridis' },
+            { id: 'Magma',   descKey: 'contPal_Magma' },
+            { id: 'Inferno', descKey: 'contPal_Inferno' },
+            { id: 'Plasma',  descKey: 'contPal_Plasma' },
+            { id: 'Cividis', descKey: 'contPal_Cividis' },
+            { id: 'Turbo',   descKey: 'contPal_Turbo' },
+            { id: 'YlOrRd',  descKey: 'contPal_YlOrRd' },
+            { id: 'YlGnBu',  descKey: 'contPal_YlGnBu' },
+            { id: 'YlGn',    descKey: 'contPal_YlGn' },
+            { id: 'OrRd',    descKey: 'contPal_OrRd' },
+            { id: 'BuGn',    descKey: 'contPal_BuGn' },
+            { id: 'PuBu',    descKey: 'contPal_PuBu' },
+            { id: 'BuPu',    descKey: 'contPal_BuPu' },
+            { id: 'GnBu',    descKey: 'contPal_GnBu' },
+            { id: 'Oranges', descKey: 'contPal_Oranges' },
+            { id: 'Blues',   descKey: 'contPal_Blues' },
+            { id: 'Greens',  descKey: 'contPal_Greens' },
+            { id: 'Greys',   descKey: 'contPal_Greys' },
+            { id: 'Purples', descKey: 'contPal_Purples' },
+            { id: 'Reds',    descKey: 'contPal_Reds' },
+            { id: 'Warm',    descKey: 'contPal_Warm' },
+            { id: 'Cool',    descKey: 'contPal_Cool' }
+        ]
+    }
+];
     function listNames() {
         const out = [];
         GROUPS.forEach(function (g) {
@@ -149,22 +151,22 @@
         dropdown.className = 'ctp-dropdown';
 
         GROUPS.forEach(function (group) {
-            const gl = document.createElement('div');
-            gl.className = 'ctp-group';
-            gl.style.color = group.color;
-            gl.textContent = group.title;
-            dropdown.appendChild(gl);
+const gl = document.createElement('div');
+gl.className = 'ctp-group';
+gl.style.color = group.color;
+gl.textContent = tr(group.titleKey);
+dropdown.appendChild(gl);
 
             group.items.forEach(function (item) {
                 const opt = document.createElement('div');
                 opt.className = 'ctp-option' + (cur === item.id ? ' active' : '');
                 opt.dataset.value = item.id;
                 const grad = buildGradientCss(item.id);
-                opt.innerHTML =
-                    '<div class="ctp-preview" style="background:' + grad + '"></div>' +
-                    '<span class="ctp-name" style="color:' + group.color + ';">' + escapeHtml(item.id) + '</span>' +
-                    '<span class="ctp-desc">' + escapeHtml(item.desc) + '</span>' +
-                    '<span class="ctp-check">✓</span>';
+opt.innerHTML =
+    '<div class="ctp-preview" style="background:' + grad + '"></div>' +
+    '<span class="ctp-name" style="color:' + group.color + ';">' + escapeHtml(item.id) + '</span>' +
+    '<span class="ctp-desc">' + escapeHtml(tr(item.descKey)) + '</span>' +
+    '<span class="ctp-check">✓</span>';
 
                 opt.addEventListener('click', function (e) {
                     e.stopPropagation();

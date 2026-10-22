@@ -52,11 +52,11 @@ function renderGroupPaletteDropdown(container, opts) {
   ensurePaletteDropdownStyles();
 
   const groups = [
-    { key: "d3", label: "D3配色",
+    { key: "d3", label: I.t('paletteGroupD3'),
       names: ["tableau10","category10","set1","set2","set3","paired","dark2","accent","pastel1","pastel2"] },
-    { key: "ggsci", label: "GGSCI配色",
+    { key: "ggsci", label: I.t('paletteGroupGgsci'),
       names: ["npg","aaas","nejm","lancet","jama","bmj","jco","locuszoom","uchicago","startrek","tron","futurama","rickandmorty","simpsons"] },
-    { key: "other", label: "其他配色",
+    { key: "other", label: I.t('paletteGroupOther'),
       names: ["okabeito","ibm","tolBright","tolVibrant","tolMuted","tolLight","tolHighContrast","tolMediumContrast","kelly","ggplotHue"] }
   ];
 
@@ -131,182 +131,9 @@ function renderGroupPaletteDropdown(container, opts) {
   }
 }
 
-function showMenu(n, clientX, clientY) {
-  C.setSelectedId(n.id);
-  const menu = document.getElementById("contextMenu");
-  const title = document.getElementById("menuTitle");
-  const statusEl = document.getElementById("status");
-  title.textContent = T.isLeaf(n) ? I.t('menuLeaf') : I.t('menuNode');
-  const menuW = 270, submenuW = 310, menuH = 330;
-  menu.style.left = Math.max(8, Math.min(clientX + 8, window.innerWidth - menuW - submenuW - 18)) + "px";
-  menu.style.top = Math.max(8, Math.min(clientY + 8, window.innerHeight - menuH - 12)) + "px";
-  hideSubmenu();
-  menu.style.display = "block";
-  if (statusEl) statusEl.textContent = I.t('statusSelected') + ": " + T.labelOf(n) + " (" + n.id + ")";
-  global.TreeRenderer.draw();
-  menu.style.display = "block";
-}
-function hideSubmenu() {
-  const submenu = document.getElementById("menuSubmenu");
-  const menu = document.getElementById("contextMenu");
-  if (!submenu || !menu) return;
-  submenu.classList.remove("active");
-  submenu.innerHTML = "";
-  menu.querySelectorAll(".menu-row").forEach(row => row.classList.remove("active"));
-}
-function redrawKeepingMenu() {
-  const menu = document.getElementById("contextMenu");
-  const activePanel = menu.querySelector(".menu-row.active")?.dataset.panel;
-  global.TreeRenderer.draw();
-  menu.style.display = "block";
-  if (activePanel) { const row = menu.querySelector(`[data-panel="${activePanel}"]`); if (row) showSubmenu(activePanel, row); }
-}
-function showSubmenu(panel, row) {
-  const menu = document.getElementById("contextMenu");
-  const submenu = document.getElementById("menuSubmenu");
-  const n = T.nodeById(C.getSelectedId()); if (!n) return;
-  menu.querySelectorAll(".menu-row").forEach(r => r.classList.remove("active"));
-  row.classList.add("active");
-  submenu.style.top = row.offsetTop + "px";
-  submenu.innerHTML = submenuHtml(panel, n);
-  submenu.classList.add("active");
-}
-function submenuHtml(panel, n) {
-  if (panel === "ranges") {
-    let html = `<div class="submenu-actions"><button class="submenu-btn" data-subaction="range-create">▣ ${I.t('menuCreateRange')}</button>`;
-    if (R.colorRanges.length) {
-      html += `<div class="submenu-row"><label>${I.t('menuAddToExisting')}</label></div>`;
-      R.colorRanges.forEach(r => {
-        html += `<button class="submenu-btn" data-subaction="range-add:${r.id}"><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${r.color};margin-right:6px;vertical-align:middle"></span>${escapeHtml(r.label || ("Range " + r.id))}</button>`;
-      });
-      html += `<button class="submenu-btn" data-subaction="range-remove">▭ ${I.t('menuRemoveFromRange')}</button>`;
-    }
-    html += `</div>`;
-    return html;
-  }
-  if (panel === "branch") {
-    return `<div class="submenu-row"><label>${I.t('menuColor')}</label><input type="color" data-subinput="branchColor" value="${n.branchColor || C.state.branchColor}"></div>
-      <div class="submenu-row"><label>${I.t('menuLine')}</label><div><button class="submenu-btn" data-subaction="branch-solid">${I.t('menuSolid')}</button><button class="submenu-btn" data-subaction="branch-dashed">${I.t('menuDashed')}</button></div></div>
-      <div class="submenu-row"><label>${I.t('menuWidthFactor')}</label><input type="number" min=".2" max="8" step=".1" data-subinput="branchWidthFactor" value="${n.branchWidthFactor || 1}"></div>
-      <div class="submenu-row"><label>${I.t('menuVerticalSpacing')}</label><input type="number" min=".5" max="3" step=".1" data-subinput="branchSpacing" value="${n.branchSpacing || 1}"></div>`;
-  }
-  if (panel === "label") {
-    return `<div class="submenu-row"><label>${I.t('menuColor')}</label><input type="color" data-subinput="labelColor" value="${n.labelColor || C.state.labelColor}"></div>
-      <div class="submenu-row"><label>${I.t('menuBackground')}</label><input type="color" data-subinput="labelBg" value="${n.labelBg || "#ffffff"}"></div>
-      <div class="submenu-row"><label>${I.t('menuText')}</label><button class="submenu-btn" data-subaction="label-edit">${I.t('menuEditLabel')}</button></div>
-      <div class="submenu-row"><label>${I.t('menuStyle')}</label><div><button class="submenu-btn" data-subaction="label-bold">${I.t('menuBold')}</button> <button class="submenu-btn" data-subaction="label-italic"><i>${I.t('menuItalic')}</i></button></div></div>
-      <div class="submenu-row"><label>Multi-style:</label><button class="submenu-btn" data-subaction="label-multistyle">${I.t('menuMultiStyle')}</button></div>
-      <div class="submenu-row"><label>${I.t('menuSizeFactor')}</label><input type="number" min=".4" max="4" step=".1" data-subinput="labelSizeFactor" value="${n.labelSizeFactor || 1}"></div>`;
-  }
-  return `<div class="submenu-actions">
-      <button class="submenu-btn" data-subaction="truncate">✂ ${I.t('menuTruncate')}</button>
-      <button class="submenu-btn" data-subaction="delete">▥ ${T.isLeaf(n) ? I.t('menuDeleteLeaf') : I.t('menuDeleteClade')}</button>
-      <button class="submenu-btn" data-subaction="move">✥ ${I.t('menuMoveLeaf')}</button>
-      <button class="submenu-btn" data-subaction="midpoint">♣ ${I.t('menuMidpoint')}</button>
-    </div>`;
-}
-function menuAction(action) {
-  const n = T.nodeById(C.getSelectedId());
-  if (!n && !["restore", "restore-hidden"].includes(action)) return;
-  if (action === "open-metadata") { global.TreeModals.openMetaModal(); return; }
-  if (action !== "copy") C.snapshot();
-  const statusEl = document.getElementById("status");
-  if (action === "restore-hidden") { T.allWalk(C.getRoot(), x => { x.deleted = false; }); if (statusEl) statusEl.textContent = I.t('statusRestored'); }
-  if (action === "copy") { navigator.clipboard && navigator.clipboard.writeText(n.id); if (statusEl) statusEl.textContent = I.t('statusCopied'); }
-  if (action === "delete") n.deleted = true;
-  if (action === "collapse") n.collapsed = !n.collapsed;
-  if (action === "restore") { T.allWalk(C.getRoot(), x => { x.deleted = false; x.collapsed = false; x.highlight = false; }); if (statusEl) statusEl.textContent = I.t('statusRestored'); }
-  global.TreeRenderer.draw();
-}
-function submenuAction(action) {
-  const n = T.nodeById(C.getSelectedId()); if (!n) return;
-  C.snapshot();
-  if (action === "range-create") { R.openRangeModal(); return; }
-  if (action.indexOf("range-add:") === 0) { const id = Number(action.split(":")[1]); if (R.rangeById(id)) n.rangeId = id; }
-  if (action === "range-remove") n.rangeId = null;
-  if (action === "branch-solid") n.branchDash = false;
-  if (action === "branch-dashed") n.branchDash = true;
-  if (action === "label-edit") { const v = prompt(I.t('menuEditLabel'), T.labelOf(n)); if (v !== null) n.label = v; }
-  if (action === "label-bold") n.labelBold = !n.labelBold;
-  if (action === "label-italic") n.labelItalic = !n.labelItalic;
-  if (action === "label-multistyle") { global.TreeModals.openMultiStyleModal(); return; }
-  if (action === "truncate") n.truncated = !n.truncated;
-  if (action === "delete") n.deleted = true;
-  if (action === "move") { const st = document.getElementById("status"); if (st) st.textContent = I.t('statusDragToMove'); }
-  redrawKeepingMenu();
-}
-function submenuInput(name, value) {
-  const n = T.nodeById(C.getSelectedId()); if (!n) return;
-  C.snapshot();
-  if (name === "branchColor") n.branchColor = value;
-  if (name === "branchWidthFactor") n.branchWidthFactor = Number(value) || 1;
-  if (name === "branchSpacing") n.branchSpacing = Number(value) || 1;
-  if (name === "labelColor") n.labelColor = value;
-  if (name === "labelBg") n.labelBg = value;
-  if (name === "labelSizeFactor") n.labelSizeFactor = Number(value) || 1;
-  redrawKeepingMenu();
-}
-function bindMenuEvents() {
-  const menu = document.getElementById("contextMenu");
-  const submenu = document.getElementById("menuSubmenu");
-  if (!menu || !submenu) return;
-  menu.addEventListener("click", e => {
-    const panelRow = e.target.closest("[data-panel]");
-    if (panelRow) { showSubmenu(panelRow.dataset.panel, panelRow); return; }
-    const row = e.target.closest("[data-action]");
-    if (row) menuAction(row.dataset.action);
-  });
-  menu.addEventListener("mouseover", e => {
-    const panelRow = e.target.closest("[data-panel]");
-    if (panelRow) showSubmenu(panelRow.dataset.panel, panelRow);
-  });
-  submenu.addEventListener("click", e => { const btn = e.target.closest("[data-subaction]"); if (btn) submenuAction(btn.dataset.subaction); });
-  submenu.addEventListener("input", e => { const input = e.target.closest("[data-subinput]"); if (input) submenuInput(input.dataset.subinput, input.value); });
-  document.addEventListener("keydown", e => {
-    if (e.key === "Escape") { menu.style.display = "none"; hideSubmenu(); }
-  });
-}
-global.TreeMenu = { showMenu, hideSubmenu, redrawKeepingMenu, showSubmenu, submenuHtml, menuAction, submenuAction, submenuInput, bindMenuEvents };
 
 let msSelStart = 0, msSelEnd = 0;
-function renderMetaFields(fields) {
-  const box = document.getElementById("mmFields"); if (!box) return;
-  box.innerHTML = fields.map(f => `<div class="mm-frow"><input class="mm-fname" type="text" value="${escapeAttr(f.field||"")}"><input class="mm-fval" type="text" value="${escapeAttr(f.value||"")}"></div>`).join("");
-}
-function openMetaModal() {
-  const n = T.nodeById(C.getSelectedId()); if (!n) return;
-  const bd = document.getElementById("metaModalBackdrop"); if (!bd) return;
-  document.getElementById("mmLabel").value = T.labelOf(n);
-  renderMetaFields(n.meta || []);
-  bd.style.display = "flex";
-}
-function closeMetaModal() { const bd = document.getElementById("metaModalBackdrop"); if (bd) bd.style.display = "none"; }
-function addMetaField() {
-  const box = document.getElementById("mmFields"); if (!box) return;
-  const row = document.createElement("div"); row.className = "mm-frow";
-  row.innerHTML = `<input class="mm-fname" type="text"><input class="mm-fval" type="text">`;
-  box.appendChild(row);
-  row.querySelector(".mm-fname")?.focus();
-}
-function deleteMetaField() {
-  const box = document.getElementById("mmFields"); if (!box) return;
-  const rows = box.querySelectorAll(".mm-frow"); if (rows.length) rows[rows.length-1].remove();
-}
-function updateMeta() {
-  const n = T.nodeById(C.getSelectedId());
-  if (!n) { closeMetaModal(); return; }
-  C.snapshot();
-  const fields = [];
-  document.querySelectorAll("#mmFields .mm-frow").forEach(r => {
-    const f = (r.querySelector(".mm-fname").value || "").trim();
-    const v = r.querySelector(".mm-fval").value || "";
-    if (f) fields.push({ field: f, value: v });
-  });
-  n.meta = fields;
-  const lbl = document.getElementById("mmLabel").value;
-  if (lbl !== T.labelOf(n)) n.label = lbl;
-  closeMetaModal(); global.TreeRenderer.draw();
-}
+
 function openMultiStyleModal() {
   const n = T.nodeById(C.getSelectedId()); if (!n) return;
   const bd = document.getElementById("msModalBackdrop"); if (!bd) return;
@@ -349,12 +176,7 @@ function resetLabelStyle() {
   C.snapshot(); n.styleRuns = []; global.TreeRenderer.draw();
 }
 function bindModals() {
-  document.getElementById("mmClose")?.addEventListener("click", closeMetaModal);
-  document.getElementById("mmCancel")?.addEventListener("click", closeMetaModal);
-  document.getElementById("mmUpdate")?.addEventListener("click", updateMeta);
-  document.getElementById("mmAddField")?.addEventListener("click", addMetaField);
-  document.getElementById("mmDelField")?.addEventListener("click", deleteMetaField);
-  document.getElementById("metaModalBackdrop")?.addEventListener("click", e => { if (e.target.id === "metaModalBackdrop") closeMetaModal(); });
+
   const mt = document.getElementById("msText");
   if (mt) ["keyup","mouseup","select"].forEach(ev => mt.addEventListener(ev, () => { msSelStart = mt.selectionStart; msSelEnd = mt.selectionEnd; }));
   ["msBold","msItalic","msSup","msSub"].forEach(id => document.getElementById(id)?.addEventListener("click", () => document.getElementById(id).classList.toggle("active")));
@@ -363,12 +185,8 @@ function bindModals() {
   document.getElementById("msClose")?.addEventListener("click", closeMultiStyleModal);
   document.getElementById("msCancel")?.addEventListener("click", closeMultiStyleModal);
   document.getElementById("msModalBackdrop")?.addEventListener("click", e => { if (e.target.id === "msModalBackdrop") closeMultiStyleModal(); });
-  document.getElementById("rmClose")?.addEventListener("click", R.closeRangeModal);
-  document.getElementById("rmCancel")?.addEventListener("click", R.closeRangeModal);
-  document.getElementById("rmCreate")?.addEventListener("click", R.confirmRangeModal);
 }
-global.TreeModals = { openMetaModal, closeMetaModal, addMetaField, deleteMetaField, updateMeta, openMultiStyleModal, closeMultiStyleModal, setSelectionStyle, resetLabelStyle, bindModals };
-
+global.TreeModals = { openMultiStyleModal, closeMultiStyleModal, setSelectionStyle, resetLabelStyle, bindModals };
 let drag = null, legendDrag = null, moveDrag = null;
 let moveLineEl = null, moveRingEl = null;
 let suppressSvgClick = false;
@@ -597,7 +415,6 @@ function bindSvgClick(svg) {
     }
     const target = e.target.closest && e.target.closest("[data-id]");
     if (!target) {
-      const menu = document.getElementById("contextMenu"); if (menu) menu.style.display = "none";
       const panel = document.getElementById("nodeActionPanel"); if (panel) panel.style.display = "none";
       const bpanel = document.getElementById("branchActionPanel"); if (bpanel) bpanel.style.display = "none";
       C.setSelectedId(null);
@@ -614,18 +431,9 @@ function bindSvgClick(svg) {
     const cx = e.clientX, cy = e.clientY;
     if (global.TreeApp && typeof global.TreeApp.showNodeActionPanel === "function") {
       setTimeout(() => global.TreeApp.showNodeActionPanel(n.id, cx, cy), 0);
-    } else if (global.TreeMenu) {
-      global.TreeMenu.showMenu(n, cx, cy);
     }
   });
-  svg.addEventListener("contextmenu", e => {
-    const target = e.target.closest && e.target.closest("[data-id]");
-    if (!target) return;
-    e.preventDefault();
-    let n = null;
-    T.allWalk(C.getRoot(), x => { if (x.id === target.dataset.id) n = x; });
-    if (n && global.TreeMenu) global.TreeMenu.showMenu(n, e.clientX, e.clientY);
-  });
+
 }
 global.TreeDrag = { enableDrag, bindSvgClick, clientToSvg };
 
@@ -652,7 +460,7 @@ function renderBasicPanel(container) {
             <option value="Arial" ${st.fontFamily==='Arial'?'selected':''}>Arial</option>
             <option value="Helvetica" ${st.fontFamily==='Helvetica'?'selected':''}>Helvetica</option>
             <option value="Georgia" ${st.fontFamily==='Georgia'?'selected':''}>Georgia</option>
-            <option value="Microsoft YaHei" ${st.fontFamily==='Microsoft YaHei'?'selected':''}>微软雅黑</option>
+            <option value="Microsoft YaHei" ${st.fontFamily==='Microsoft YaHei'?'selected':''}>${I.t('optMicrosoftYaHei')}</option>
           </select>
         </div>
       </div>
@@ -699,6 +507,10 @@ function renderBasicPanel(container) {
             <option value="tips" ${st.labelPosition==='tips'?'selected':''}>${I.t('optAtTips')}</option>
           </select>
         </div>
+        <div class="param-item"><label>${I.t('leafLabelOffsetX')}</label>
+          <input id="leafLabelOffsetX" type="number" value="${st.leafLabelOffsetX != null ? st.leafLabelOffsetX : 8}" step="1"></div>
+        <div class="param-item"><label>${I.t('leafLabelOffsetCirc')}</label>
+          <input id="leafLabelOffsetCirc" type="number" value="${st.leafLabelOffsetCirc != null ? st.leafLabelOffsetCirc : 8}" step="1"></div>
         <div class="param-item"><label>${I.t('panelLabelFontSize')}</label><input id="fontSize" type="number" value="${st.fontSize}" min="6" max="90"></div>
         <div class="param-item"><label>${I.t('panelLabelColor')}</label><input id="labelColor" type="color" value="${st.labelColor}"></div>
         <div class="param-item"><label class="mini-check"><input id="boldChk" type="checkbox" ${st.bold?'checked':''}> ${I.t('panelLabelBold')}</label></div>
@@ -802,7 +614,7 @@ function renderBasicPanel(container) {
       <div class="sub-section-title" style="margin-top:8px;"><strong>${I.t('tickLabelStyle')}</strong></div>
       <div class="param-grid cols-4">
         <div class="param-item"><label>${I.t('tickLabelFontSize')}</label>
-          <input id="tickLabelFontSize" type="number" value="${st.tickLabelFontSize || 11}" min="6" max="40">
+          <input id="tickLabelFontSize" type="number" value="${st.tickLabelFontSize || 20}" min="6" max="40">
         </div>
         <div class="param-item"><label class="mini-check"><input id="tickLabelBold" type="checkbox" ${st.tickLabelBold?'checked':''}> ${I.t('tickLabelBold')}</label></div>
         <div class="param-item"><label class="mini-check"><input id="tickLabelItalic" type="checkbox" ${st.tickLabelItalic?'checked':''}> ${I.t('tickLabelItalic')}</label></div>
@@ -992,9 +804,9 @@ function renderBasicPanel(container) {
 
   const posSel = container.querySelector('#labelPositionSelect');
   if (posSel) {
-    posSel.addEventListener('change', () => {
+    posSel.addEventListener('change', (e) => {
       const item = container.querySelector('#specificPanelInner .align-item');
-      if (item) item.style.display = C.state.labelPosition === 'aligned' ? '' : 'none';
+      if (item) item.style.display = e.target.value === 'aligned' ? '' : 'none';
     });
   }
 }
@@ -1171,6 +983,12 @@ function renderAdvancedPanel(container) {
           <input id="nodeLabelOffsetX" type="number" value="${st.nodeLabelCommon.offsetX}" step="1"></div>
         <div class="param-item"><label>${I.t('nodeLabelOffsetY')}</label>
           <input id="nodeLabelOffsetY" type="number" value="${st.nodeLabelCommon.offsetY}" step="1"></div>
+
+<div class="param-item"><label>${I.t('nodeLabelOffsetTangent')}</label>
+  <input id="nodeLabelOffsetTangent" type="number" value="${st.nodeLabelCommon.offsetTangent || 0}" step="1"></div>
+<div class="param-item"><label>${I.t('nodeLabelOffsetRadial')}</label>
+  <input id="nodeLabelOffsetRadial" type="number" value="${st.nodeLabelCommon.offsetRadial || 0}" step="1"></div>
+
         <div class="param-item"><label class="mini-check">
           <input id="nodeLabelMergeText" type="checkbox" ${st.nodeLabelCommon.mergeText !== false ? 'checked' : ''}> ${I.t('nodeLabelMergeText')}
         </label></div>
@@ -1266,7 +1084,7 @@ function renderAdvancedPanel(container) {
     </div>
   `;
 
-  const setLen = (k, v) => { st.lengthLabel[k] = v; C.snapshot(); global.TreeRenderer.draw(); };
+  const setLen = (k, v) => { C.snapshot(); st.lengthLabel[k] = v; global.TreeRenderer.draw(); };
   container.querySelector('#lenLabelShow')?.addEventListener('change', e => setLen('show', e.target.value === 'true'));
   container.querySelector('#lenLabelFontSize')?.addEventListener('input', e => setLen('fontSize', Number(e.target.value)));
   container.querySelector('#lenLabelBold')?.addEventListener('change', e => setLen('bold', e.target.checked));
@@ -1282,12 +1100,14 @@ function renderAdvancedPanel(container) {
   container.querySelector('#lenLabelTimeFactor')?.addEventListener('input', e => setLen('timeFactor', Number(e.target.value)));
   container.querySelector('#lenLabelCiField')?.addEventListener('change', e => setLen('ciField', e.target.value));
 
-  const setNodeCommon = (k, v) => { st.nodeLabelCommon[k] = v; C.snapshot(); global.TreeRenderer.draw(); };
+  const setNodeCommon = (k, v) => { C.snapshot(); st.nodeLabelCommon[k] = v; global.TreeRenderer.draw(); };
   container.querySelector('#nodeLabelFontSize')?.addEventListener('input', e => setNodeCommon('fontSize', Number(e.target.value)));
   container.querySelector('#nodeLabelBold')?.addEventListener('change', e => setNodeCommon('bold', e.target.checked));
   container.querySelector('#nodeLabelItalic')?.addEventListener('change', e => setNodeCommon('italic', e.target.checked));
   container.querySelector('#nodeLabelOffsetX')?.addEventListener('input', e => setNodeCommon('offsetX', Number(e.target.value)));
   container.querySelector('#nodeLabelOffsetY')?.addEventListener('input', e => setNodeCommon('offsetY', Number(e.target.value)));
+container.querySelector('#nodeLabelOffsetTangent')?.addEventListener('input', e => setNodeCommon('offsetTangent', Number(e.target.value)));
+container.querySelector('#nodeLabelOffsetRadial')?.addEventListener('input', e => setNodeCommon('offsetRadial', Number(e.target.value)));
   container.querySelector('#nodeLabelMergeText')?.addEventListener('change', e => setNodeCommon('mergeText', e.target.checked));
   container.querySelector('#nodeLabelFillColorAs')?.addEventListener('change', e => setNodeCommon('fillColorAs', e.target.value));
   container.querySelector('#nodeLabelBgFill')?.addEventListener('input', e => setNodeCommon('bgFill', e.target.value));
@@ -1314,7 +1134,7 @@ function renderAdvancedPanel(container) {
   });
   renderNodeLabelList();
 
-  const setRange = (k, v) => { st.rangeLabelConfig[k] = v; C.snapshot(); global.TreeRenderer.draw(); };
+  const setRange = (k, v) => { C.snapshot(); st.rangeLabelConfig[k] = v; global.TreeRenderer.draw(); };
   container.querySelector('#rangeLabelShow')?.addEventListener('change', e => setRange('show', e.target.value === 'true'));
   container.querySelector('#rangeLabelField')?.addEventListener('change', e => setRange('field', e.target.value));
   container.querySelector('#rangeLabelLineHeight')?.addEventListener('input', e => setRange('lineHeight', Number(e.target.value)));
@@ -1567,7 +1387,7 @@ function renderDatasetsPanel(container) {
         <div class="param-item"><label>${I.t('trackLegendFontSize')}</label><input id="tcLegendFontSize" type="number" min="6" max="40" value="11"></div>
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendBold"> ${I.t('trackLegendBold')}</label></div>
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendItalic"> ${I.t('trackLegendItalic')}</label></div>
-        <div class="param-item"><label>${I.t('trackLegendTitleFontSize')}</label><input id="tcLegendTitleFontSize" type="number" min="6" max="40" value="12"></div>
+        <div class="param-item"><label>${I.t('trackLegendTitleFontSize')}</label><input id="tcLegendTitleFontSize" type="number" min="6" max="40" value="30"></div>
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleBold" checked> ${I.t('trackLegendTitleBold')}</label></div>
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcLegendTitleItalic"> ${I.t('trackLegendTitleItalic')}</label></div>
         <div class="param-item"><label>${I.t('trackLegendMaxPerRow')}</label><input id="tcLegendMaxPerRow" type="number" min="0" max="20" value="0" placeholder="0"></div>
@@ -1576,7 +1396,7 @@ function renderDatasetsPanel(container) {
       ${subTitle(I.t('trackNameAndGap'))}
       <div class="param-grid cols-4">
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcTrackNameShow" checked> ${I.t('trackNameShow')}</label></div>
-        <div class="param-item"><label>${I.t('trackNameFontSize')}</label><input id="tcTrackNameFontSize" type="number" min="6" max="40" value="11"></div>
+        <div class="param-item"><label>${I.t('trackNameFontSize')}</label><input id="tcTrackNameFontSize" type="number" min="6" max="40" value="26"></div>
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcTrackNameBold" checked> ${I.t('trackNameBold')}</label></div>
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcTrackNameItalic"> ${I.t('trackNameItalic')}</label></div>
         <div class="param-item"><label>${I.t('trackNameAngle')}</label><input id="tcTrackNameAngle" type="number" min="-90" max="90" step="1" value="-45"></div>
@@ -1855,12 +1675,15 @@ function legendBlock(t) {
     <div class="param-grid cols-4">
       <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showLegend" data-tid="${t.id}" ${t.showLegend?'checked':''}> ${I.t('legendShowChk')}</label></div>
       <div class="param-item"><label>${I.t('legendTitleLabel')}</label><input type="text" data-tprop="legendTitle" data-tid="${t.id}" value="${escapeAttr(t.legendTitle || '')}" placeholder="${I.t('trackUntitled')}"></div>
-      ${t.type === 'heatstrip' ? `<div class="param-item"><label>${I.t('legendDirection')}</label><select data-tprop="legendOrientation" data-tid="${t.id}">
-        <option value="horizontal" ${t.legendOrientation!=='vertical'?'selected':''}>${I.t('legendHorizontal')}</option>
-        <option value="vertical" ${t.legendOrientation==='vertical'?'selected':''}>${I.t('legendVertical')}</option></select></div>` : ''}
+      ${t.type === 'heatstrip' ? `
+        <div class="param-item"><label>${I.t('legendDirection')}</label><select data-tprop="legendOrientation" data-tid="${t.id}">
+          <option value="horizontal" ${t.legendOrientation!=='vertical'?'selected':''}>${I.t('legendHorizontal')}</option>
+          <option value="vertical" ${t.legendOrientation==='vertical'?'selected':''}>${I.t('legendVertical')}</option></select></div>
+        <div class="param-item"><label>${I.t('heatLegendTickInterval')}</label><input type="number" data-tprop="legendTickInterval" data-tid="${t.id}" value="${t.legendTickInterval != null ? t.legendTickInterval : ''}" min="0" step="any" placeholder="auto"></div>
+        <div class="param-item"><label>${I.t('heatLegendTickDecimals')}</label><input type="number" data-tprop="legendTickDecimals" data-tid="${t.id}" value="${t.legendTickDecimals != null ? t.legendTickDecimals : 2}" min="0" max="6" step="1"></div>
+      ` : ''}
     </div>`;
 }
-
 function customColorBlock(t, values) {
   if (!values.length) return '';
   const cur = t.customColors || {};
@@ -2154,7 +1977,7 @@ function refreshTrackList(container) {
     return `
       <div class="track-item" data-track-id="${t.id}">
         <div class="track-header">
-          <span class="track-title">${escapeHtml(typeLabel)}：${escapeHtml(t.name || I.t('trackUntitled'))}</span>
+          <span class="track-title">${escapeHtml(typeLabel)}${I.t('trackTitleSep')}${escapeHtml(t.name || I.t('trackUntitled'))}</span>
           <button class="track-toggle" data-tid="${t.id}" type="button">${t.collapsed ? '▼' : '▲'}</button>
           <button class="track-remove" data-tid="${t.id}" type="button">×</button>
         </div>
@@ -2368,6 +2191,7 @@ function refreshTrackList(container) {
         vals.forEach((v, i) => { t.customColors[v] = pal[i % pal.length]; });
         TT.updateCustomTrack(id, { palette: name, customColors: t.customColors, _colorCache: null });
         global.TreeRenderer.draw();
+        refreshTrackList(container);
       }
     });
   });

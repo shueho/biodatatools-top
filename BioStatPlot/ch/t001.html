@@ -15,7 +15,6 @@
     padding: 0 !important;
     display: flex !important;
     align-items: stretch !important;
-    justify-content: stretch !important;
 }
 #chartPreview > .placeholder { margin: auto; }
 
@@ -173,6 +172,9 @@
         <input type="text" id="nodeTableSearch" placeholder="搜索ID/标签/父节点/元数据"
                style="flex:1;min-width:220px;">
       </div>
+      <div class="info-box" style="margin-bottom:8px;padding:6px 10px;background:#eef3f9;border-left:3px solid #1f4068;font-size:12px;color:#1f4068;line-height:1.6;">
+        提示：双击“Label、Length、Support、Meta: xxx“单元格进入编辑。Enter保存，Esc取消。
+      </div>
       <div id="nodeTableWrap" class="table-wrap" style="max-height:420px;overflow:auto;">
         <div class="empty-tip">加载树后将在此显示节点数据</div>
       </div>
@@ -328,37 +330,6 @@
 
 <div id="common-footer"></div>
 
-<div class="tree-context-menu" id="contextMenu">
-    <div class="menu-title" id="menuTitle">Leaf functions</div>
-    <div class="menu-row" data-action="restore-hidden">Add leaf to pruned tree</div>
-    <div class="menu-row" data-action="copy">Copy node ID</div>
-    <div class="menu-title">Editing</div>
-    <div class="menu-row has-submenu" data-panel="ranges">Colored ranges</div>
-    <div class="menu-row has-submenu" data-panel="branch">Branch</div>
-    <div class="menu-row has-submenu" data-panel="label">Label</div>
-    <div class="menu-row" data-action="open-metadata">Metadata</div>
-    <div class="menu-row has-submenu" data-panel="structure">Tree structure</div>
-    <div class="menu-submenu" id="menuSubmenu"></div>
-</div>
-
-<div class="meta-modal-backdrop" id="metaModalBackdrop">
-    <div class="meta-modal">
-        <div class="mm-head"><span>Edit metadata</span><button id="mmClose" class="mm-close" type="button">×</button></div>
-        <div class="mm-body">
-            <div class="mm-labelrow"><label>Label</label><input id="mmLabel" type="text"></div>
-            <div class="mm-grid-head"><span>Field</span><span>Value</span></div>
-            <div id="mmFields"></div>
-            <div class="mm-fieldbtns">
-                <button id="mmAddField" class="mm-btn-add" type="button">Add field</button>
-                <button id="mmDelField" class="mm-btn-del" type="button">Delete field</button>
-            </div>
-        </div>
-        <div class="mm-foot">
-            <button id="mmUpdate" class="mm-update" type="button">Update</button>
-            <button id="mmCancel" class="mm-cancel" type="button">Close</button>
-        </div>
-    </div>
-</div>
 
 <div class="ms-modal-backdrop" id="msModalBackdrop">
     <div class="ms-modal">
@@ -406,7 +377,7 @@
 <script>
 (function() {
     var need = ['TreeCore','TreeParser','TreeTraverse','TreeLayout','TreeDrawBranch','TreeDrawNode',
-        'TreeRenderer','TreeLegend','TreeRanges','TreeDatasets','TreeTracks','TreeMenu','TreeModals','TreeDrag',
+        'TreeRenderer','TreeLegend','TreeRanges','TreeDatasets','TreeTracks','TreeModals','TreeDrag',
         'TreeUI','TreeExport','TreeApp','TreeOps','TreeSerialize'];
     var missing = need.filter(function(k) { return !window[k]; });
     if (missing.length) {

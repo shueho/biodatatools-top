@@ -20,6 +20,8 @@ const ctx = {
     labelAnchorRect: "left",
     labelAnchorCirc: "auto",
     labelShift: 0,
+    leafLabelOffsetX: 8,
+    leafLabelOffsetCirc: 8,
     showLegend: true, legendX: 760, legendY: 60, legendSize: 14, legendFont: "",
     legendColor: "#222222", legendBold: false, legendItalic: false, legendTitle: "Groups",
     ringWidth: 18, ringGap: 16, ringStroke: "#ffffff", ringStrokeWidth: 0,
@@ -41,7 +43,7 @@ const ctx = {
     axisShow: true, axisPos: "bottom", axisRotation: 0, axisReverse: false,
     tickPrimary: { interval: 0, showLabels: true, showGrid: false, gridDashed: false, gridWidth: 1, gridColor: "#dddddd", customTicks: [] },
     tickSecondary: { interval: 0, showLabels: false, showGrid: false, gridDashed: false, gridWidth: 1, gridColor: "#dddddd", customTicks: [] },
-    tickLabelFontSize: 11, tickLabelBold: false, tickLabelItalic: false,
+    tickLabelFontSize: 20, tickLabelBold: true, tickLabelItalic: false,
     customTickColor: "#c0392b", customTickBold: true,
     timeScaleFactor: 1,
     showScaleBox: true, scaleBoxSize: 0, scaleBoxTitle: "Scale",
@@ -54,8 +56,9 @@ const ctx = {
     },
     nodeLabels: [],
     nodeLabelCommon: {
-      fontSize: 10, bold: false, italic: false,
-      offsetX: 8, offsetY: -6,
+      fontSize: 15, bold: false, italic: false,
+      offsetX: -10, offsetY: -6,
+      offsetTangent: 0, offsetRadial: -40,
       bgShow: false, bgBorderColor: "#999999", bgBorderWidth: 1, bgFill: "#ffffff",
       separator: "/", hideOnLeaves: false
     },
@@ -414,9 +417,8 @@ function layoutRect() {
   const maxText = Math.max(...allLeavesForView.map(l => labelOf(l).length), 8);
   ctx.treeMaxX = tMax; ctx.treeMinX = tMin; ctx.maxTextWidth = maxText * st.fontSize * 0.62;
   ctx.treeTop = top; ctx.treeBottom = cursor; ctx.rootX = ctx.root.x; ctx.rootY = ctx.root.y;
-  const GAP = 20; const la = st.labelAnchorRect || "left";
-  if (isInv) alignedLabelXCache = (la === "left") ? (tMin - GAP) : (tMin - GAP);
-  else alignedLabelXCache = (la === "left") ? (tMax + GAP) : (tMax + GAP);
+  const GAP = 20;
+  alignedLabelXCache = isInv ? (tMin - GAP) : (tMax + GAP);
   const contentH = cursor + bottom; const minCanvasH = Math.max(240, contentH);
   const extraPad = (minCanvasH - contentH) / 2;
   let vx, vw;
