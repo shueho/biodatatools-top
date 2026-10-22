@@ -902,10 +902,18 @@
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
+    function cleanSvgForExport(svgEl) {
+        const clone = svgEl.cloneNode(true);
+        clone.querySelectorAll('.legend-hit, .node-hotspot, .palette-hit, [fill="transparent"][pointer-events="all"]').forEach(el => el.remove());
+        return clone;
+    }
     function downloadSVG(svgEl, filename) {
         if (!svgEl) { showToast(L().noSvg, 'error'); return; }
+        
+        const clone = cleanSvgForExport(svgEl);
         const xml = new XMLSerializer();
-        let source = xml.serializeToString(svgEl);
+        let source = xml.serializeToString(clone);
+        
         if (!/xmlns="http:\/\/www\.w3\.org\/2000\/svg"/.test(source)) {
             source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
         }
@@ -917,11 +925,16 @@
             if (!svgEl) { reject(new Error('no svg')); return; }
             scale = scale || 2;
             bg = bg === undefined ? '#ffffff' : bg;
+            
+            // 1. 克隆并清理透明交互层
+            const clone = cleanSvgForExport(svgEl);
             const xml = new XMLSerializer();
-            let source = xml.serializeToString(svgEl);
+            let source = xml.serializeToString(clone);
+            
             if (!/xmlns="http:\/\/www\.w3\.org\/2000\/svg"/.test(source)) {
                 source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
             }
+            
             const svgBlob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
             const url = URL.createObjectURL(svgBlob);
             const img = new Image();
@@ -954,7 +967,6 @@
             img.src = url;
         });
     }
-
     /* ============================================================
        参数读取
     ============================================================ */

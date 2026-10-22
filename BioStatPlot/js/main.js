@@ -62,21 +62,21 @@ function probeImage(url) {
 
 async function resolveIconFiles(id) {
     if (!id || typeof id !== 'string') return [];
-
-    const exts = ['svg', 'png', 'jpg', 'jpeg', 'gif', 'webp'];
+    
+    const exts = id.startsWith('t') ? ['svg', 'png'] : ['svg'];
     const files = [];
 
     for (let i = 1; i <= ICON_PROBE_MAX; i++) {
-        let foundExt = null;
+        let found = null;
         for (const ext of exts) {
             const name = `${id}-${i}.${ext}`;
-            if (await probeImage(LOCAL_BASE + name)) {
-                foundExt = ext;
+            if (await probeImage(LOCAL_BASE + name)) { 
+                found = name; 
                 break; 
             }
         }
-        if (foundExt) {
-            files.push(`${id}-${i}.${foundExt}`);
+        if (found) {
+            files.push(found);
         } else {
             break; 
         }
@@ -91,8 +91,14 @@ async function resolveIconFiles(id) {
             }
         }
     }
+
+    if (!files.length) {
+        files.push(`${id}.svg`);
+    }
+    
     return files;
 }
+
 async function preloadAllIcons() {
     if (typeof toolCategories === 'undefined') return;
     const ids = new Set();
