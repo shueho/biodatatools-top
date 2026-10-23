@@ -1625,7 +1625,6 @@ function drawTreeActual() {
 
   const root = C.getRoot();
   if (root) {
-    const rootKids = (root.children || []).filter(c => !c.deleted);
     if (root.rootFlag === false) C.state.hasRoot = false;
     else if (root.rootFlag === true) C.state.hasRoot = true;
     else C.state.hasRoot = (root._hasExplicitLength === true && Number(root.length) > 0);
