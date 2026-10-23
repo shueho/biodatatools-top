@@ -10,7 +10,8 @@ const ctx = {
   state: {
     mode: "rectangular", rotation: 0, invert: false,
     lineShape: "straight", arc: 348,
-    showLength: false, showBootstrap: false, bootstrapFormat: "auto",
+    showLength: false, showBootstrap: false, bootstrapFormat: "raw",
+    bootstrapRange: "auto", 
     sortMode: "none", leafReverse: false,
     ignoreLength: false, branchLengthField: "", showRoot: true, labels: true,
     forceMidpointRoot: false,
@@ -41,6 +42,7 @@ const ctx = {
     timeTreeMode: false, rootTickValue: 0,
     hasRoot: true,
     axisShow: true, axisPos: "bottom", axisRotation: 0, axisReverse: false,
+    axisExtendStart: 0, axisExtendEnd: 0,
     tickPrimary: { interval: 0, showLabels: true, showGrid: false, gridDashed: false, gridWidth: 1, gridColor: "#dddddd", customTicks: [] },
     tickSecondary: { interval: 0, showLabels: false, showGrid: false, gridDashed: false, gridWidth: 1, gridColor: "#dddddd", customTicks: [] },
     tickLabelFontSize: 20, tickLabelBold: true, tickLabelItalic: false,
@@ -171,6 +173,18 @@ function parseNHXBody(body, node) {
     node.meta.push({ field: key, value: parsed });
   });
 }
+function isBootstrapToken(tok, mode) {
+  if (!/^\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)*$/.test(tok)) return false;
+  const parts = tok.split('/').map(Number);
+  if (!parts.every(Number.isFinite)) return false;
+
+  const m = mode || 'auto';
+  if (m === 'none')  return false;                           
+  if (m === 'count') return true;                            
+  if (m === '0-1')   return parts.every(v => v >= 0 && v <= 1);
+  if (m === '0-100') return parts.every(v => v >= 0 && v <= 100);
+  return parts.every(v => v >= 0 && v <= 100);
+}
 function parseNewick(input, translateMap) {
   let s = String(input == null ? "" : input).replace(/^\uFEFF/, "");
   let rootFlag = null;
@@ -200,12 +214,25 @@ function parseNewick(input, translateMap) {
       skipWhite();
     }
   }
-  function readToken() {
-    skipWhite(); const start = i;
-    if (i < N && (s[i] === "'" || s[i] === '"')) { const q = s[i++]; const s2 = i; while (i < N && s[i] !== q) i++; const tok = s.slice(s2, i); if (s[i] === q) i++; return tok; }
-    while (i < N) { const ch = s[i]; if (ch === "(" || ch === ")" || ch === "," || ch === ":" || ch === ";" || ch === "[" || ch === "]") break; i++; }
-    return s.slice(start, i).trim();
+function readToken() {
+  skipWhite(); 
+  if (i < N && (s[i] === "'" || s[i] === '"')) {
+    const q = s[i++];
+    let out = '';
+    while (i < N) {
+      if (s[i] === q) {
+        if (s[i + 1] === q) { out += q; i += 2; }  
+        else { i++; return out; }                    
+      } else {
+        out += s[i++];
+      }
+    }
+    return out;
   }
+  const start = i;
+  while (i < N) { const ch = s[i]; if (ch === "(" || ch === ")" || ch === "," || ch === ":" || ch === ";" || ch === "[" || ch === "]") break; i++; }
+  return s.slice(start, i).trim();
+}
   function readLength(node) {
     consumeAnnotations(node); skipWhite();
     if (s[i] === ":") { i++; const raw = readToken(); const v = Number.parseFloat(raw); node.length = Number.isFinite(v) && v >= 0 ? v : 0.1; node._hasExplicitLength = true; }
@@ -230,10 +257,23 @@ function parseNewick(input, translateMap) {
         if (s[i] === ")") { i++; break; }
         break;
       }
-      consumeAnnotations(node); skipWhite();
-      const tok = readToken();
-      if (tok) { if (/^\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)*$/.test(tok)) node.support = tok; else node.name = tok; }
-      readLength(node);
+consumeAnnotations(node); skipWhite();
+const tok = readToken();
+if (tok) {
+  const isNumeric = /^\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)*$/.test(tok);
+  const parts = isNumeric ? tok.split('/').map(Number) : [];
+  const mode = ctx.state.bootstrapRange || 'auto';
+  let asSupport;
+  if (!isNumeric)                    asSupport = false;
+  else if (mode === 'none')          asSupport = false;
+  else if (mode === 'count')         asSupport = true;
+  else if (mode === '0-1')           asSupport = parts.every(v => v >= 0 && v <= 1);
+  else if (mode === '0-100')         asSupport = parts.every(v => v >= 0 && v <= 100);
+  else                               asSupport = parts.every(v => v >= 0 && v <= 100);
+  if (asSupport) node.support = tok;
+  else           node.name = tok;
+}
+readLength(node);
     } else { node.name = readToken(); readLength(node); }
     applyTranslate(node); return node;
   }
@@ -492,8 +532,11 @@ function getRadialInnerBase() {
 
   const isRev = (st.axisReverse === true || st.axisReverse === "true");
   const tMin = isRev ? (maxD - vMax) : vMin;
-  if (tMin >= -1e-9) return 0;
-  return Math.max(0, -tMin * maxR / maxD);
+  let base = 0;
+  if (tMin < -1e-9) base = Math.max(0, -tMin * maxR / maxD);
+  const extStart = Math.max(0, Number(st.axisExtendStart) || 0);
+  base += extStart * maxR / maxD;
+  return base;
 }
 
 function layoutRadial() {

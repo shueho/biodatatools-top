@@ -53,21 +53,18 @@ function drawLegend(customX, customY) {
   if (!colorRanges.length) return;
   const tc = (global.TreeTracks && global.TreeTracks.trackCommon) || {};
 
-  // ======== 修改的部分：基准坐标 + 偏移量 ========
   const baseX = (customX != null) ? Number(customX) : (Number(st.legendX) || 760);
   const baseY = (customY != null) ? Number(customY) : (Number(st.legendY) || 60);
   const lx = baseX + (st.legendOffsetX || 0);
   const ly = baseY + (st.legendOffsetY || 0);
-  // ===============================================
 
-  // ======== 下面全部保持原样 ========
   const scale = tc.legendScale || 1;
   const fs = Math.max(6, Number(tc.legendFontSize) || 11) * scale;
   const pad = 10;
   const bw = tc.legendBold ? 700 : 400;
   const fsStyle = tc.legendItalic ? "italic" : "normal";
   const titleFS = Math.max(6, Number(tc.legendTitleFontSize) || 12) * scale;
-  const titleBold = tc.legendTitleBold ? 800 : 700;
+  const titleBold = tc.legendTitleBold ? 700 : 400;
   const titleItalic = tc.legendTitleItalic ? "italic" : "normal";
   const showTitle = tc.legendTitleShow !== false;
   const title = showTitle ? (st.legendTitle != null ? st.legendTitle : "Groups") : "";
@@ -83,10 +80,9 @@ function drawLegend(customX, customY) {
     const tt = C.el("text", { x: pad, y: titleFS, "font-size": titleFS, "font-weight": titleBold,
       "font-style": titleItalic, fill: fc, "pointer-events": "none", "font-family": ff }, g);
     tt.textContent = title;
-    yy = titleFS + 6;
+    yy = titleFS + 14;
   }
 
-  // 先找出所有项目里的最大宽度，用于多行对齐
   let maxItemW = 0;
   items.forEach(it => {
     const w = fs + 8 + it.label.length * fs * 0.6;
@@ -116,6 +112,8 @@ global.TreeLegend = { drawLegend };
 let colorRanges = [];
 let rangeSeq = 0;
 let rangeCover = "label";
+let rangeColorBranches = false;
+let rangeColorLabels = false;
 let rangeBorder = 0;
 let rangeBorderColor = "#333333";
 let rangeShowLabels = false;
@@ -156,6 +154,21 @@ function paletteColor(i) {
 
 function recolorRangesByPalette() { colorRanges.forEach((r, i) => { r.color = paletteColor(i); }); }
 function rangeById(id) { return colorRanges.find(r => r.id === id) || null; }
+
+function getRangeColorForNode(n) {
+  if (!n) return null;
+  const ranges = colorRanges;
+  if (!ranges.length) return null;
+  let cur = n;
+  while (cur) {
+    if (cur.rangeId != null) {
+      const r = ranges.find(x => x.id === cur.rangeId);
+      return r ? r.color : null;
+    }
+    cur = cur.parent;
+  }
+  return null;
+}
 function rangeMembers(id) { const out = []; T.allWalk(C.getRoot(), n => { if (n.rangeId === id) out.push(n); }); return out; }
 function clearAllColorRanges() { colorRanges = []; T.allWalk(C.getRoot(), n => { if (n.rangeId != null) n.rangeId = null; }); }
 
@@ -196,7 +209,7 @@ function rangePaint(range, key, radial, inner, outer, invert) {
 }
 
 function drawRectangularRanges() {
-  if (rangeCover === "off") return;
+  if (rangeCover === "off" || rangeCover === "none") return;
   const leaves = T.visibleLeaves(C.getRoot());
   const st = C.state;
   const isInv = (st.invert === true || st.invert === "true");
@@ -210,6 +223,44 @@ function drawRectangularRanges() {
       else       labelEdge = Math.max(labelEdge, b.x + b.width + 6);
     } catch (_) {}
   });
+  const root = C.getRoot();
+  const maxD = Math.max(T.maxDepth(root, 0), 1);
+  const treeW = 560 * (st.scaleH || 1);
+  const rootPos = root.x;
+  const pxPerUnit = treeW / maxD;
+  const tipPos = isInv ? (rootPos - treeW) : (rootPos + treeW);
+  function tickPx(v) {
+    const t = st.axisReverse ? (maxD - v) : v;
+    return isInv ? (rootPos - t * pxPerUnit) : (rootPos + t * pxPerUnit);
+  }
+  let axisMinX = Math.min(rootPos, tipPos);
+  let axisMaxX = Math.max(rootPos, tipPos);
+  const rlCfg = st.rangeLabelConfig;
+  if (rlCfg && rlCfg.show && rlCfg.field) {
+    T.allWalk(root, n => {
+      if (!hasRealChildren(n)) return;
+      const m = (n.meta || []).find(mm => mm.field === rlCfg.field);
+      if (m && Array.isArray(m.value) && m.value.length >= 2) {
+        const lo = Number(m.value[0]), hi = Number(m.value[1]);
+        if (Number.isFinite(lo)) { const x = tickPx(lo); axisMinX = Math.min(axisMinX, x); axisMaxX = Math.max(axisMaxX, x); }
+        if (Number.isFinite(hi)) { const x = tickPx(hi); axisMinX = Math.min(axisMinX, x); axisMaxX = Math.max(axisMaxX, x); }
+      }
+    });
+  }
+  const extStart = Math.max(0, Number(st.axisExtendStart) || 0);
+  const extEnd = Math.max(0, Number(st.axisExtendEnd) || 0);
+  if (extStart > 0) {
+    const vEdge = st.axisReverse ? (maxD + extStart) : (-extStart);
+    const x = tickPx(vEdge);
+    axisMinX = Math.min(axisMinX, x);
+    axisMaxX = Math.max(axisMaxX, x);
+  }
+  if (extEnd > 0) {
+    const vEdge = st.axisReverse ? (-extEnd) : (maxD + extEnd);
+    const x = tickPx(vEdge);
+    axisMinX = Math.min(axisMinX, x);
+    axisMaxX = Math.max(axisMaxX, x);
+  }
   const bg = C.el("g", { class: "range-backgrounds" });
   C.getSvg().insertBefore(bg, C.getSvg().firstChild);
   const vb = C.getViewBox();
@@ -219,15 +270,20 @@ function drawRectangularRanges() {
     let x0, width;
     if (isInv) {
       const alignedX = C.alignedLabelX();
-      if (rangeCover === "full")        { x0 = labelEdge; width = Math.max(3, (vb.x + vb.w - 20) - labelEdge); }
+      if (rangeCover === "full") {
+        x0 = Math.min(labelEdge, axisMinX - 10);
+        const rightEdge = Math.max(vb.x + vb.w - 20, axisMaxX + 10);
+        width = Math.max(3, rightEdge - x0);
+      }
       else if (rangeCover === "clade")  { x0 = labelEdge; width = Math.max(3, segment.x0 - labelEdge); }
       else                              { x0 = labelEdge; width = Math.max(3, alignedX - labelEdge); }
     } else {
-      x0 = rangeCover === "full" ? 40
+      x0 = rangeCover === "full" ? Math.min(40, axisMinX - 10)
         : rangeCover === "clade" ? segment.x0
         : st.labelPosition === "aligned" ? C.alignedLabelX()
         : Math.min(...segment.leaves.map(l => l.x));
-      width = Math.max(3, labelEdge - x0);
+      const rightEnd = rangeCover === "full" ? Math.max(labelEdge, axisMaxX + 10) : labelEdge;
+      width = Math.max(3, rightEnd - x0);
     }
     const attrs = { x: x0, y: segment.top, width, height: segment.bottom - segment.top,
       fill: rangePaint(range, index, false, 0, 1, isInv), opacity: st.rangeOpacity,
@@ -238,10 +294,15 @@ function drawRectangularRanges() {
 }
 
 function drawColoredRanges(radial) {
-  if (rangeCover === "off") return;
+  if (rangeCover === "off" || rangeCover === "none") return;
   if (!radial) { drawRectangularRanges(); return; }
   const st = C.state;
-  const vl = T.visibleLeaves(C.getRoot());
+  const root = C.getRoot();
+  const maxD = Math.max(T.maxDepth(root, 0), 0.01);
+  const maxR = 285 * (st.scaleH || 1);
+  const extEnd = Math.max(0, Number(st.axisExtendEnd) || 0);
+  const extEndPx = extEnd * maxR / maxD;
+  const vl = T.visibleLeaves(root);
   const gl = vl.map(l => l.angle).filter(a => a != null).sort((a,b) => a-b);
   const gStep = gl.length > 1 ? (gl[gl.length-1] - gl[0]) / (gl.length-1) : 6;
   const gTipR = Math.max(...vl.map(l => l.r || 0), 260);
@@ -265,9 +326,9 @@ function drawColoredRanges(radial) {
       const a0 = Math.min(...angs) - pad, a1 = Math.max(...angs) + pad;
       const cx = 470, cy = 380;
       let rIn, rOut;
-      if (rangeCover === "clade") { rIn = Math.max(0, n.r || 0); rOut = gTipR + 2; }
-      else if (rangeCover === "full") { rIn = 24; rOut = gLabOut; }
-      else { rIn = gLabIn; rOut = gLabOut; }
+      if (rangeCover === "clade") { rIn = Math.max(0, n.r || 0); rOut = gTipR + 2 + extEndPx; }
+      else if (rangeCover === "full") { rIn = 0; rOut = gLabOut + extEndPx; }
+      else { rIn = gLabIn; rOut = gLabOut + extEndPx; }
       const p0i = L.polar(cx, cy, rIn, a0), p0o = L.polar(cx, cy, rOut, a0);
       const p1o = L.polar(cx, cy, rOut, a1), p1i = L.polar(cx, cy, rIn, a1);
       const large = (a1 - a0) > 180 ? 1 : 0;
@@ -327,7 +388,7 @@ function drawRectangularRangeLabelTrack(xBase, leaves, isInv) {
     const titleWidth = estimateTextWidth(rangeLabelTrackTitle, titleFs);
     const lowestOffset = Math.abs((titleWidth / 2) * Math.sin(angleRad)) + Math.abs((titleFs / 2) * Math.cos(angleRad));
     const ys = leaves.map(l => l.y);
-    const titleY = Math.min(...ys) - rowH * 0.85 - lowestOffset - 8;
+    const titleY = Math.min(...ys) - rowH * 0.55 - lowestOffset - 4;
     const cx = x0 + trackW / 2;
     const titleEl = C.el("text", { x: cx, y: titleY, "text-anchor": "middle", "dominant-baseline": "middle",
       "font-size": titleFs, "font-weight": titleBold, "font-style": titleItalic,
@@ -402,9 +463,9 @@ function drawRadialRangeLabelTrack(rBase, leaves) {
     if (gapMid >= 360) gapMid -= 360;
     const titleR = (rIn + rOut) / 2;
     const tp = L.polar(cx, cy, titleR, gapMid);
-    let rot = gapMid - 90;
-    if (rot > 90) rot -= 180;
-    if (rot < -90) rot += 180;
+    let rot = gapMid;
+    while (rot > 90) rot -= 180;
+    while (rot < -90) rot += 180;
     C.el("text", { x: tp.x, y: tp.y, "text-anchor": "middle", "dominant-baseline": "middle",
       "font-size": Math.max(10, rangeLabelSize - 2), "font-weight": 700,
       fill: "#3a4a4a", "font-family": ff, class: "range-label-track-title",
@@ -838,6 +899,20 @@ function drawGeoTimeTracks(radial) {
   } else {
     axisLo = Math.max(axisLo, tipPos);
   }
+  const extStart = Math.max(0, Number(st.axisExtendStart) || 0);
+  const extEnd = Math.max(0, Number(st.axisExtendEnd) || 0);
+  if (extStart > 0) {
+    const vEdge = st.axisReverse ? (maxD + extStart) : (-extStart);
+    const x = tickPx(vEdge);
+    axisLo = Math.min(axisLo, x);
+    axisHi = Math.max(axisHi, x);
+  }
+  if (extEnd > 0) {
+    const vEdge = st.axisReverse ? (-extEnd) : (maxD + extEnd);
+    const x = tickPx(vEdge);
+    axisLo = Math.min(axisLo, x);
+    axisHi = Math.max(axisHi, x);
+  }
 
   const axisSide = st.axisPos === 'top' ? 'top' : 'bottom';
   const yAxis = axisSide === 'top' ? (yTop - 20) : (yBot + 30);
@@ -911,7 +986,9 @@ function drawGeoTimeTracksRadial(leaves) {
   const innerBase = (global.TreeLayout && typeof global.TreeLayout.getRadialInnerBase === 'function')
     ? global.TreeLayout.getRadialInnerBase() : 0;
   const maxR = 285 * (st.scaleH || 1);
-  const R_base = innerBase + maxR;
+  const extEnd = Math.max(0, Number(st.axisExtendEnd) || 0);
+  const extEndPx = extEnd * maxR / maxD;
+  const R_base = innerBase + maxR + extEndPx;
 
   const cx = 470, cy = 380;
   const isReverse = (st.axisReverse === true || st.axisReverse === "true");
@@ -1086,17 +1163,22 @@ function drawGeoTimeTracksRadial(leaves) {
 
 C.registerSnapshot("ranges", () => ({
   colorRanges: JSON.parse(JSON.stringify(colorRanges)),
-  rangeSeq, ringPalette, rangeCover, rangeBorder, rangeBorderColor,
+  rangeCover, rangeBorder, rangeBorderColor,
+  rangeColorBranches, rangeColorLabels,
   rangeShowLabels, rangeLabelSize, rangeLabelColor, rangeLabelBold, rangeLabelItalic, rangeLabelOffset, rangeLabelFont,
   rangeLabelTrackShow, rangeLabelTrackWidth, rangeLabelTrackAutoWidth, rangeLabelTrackOffset,
   rangeLabelTrackOpacity, rangeLabelTrackTextOrientation, rangeLabelTrackTitle, rangeLabelTrackTitleShow,
   geoTimeTracks: JSON.parse(JSON.stringify(geoTimeTracks)),
-  geoTrackSeq, geoEntrySeq, geoTimeShow, geoScaleFactor
+  geoTrackSeq, geoEntrySeq, geoTimeShow, geoScaleFactor,
+  rangeSeq,          
+  ringPalette
 }), s => {
   if (Array.isArray(s.colorRanges)) colorRanges = s.colorRanges;
   if (typeof s.rangeSeq === "number") rangeSeq = s.rangeSeq;
   if (typeof s.ringPalette === "string") ringPalette = s.ringPalette;
   if (typeof s.rangeCover === "string") rangeCover = s.rangeCover;
+  if (typeof s.rangeColorBranches === "boolean") rangeColorBranches = s.rangeColorBranches;
+  if (typeof s.rangeColorLabels === "boolean") rangeColorLabels = s.rangeColorLabels;
   if (typeof s.rangeBorder === "number") rangeBorder = s.rangeBorder;
   if (typeof s.rangeBorderColor === "string") rangeBorderColor = s.rangeBorderColor;
   if (typeof s.rangeShowLabels === "boolean") rangeShowLabels = s.rangeShowLabels;
@@ -1127,6 +1209,10 @@ global.TreeRanges = {
   get rangeCover() { return rangeCover; }, set rangeCover(v) { rangeCover = v; },
   get rangeBorder() { return rangeBorder; }, set rangeBorder(v) { rangeBorder = v; },
   get rangeBorderColor() { return rangeBorderColor; }, set rangeBorderColor(v) { rangeBorderColor = v; },
+
+  get rangeColorBranches() { return rangeColorBranches; }, set rangeColorBranches(v) { rangeColorBranches = v; },
+  get rangeColorLabels() { return rangeColorLabels; }, set rangeColorLabels(v) { rangeColorLabels = v; },
+  getRangeColorForNode,
   get rangeShowLabels() { return rangeShowLabels; }, set rangeShowLabels(v) { rangeShowLabels = v; },
   get rangeLabelSize() { return rangeLabelSize; }, set rangeLabelSize(v) { rangeLabelSize = v; },
   get rangeLabelColor() { return rangeLabelColor; }, set rangeLabelColor(v) { rangeLabelColor = v; },
@@ -1749,7 +1835,7 @@ function drawTrackLegend(track, x, y, colorMap) {
     let cursorY = 0;
     if (title) {
       const tt = C.el('text', { x: 0, y: titleFS, 'font-size': titleFS, 'font-weight': titleBold, 'font-style': titleItalic, fill: '#333', 'font-family': ff }, g);
-      tt.textContent = title; cursorY = titleFS + 4;
+      tt.textContent = title; cursorY = titleFS + 14;
     }
     C.el('rect', { x: 0, y: cursorY, width: barW, height: barH, fill: `url(#${gid})`, stroke: '#999', 'stroke-width': 0.5 }, g);
 
@@ -1774,7 +1860,7 @@ function drawTrackLegend(track, x, y, colorMap) {
   let xx = 0, yy = 0, rowItems = 0;
   if (title) {
     const tt = C.el('text', { x: 0, y: titleFS, 'font-size': titleFS, 'font-weight': titleBold, 'font-style': titleItalic, fill: '#333', 'font-family': ff }, g);
-    tt.textContent = title; yy = titleFS + 6;
+    tt.textContent = title; yy = titleFS + 14;
   }
 
   let maxItemW = 0;
@@ -1834,7 +1920,7 @@ function renderCustomTracks(radial) {
       if (t.name) { const w = estimateTextWidth(t.name, nameFs); if (w > maxNameWidth) maxNameWidth = w; }
     });
     const lowestOffset = Math.abs((maxNameWidth / 2) * Math.sin(angleRad)) + Math.abs((nameFs / 2) * Math.cos(angleRad));
-    const titleY = Math.min(...ys) - rowH * 0.85 - lowestOffset - 8;
+    const titleY = Math.min(...ys) - rowH * 0.55 - lowestOffset - 4;
     const placed = [];
     customTracks.forEach(track => {
       const w = computeTrackWidth(track);

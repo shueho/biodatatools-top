@@ -484,7 +484,17 @@ function renderBasicPanel(container) {
             <option value="true" ${st.leafReverse?'selected':''}>${I.t('optReverseReverse')}</option>
           </select>
         </div>
+        <div class="param-item"><label>${I.t('bootstrapRange')}</label>
+          <select id="bootstrapRangeSelect">
+            <option value="auto"   ${(!st.bootstrapRange || st.bootstrapRange==='auto')?'selected':''}>${I.t('optBootRangeAuto')}</option>
+            <option value="0-1"    ${st.bootstrapRange==='0-1'?'selected':''}>${I.t('optBootRange01')}</option>
+            <option value="0-100"  ${st.bootstrapRange==='0-100'?'selected':''}>${I.t('optBootRange0100')}</option>
+            <option value="count"  ${st.bootstrapRange==='count'?'selected':''}>${I.t('optBootRangeCount')}</option>
+            <option value="none"   ${st.bootstrapRange==='none'?'selected':''}>${I.t('optBootRangeNone')}</option>
+          </select>
+        </div>
       </div>
+
 
       <div class="param-grid cols-4" style="margin-top:8px;">
         <div class="param-item"><label>${I.t('panelLabelsShow')}</label>
@@ -598,8 +608,16 @@ function renderBasicPanel(container) {
           <label>${I.t('axisRotation')}</label>
           <input id="axisRotationInput" type="number" value="${st.axisRotation}" min="-360" max="360" step="1">
         </div>
+
+
         <div class="param-item">
           <label class="mini-check"><input id="axisReverseChk" type="checkbox" ${st.axisReverse?'checked':''}> ${I.t('axisReverse')}</label>
+        </div>
+        <div class="param-item"><label>${I.t('axisExtendStart')}</label>
+          <input id="axisExtendStartInput" type="number" value="${st.axisExtendStart || 0}" min="0" step="0.1">
+        </div>
+        <div class="param-item"><label>${I.t('axisExtendEnd')}</label>
+          <input id="axisExtendEndInput" type="number" value="${st.axisExtendEnd || 0}" min="0" step="0.1">
         </div>
       </div>
 
@@ -1441,13 +1459,21 @@ function renderDatasetsPanel(container) {
       ${subTitle(I.t('rangeStyleTitle'))}
       <div class="param-grid cols-4">
         <div class="param-item"><label>${I.t('rangeCoverLabel')}</label>
-<select id="rangeCoverSelect">
-  <option value="label">${I.t('rangeCoverOptLabel')}</option>
-  <option value="clade">${I.t('rangeCoverOptClade')}</option>
-  <option value="full">${I.t('rangeCoverOptFull')}</option>
-  <option value="off">${I.t('rangeCoverOptOff')}</option>
-</select>
+          <select id="rangeCoverSelect">
+            <option value="label">${I.t('rangeCoverOptLabel')}</option>
+            <option value="clade">${I.t('rangeCoverOptClade')}</option>
+            <option value="full">${I.t('rangeCoverOptFull')}</option>
+            <option value="none">${I.t('rangeCoverOptNone')}</option>
+            <option value="off">${I.t('rangeCoverOptOff')}</option>
+          </select>
         </div>
+        <div class="param-item"><label class="mini-check">
+          <input type="checkbox" id="rangeColorBranchesChk"> ${I.t('rangeColorBranches')}
+        </label></div>
+        <div class="param-item"><label class="mini-check">
+          <input type="checkbox" id="rangeColorLabelsChk"> ${I.t('rangeColorLabels')}
+        </label></div>
+
         <div class="param-item"><label>${I.t('rangeBorderWidth')}</label>
           <input id="rpBorder" type="number" min="0" max="8" step="1" value="0">
         </div>
@@ -2231,6 +2257,8 @@ function syncRangesControls(container) {
   };
 
   setVal('#rangeCoverSelect', R.rangeCover || 'label');
+  setChk('#rangeColorBranchesChk', !!R.rangeColorBranches);
+  setChk('#rangeColorLabelsChk', !!R.rangeColorLabels);
   setVal('#rpBorder', R.rangeBorder);
   setVal('#rpBorderColor', R.rangeBorderColor);
   setVal('#rangeGradient', String(C.state.rangeGradient));
@@ -2302,6 +2330,16 @@ function syncRangesControls(container) {
   bindOnce(container.querySelector('#rangeShowLabelsSelect'), 'change', e => {
     C.snapshot();
     R.rangeShowLabels = e.target.checked;
+    global.TreeRenderer.draw();
+  });
+  bindOnce(container.querySelector('#rangeColorBranchesChk'), 'change', e => {
+    C.snapshot();
+    R.rangeColorBranches = e.target.checked;
+    global.TreeRenderer.draw();
+  });
+  bindOnce(container.querySelector('#rangeColorLabelsChk'), 'change', e => {
+    C.snapshot();
+    R.rangeColorLabels = e.target.checked;
     global.TreeRenderer.draw();
   });
   bindOnce(container.querySelector('#rpLabelSize'), 'input', e => {

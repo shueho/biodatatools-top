@@ -943,7 +943,7 @@ ${allRanges.map(r => `
           style="${n.rangeId === r.id ? 'color:#c0392b;font-weight:700;' : ''}flex-shrink:0;width:14px;text-align:center;">${n.rangeId === r.id ? '✓' : ' '}</span>
   </div>
 `).join('')}
-  <button class="nap-sub-btn" data-range-action="remove" ...>
+  <button class="nap-sub-btn" data-range-action="remove" ${n.rangeId == null ? 'disabled' : ''}>
     <span class="nap-sub-radio">−</span> ${I.t('napRangeRemove')}
   </button>
   <div class="nap-hint">${I.t('napRangeHint')}</div>
@@ -1754,6 +1754,7 @@ function bindAllControls() {
   bindSel("fontFamily", "fontFamily");
   bindSel("ignoreLength", "ignoreLength", "bool");
   bindSel("branchLengthField", "branchLengthField");
+  bindSel("bootstrapRangeSelect", "bootstrapRange"); 
   bindChk("forceMidpointRoot", "forceMidpointRoot");
   bindSel("labelsSelect", "labels", "bool");
   bindSel("labelPositionSelect", "labelPosition");
@@ -1790,6 +1791,8 @@ function bindAllControls() {
   bindSel("axisPosSelect", "axisPos");
   bindInp("axisRotationInput", "axisRotation", "num");
   bindChk("axisReverseChk", "axisReverse");
+    bindInp("axisExtendStartInput", "axisExtendStart", "num");
+    bindInp("axisExtendEndInput", "axisExtendEnd", "num");
   bindPath("tickLabelFontSize", "tickLabelFontSize", "num");
   bindPath("tickLabelBold", "tickLabelBold");
   bindPath("tickLabelItalic", "tickLabelItalic");
@@ -1946,6 +1949,7 @@ function syncControls() {
   set("fontFamily", st.fontFamily);
   set("ignoreLength", String(st.ignoreLength));
   set("branchLengthField", st.branchLengthField || "");
+  set("bootstrapRangeSelect", st.bootstrapRange || "auto");
   set("forceMidpointRoot", st.forceMidpointRoot);
   set("sortModeSelect", st.sortMode);
   set("leafReverseSelect", String(st.leafReverse));
@@ -1965,6 +1969,8 @@ function syncControls() {
   set("axisPosSelect", st.axisPos);
   set("axisRotationInput", st.axisRotation);
   set("axisReverseChk", st.axisReverse);
+    set("axisExtendStartInput", st.axisExtendStart || 0);
+    set("axisExtendEndInput", st.axisExtendEnd || 0);
   set("tickLabelFontSize", st.tickLabelFontSize);
   set("tickLabelBold", st.tickLabelBold);
   set("tickLabelItalic", st.tickLabelItalic);

@@ -161,6 +161,10 @@ function branchStroke(n) {
   const st = C.state;
   if (n.branchColor) return n.branchColor;
   if (n.highlight) return n.rangeColor || "#e64b35";
+  if (global.TreeRanges && global.TreeRanges.rangeColorBranches) {
+    const c = global.TreeRanges.getRangeColorForNode(n);
+    if (c) return c;
+  }
   return st.branchColor;
 }
 function commonLineAttrs(n, opts) {
@@ -180,7 +184,7 @@ function commonLineAttrs(n, opts) {
   return attrs;
 }
 function gapLineAttrs() {
-  return { stroke: GAP_COLOR, "stroke-width": 1, "stroke-linecap": "round", "stroke-dasharray": dashAttr(), fill: "none", opacity: .7, "pointer-events": "none" };
+  return { stroke: GAP_COLOR, "stroke-width": 1, "stroke-linecap": "round", "stroke-dasharray": "2 3", fill: "none", opacity: .7, "pointer-events": "none" };
 }
 
 function drawLengthLabel(parent, child, radial) {
@@ -336,7 +340,15 @@ function drawRectBranch(parent, child) {
       .textContent = lenVal.toFixed(lenVal < 0.1 ? 3 : 2);
   }
   if (st.extendBranches && st.labelPosition === "aligned" && T.isLeaf(child) && !child.collapsed) {
-    const targetX = C.alignedLabelX();
+    const gapX = Number.isFinite(Number(st.leafLabelOffsetX)) ? Number(st.leafLabelOffsetX) : 8;
+    const shift = Number(st.labelShift || 0);
+    const la = st.labelAnchorRect || "left";
+    const maxW = C.maxTextWidth || 100;
+    const inv = (st.invert === true || st.invert === "true");
+    const alignX = C.alignedLabelX() + shift;
+    let targetX;
+    if (!inv) { targetX = la === "left" ? alignX + gapX - 2 : alignX + maxW + gapX * 2; }
+    else       { targetX = la === "left" ? alignX - maxW - gapX * 2 : alignX - gapX + 2; }
     if (Math.abs(targetX - child.x) > 0.5) C.el("line", { x1: child.x, y1: child.y, x2: targetX, y2: child.y, ...gapLineAttrs() });
   }
   if (child.truncated) {
@@ -377,8 +389,10 @@ function drawRadialBranch(parent, child) {
   }
 
   if (st.extendBranches && T.isLeaf(child) && !child.collapsed) {
+    const gapCirc = Number.isFinite(Number(st.leafLabelOffsetCirc)) ? Number(st.leafLabelOffsetCirc) : 8;
+    const shift = Number(st.labelShift || 0);
     let rEnd;
-    if (st.labelPosition === "aligned") rEnd = C.getRadialLabelR() - 8;
+    if (st.labelPosition === "aligned") rEnd = C.getRadialLabelR() + shift + gapCirc - 2;
     else rEnd = (child.r || 0) + 6;
     if (rEnd > (child.r || 0) + 0.5) {
       const tip = L.polar(470, 380, child.r || 0, child.angle || 0);
@@ -493,7 +507,12 @@ function drawLeafLabel(n, radial) {
   const st = C.state;
   const text = T.labelOf(n);
   const size = st.fontSize * (n.labelSizeFactor || 1);
-  const color = n.labelColor || st.labelColor;
+  let color = n.labelColor;
+  if (!color && global.TreeRanges && global.TreeRanges.rangeColorLabels) {
+    const c = global.TreeRanges.getRangeColorForNode(n);
+    if (c) color = c;
+  }
+  if (!color) color = st.labelColor;
   const inv = isInvert();
   const isAligned = st.labelPosition === "aligned";
   const GAP = 8; const shift = Number(st.labelShift || 0);
@@ -506,8 +525,8 @@ function drawLeafLabel(n, radial) {
       const alignX = C.alignedLabelX() + shift;
       const maxW = C.maxTextWidth || 100;
       const la = st.labelAnchorRect || "left";
-      if (!inv) { if (la === "left") { x = alignX + GAP; anchor = "start"; } else { x = alignX + maxW + GAP * 2; anchor = "end"; } }
-      else { if (la === "left") { x = alignX - maxW - GAP * 2; anchor = "start"; } else { x = alignX - GAP; anchor = "end"; } }
+      if (!inv) { if (la === "left") { x = alignX + gapX; anchor = "start"; } else { x = alignX + maxW + gapX * 2; anchor = "end"; } }
+      else { if (la === "left") { x = alignX - maxW - gapX * 2; anchor = "start"; } else { x = alignX - gapX; anchor = "end"; } }
     } else {
       if (!inv) { x = n.x + gapX; anchor = "start"; } else { x = n.x - gapX; anchor = "end"; }
       if (st.extendBranches) C.el("line", { x1: n.x, y1: n.y, x2: x, y2: n.y, ...gapLineAttrs() });
@@ -515,9 +534,9 @@ function drawLeafLabel(n, radial) {
   } else {
     const angle = n.angle || 0;
     let rLabel;
-    if (isAligned) rLabel = C.getRadialLabelR() + shift;
+    if (isAligned) rLabel = C.getRadialLabelR() + shift + (gapCirc - (Number.isFinite(Number(st.leafLabelOffsetCirc)) ? 8 : 0));
     else {
-      rLabel = (n.r || 0) + gapCirc + shift;                   
+      rLabel = (n.r || 0) + gapCirc + shift;                    
       const tipR = n.r || 0, endR = tipR + gapCirc + shift; 
       if (st.extendBranches && endR > tipR + 0.5) {
         const pA = L.polar(470, 380, tipR, angle);
@@ -917,6 +936,21 @@ function drawRectTicks(root) {
   } else {
     axisMinX = Math.max(axisMinX, tipPos);
   }
+  const extStart = Math.max(0, Number(st.axisExtendStart) || 0);
+  const extEnd = Math.max(0, Number(st.axisExtendEnd) || 0);
+  if (extStart > 0) {
+    const vEdge = st.axisReverse ? (maxD + extStart) : (-extStart);
+    const x = tickPx(vEdge);
+    axisMinX = Math.min(axisMinX, x);
+    axisMaxX = Math.max(axisMaxX, x);
+  }
+  if (extEnd > 0) {
+    const vEdge = st.axisReverse ? (-extEnd) : (maxD + extEnd);
+    const x = tickPx(vEdge);
+    axisMinX = Math.min(axisMinX, x);
+    axisMaxX = Math.max(axisMaxX, x);
+  }
+  // ===== 新增结束 =====
   const extended = axisMinX < baseMinX - 1e-6 || axisMaxX > baseMaxX + 1e-6;
   C.el("line", { x1: axisMinX, y1: yAxis, x2: axisMaxX, y2: yAxis, stroke: "#333", "stroke-width": 1 });
   function drawOneTick(v, opts) {
@@ -996,7 +1030,10 @@ function drawCircularTicks(root) {
   const innerBase = (global.TreeLayout && typeof global.TreeLayout.getRadialInnerBase === 'function')
     ? global.TreeLayout.getRadialInnerBase() : 0;
   const maxR = 285 * (st.scaleH || 1);
-  const R_total = innerBase + maxR;
+  const extEnd = Math.max(0, Number(st.axisExtendEnd) || 0);
+  const extEndPx = extEnd * maxR / maxD;
+  const R_total = innerBase + maxR + extEndPx;
+  const tMaxValue = maxD + extEnd;
 
   const cx = 470, cy = 380;
   const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
@@ -1070,7 +1107,6 @@ function drawCircularTicks(root) {
     }
   }
 
-  // 1. 圆心刻度（如果有置信区间延伸）
   if (tCircle < -1e-9) {
     drawOneTickAtT(tCircle, {
       fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic,
@@ -1078,12 +1114,11 @@ function drawCircularTicks(root) {
     });
   }
 
-  // 2. 画主刻度（均分）
   const tStart = Math.ceil(tCircle / interval - 1e-9) * interval;
-  const totalSteps = Math.floor((maxD - tStart) / interval + 1e-9);
+  const totalSteps = Math.floor((tMaxValue - tStart) / interval + 1e-9);
   for (let i = 0; i <= totalSteps; i++) {
     const tVal = tStart + i * interval;
-    if (tVal > maxD + 1e-6) break;
+    if (tVal > tMaxValue + 1e-6) break;
     if (tVal < tCircle - 1e-6) continue;
     drawOneTickAtT(tVal, {
       fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic,
@@ -1091,23 +1126,21 @@ function drawCircularTicks(root) {
     });
   }
 
-  // 3. 防止浮点误差导致最后一个刻度缺失（因均分，基本不会触发）
   const lastRegular = tStart + totalSteps * interval;
-  if (maxD - lastRegular > interval * 0.01) {
-    drawOneTickAtT(maxD, {
+  if (tMaxValue - lastRegular > interval * 0.01) {
+    drawOneTickAtT(tMaxValue, {
       fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic,
       showLabel: tP.showLabels !== false, precInterval: interval
     });
   }
 
-  // 4. 画次刻度（半刻度）
   const interval2 = (tS.interval && tS.interval > 0) ? tS.interval : (interval / 2);
   const isMajor = t => Math.abs(t / interval - Math.round(t / interval)) < 1e-6;
   const tStart2 = Math.ceil(tCircle / interval2 - 1e-9) * interval2;
-  const totalSteps2 = Math.floor((maxD - tStart2) / interval2 + 1e-9);
+  const totalSteps2 = Math.floor((tMaxValue - tStart2) / interval2 + 1e-9);
   for (let i = 0; i <= totalSteps2; i++) {
     const tVal = tStart2 + i * interval2;
-    if (tVal > maxD + 1e-6) break;
+    if (tVal > tMaxValue + 1e-6) break;
     if (tVal < tCircle - 1e-6) continue;
     if (isMajor(tVal)) continue;
     drawOneTickAtT(tVal, {
