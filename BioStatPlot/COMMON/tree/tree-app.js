@@ -1803,13 +1803,17 @@ function bindAllControls() {
   bindPath("tickPrimaryGridWidth", "tickPrimary.gridWidth", "num");
   bindPath("tickPrimaryGridColor", "tickPrimary.gridColor");
 
-  on(document.getElementById("tickPrimaryCustom"), "change", e => {
-    C.snapshot();
-    const arr = String(e.target.value || "")
-      .split(/[,;\s]+/).map(s => Number(s)).filter(v => isFinite(v) && v >= 0);
-    C.state.tickPrimary.customTicks = arr;
-    refreshTreeView();
-  });
+on(document.getElementById("tickPrimaryCustom"), "change", e => {
+  C.snapshot();
+  const raw = String(e.target.value == null ? "" : e.target.value).trim();
+  const arr = raw
+    ? raw.split(/[,;\s]+/)
+        .map(s => Number(s))
+        .filter(v => isFinite(v) && v >= 0)
+    : [];
+  C.state.tickPrimary.customTicks = arr;
+  refreshTreeView();
+});
   bindPath("customTickColor", "customTickColor");
   bindPath("customTickBold", "customTickBold");
 

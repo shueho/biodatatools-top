@@ -1033,16 +1033,25 @@ function drawCircularTicks(root) {
   const extEnd = Math.max(0, Number(st.axisExtendEnd) || 0);
   const extEndPx = extEnd * maxR / maxD;
   const R_total = innerBase + maxR + extEndPx;
-  const tMaxValue = maxD + extEnd;
 
   const cx = 470, cy = 380;
   const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
   const unifyFs = Math.max(6, Number(st.tickLabelFontSize) || 11);
   const isReverse = (st.axisReverse === true || st.axisReverse === "true");
-  
-  // 不使用 niceRound，直接均分 10 等份，保证圆周上绝对均匀
+
   const interval = (tP.interval && tP.interval > 0) ? tP.interval : (maxD / 10);
   const tCircle = -innerBase * maxD / maxR;
+  const tMax = maxD + extEnd;
+  const tMin = Math.min(0, tCircle);
+
+  let vLo, vHi;
+  if (isReverse) {
+    vLo = maxD - tMax;
+    vHi = maxD - tMin;
+  } else {
+    vLo = tMin;
+    vHi = tMax;
+  }
 
   const axisRad = (axisAngle - 90) * Math.PI / 180;
   const ux = Math.cos(axisRad), uy = Math.sin(axisRad);
@@ -1058,10 +1067,10 @@ function drawCircularTicks(root) {
   const tickLen = 5;
   const labelGap = 4;
 
-  function drawOneTickAtT(t, opts) {
+  function drawOneTickAt(t, v, opts) {
     const r = innerBase + maxR * t / maxD;
     if (!isFinite(r) || r < -0.5 || r > R_total + 0.5) return;
-    
+
     const centerX = cx + r * ux;
     const centerY = cy + r * uy;
 
@@ -1089,9 +1098,7 @@ function drawCircularTicks(root) {
       const tx = centerX + (tickSize + labelGap) * lx;
       const ty = centerY + (tickSize + labelGap) * ly;
       const rot = axisAngle - 90;
-      
-      const vVal = isReverse ? (maxD - t) : t;
-      
+
       const tEl = C.el("text", {
         x: tx, y: ty,
         "font-size": opts.fs || unifyFs,
@@ -1103,59 +1110,36 @@ function drawCircularTicks(root) {
         fill: color,
         transform: `rotate(${rot} ${tx} ${ty})`
       });
-      tEl.textContent = opts.labelText != null ? opts.labelText : timeTickText(vVal, opts.precInterval);
+      tEl.textContent = opts.labelText != null ? opts.labelText : timeTickText(v, opts.precInterval);
     }
   }
 
-  if (tCircle < -1e-9) {
-    drawOneTickAtT(tCircle, {
-      fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic,
-      showLabel: tP.showLabels !== false, precInterval: interval
-    });
-  }
-
-  const tStart = Math.ceil(tCircle / interval - 1e-9) * interval;
-  const totalSteps = Math.floor((tMaxValue - tStart) / interval + 1e-9);
-  for (let i = 0; i <= totalSteps; i++) {
-    const tVal = tStart + i * interval;
-    if (tVal > tMaxValue + 1e-6) break;
-    if (tVal < tCircle - 1e-6) continue;
-    drawOneTickAtT(tVal, {
-      fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic,
-      showLabel: tP.showLabels !== false, precInterval: interval
-    });
-  }
-
-  const lastRegular = tStart + totalSteps * interval;
-  if (tMaxValue - lastRegular > interval * 0.01) {
-    drawOneTickAtT(tMaxValue, {
+  const vStart = Math.ceil(vLo / interval - 1e-9) * interval;
+  for (let v = vStart; v <= vHi + 1e-9; v += interval) {
+    const t = isReverse ? (maxD - v) : v;
+    drawOneTickAt(t, v, {
       fs: unifyFs, bold: st.tickLabelBold, italic: st.tickLabelItalic,
       showLabel: tP.showLabels !== false, precInterval: interval
     });
   }
 
   const interval2 = (tS.interval && tS.interval > 0) ? tS.interval : (interval / 2);
-  const isMajor = t => Math.abs(t / interval - Math.round(t / interval)) < 1e-6;
-  const tStart2 = Math.ceil(tCircle / interval2 - 1e-9) * interval2;
-  const totalSteps2 = Math.floor((tMaxValue - tStart2) / interval2 + 1e-9);
-  for (let i = 0; i <= totalSteps2; i++) {
-    const tVal = tStart2 + i * interval2;
-    if (tVal > tMaxValue + 1e-6) break;
-    if (tVal < tCircle - 1e-6) continue;
-    if (isMajor(tVal)) continue;
-    drawOneTickAtT(tVal, {
+  const vStart2 = Math.ceil(vLo / interval2 - 1e-9) * interval2;
+  for (let v = vStart2; v <= vHi + 1e-9; v += interval2) {
+    if (Math.abs(v / interval - Math.round(v / interval)) < 1e-6) continue;
+    const t = isReverse ? (maxD - v) : v;
+    drawOneTickAt(t, v, {
       fs: Math.max(6, unifyFs * 0.9), bold: false, italic: st.tickLabelItalic,
       tickSize: 3, showLabel: tS.showLabels === true,
       isSecondary: true, precInterval: interval2
     });
   }
 
-  // 5. 自定义刻度
   if (Array.isArray(tP.customTicks)) {
-    tP.customTicks.forEach(v => {
-      if (!isFinite(v)) return;
-      const tVal = isReverse ? (maxD - v) : v;
-      drawOneTickAtT(tVal, {
+    tP.customTicks.forEach(vv => {
+      if (!isFinite(vv)) return;
+      const t = isReverse ? (maxD - vv) : vv;
+      drawOneTickAt(t, vv, {
         fs: unifyFs, bold: st.customTickBold, italic: st.tickLabelItalic,
         color: st.customTickColor || "#c0392b", tickSize: 7, showLabel: true
       });
