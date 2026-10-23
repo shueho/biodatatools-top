@@ -311,10 +311,20 @@ function drawRectBranch(parent, child) {
   const shape = st.lineShape || "straight";
   if (shape === "slanted") {
     C.el("line", { x1: parent.x, y1: parent.y, x2: child.x, y2: child.y, ...commonLineAttrs(child, { branchId: child.id }) });
-  } else if (shape === "curved") {
-    const mx = (parent.x + child.x) / 2;
-    C.el("path", { d: `M ${parent.x} ${parent.y} C ${mx} ${parent.y}, ${mx} ${child.y}, ${child.x} ${child.y}`, ...commonLineAttrs(child, { branchId: child.id }) });
+} else if (shape === "curved") {
+  const dx = child.x - parent.x;
+  const dy = child.y - parent.y;
+  const maxR = Math.min(Math.abs(dx), Math.abs(dy)) / 2;
+  const r = Math.min(8, Math.max(0, maxR));
+  if (r < 0.5 || Math.abs(dx) < 0.5) {
+    C.el("line", { x1: parent.x, y1: parent.y, x2: child.x, y2: child.y, ...commonLineAttrs(child, { branchId: child.id }) });
   } else {
+    const rY = dy > 0 ? -r : r;
+    const rX = dx > 0 ? r : -r;
+    const d = `M ${parent.x} ${parent.y} L ${parent.x} ${child.y + rY} Q ${parent.x} ${child.y} ${parent.x + rX} ${child.y} L ${child.x} ${child.y}`;
+    C.el("path", { d, ...commonLineAttrs(child, { branchId: child.id }) });
+  }
+} else {
     C.el("path", { d: `M ${parent.x} ${parent.y} L ${parent.x} ${child.y}`, ...commonLineAttrs(child, { noPointer: true }) });
     C.el("path", { d: `M ${parent.x} ${child.y} L ${child.x} ${child.y}`, ...commonLineAttrs(child, { branchId: child.id }) });
   }
@@ -1132,15 +1142,28 @@ function drawScaleBox(root, radial) {
   if (!isFinite(value) || value <= 0) { const rawV = 100 / pxPerUnit; value = niceRound(rawV); }
   const barLen = value * pxPerUnit;
   const vb = C.getViewBox();
-  const x0 = vb.x + 20; const y0 = vb.y + 26;
+  const ox = Number(st.scaleBoxOffsetX) || 0;
+  const oy = Number(st.scaleBoxOffsetY) || 0;
+  const x0 = vb.x + 20 + ox;
+  const y0 = vb.y + 26 + oy;
   const title = st.scaleBoxTitle || "Scale";
-  const titleY = y0 - 18;
-  C.el("text", { x: x0, y: titleY, "font-size": 12, "font-family": st.fontFamily, "font-weight": "700", fill: "#333" }).textContent = title;
-  C.el("line", { x1: x0, y1: y0, x2: x0 + barLen, y2: y0, stroke: "#333", "stroke-width": 2 });
-  C.el("line", { x1: x0, y1: y0 - 5, x2: x0, y2: y0 + 5, stroke: "#333", "stroke-width": 2 });
-  C.el("line", { x1: x0 + barLen, y1: y0 - 5, x2: x0 + barLen, y2: y0 + 5, stroke: "#333", "stroke-width": 2 });
-  C.el("text", { x: x0 + barLen / 2, y: y0 + 16, "font-size": 12, "font-family": st.fontFamily, "text-anchor": "middle", fill: "#333" }).textContent = String(value);
+
+  const g = C.el("g", {
+    class: "scale-box",
+    "data-scale-box": "1",
+    style: "cursor:move",
+    transform: `translate(${x0} ${y0})`
+  });
+
+  C.el("text", { x: 0, y: -18, "font-size": 12, "font-family": st.fontFamily, "font-weight": "700", fill: "#333" }, g).textContent = title;
+  C.el("line", { x1: 0, y1: 0, x2: barLen, y2: 0, stroke: "#333", "stroke-width": 2 }, g);
+  C.el("line", { x1: 0, y1: -5, x2: 0, y2: 5, stroke: "#333", "stroke-width": 2 }, g);
+  C.el("line", { x1: barLen, y1: -5, x2: barLen, y2: 5, stroke: "#333", "stroke-width": 2 }, g);
+  C.el("text", { x: barLen / 2, y: 16, "font-size": 12, "font-family": st.fontFamily, "text-anchor": "middle", fill: "#333" }, g).textContent = String(value);
+
+  C.el("rect", { x: -12, y: -34, width: barLen + 24, height: 64, fill: "transparent", "pointer-events": "all" }, g);
 }
+
 function clearSvg() {
   const svg = C.getSvg(); if (!svg) return;
   while (svg.firstChild) svg.removeChild(svg.firstChild);

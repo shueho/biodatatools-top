@@ -180,6 +180,7 @@
       </div>
       <div class="btn-group" style="margin-top:8px;">
         <button class="btn" id="exportNodeTableBtn" type="button">导出节点数据表格</button>
+        <button class="btn" id="addMetaColumnBtn" type="button">添加元数据</button>
       </div>
     </div>
   </details>
@@ -330,31 +331,6 @@
 
 <div id="common-footer"></div>
 
-
-<div class="ms-modal-backdrop" id="msModalBackdrop">
-    <div class="ms-modal">
-        <div class="ms-head"><span>Multi-style label</span><button id="msClose" class="ms-close" type="button">×</button></div>
-        <div class="ms-body">
-            <input id="msText" type="text" class="ms-text">
-            <div class="ms-toolbar">
-                <button id="msBold" class="ms-tb" type="button"><b>B</b></button>
-                <button id="msItalic" class="ms-tb" type="button"><i>I</i></button>
-                <button id="msSup" class="ms-tb" type="button">X¹</button>
-                <button id="msSub" class="ms-tb" type="button">X₁</button>
-                <input id="msColor" type="color" value="#000000">
-                <span>F:</span><input id="msF" type="number" value="1" min="0.3" max="4" step="0.1" class="ms-num">
-                <span>X:</span><input id="msX" type="number" value="0" step="1" class="ms-num">
-                <span>Y:</span><input id="msY" type="number" value="0" step="1" class="ms-num">
-            </div>
-        </div>
-        <div class="ms-foot">
-            <button id="msSet" class="ms-set" type="button">Set style</button>
-            <button id="msReset" class="ms-reset" type="button">Reset</button>
-            <button id="msCancel" class="ms-cancel" type="button">Close</button>
-        </div>
-    </div>
-</div>
-
 <script src="../COMMON/script/plot-header.js"></script>
 <script src="../COMMON/script/plot-footer.js"></script>
 
@@ -377,8 +353,8 @@
 <script>
 (function() {
     var need = ['TreeCore','TreeParser','TreeTraverse','TreeLayout','TreeDrawBranch','TreeDrawNode',
-        'TreeRenderer','TreeLegend','TreeRanges','TreeDatasets','TreeTracks','TreeModals','TreeDrag',
-        'TreeUI','TreeExport','TreeApp','TreeOps','TreeSerialize'];
+    'TreeRenderer','TreeLegend','TreeRanges','TreeDatasets','TreeTracks','TreeDrag',
+    'TreeUI','TreeExport','TreeApp','TreeOps','TreeSerialize'];
     var missing = need.filter(function(k) { return !window[k]; });
     if (missing.length) {
         var box = document.getElementById('msgTip3');

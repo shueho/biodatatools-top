@@ -1169,7 +1169,8 @@ let trackCommon = {
   legendTitleFontSize: 30, legendTitleBold: true, legendTitleItalic: false,
   trackGap: 50, legendMaxPerRow: 0, legendScale: 1,
   trackNameShow: true, trackNameFontSize: 26, trackNameBold: true,
-  trackNameItalic: false, trackNameAngle: -45
+  trackNameItalic: false, trackNameAngle: -45,
+  autoShapeSize: true  
 };
 const TRACK_TYPE_LABEL_KEYS = {
   colorstrip: 'trackTypeColorstrip',
@@ -1202,6 +1203,7 @@ function newTrackDefaults(type) {
     borderColor: '#ffffff', borderWidth: 0,
     showBorder: true, mergeGroups: false, customColors: {},
     shape: 'square', outlineColor: '#333333', outlineWidth: 1,
+    binarySize: 0, symbolSize: 0,
     fill0: '#ffffff', fill1: '#E64B35',
     binaryLogic: 'eq', binaryValue: '',
     binaryTrueColor: '#E64B35', binaryFalseColor: '#cccccc',
@@ -1461,7 +1463,9 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
       const fill = ok ? track.binaryTrueColor : track.binaryFalseColor;
       const row = rowOf(l);
       const cy = (row.top + row.bottom) / 2;
-      const size = Math.min(row.bottom - row.top, w) * 0.42;
+      const autoSize = Math.min(row.bottom - row.top, w) * 0.42;
+      const useManual = (trackCommon.autoShapeSize === false) && Number(track.binarySize) > 0;
+      const size = useManual ? Math.max(1, Number(track.binarySize)) : autoSize;
       drawTrackSymbol(track.shape || 'square', x + w/2, cy, size, fill, track.outlineColor, track.outlineWidth);
     });
   } else if (track.type === 'bar') {
@@ -1495,7 +1499,9 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
       const fill = colorOf(track, key, colorMap);
       const row = rowOf(l);
       const cy = (row.top + row.bottom) / 2;
-      const size = Math.min(row.bottom - row.top, w) * 0.42;
+      const autoSize = Math.min(row.bottom - row.top, w) * 0.42;
+      const useManual = (trackCommon.autoShapeSize === false) && Number(track.symbolSize) > 0;
+      const size = useManual ? Math.max(1, Number(track.symbolSize)) : autoSize;
       drawTrackSymbol(shape, x + w/2, cy, size, fill, track.outlineColor, track.outlineWidth || 0);
     });
   } else if (track.type === 'stackedbar') {
@@ -1510,9 +1516,9 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
       if (!vals.length) return;
       const row = rowOf(l);
       const cy = (row.top + row.bottom) / 2;
-      const h = Math.min(row.bottom - row.top, 24);
-      const tot = vals.reduce((a, b) => a + Math.max(0, b), 0) || 1;
-      const r = Math.max(2, Math.min(h/2, Number(track.pieRadius) || 9));
+const h = Math.min(row.bottom - row.top, 24);
+const tot = vals.reduce((a, b) => a + Math.max(0, b), 0) || 1;
+const r = Math.max(2, Math.min(h/2, Number(track.pieRadius) || 9));
       let a0 = -90;
       vals.forEach((v, i) => {
         const frac = Math.max(0, v) / tot;
@@ -1669,7 +1675,7 @@ function drawBarTrackAdvanced(track, x, w, leaves, rowOf, invert) {
 }
 
 function drawTrackLegend(track, x, y, colorMap) {
-  if (!track.showLegend) return 0;
+  if (!track.showLegend || track.type === 'text') return 0;
   const tc = trackCommon;
   const ff = fontFam();
   const scale = tc.legendScale || 1;
@@ -1853,10 +1859,18 @@ function renderCustomTracks(radial) {
       drawOneTrack(track, x, w, leaves, rowH, rowBounds, isInv);
       placed.push({ track, x, w });
     });
-    const autoLegendX = isInv ? (xBase - 24) : (xBase + 24);
+let autoLegendX;
+if (isInv) {
+  const root = C.getRoot();
+  const rootRight = root ? (root.x || 0) : 800;
+  autoLegendX = rootRight + 40;
+} else {
+  autoLegendX = xBase + 24;
+}
+
     let legendY = Math.min(...ys) - rowH * 0.85 - 10;
     placed.forEach(item => {
-      if (!item.track.showLegend) return;
+      if (!item.track.showLegend || item.track.type === 'text') return;
       if (item.track.legendX != null && item.track.legendY != null) {
         drawTrackLegend(item.track, item.track.legendX, item.track.legendY, getTrackColorMap(item.track));
       } else {
@@ -1926,7 +1940,9 @@ function renderCustomTracks(radial) {
           if (!ok && !track.binaryShowFalse) return;
           const fill = ok ? track.binaryTrueColor : track.binaryFalseColor;
           const p = L.polar(cx, cy, rMid, l.angle);
-          const size = Math.min(ringW * 0.42, (gStep * Math.PI / 180) * rMid * 0.42);
+          const autoSize = Math.min(ringW * 0.42, (gStep * Math.PI / 180) * rMid * 0.42);
+          const useManual = (tc.autoShapeSize === false) && Number(track.binarySize) > 0;
+          const size = useManual ? Math.max(1, Number(track.binarySize)) : autoSize;
           const el = drawTrackSymbol(track.shape || 'square', p.x, p.y, size, fill, track.outlineColor, track.outlineWidth);
           if (el) el.setAttribute("transform", `rotate(${(l.angle - 90)} ${p.x} ${p.y})`);
         } else if (track.type === 'bar') {
@@ -1958,7 +1974,9 @@ function renderCustomTracks(radial) {
           const shape = (track.shapeMap && track.shapeMap[key]) || track.uniformShape || 'square';
           const fill = colorOf(track, key, colorMap);
           const p = L.polar(cx, cy, rMid, l.angle);
-          const size = Math.min(ringW * 0.42, (gStep * Math.PI / 180) * rMid * 0.42);
+          const autoSize = Math.min(ringW * 0.42, (gStep * Math.PI / 180) * rMid * 0.42);
+          const useManual = (tc.autoShapeSize === false) && Number(track.symbolSize) > 0;
+          const size = useManual ? Math.max(1, Number(track.symbolSize)) : autoSize;
           const el = drawTrackSymbol(shape, p.x, p.y, size, fill, track.outlineColor, track.outlineWidth || 0);
           if (el) el.setAttribute("transform", `rotate(${(l.angle - 90)} ${p.x} ${p.y})`);
         } else if (track.type === 'stackedbar') {
@@ -1983,9 +2001,12 @@ function renderCustomTracks(radial) {
           if (v == null || v === '') return;
           const vals = String(v).split(',').map(parseFloat).filter(Number.isFinite);
           if (!vals.length) return;
-          const center = L.polar(cx, cy, rMid, l.angle);
-          const rPie = Math.max(2, Math.min(Number(track.pieRadius) || 9, ringW * 0.45, (gStep * Math.PI / 180) * rMid * 0.45));
-          const tot = vals.reduce((a, b) => a + Math.max(0, b), 0) || 1;
+          const center = L.polar(cx, cy, rMid, l.angle);                    
+          const tot = vals.reduce((a, b) => a + Math.max(0, b), 0) || 1; 
+          const useManual = (tc.autoShapeSize === false) && Number(track.pieRadius) > 0;
+          const rPie = useManual
+            ? Math.max(2, Number(track.pieRadius))
+            : Math.max(2, Math.min(Number(track.pieRadius) || 9, ringW * 0.45, (gStep * Math.PI / 180) * rMid * 0.45));
           const cols = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
           let pa0 = -90;
           vals.forEach((val, i) => {
@@ -2047,14 +2068,34 @@ function renderCustomTracks(radial) {
           });
         }
       }
+if (tc.trackNameShow && track.name) {
+  const nameFs = Math.max(6, Number(tc.trackNameFontSize) || 11);
+  const midR = ringStart + ringW / 2;
+  const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
+  const p = L.polar(cx, cy, midR, axisAngle);
+  let rot = axisAngle;
+  while (rot > 90) rot -= 180;
+  while (rot < -90) rot += 180;
+  C.el("text", {
+    x: p.x, y: p.y,
+    "font-size": nameFs,
+    "font-weight": tc.trackNameBold ? 700 : 400,
+    "font-style": tc.trackNameItalic ? 'italic' : 'normal',
+    "text-anchor": "middle",
+    "dominant-baseline": "middle",
+    fill: "#3a4a4a",
+    "font-family": ff,
+    "data-track-title": track.id,
+    transform: `rotate(${rot} ${p.x} ${p.y})`
+  }).textContent = track.name;
+}
       placed.push({ track, ringW, ringStart });
       rBase = ringStart + ringW;
     });
-    const vb = C.getViewBox();
-    let legendY = vb.y + 20;
-    const legendX = vb.x + vb.w - 220;
+    const legendX = cx + rBase + 40;
+    let legendY = cy - 150;
     placed.forEach(item => {
-      if (!item.track.showLegend) return;
+      if (!item.track.showLegend || item.track.type === 'text') return;
       if (item.track.legendX != null && item.track.legendY != null) {
         drawTrackLegend(item.track, item.track.legendX, item.track.legendY, getTrackColorMap(item.track));
       } else {

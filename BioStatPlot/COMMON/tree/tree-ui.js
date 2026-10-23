@@ -132,62 +132,7 @@ function renderGroupPaletteDropdown(container, opts) {
 }
 
 
-let msSelStart = 0, msSelEnd = 0;
-
-function openMultiStyleModal() {
-  const n = T.nodeById(C.getSelectedId()); if (!n) return;
-  const bd = document.getElementById("msModalBackdrop"); if (!bd) return;
-  const inp = document.getElementById("msText");
-  inp.value = T.labelOf(n);
-  msSelStart = 0; msSelEnd = inp.value.length;
-  ["msBold","msItalic","msSup","msSub"].forEach(id => document.getElementById(id).classList.remove("active"));
-  document.getElementById("msColor").value = "#000000";
-  document.getElementById("msF").value = 1;
-  document.getElementById("msX").value = 0;
-  document.getElementById("msY").value = 0;
-  bd.style.display = "flex";
-  setTimeout(() => inp.focus(), 0);
-}
-function closeMultiStyleModal() { const bd = document.getElementById("msModalBackdrop"); if (bd) bd.style.display = "none"; }
-function setSelectionStyle() {
-  const n = T.nodeById(C.getSelectedId()); if (!n) return;
-  const inp = document.getElementById("msText");
-  const txt = inp.value;
-  let s = msSelStart, e = msSelEnd;
-  if (s === e) { s = 0; e = txt.length; }
-  C.snapshot();
-  if (n.label !== txt) n.label = txt;
-  n.styleRuns = n.styleRuns || [];
-  n.styleRuns.push({
-    start: s, end: e,
-    bold: document.getElementById("msBold").classList.contains("active"),
-    italic: document.getElementById("msItalic").classList.contains("active"),
-    sup: document.getElementById("msSup").classList.contains("active"),
-    sub: document.getElementById("msSub").classList.contains("active"),
-    color: document.getElementById("msColor").value,
-    f: Number(document.getElementById("msF").value) || 1,
-    dx: Number(document.getElementById("msX").value) || 0,
-    dy: Number(document.getElementById("msY").value) || 0
-  });
-  global.TreeRenderer.draw();
-}
-function resetLabelStyle() {
-  const n = T.nodeById(C.getSelectedId()); if (!n) return;
-  C.snapshot(); n.styleRuns = []; global.TreeRenderer.draw();
-}
-function bindModals() {
-
-  const mt = document.getElementById("msText");
-  if (mt) ["keyup","mouseup","select"].forEach(ev => mt.addEventListener(ev, () => { msSelStart = mt.selectionStart; msSelEnd = mt.selectionEnd; }));
-  ["msBold","msItalic","msSup","msSub"].forEach(id => document.getElementById(id)?.addEventListener("click", () => document.getElementById(id).classList.toggle("active")));
-  document.getElementById("msSet")?.addEventListener("click", setSelectionStyle);
-  document.getElementById("msReset")?.addEventListener("click", resetLabelStyle);
-  document.getElementById("msClose")?.addEventListener("click", closeMultiStyleModal);
-  document.getElementById("msCancel")?.addEventListener("click", closeMultiStyleModal);
-  document.getElementById("msModalBackdrop")?.addEventListener("click", e => { if (e.target.id === "msModalBackdrop") closeMultiStyleModal(); });
-}
-global.TreeModals = { openMultiStyleModal, closeMultiStyleModal, setSelectionStyle, resetLabelStyle, bindModals };
-let drag = null, legendDrag = null, moveDrag = null;
+let drag = null, legendDrag = null, moveDrag = null, scaleDrag = null;
 let moveLineEl = null, moveRingEl = null;
 let suppressSvgClick = false;
 function clientToSvg(svg, cx, cy) {
@@ -255,6 +200,24 @@ function enableDrag(svg) {
       e.stopPropagation();
       return;    }
 
+    const scaleEl = e.target.closest && e.target.closest(".scale-box");
+    if (scaleEl) {
+      const rect = svg.getBoundingClientRect();
+      scaleDrag = {
+        el: scaleEl,
+        startX: e.clientX,
+        startY: e.clientY,
+        ox0: Number(st.scaleBoxOffsetX) || 0,
+        oy0: Number(st.scaleBoxOffsetY) || 0,
+        unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
+        unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
+        moved: false
+      };
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
     const rect = svg.getBoundingClientRect();
     drag = {
       startX: e.clientX,
@@ -303,6 +266,23 @@ function enableDrag(svg) {
       }
       return;
     }
+
+    if (scaleDrag) {
+      const dx = (e.clientX - scaleDrag.startX) * scaleDrag.unitX;
+      const dy = (e.clientY - scaleDrag.startY) * scaleDrag.unitY;
+      if (!scaleDrag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
+      if (!scaleDrag.moved) {
+        C.snapshot();
+        scaleDrag.moved = true;
+        suppressSvgClick = true;
+        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+      st.scaleBoxOffsetX = scaleDrag.ox0 + dx;
+      st.scaleBoxOffsetY = scaleDrag.oy0 + dy;
+      global.TreeRenderer.draw();
+      return;
+    }
+
 
     if (moveDrag) {
       if (Math.abs(e.clientX - moveDrag.startX) + Math.abs(e.clientY - moveDrag.startY) < 3) return;
@@ -359,6 +339,18 @@ const endDrag = e => {
     }, 0);
     return;
   }
+
+    if (scaleDrag) {
+      try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+      const wasMoved = scaleDrag.moved;
+      scaleDrag = null;
+      setTimeout(() => {
+        suppressSvgClick = false;
+        if (wasMoved) global.TreeRenderer.draw();
+      }, 0);
+      return;
+    }
+
     if (moveDrag) {
       const moved = moveDrag.moved;
       const srcId = moveDrag.srcId;
@@ -695,13 +687,13 @@ function renderBasicPanel(container) {
       </div>
     </div>
 
-    <div class="param-panel" id="scaleBoxPanel"><div class="param-panel-title">${I.t('panelScaleBox')}</div>
-      <div class="param-grid cols-4">
-        <div class="param-item"><label class="mini-check"><input id="showScaleBoxChk" type="checkbox" ${st.showScaleBox !== false ? 'checked' : ''}> ${I.t('scaleBoxShow')}</label></div>
-        <div class="param-item"><label>${I.t('scaleBoxSize')}</label><input id="scaleBoxSizeInput" type="number" value="${st.scaleBoxSize || 0}" min="0" step="0.01"></div>
-        <div class="param-item"><label>${I.t('scaleBoxTitle')}</label><input id="scaleBoxTitleInput" type="text" value="${escapeAttr(st.scaleBoxTitle || 'Scale')}"></div>
-      </div>
-    </div>
+<div class="param-panel" id="scaleBoxPanel"><div class="param-panel-title">${I.t('panelScaleBox')}</div>
+  <div class="param-grid cols-4">
+    <div class="param-item"><label class="mini-check"><input id="showScaleBoxChk" type="checkbox" ${st.showScaleBox !== false ? 'checked' : ''}> ${I.t('scaleBoxShow')}</label></div>
+    <div class="param-item"><label>${I.t('scaleBoxSize')}</label><input id="scaleBoxSizeInput" type="number" value="${st.scaleBoxSize || 0}" min="0" step="0.01"></div>
+    <div class="param-item"><label>${I.t('scaleBoxTitle')}</label><input id="scaleBoxTitleInput" type="text" value="${escapeAttr(st.scaleBoxTitle || 'Scale')}"></div>
+  </div>
+</div>
 
     <div class="param-panel"><div class="param-panel-title">${I.t('panelTimeTree')}</div>
       <div class="param-grid cols-4">
@@ -1266,7 +1258,7 @@ ${hasLevel ? `<div class="param-item"><label>${I.t('geoLevelLabel')}</label>
 if (field === 'level') {
   const header = list.querySelector(`[data-geo-track-id="${id}"] .track-title`);
   if (header) {
-    const pre = t.level ? `${R.GEO_LEVEL_LABELS[t.level] || t.level}：` : '';
+    const pre = t.level ? `${R.GEO_LEVEL_LABELS[t.level] || t.level}${I.t('trackTitleSep')}` : '';
     header.textContent = pre + (t.name || I.t('geoUntitled'));
   }
 }
@@ -1379,6 +1371,21 @@ function renderDatasetsPanel(container) {
   if (!container) return;
 
   container.innerHTML = `
+
+    <div class="param-panel" id="leafLabelPanel">
+      <div class="param-panel-title">${I.t('leafLabelPanel')}</div>
+      <div class="param-grid cols-4">
+        <div class="param-item" style="grid-column: span 2;">
+          <label>${I.t('leafLabelDataColumn')}</label>
+          <select id="leafLabelColumn"><option value="">${I.t('leafLabelUseLeafName')}</option></select>
+        </div>
+        <div class="param-item" style="align-self:end;">
+          <button class="btn" id="applyLeafLabelColumn" type="button">${I.t('applyLeafLabel')}</button>
+          <button class="btn btn-outline" id="resetLeafLabelColumn" type="button">${I.t('resetLeafLabel')}</button>
+        </div>
+      </div>
+    </div>
+
     <div class="param-panel" id="trackCommonPanel">
       <div class="param-panel-title">${I.t('trackCommonPanel')}</div>
       ${subTitle(I.t('trackLegendCommon'))}
@@ -1402,21 +1409,14 @@ function renderDatasetsPanel(container) {
         <div class="param-item"><label>${I.t('trackNameAngle')}</label><input id="tcTrackNameAngle" type="number" min="-90" max="90" step="1" value="-45"></div>
         <div class="param-item"><label>${I.t('trackGap')}</label><input id="tcTrackGap" type="number" min="0" step="1" value="50"></div>
       </div>
-    </div>
-
-    <div class="param-panel" id="leafLabelPanel">
-      <div class="param-panel-title">${I.t('leafLabelPanel')}</div>
+      ${subTitle(I.t('trackShapeSizeCommon'))}
       <div class="param-grid cols-4">
-        <div class="param-item" style="grid-column: span 2;">
-          <label>${I.t('leafLabelDataColumn')}</label>
-          <select id="leafLabelColumn"><option value="">${I.t('leafLabelUseLeafName')}</option></select>
-        </div>
-        <div class="param-item" style="align-self:end;">
-          <button class="btn" id="applyLeafLabelColumn" type="button">${I.t('applyLeafLabel')}</button>
-          <button class="btn btn-outline" id="resetLeafLabelColumn" type="button">${I.t('resetLeafLabel')}</button>
-        </div>
+        <div class="param-item"><label class="mini-check">
+          <input type="checkbox" id="tcAutoShapeSize" checked> ${I.t('trackAutoShapeSize')}
+        </label></div>
       </div>
     </div>
+
 
     <div class="param-panel" id="rangeBackgroundPanel">
       <div class="param-panel-title">${I.t('rangeBackgroundPanel')}</div>
@@ -1441,12 +1441,12 @@ function renderDatasetsPanel(container) {
       ${subTitle(I.t('rangeStyleTitle'))}
       <div class="param-grid cols-4">
         <div class="param-item"><label>${I.t('rangeCoverLabel')}</label>
-          <select id="rangeCoverSelect">
-            <option value="label">Label</option>
-            <option value="clade">Clade</option>
-            <option value="full">Full</option>
-            <option value="off">Off</option>
-          </select>
+<select id="rangeCoverSelect">
+  <option value="label">${I.t('rangeCoverOptLabel')}</option>
+  <option value="clade">${I.t('rangeCoverOptClade')}</option>
+  <option value="full">${I.t('rangeCoverOptFull')}</option>
+  <option value="off">${I.t('rangeCoverOptOff')}</option>
+</select>
         </div>
         <div class="param-item"><label>${I.t('rangeBorderWidth')}</label>
           <input id="rpBorder" type="number" min="0" max="8" step="1" value="0">
@@ -1637,6 +1637,7 @@ function bindTrackCommonControls(container) {
     container.querySelector('#tcTrackNameItalic').checked = tc.trackNameItalic;
     container.querySelector('#tcTrackNameAngle').value = tc.trackNameAngle;
     container.querySelector('#tcTrackGap').value = tc.trackGap;
+    container.querySelector('#tcAutoShapeSize').checked = tc.autoShapeSize !== false;
   };
   sync();
 
@@ -1666,6 +1667,7 @@ function bindTrackCommonControls(container) {
   bind('tcTrackNameItalic', 'trackNameItalic', 'bool');
   bind('tcTrackNameAngle', 'trackNameAngle', 'num');
   bind('tcTrackGap', 'trackGap', 'num');
+  bind('tcAutoShapeSize', 'autoShapeSize', 'bool');
 }
 
 function subTitle(text) { return `<div class="sub-section-title">${text}</div>`; }
@@ -1801,6 +1803,8 @@ function refreshTrackList(container) {
           </select></div>
           <div class="param-item"><label>${I.t('trackOutlineColor')}</label><input type="color" data-tprop="outlineColor" data-tid="${t.id}" value="${t.outlineColor}"></div>
           <div class="param-item"><label>${I.t('trackOutlineWidth')}</label><input type="number" data-tprop="outlineWidth" data-tid="${t.id}" value="${t.outlineWidth}" min="0" max="6"></div>
+          <div class="param-item"><label>${I.t('trackBinarySize')}</label><input type="number" data-tprop="binarySize" data-tid="${t.id}" value="${t.binarySize || 0}" min="0" max="200" step="1" placeholder="0"></div>
+
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
         ${legendBlock(t)}
@@ -1903,6 +1907,7 @@ function refreshTrackList(container) {
         <div class="param-grid cols-4">
           <div class="param-item"><label>${I.t('trackMultiColHint')}</label><select data-tprop="column" data-tid="${t.id}">${colOpts(t.column || t.shapeColumn)}</select></div>
           <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackSymbolSize')}</label><input type="number" data-tprop="symbolSize" data-tid="${t.id}" value="${t.symbolSize || 0}" min="0" max="200" step="1" placeholder="0"></div>
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
         ${subTitle(I.t('trackUniformShape'))}

@@ -133,7 +133,6 @@
 .track-list { overflow: visible; }
 .track-body { overflow: visible; }
 .bdt-donate-l { z-index: 10000 !important; }
-
 @media (max-width: 900px) {
     #treeSidebar {
         top: auto !important;
@@ -155,41 +154,42 @@
 <div class="main">
     <div class="page-intro">
         <h2>Phylogenetic Tree Visualization</h2>
-        <p>Read Newick / NEXUS / PhyloXML tree files and visualize them interactively.</p>
+        <p>Read phylogenetic tree files in Newick / NEXUS / PhyloXML format and visualize them.</p>
     </div>
 
 <div class="step-card" id="step1">
-  <div class="step-title">Step 1: Import a phylogenetic tree</div>
+  <div class="step-title">Step 1: Import Phylogenetic Tree</div>
   <div id="treeImportPanel"></div>
   <div id="treeMsg" class="tip-text"></div>
 
   <details class="param-panel" id="nodeTableBox" style="margin-top:12px;">
-    <summary>Node table (auto-generated after loading a tree)</summary>
+    <summary>Node data table (auto-generated after loading a tree)</summary>
     <div style="padding:10px 12px;">
       <div class="param-inline" style="margin-bottom:8px;flex-wrap:wrap;gap:10px;">
         <label class="mini-check"><input type="checkbox" id="showLeafNodes" checked> Leaf nodes</label>
         <label class="mini-check"><input type="checkbox" id="showInternalNodes" checked> Internal nodes</label>
-        <label class="mini-check"><input type="checkbox" id="showOnlyWithSupport"> Only nodes with support values</label>
+        <label class="mini-check"><input type="checkbox" id="showOnlyWithSupport"> Only with support</label>
         <input type="text" id="nodeTableSearch" placeholder="Search ID / label / parent / metadata"
                style="flex:1;min-width:220px;">
       </div>
       <div class="info-box" style="margin-bottom:8px;padding:6px 10px;background:#eef3f9;border-left:3px solid #1f4068;font-size:12px;color:#1f4068;line-height:1.6;">
-        Tip: Double-click a Label / Length / Support / Meta: xxx cell to edit. Enter to save, Esc to cancel.
+        Hint: Double-click the "Label", "Length", "Support", or "Meta: xxx" cells to edit. Press Enter to save, Esc to cancel.
       </div>
       <div id="nodeTableWrap" class="table-wrap" style="max-height:420px;overflow:auto;">
-        <div class="empty-tip">The node table will appear here after loading a tree.</div>
+        <div class="empty-tip">Node data will be shown here after loading a tree</div>
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="exportNodeTableBtn" type="button">Export node table</button>
+        <button class="btn" id="exportNodeTableBtn" type="button">Export node data table</button>
+        <button class="btn" id="addMetaColumnBtn" type="button">Add metadata</button>
       </div>
     </div>
   </details>
 </div>
 
 <div class="step-card" id="step2">
-  <div class="step-title">Step 2: Import leaf label data table</div>
+  <div class="step-title">Step 2: Import Leaf Label Data Table</div>
 <div class="info-box">
-    If you need to associate data with leaf nodes or rename labels on the tree, you can upload a data table here. You can prepare the table in Excel and import it, or use the built-in tools below to generate columns automatically. Use the collapsible sections below to add new columns; the final result will appear in the table at the bottom of this step. If you used any of the example trees in Step 1, you can <a href="https://www.biodatatools.top/BioStatPlot/COMMON/tree/data.txt" target="_blank" rel="noopener noreferrer">click here to download the example data table</a>.
+    To associate data with each leaf node or rename leaf labels, you can upload a data table here. You may prepare the data in Excel and import it, or use the built-in algorithms to generate it automatically. Use the collapsible sections below to add new columns; the final result will appear in the table at the bottom of the page. If you used any of the example data in Step 1, you can <a href="https://www.biodatatools.top/BioStatPlot/COMMON/tree/data.txt" target="_blank" rel="noopener noreferrer">click here to download the example table</a>.
 </div>
 
   <details class="param-panel">
@@ -204,10 +204,10 @@
       </div>
       <div class="ext-text-input">
         <textarea id="externalDataText" class="import-text" spellcheck="false"
-          placeholder="The first column must be the leaf name (Leaf); other columns may be numeric or text."></textarea>
+          placeholder="The first column must contain leaf names (Leaf); the remaining columns may be numeric or plain text."></textarea>
       </div>
       <div class="info-box" style="margin-top:8px;">
-        The first column must match the leaf labels on the tree. Missing values will be filled according to column type (NA for missing entries).
+        The first column must match the leaf labels on the tree. Missing values will be filled according to each column's type (NA if missing).
       </div>
       <div class="btn-group" style="margin-top:8px;">
         <button class="btn" id="autoFillLeavesBtn" type="button">Fill all leaf names</button>
@@ -218,7 +218,7 @@
   </details>
 
   <details class="param-panel">
-    <summary>② Generate column from leaf name prefix</summary>
+    <summary>② Generate a column from leaf-name prefixes</summary>
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
@@ -241,11 +241,11 @@
   </details>
 
   <details class="param-panel">
-    <summary>③ Group by clade depth</summary>
+    <summary>③ Group by branch depth</summary>
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>Depth level (from root, 1 = first-level clade)</label>
+          <label>Depth level (starting from root, 1 = first-level branch)</label>
           <input type="number" id="cladeDepth" value="1" min="1" max="20">
         </div>
       </div>
@@ -260,7 +260,7 @@
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>Cluster count N</label>
+          <label>Number of clusters N</label>
           <input type="number" id="clusterN" value="5" min="2" max="20">
         </div>
       </div>
@@ -271,11 +271,11 @@
   </details>
 
   <details class="param-panel">
-    <summary>⑤ Add prefix as a new column</summary>
+    <summary>⑤ Add a prefix as a new column</summary>
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>Prefix (concatenated with leaf labels)</label>
+          <label>Prefix content (concatenated with leaf labels)</label>
           <input type="text" id="customPrefixInput" value="Sample_">
         </div>
       </div>
@@ -286,7 +286,7 @@
   </details>
 
   <div id="leafDataPreview" class="table-wrap">
-    <div class="empty-tip">After loading a tree, this table will be automatically filled with every leaf node.</div>
+    <div class="empty-tip">After loading a tree, the table will be automatically populated with every leaf node.</div>
   </div>
 
   <div class="btn-group" style="margin-top:12px;">
@@ -298,70 +298,47 @@
 </div>
 
     <div class="step-card" id="step3">
-        <div class="step-title">Step 3: Set basic styles</div>
+        <div class="step-title">Step 3: Set Basic Styles</div>
         <div id="basicStylePanel"></div>
     </div>
 
     <div class="step-card" id="step4">
-        <div class="step-title">Step 4: Add node data</div>
+        <div class="step-title">Step 4: Add Node Data</div>
         <div id="advancedStylePanel"></div>
     </div>
 
     <div class="step-card" id="step5">
-        <div class="step-title">Step 5: Add data tracks</div>
+        <div class="step-title">Step 5: Add Data Tracks</div>
         <div id="datasetsPanel"></div>
     </div>
 
     <div class="step-card" id="step6">
-        <div class="step-title">Step 6: Preview and export</div>
+        <div class="step-title">Step 6: Preview and Export</div>
 <div class="result-toolbar">
-    <button class="btn" id="drawBtn" type="button">Refresh single canvas</button>
+    <button class="btn" id="drawBtn" type="button">Redraw</button>
     <button class="btn" id="exportSvgBtn" type="button" disabled>Export SVG</button>
     <button class="btn" id="exportPngBtn" type="button" disabled>Export PNG</button>
-    <button class="btn" id="saveExportStateBtn" type="button">Export plot state</button>
+    <button class="btn" id="saveExportStateBtn" type="button">Export drawing state</button>
     <span class="spacer"></span>
     <span id="toolbarTip" class="tip-text" style="margin:0;"></span>
 </div>
         <div id="msgTip3" class="tip-text"></div>
         <div class="chart-preview" id="chartPreview">
-            <div class="placeholder">Upload a tree, then click "Draw tree" to see the result.</div>
+            <div class="placeholder">Upload a tree, then click "Redraw" to view the result</div>
         </div>
     </div>
 </div>
 
 <div id="common-footer"></div>
 
-
-
-<div class="ms-modal-backdrop" id="msModalBackdrop">
-    <div class="ms-modal">
-        <div class="ms-head"><span>Multi-style label</span><button id="msClose" class="ms-close" type="button">×</button></div>
-        <div class="ms-body">
-            <input id="msText" type="text" class="ms-text">
-            <div class="ms-toolbar">
-                <button id="msBold" class="ms-tb" type="button"><b>B</b></button>
-                <button id="msItalic" class="ms-tb" type="button"><i>I</i></button>
-                <button id="msSup" class="ms-tb" type="button">X¹</button>
-                <button id="msSub" class="ms-tb" type="button">X₁</button>
-                <input id="msColor" type="color" value="#000000">
-                <span>F:</span><input id="msF" type="number" value="1" min="0.3" max="4" step="0.1" class="ms-num">
-                <span>X:</span><input id="msX" type="number" value="0" step="1" class="ms-num">
-                <span>Y:</span><input id="msY" type="number" value="0" step="1" class="ms-num">
-            </div>
-        </div>
-        <div class="ms-foot">
-            <button id="msSet" class="ms-set" type="button">Set style</button>
-            <button id="msReset" class="ms-reset" type="button">Reset</button>
-            <button id="msCancel" class="ms-cancel" type="button">Close</button>
-        </div>
-    </div>
-</div>
-
 <script src="../COMMON/script/plot-header.js"></script>
 <script src="../COMMON/script/plot-footer-en.js"></script>
 
 <script src="../COMMON/tree/tree-bootstrap.js"></script>
 <script src="../COMMON/tree/tree-i18n.js"></script>
+
+
+
 <script src="../COMMON/tree/tree-common.js"></script>
 <script src="../COMMON/tree/tree-palette.js"></script>
 <script src="../COMMON/tree/tree-continuous-palette.js"></script>
@@ -375,12 +352,11 @@
 <script src="../COMMON/tree/tree-mini-preview.js"></script>
 <script src="../COMMON/donate-widget-left.js"></script>
 
-
 <script>
 (function() {
     var need = ['TreeCore','TreeParser','TreeTraverse','TreeLayout','TreeDrawBranch','TreeDrawNode',
-        'TreeRenderer','TreeLegend','TreeRanges','TreeDatasets','TreeTracks','TreeModals','TreeDrag',
-        'TreeUI','TreeExport','TreeApp','TreeOps','TreeSerialize'];
+    'TreeRenderer','TreeLegend','TreeRanges','TreeDatasets','TreeTracks','TreeDrag',
+    'TreeUI','TreeExport','TreeApp','TreeOps','TreeSerialize'];
     var missing = need.filter(function(k) { return !window[k]; });
     if (missing.length) {
         var box = document.getElementById('msgTip3');

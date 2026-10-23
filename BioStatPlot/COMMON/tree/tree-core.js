@@ -47,6 +47,7 @@ const ctx = {
     customTickColor: "#c0392b", customTickBold: true,
     timeScaleFactor: 1,
     showScaleBox: true, scaleBoxSize: 0, scaleBoxTitle: "Scale",
+    scaleBoxOffsetX: 0, scaleBoxOffsetY: 0,
     lengthLabel: {
       show: false, fontSize: 9, bold: false, italic: false,
       decimals: 2, offsetX: 0, offsetY: -3,
@@ -306,7 +307,30 @@ function parsePhyloXML(text) {
         case "taxonomy": { const sci = child.getElementsByTagName("scientific_name")[0] || child.getElementsByTagNameNS("*", "scientific_name")[0]; if (sci) node.name = (sci.textContent || "").trim(); break; }
         case "confidence": { const v = (child.textContent || "").trim(); if (v) node.support = v; const t = child.getAttribute("type"); if (t) node.meta.push({ field: "confidence_type", value: t }); break; }
         case "clade": childClades.push(child); break;
-        case "property": { const key = child.getAttribute("ref") || child.getAttribute("applies_to"); const val = (child.textContent || "").trim(); if (key && val) node.meta.push({ field: key, value: val }); break; }
+        case "property": {
+          const key = child.getAttribute("ref") || child.getAttribute("applies_to");
+          let val = (child.textContent || "").trim();
+          if (key && val) {
+            const arrMatch = val.match(/^\[\s*(.*?)\s*\]$/);
+            if (arrMatch) {
+              const parts = arrMatch[1].split(",").map(s => s.trim()).filter(s => s !== "");
+              const nums = parts.map(s => Number(s));
+              if (nums.length >= 2 && nums.every(n => Number.isFinite(n))) {
+                node.meta.push({ field: key, value: nums });
+                break;
+              }
+            }
+            if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(val)) {
+              const n = Number(val);
+              if (Number.isFinite(n)) {
+                node.meta.push({ field: key, value: n });
+                break;
+              }
+            }
+            node.meta.push({ field: key, value: val });
+          }
+          break;
+        }
       }
     }
     if (childLen) { const v = Number.parseFloat((childLen.textContent || "").trim()); if (Number.isFinite(v) && v >= 0) { node.length = v; node._hasExplicitLength = true; } }
@@ -627,5 +651,81 @@ function toPhyloXML() {
   }
   return '<?xml version="1.0" encoding="UTF-8"?>\n<phyloxml xmlns="http://www.phyloxml.org">\n<phylogeny rooted="true">\n' + clade(ctx.root) + "\n</phylogeny>\n</phyloxml>\n";
 }
-global.TreeSerialize = { newickName, toNewick, toNexus, toPhyloXML };
+
+function toPhyloXMLWithMeta(node) {
+  const esc = s => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  function clade(n, isRoot) {
+    const kids = (n.children || []).filter(c => !c.deleted);
+    let s = "<clade>";
+    if (!isRoot && n.length != null) {
+      s += "<branch_length>" + (+Number(n.length).toFixed(6)) + "</branch_length>";
+    }
+    const nm = n.label || n.name;
+    if (nm && (!kids.length || !isRoot)) {
+      s += "<name>" + esc(nm) + "</name>";
+    }
+    if (n.support) {
+      s += '<confidence type="bootstrap">' + esc(n.support) + "</confidence>";
+    }
+    (n.meta || []).forEach(m => {
+      if (!m || m.field == null) return;
+      let v = m.value;
+      if (Array.isArray(v)) {
+        v = "[" + v.map(x => String(x)).join(", ") + "]";
+      }
+      if (v != null && v !== "") {
+        s += '<property ref="' + esc(m.field) + '" applies_to="clade">' + esc(v) + "</property>";
+      }
+    });
+    kids.forEach(c => { s += clade(c, false); });
+    return s + "</clade>";
+  }
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<phyloxml xmlns="http://www.phyloxml.org">\n<phylogeny rooted="true">\n' + clade(node, true) + "\n</phylogeny>\n</phyloxml>\n";
+}
+
+function cropTreeToPathAndSubtree(root, target) {
+  if (!root || !target) return null;
+  const path = [];
+  let cur = target;
+  while (cur) {
+    path.unshift(cur);
+    if (cur === root) break;
+    cur = cur.parent;
+  }
+  if (path[0] !== root) return null;
+  function cloneFull(n) {
+    const o = {
+      name: n.name || "",
+      length: n.length,
+      support: n.support,
+      label: n.label,
+      meta: JSON.parse(JSON.stringify(n.meta || [])),
+      children: []
+    };
+    (n.children || []).forEach(c => {
+      if (!c.deleted) o.children.push(cloneFull(c));
+    });
+    return o;
+  }
+  let result = cloneFull(target);
+  for (let i = path.length - 2; i >= 0; i--) {
+    const anc = path[i];
+    result = {
+      name: anc.name || "",
+      length: anc.length,
+      support: anc.support,
+      label: anc.label,
+      meta: [],                         
+      children: [result]
+    };
+  }
+  return result;
+}
+
+global.TreeSerialize = {
+  newickName, toNewick, toNexus, toPhyloXML,
+  toPhyloXMLWithMeta, cropTreeToPathAndSubtree
+};
 })(window);

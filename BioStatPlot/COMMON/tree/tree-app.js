@@ -848,7 +848,7 @@ function startEditCell(span) {
       renderNodeTable();
       if (wrap) wrap.scrollTop = scrollTop;
       const statusEl = document.getElementById('status');
-      if (statusEl) statusEl.textContent = '已更新单元格：' + (edit.split(':')[0] === 'meta' ? edit.slice(5) : edit);
+      if (statusEl) statusEl.textContent = I.t('statusCellUpdated', { field: edit.split(':')[0] === 'meta' ? edit.slice(5) : edit });
     } else {
       span.textContent = original;
     }
@@ -924,27 +924,33 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
     </div>
     <button class="nap-btn" data-nap="reverse" ${isLeaf ? "disabled" : ""}>${I.t('napReverse')}</button>
     <button class="nap-btn" data-nap="dash">${I.t('napDash')}</button>
-    <button class="nap-btn has-sub" data-nap="range-toggle">色带管理</button>
-    <div class="nap-sub" data-sub="range">
-      <div class="nap-sub-title">分组色带</div>
-      ${ownerRange ? `<div class="nap-hint" style="padding:2px 22px 6px;">当前属于：<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${ownerRange.color};margin-right:4px;vertical-align:middle;"></span>${escapeHtml(ownerRange.label || ('Range ' + ownerRange.id))}</div>` : ''}
-      <button class="nap-sub-btn" data-range-action="create">
-        <span class="nap-sub-radio">＋</span> 创建新色带
-      </button>
-      ${allRanges.map(r => `
-        <button class="nap-sub-btn" data-range-action="add:${r.id}">
-          <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${r.color};flex-shrink:0;"></span>
-          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.label || ('Range ' + r.id))}</span>
-          ${n.rangeId === r.id ? '<span style="color:#c0392b;font-weight:700;">✓</span>' : ''}
-        </button>
-      `).join('')}
-      <button class="nap-sub-btn" data-range-action="remove" ${n.rangeId == null ? 'disabled' : ''}>
-        <span class="nap-sub-radio">−</span> 从色带中移除
-      </button>
-      <div class="nap-hint">创建后可在第五步“叶标签背景色”里统一改颜色和名称。</div>
-    </div>
+<button class="nap-btn has-sub" data-nap="range-toggle">${I.t('napRangeManage')}</button>
+<div class="nap-sub" data-sub="range">
+  <div class="nap-sub-title">${I.t('napRangeGroup')}</div>
+  ${ownerRange ? `<div class="nap-hint" style="padding:2px 22px 6px;">${I.t('napRangeCurrent')}<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${ownerRange.color};margin-right:4px;vertical-align:middle;"></span>${escapeHtml(ownerRange.label || ('Range ' + ownerRange.id))}</div>` : ''}
+  <button class="nap-sub-btn" data-range-action="create">
+    <span class="nap-sub-radio">＋</span> ${I.t('napRangeCreate')}
+  </button>
+${allRanges.map(r => `
+  <div class="nap-range-row" style="display:flex;align-items:center;gap:6px;padding:4px 14px 4px 22px;">
+    <input type="color" class="nap-range-color" data-range-edit="${r.id}" value="${r.color}"
+           title="${I.t('napRangeEditColor')}"
+           style="width:22px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;flex-shrink:0;background:#fff;">
+    <button type="button" class="nap-range-name" data-range-apply="${r.id}"
+            title="${I.t('napRangeApply')}"
+            style="flex:1;min-width:0;text-align:left;padding:4px 6px;background:none;border:0;cursor:pointer;font:inherit;font-size:12.5px;color:#1d2c2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.label || ('Range ' + r.id))}</button>
+    <span class="${n.rangeId === r.id ? 'nap-range-check' : 'nap-range-check-empty'}"
+          style="${n.rangeId === r.id ? 'color:#c0392b;font-weight:700;' : ''}flex-shrink:0;width:14px;text-align:center;">${n.rangeId === r.id ? '✓' : ' '}</span>
+  </div>
+`).join('')}
+  <button class="nap-sub-btn" data-range-action="remove" ...>
+    <span class="nap-sub-radio">−</span> ${I.t('napRangeRemove')}
+  </button>
+  <div class="nap-hint">${I.t('napRangeHint')}</div>
+</div>
     <div class="nap-row"><label>${I.t('napSubtreeColor')}</label><input type="color" class="nap-color" value="${curColor}"></div>
     <div class="nap-row"><label>${I.t('napWidthFactor')}</label><input type="number" class="nap-width" min="0.2" max="8" step="0.1" value="${curWidth}"></div>
+    <button class="nap-btn" data-nap="export-subtree" title="${I.t('napExportSubtreeTip')}">${I.t('napExportSubtree')}</button>
     <button class="nap-btn nap-close" data-nap="close">${I.t('napClose')}</button>
   `;
 
@@ -984,7 +990,7 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
       }
     });
   }
-  panel.querySelectorAll("[data-collapse-mode]").forEach(btn => {
+panel.querySelectorAll("[data-collapse-mode]").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       if (btn.disabled) return;
@@ -993,8 +999,8 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
       C.state.collapsedMode = mode;
       n.collapsed = true;
       collapseToggle.textContent = I.t('napExpand');
-      collapseToggle.classList.remove("open");
-      collapseSub.classList.remove("open");
+      collapseToggle.classList.add("open");
+      collapseSub.classList.add("open");
       panel.querySelectorAll("[data-collapse-mode]").forEach(b => {
         const active = b.dataset.collapseMode === mode;
         b.classList.toggle("active", active);
@@ -1004,6 +1010,7 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
       refreshTreeView(); renderNodeTable(); reposition();
     });
   });
+
   if (tipOffsetInput) tipOffsetInput.addEventListener("change", () => {
     const v = Number(tipOffsetInput.value);
     if (!isFinite(v) || v < 0) return;
@@ -1041,28 +1048,77 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
     });
   }
 
-  panel.querySelectorAll("[data-range-action]").forEach(rbtn => {
-    rbtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (rbtn.disabled) return;
-      const ract = rbtn.dataset.rangeAction;
-      if (ract === "create") {
-        global.TreeRanges.openRangeModal();
-      } else if (ract.indexOf("add:") === 0) {
-        const id = Number(ract.split(":")[1]);
-        C.snapshot();
-        n.rangeId = id;
-        refreshTreeView();
-        renderNodeTable();
-      } else if (ract === "remove") {
-        C.snapshot();
-        n.rangeId = null;
-        refreshTreeView();
-        renderNodeTable();
-      }
-      panel.style.display = "none";
-    });
+function refreshRangeChecks(activeId) {
+  panel.querySelectorAll(".nap-range-check, .nap-range-check-empty").forEach(chk => {
+    chk.className = "nap-range-check-empty";
+    chk.style.color = "";
+    chk.style.fontWeight = "";
+    chk.textContent = " ";
   });
+  if (activeId != null) {
+    const row = panel.querySelector(`[data-range-apply="${activeId}"]`);
+    if (row) {
+      const chk = row.closest(".nap-range-row")?.querySelector(".nap-range-check-empty");
+      if (chk) {
+        chk.className = "nap-range-check";
+        chk.style.color = "#c0392b";
+        chk.style.fontWeight = "700";
+        chk.textContent = "✓";
+      }
+    }
+  }
+}
+
+panel.querySelectorAll("[data-range-edit]").forEach(inp => {
+  inp.addEventListener("click", e => e.stopPropagation());
+  inp.addEventListener("input", e => {
+    e.stopPropagation();
+    const id = Number(inp.dataset.rangeEdit);
+    const range = global.TreeRanges.colorRanges.find(r => r.id === id);
+    if (!range) return;
+    if (inp.dataset.editing !== "1") { C.snapshot(); inp.dataset.editing = "1"; }
+    range.color = inp.value;
+    global.TreeRenderer.draw();
+  });
+  inp.addEventListener("change", () => { delete inp.dataset.editing; });
+});
+
+panel.querySelectorAll("[data-range-apply]").forEach(btn => {
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    const id = Number(btn.dataset.rangeApply);
+    C.snapshot();
+    n.rangeId = id;
+    refreshTreeView();
+    renderNodeTable();
+    refreshRangeChecks(id);
+    reposition();
+  });
+});
+
+panel.querySelectorAll("[data-range-action]").forEach(rbtn => {
+  rbtn.addEventListener("click", e => {
+    e.stopPropagation();
+    if (rbtn.disabled) return;
+    const ract = rbtn.dataset.rangeAction;
+    if (ract === "create") {
+      global.TreeRanges.openRangeModal();
+      const rect = panel.getBoundingClientRect();
+      panel.style.display = "none";
+      setTimeout(() => {
+        if (global.TreeApp && global.TreeApp.showNodeActionPanel) {
+          global.TreeApp.showNodeActionPanel(n.id, rect.left, rect.top);
+        }
+      }, 0);
+    } else if (ract === "remove") {
+      C.snapshot();
+      n.rangeId = null;
+      refreshTreeView();
+      renderNodeTable();
+      refreshRangeChecks(null);
+    }
+  });
+});
 
   panel.querySelectorAll("[data-nap]").forEach(btn => {
     const act = btn.dataset.nap;
@@ -1114,11 +1170,11 @@ function showBranchActionPanel(branchNodeId, clientX, clientY) {
     document.body.appendChild(panel);
     panel.addEventListener("click", e => e.stopPropagation());
   }
-  panel.innerHTML = `
-    <div class="nap-title">分支: ${escapeHtml(T.labelOf(n))}</div>
-    <button class="nap-btn" data-nap="reroot-branch">在此支上重定根</button>
-    <button class="nap-btn nap-close" data-nap="close">关闭</button>
-  `;
+panel.innerHTML = `
+  <div class="nap-title">${I.t('branchTitle', { name: escapeHtml(T.labelOf(n)) })}</div>
+  <button class="nap-btn" data-nap="reroot-branch">${I.t('branchReroot')}</button>
+  <button class="nap-btn nap-close" data-nap="close">${I.t('branchClose')}</button>
+`;
   panel.style.display = "block";
   const w = panel.offsetWidth || 240;
   const h = panel.offsetHeight || 90;
@@ -1147,6 +1203,29 @@ function showBranchActionPanel(branchNodeId, clientX, clientY) {
 
 function handleNodeAction(action, n) {
   if (!n) return;
+
+  if (action === "export-subtree") {
+    const S = global.TreeSerialize;
+if (!S || !S.cropTreeToPathAndSubtree || !S.toPhyloXMLWithMeta) {
+  alert(I.t('alertSerializeMissing')); return;
+}
+const cropped = S.cropTreeToPathAndSubtree(C.getRoot(), n);
+if (!cropped) { alert(I.t('alertExportSubtreeFail')); return; }
+    const xml = S.toPhyloXMLWithMeta(cropped);
+    const label = String(T.labelOf(n) || n.id || 'subtree').replace(/[^\w.-]+/g, '_');
+    if (global.TreeExport && global.TreeExport.download) {
+      global.TreeExport.download(label + '_subtree.xml', xml, 'application/xml;charset=utf-8');
+    } else {
+      const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = label + '_subtree.xml';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    return;
+  }
+
   C.snapshot();
 
   if (action === "delete") {
@@ -1193,6 +1272,28 @@ function exportNodeTableCsv() {
   a.download = "tree_nodes.csv";
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function addMetaColumn() {
+  const root = C.getRoot();
+  if (!root) { alert(I.t('alertNeedTree')); return; }
+  const input = prompt(I.t('addMetaPrompt'), 'meta1');
+  if (input === null) return;
+  const field = String(input).trim();
+  if (!field) return;
+  C.snapshot();
+  let count = 0;
+  T.allWalk(root, n => {
+    n.meta = n.meta || [];
+    if (!n.meta.find(m => m.field === field)) {
+      n.meta.push({ field, value: '' });
+      count++;
+    }
+  });
+  refreshTreeView();
+  renderNodeTable();
+  const st = document.getElementById("status");
+  if (st) st.textContent = I.t('addMetaStatus', { field, n: count });
 }
 
 function snapshotLeafSet(raw) {
@@ -1265,7 +1366,7 @@ function applyLoadedState(raw, opts) {
     if (typeof bindAllControls === 'function') bindAllControls();
     if (typeof syncControls === 'function') syncControls();
   }
-  
+  if (typeof rebuildSidebarNav === 'function') rebuildSidebarNav();
   drawTree();
 }
 function renderTreeImportPanel() {
@@ -1332,7 +1433,7 @@ function renderTreeImportPanel() {
     const oldText = btn.textContent;
     btn.textContent = I.t('importLoading');
     btn.disabled = true;
-    showTreeMsg(I.t('treeMsgLoadingExample'), 'warn');
+    showTreeMsg(I.t('treeMsgLoadingExample'), '');
     
     const JSDELIVR_PATH = `shueho/biodatatools-top@main/BioStatPlot/COMMON/tree/${filename}`;
     const REMOTE_RAW = `https://raw.githubusercontent.com/shueho/biodatatools-top/main/BioStatPlot/COMMON/tree/${filename}`;
@@ -1424,6 +1525,22 @@ function loadTree(text) {
     C.resetIdSeq();
     P.assign(t, null);
     C.setRoot(t);
+
+    if (global.TreeRanges) {
+      global.TreeRanges.clearAllColorRanges();   
+      global.TreeRanges.rangeSeq = 0;
+      if (Array.isArray(global.TreeRanges.geoTimeTracks)) {
+        global.TreeRanges.geoTimeTracks.length = 0;
+      }
+      global.TreeRanges.geoTrackSeq = 0;
+      global.TreeRanges.geoEntrySeq = 0;
+      global.TreeRanges.geoTimeShow = false;
+    }
+    if (global.TreeTracks && Array.isArray(global.TreeTracks.tracks)) {
+      global.TreeTracks.tracks.length = 0;       
+    }
+    C.state.legendOffsetX = 0;
+    C.state.legendOffsetY = 0;
 
     const isTime = detectAndFixTimeTree(t);
 
@@ -2024,7 +2141,6 @@ function init() {
   syncControls();
   bindAllControls();
   if (global.TreeMenu) global.TreeMenu.bindMenuEvents();
-  if (global.TreeModals) global.TreeModals.bindModals();
   rebuildSidebarNav();
 
   ["showLeafNodes","showInternalNodes","showOnlyWithSupport"].forEach(id => {
@@ -2032,6 +2148,7 @@ function init() {
   });
   document.getElementById("nodeTableSearch")?.addEventListener("input", renderNodeTable);
   document.getElementById("exportNodeTableBtn")?.addEventListener("click", exportNodeTableCsv);
+  document.getElementById("addMetaColumnBtn")?.addEventListener("click", addMetaColumn);
   document.getElementById("nodeTableBox")?.addEventListener("toggle", e => { if (e.target.open) renderNodeTable(); });
 
   document.addEventListener("click", (e) => {

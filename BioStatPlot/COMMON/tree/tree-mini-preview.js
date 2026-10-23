@@ -8,7 +8,9 @@
             collapse: '折叠',
             expand: '展开',
             refresh: '刷新',
-            hint: '调整参数后，建议点击右上角 ⟳ 刷新预览'
+            hint: '调整参数后，建议点击右上角 ⟳ 刷新预览',
+            zoomTitle: '设置放大镜倍数',
+            zoomPrompt: '请输入放大倍数：',
         },
         en: {
             title: 'Preview (for preview only — please export the image in the final step)',
@@ -16,7 +18,9 @@
             collapse: 'Collapse',
             expand: 'Expand',
             refresh: 'Refresh',
-            hint: 'After adjusting parameters, click ⟳ (top right) to refresh the preview'
+            hint: 'After adjusting parameters, click ⟳ (top right) to refresh the preview',
+            zoomTitle: 'Set magnifier zoom',
+            zoomPrompt: 'Enter magnifier zoom factor:',
         }
     };
 
@@ -161,6 +165,7 @@
             '<div class="mini-preview-header">',
             '  <span class="mini-preview-title"></span>',
             '  <div class="mini-preview-actions">',
+            '    <button type="button" class="mini-preview-btn" data-act="zoom"></button>',
             '    <button type="button" class="mini-preview-btn" data-act="refresh"></button>',
             '    <button type="button" class="mini-preview-btn" data-act="toggle"></button>',
             '  </div>',
@@ -178,6 +183,7 @@
     let titleEl = null;
     let toggleBtn = null;
     let refreshBtn = null;
+    let zoomBtn = null; 
     let hintEl = null;
     let observer = null;
     let refreshTimer = null;
@@ -191,6 +197,17 @@
         toggleBtn.textContent = collapsed ? '+' : '−';
         refreshBtn.title = t.refresh;
         refreshBtn.textContent = '⟳';
+        if (zoomBtn) {
+            zoomBtn.title = t.zoomTitle;
+            if (!zoomBtn.querySelector('svg')) {
+                zoomBtn.innerHTML =
+                    '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" ' +
+                    'stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
+                    '<circle cx="7" cy="7" r="4.4"/>' +
+                    '<line x1="10.4" y1="10.4" x2="14" y2="14"/>' +
+                    '</svg>';
+            }
+        }
         hintEl.textContent = t.hint;
         if (!bodyEl.querySelector('svg')) {
             bodyEl.innerHTML = '<div class="mini-preview-empty">' + t.empty + '</div>';
@@ -199,6 +216,7 @@
 
     function doRefresh() {
         if (!bodyEl) return;
+                     magSvgClone = null;
         if (!global.TreeExport || typeof global.TreeExport.exportSvgString !== 'function') {
             bodyEl.innerHTML = '<div class="mini-preview-empty">' + T().empty + '</div>';
             return;
@@ -352,6 +370,80 @@
         });
     }
 
+let magEl = null;
+let magSvgClone = null;
+const MAG_SIZE = 180;
+let MAG_ZOOM = 1;
+
+function setupMagnifier() {
+    if (!rootEl || !bodyEl) return;
+
+    magEl = document.createElement('div');
+    magEl.className = 'mini-preview-magnifier';
+    magEl.style.cssText = `
+        position: fixed;
+        width: ${MAG_SIZE}px;
+        height: ${MAG_SIZE}px;
+        border-radius: 50%;
+        border: 2px solid #2a5a8e;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3), inset 0 0 0 2px #fff;
+        overflow: hidden;
+        pointer-events: none;
+        display: none;
+        background: #fff;
+        z-index: 99999;
+    `;
+    document.body.appendChild(magEl);
+
+    bodyEl.addEventListener('mousemove', (e) => {
+        if (Number(MAG_ZOOM) <= 1) { magEl.style.display = 'none'; return; }
+
+        const svgEl = bodyEl.querySelector('svg');
+        if (!svgEl) { magEl.style.display = 'none'; return; }
+
+        const bodyRect = bodyEl.getBoundingClientRect();
+        const x = e.clientX - bodyRect.left;
+        const y = e.clientY - bodyRect.top;
+        if (x < 0 || y < 0 || x > bodyRect.width || y > bodyRect.height) {
+            magEl.style.display = 'none';
+            return;
+        }
+
+        const vb = svgEl.viewBox && svgEl.viewBox.baseVal;
+        if (!vb || !vb.width) { magEl.style.display = 'none'; return; }
+
+        magEl.style.left = (e.clientX - MAG_SIZE / 2) + 'px';
+        magEl.style.top = (e.clientY - MAG_SIZE / 2) + 'px';
+        magEl.style.display = 'block';
+
+        if (!magSvgClone || magSvgClone.parentNode !== magEl) {
+            magSvgClone = svgEl.cloneNode(true);
+            magSvgClone.removeAttribute('width');
+            magSvgClone.removeAttribute('height');
+            magSvgClone.setAttribute('width', '100%');
+            magSvgClone.setAttribute('height', '100%');
+            magSvgClone.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+            magSvgClone.style.width = '100%';
+            magSvgClone.style.height = '100%';
+            magSvgClone.style.display = 'block';
+            magEl.innerHTML = '';
+            magEl.appendChild(magSvgClone);
+        }
+
+        const relX = Math.max(0, Math.min(1, x / bodyRect.width));
+        const relY = Math.max(0, Math.min(1, y / bodyRect.height));
+        const magVBW = vb.width / MAG_ZOOM;
+        const magVBH = vb.height / MAG_ZOOM;
+        const vx = vb.x + relX * vb.width - magVBW / 2;
+        const vy = vb.y + relY * vb.height - magVBH / 2;
+        magSvgClone.setAttribute('viewBox', `${vx} ${vy} ${magVBW} ${magVBH}`);
+    });
+
+    bodyEl.addEventListener('mouseleave', () => {
+        if (magEl) magEl.style.display = 'none';
+    });
+}
+
     function init() {
         if (!global.TreeExport) return;
         const preview = document.getElementById('chartPreview');
@@ -368,10 +460,12 @@
         titleEl = rootEl.querySelector('.mini-preview-title');
         toggleBtn = rootEl.querySelector('[data-act="toggle"]');
         refreshBtn = rootEl.querySelector('[data-act="refresh"]');
+        zoomBtn    = rootEl.querySelector('[data-act="zoom"]');
         hintEl = rootEl.querySelector('.mini-preview-hint');
 
         updateTexts();
         bindDrag(rootEl.querySelector('.mini-preview-header'));
+        setupMagnifier();   
 
         toggleBtn.addEventListener('click', function (e) {
             e.stopPropagation();
@@ -381,6 +475,16 @@
         refreshBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             manualRefresh();
+        });
+        zoomBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const cur = Number(MAG_ZOOM) || 3;
+            const input = prompt(T().zoomPrompt, String(cur));
+            if (input == null) return;
+            const num = Number(input);
+            if (!isFinite(num) || num <= 0) return;
+            MAG_ZOOM = num;
+            magSvgClone = null;  
         });
 
         observer = new MutationObserver(scheduleRefresh);
