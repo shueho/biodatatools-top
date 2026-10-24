@@ -121,6 +121,19 @@
     width: 100%;
     height: 100%;
 }
+
+.mini-preview-body svg,
+.mini-preview-body svg * {
+    pointer-events: none !important;
+    cursor: default !important;
+}
+
+.mini-preview-magnifier .mag-content,
+.mini-preview-magnifier .mag-content * {
+    pointer-events: none !important;
+    cursor: default !important;
+}
+
 .mini-preview-empty {
     color: #9aa7b6;
     font-size: 12px;
@@ -248,6 +261,8 @@
             svgEl.style.width = '100%';
             svgEl.style.height = '100%';
             svgEl.style.background = '#ffffff';
+            svgEl.style.pointerEvents = 'none';
+            svgEl.setAttribute('pointer-events', 'none');
             bodyEl.innerHTML = '';
             bodyEl.appendChild(document.importNode(svgEl, true));
         } catch (e) {
@@ -262,6 +277,8 @@
                 svgEl.style.width = '100%';
                 svgEl.style.height = '100%';
                 svgEl.style.background = '#ffffff';
+                svgEl.style.pointerEvents = 'none';
+                svgEl.setAttribute('pointer-events', 'none');
             }
         }
 
@@ -453,6 +470,8 @@
             magSvgClone.style.width = '100%';
             magSvgClone.style.height = '100%';
             magSvgClone.style.display = 'block';
+            magSvgClone.style.pointerEvents = 'none';
+            magSvgClone.setAttribute('pointer-events', 'none');
             magContentWrap.innerHTML = '';
             magContentWrap.appendChild(magSvgClone);
         }
@@ -506,6 +525,7 @@
         document.body.appendChild(magEl);
 
         magContentWrap = document.createElement('div');
+        magContentWrap.className = 'mag-content';   
         magContentWrap.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
         magEl.appendChild(magContentWrap);
 

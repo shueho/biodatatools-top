@@ -107,10 +107,15 @@ const I = global.TreeI18N;
     '.node-label-item{border:1px solid #dce6e3;border-radius:6px;padding:10px 12px;margin-bottom:10px;background:#fafcfb;}',
     '.node-label-item .nli-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:700;color:#1f4068;}',
     '.node-label-item .nli-remove{border:0;background:#e74c3c;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:14px;}',
-    '.track-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;overflow:visible;}',
-    '.track-item{border:1px solid #dce6e3;border-radius:6px;background:#fafcfb;overflow:visible !important;}',
-    '.track-header{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#eef3f9;border-bottom:1px solid #dce6e3;}',
-    '.track-title{flex:1;font-weight:700;font-size:13px;color:#1f4068;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+'.track-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;overflow:visible;}',
+'.track-item{border:1px solid #dce6e3;border-radius:6px;background:#fafcfb;overflow:visible !important;}',
+'.track-header{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#eef3f9;border-bottom:1px solid #dce6e3;}',
+'.track-item.dragging{opacity:.45;}',
+'.track-item.drag-over-top{border-top:3px solid #1f4068;}',
+'.track-item.drag-over-bottom{border-bottom:3px solid #1f4068;}',
+'.track-drag-handle{cursor:grab;padding:0 4px;color:#889;font-size:14px;line-height:1;user-select:none;flex-shrink:0;}',
+'.track-drag-handle:active{cursor:grabbing;}',
+'.track-title{flex:1;font-weight:700;font-size:13px;color:#1f4068;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     '.track-toggle{border:0;background:none;cursor:pointer;font-size:14px;color:#455;}',
     '.track-remove{border:0;background:#e74c3c;color:#fff;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1;}',
     '.track-body{padding:10px 12px;overflow:visible;}',
@@ -1303,6 +1308,109 @@ function exportNodeTableCsv() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+function fillNodeIdsInMetaPanel() {
+  const ta = document.getElementById("nodeMetaText"); if (!ta) return;
+  const root = C.getRoot(); if (!root) { alert(I.t('alertNeedTree')); return; }
+
+  const current = (ta.value || "").trim();
+  let headers = ["ID"];
+  const existing = new Map();
+  if (current) {
+    const lines = current.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length) {
+      const delim = lines[0].includes("\t") ? "\t" : lines[0].includes(",") ? "," : /\s+/;
+      const parse = line => (delim instanceof RegExp) ? line.trim().split(delim) : line.split(delim).map(s => s.trim());
+      const h = parse(lines[0]);
+      if (h.length) headers = ["ID", ...h.slice(1)];
+      for (let i = 1; i < lines.length; i++) {
+        const cells = parse(lines[i]);
+        if (cells[0]) existing.set(cells[0].trim(), cells);
+      }
+    }
+  }
+  const out = [headers.join("\t")];
+  T.allWalk(root, n => {
+    const cells = new Array(headers.length).fill("");
+    cells[0] = n.id;
+    const old = existing.get(n.id);
+    if (old) for (let j = 1; j < headers.length; j++) if (old[j] !== undefined) cells[j] = old[j];
+    out.push(cells.join("\t"));
+  });
+  ta.value = out.join("\n");
+}
+
+function generateNodeRandomData() {
+  const ta = document.getElementById("nodeMetaText"); if (!ta) return;
+  const root = C.getRoot(); if (!root) { alert(I.t('alertNeedTree')); return; }
+  const headers = ["ID", "rand_val1", "rand_val2", "rand_val3", "rand_val4"];
+  const out = [headers.join("\t")];
+  T.allWalk(root, n => {
+    out.push([n.id,
+      (Math.random() * 10).toFixed(2),
+      (Math.random() * 10).toFixed(2),
+      (Math.random() * 10).toFixed(2),
+      (Math.random() * 10).toFixed(2)].join("\t"));
+  });
+  ta.value = out.join("\n");
+}
+
+function mergeNodeMetaData() {
+  const root = C.getRoot(); if (!root) { alert(I.t('alertNeedTree')); return; }
+  const ta = document.getElementById("nodeMetaText");
+  const text = (ta?.value || "").trim();
+  if (!text) { alert(I.t('nodeMetaEmpty')); return; }
+
+  const parsed = global.PlotCommon && PlotCommon.parseTable ? PlotCommon.parseTable(text) : null;
+  if (!parsed || !parsed.headers.length) { alert(I.t('alertParseFail')); return; }
+
+  const idCol = parsed.headers[0];
+  const useId = /^id$/i.test(String(idCol).trim());
+  const metaCols = parsed.headers.slice(1);
+  if (!metaCols.length) { alert(I.t('nodeMetaNoMetaCol')); return; }
+
+  const byId = new Map(), byLabel = new Map(), byUid = new Map();
+  T.allWalk(root, n => {
+    byId.set(n.id, n);
+    const lbl = T.labelOf(n);
+    if (!byLabel.has(lbl)) byLabel.set(lbl, n);
+    if (n.name && !byLabel.has(n.name)) byLabel.set(n.name, n);
+    if (n.uid && !byUid.has(n.uid)) byUid.set(n.uid, n);
+  });
+
+  C.snapshot();
+  let matched = 0;
+  parsed.data.forEach(row => {
+    const key = String(row[idCol] == null ? "" : row[idCol]).trim();
+    if (!key) return;
+    const n = useId ? byId.get(key) : (byId.get(key) || byLabel.get(key) || byUid.get(key));
+    if (!n) return;
+    matched++;
+    metaCols.forEach(col => {
+      const raw = row[col];
+      if (raw == null || raw === "") return;
+      let val = raw;
+      const num = Number(raw);
+      if (Number.isFinite(num) && String(num) === String(raw).trim()) val = num;
+      n.meta = (n.meta || []).filter(m => m.field !== col);
+      n.meta.push({ field: col, value: val });
+    });
+  });
+
+  if (matched > 0) {
+    renderNodeTable();
+    if (global.TreeUI && global.TreeUI.renderAdvancedPanel) {
+      const adv = document.getElementById("advancedStylePanel");
+      if (adv) global.TreeUI.renderAdvancedPanel(adv);
+    }
+    if (global.TreeRenderer) global.TreeRenderer.draw();
+  }
+
+  const st = document.getElementById("status");
+  if (st) st.textContent = matched > 0
+    ? I.t('nodeMetaMerged', { n: matched })
+    : I.t('nodeMetaNoMatch');
+}
+
 function addMetaColumn() {
   const root = C.getRoot();
   if (!root) { alert(I.t('alertNeedTree')); return; }
@@ -1789,8 +1897,6 @@ function bindAllControls() {
   bindChk("forceMidpointRoot", "forceMidpointRoot");
   bindSel("labelsSelect", "labels", "bool");
   bindSel("labelPositionSelect", "labelPosition");
-  bindInp("leafLabelOffsetX", "leafLabelOffsetX", "num");
-  bindInp("leafLabelOffsetCirc", "leafLabelOffsetCirc", "num");
   bindInp("fontSize", "fontSize", "num");
   bindInp("labelColor", "labelColor");
   bindChk("boldChk", "bold");
@@ -2198,6 +2304,9 @@ function init() {
   document.getElementById("nodeTableSearch")?.addEventListener("input", renderNodeTable);
   document.getElementById("exportNodeTableBtn")?.addEventListener("click", exportNodeTableCsv);
   document.getElementById("addMetaColumnBtn")?.addEventListener("click", addMetaColumn);
+document.getElementById("fillNodeIdsBtn")?.addEventListener("click", fillNodeIdsInMetaPanel);
+document.getElementById("generateNodeRandomBtn")?.addEventListener("click", generateNodeRandomData);
+document.getElementById("mergeNodeMetaBtn")?.addEventListener("click", mergeNodeMetaData);
   document.getElementById("nodeTableBox")?.addEventListener("toggle", e => { if (e.target.open) renderNodeTable(); });
 
   document.addEventListener("click", (e) => {

@@ -50,13 +50,14 @@ const ctx = {
     timeScaleFactor: 1,
     showScaleBox: true, scaleBoxSize: 0, scaleBoxTitle: "Scale",
     scaleBoxOffsetX: 0, scaleBoxOffsetY: 0,
-    lengthLabel: {
-      show: false, fontSize: 9, bold: false, italic: false,
-      decimals: 2, offsetX: 0, offsetY: -3,
-      bgShow: false, bgBorderColor: "#999999", bgBorderWidth: 1, bgFill: "#ffffff",
-      asTime: false, timeRootAge: 0, timeFactor: 1,
-      ciField: ""
-    },
+lengthLabel: {
+  show: false, fontSize: 9, bold: false, italic: false,
+  decimals: 2, offsetX: 0, offsetY: -3,
+  offsetTangent: 0, offsetRadial: 0,  
+  bgShow: false, bgBorderColor: "#999999", bgBorderWidth: 1, bgFill: "#ffffff",
+  asTime: false, timeRootAge: 0, timeFactor: 1,
+  ciField: ""
+},
     nodeLabels: [],
     nodeLabelCommon: {
       fontSize: 15, bold: false, italic: false,
@@ -65,6 +66,16 @@ const ctx = {
       bgShow: false, bgBorderColor: "#999999", bgBorderWidth: 1, bgFill: "#ffffff",
       separator: "/", hideOnLeaves: false
     },
+pieMarker: {
+  show: false,
+  columns: [],
+  palette: 'tableau10',
+  columnColors: {},
+  radius: 9,
+    hideOnLeaves: false,
+  offsetX: 0, offsetY: 0,
+  offsetTangent: 0, offsetRadial: 0
+},
     rangeLabelConfig: {
       show: false, field: "",
       lineHeight: 8, color: "#67cb9e",
@@ -116,7 +127,10 @@ function buildSnapshotObj() {
   providers.forEach(p => { try { extras[p.name] = p.get(); } catch (_) {} });
   return { root: JSON.parse(JSON.stringify(ctx.root, (k, v) => k === "parent" ? undefined : v)), state: { ...ctx.state }, extras };
 }
-function snapshot() { ctx.undoStack.push(JSON.stringify(buildSnapshotObj())); if (ctx.undoStack.length > 50) ctx.undoStack.shift(); }
+function snapshot() {
+  // ctx.undoStack.push(JSON.stringify(buildSnapshotObj()));
+  // if (ctx.undoStack.length > 50) ctx.undoStack.shift();
+}
 function captureSnapshot() { return JSON.stringify(buildSnapshotObj()); }
 function applySnapshot(raw) {
   const snap = JSON.parse(raw);

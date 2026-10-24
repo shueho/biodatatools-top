@@ -30,116 +30,7 @@
 .hidden { display: none !important; }
 .btn-group .spacer { flex: 1; }
 
-.step-card,
-.param-panel { scroll-margin-top: 120px; }
-
-.flash-highlight { animation: treeFlash 1.2s ease; }
-@keyframes treeFlash {
-    0%   { box-shadow: 0 0 0 0 rgba(255, 75, 75, .7); }
-    100% { box-shadow: 0 0 0 12px rgba(255, 75, 75, 0); }
-}
-
-.param-panel-title {
-    font-size: 15px !important;
-    font-weight: 700 !important;
-    color: #1a2233 !important;
-    margin: 0 0 10px 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    background: transparent !important;
-    letter-spacing: .02em;
-}
-
-.sub-section-title {
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-    font-size: 13px;
-    font-weight: 700;
-    color: #3b5bdb;
-    margin: 10px 0 6px;
-    padding: 0;
-    border: none;
-    background: transparent;
-    letter-spacing: .01em;
-}
-
-#treeSidebar {
-    position: fixed;
-    top: 80px;
-    left: 0;
-    width: 210px;
-    max-height: calc(100vh - 120px);
-    background: #ffffff;
-    border: 1px solid #d8e2ec;
-    border-left: none;
-    border-radius: 0 8px 8px 0;
-    box-shadow: 0 6px 18px rgba(15, 35, 60, .10);
-    z-index: 1200;
-    transition: width .2s ease;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-#treeSidebar.collapsed { width: 34px; }
-
-#treeSidebar .tsb-toggle {
-    width: 100%;
-    height: 34px;
-    border: 0;
-    background: #eef3f9;
-    cursor: pointer;
-    font-size: 14px;
-    color: #1f4068;
-    border-bottom: 1px solid #d8e2ec;
-}
-
-#treeSidebar .tsb-nav {
-    display: flex;
-    flex-direction: column;
-    padding: 6px 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-#treeSidebar.collapsed .tsb-nav { display: none; }
-
-#treeSidebar .tsb-nav a {
-    display: block;
-    padding: 6px 12px;
-    color: #1e3a8a;
-    text-decoration: none;
-    font-size: 12.5px;
-    line-height: 1.4;
-    border-left: 3px solid transparent;
-}
-#treeSidebar .tsb-nav a.tsb-card-link {
-    font-weight: 700;
-    font-size: 13px;
-    color: #0f2b52;
-    padding: 8px 12px;
-}
-#treeSidebar .tsb-nav a.tsb-mod-link {
-    padding-left: 22px;
-    color: #333;
-    font-weight: 500;
-    font-size: 12.5px;
-}
-#treeSidebar .tsb-nav a:hover {
-    background: #eef3f9;
-    border-left-color: #1e3a8a;
-}
-
-.track-item { overflow: visible !important; }
-.track-list { overflow: visible; }
-.track-body { overflow: visible; }
 .bdt-donate-l { z-index: 10000 !important; }
-@media (max-width: 900px) {
-    #treeSidebar {
-        top: auto !important;
-        bottom: 60px;
-        max-height: 280px;
-    }
-}
 </style>
 </head>
 <body>
@@ -161,6 +52,25 @@
   <div class="step-title">第一步：导入进化树</div>
   <div id="treeImportPanel"></div>
   <div id="treeMsg" class="tip-text"></div>
+
+<details class="param-panel" id="nodeMetaImportBox" style="margin-top:12px;">
+  <summary>导入节点数据</summary>
+  <div style="padding:10px 12px;">
+    <div class="info-box" style="margin-bottom:8px;line-height:1.7;">
+      节点唯一标识是ID。第一列表头写ID（不区分大小写）时按ID匹配；
+      否则按Label/UID匹配（可能重复，只取第一个）。
+      其余列作为meta字段合并，不会修改标签、枝长、支持率等非meta数据。
+      若不清楚节点对应的 ID，可在下方折叠的节点数据面板中查看详情。
+    </div>
+    <textarea id="nodeMetaText" class="import-text" spellcheck="false"
+      placeholder="第一列：节点ID或Label&#10;其余列：meta数据"></textarea>
+    <div class="btn-group" style="margin-top:8px;">
+      <button class="btn" id="fillNodeIdsBtn" type="button">填入所有节点ID</button>
+      <button class="btn" id="generateNodeRandomBtn" type="button">生成随机数据</button>
+      <button class="btn" id="mergeNodeMetaBtn" type="button">合并到节点数据表</button>
+    </div>
+  </div>
+</details>
 
   <details class="param-panel" id="nodeTableBox" style="margin-top:12px;">
     <summary>节点数据表（加载树后自动生成）</summary>

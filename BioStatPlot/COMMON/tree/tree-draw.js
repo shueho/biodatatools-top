@@ -194,6 +194,8 @@ function drawLengthLabel(parent, child, radial) {
   const fs = Math.max(6, Number(cfg.fontSize) || 9);
   const offX = Number(cfg.offsetX) || 0;
   const offY = Number(cfg.offsetY) || 0;
+  const offT = Number(cfg.offsetTangent) || 0;
+  const offR = Number(cfg.offsetRadial) || 0;
   const decimals = Math.max(0, Math.min(6, Number(cfg.decimals) || 0));
   const root = C.getRoot();
   const totalDepth = Math.max(T.maxDepth(root, 0) || 1, 1e-9);
@@ -251,8 +253,9 @@ function drawLengthLabel(parent, child, radial) {
   }
   let text = Number(value).toFixed(decimals);
   if (ci && Number.isFinite(ci[0]) && Number.isFinite(ci[1])) {
-    text = `${text}(${ci[0].toFixed(decimals)} - ${ci[1].toFixed(decimals)})`;
+    text = `${text} (${ci[0].toFixed(decimals)} - ${ci[1].toFixed(decimals)})`;   
   }
+
   let x, y, anchor = "middle", rot = 0;
   let radialShift = 0;
   if (radial) {
@@ -260,25 +263,47 @@ function drawLengthLabel(parent, child, radial) {
     const nodeR = child.r || 0;
     const inwardOffset = Math.max(fs * 0.8, 5);
     const halfW = text.length * fs * 0.6 / 2;
-    const labelR = Math.max(0, nodeR - inwardOffset - halfW);
-    const p = L.polar(470, 380, labelR, angle);
+    const baseR = Math.max(0, nodeR - inwardOffset - halfW);
+    const finalR = baseR + offR;
+    const p = L.polar(470, 380, finalR, angle);
     x = p.x; y = p.y;
+    if (offT) {
+      const tanP = L.polar(0, 0, offT, angle + 90);
+      x += tanP.x; y += tanP.y;
+    }
     rot = angle - 90;
     if (rot > 90) rot -= 180;
     if (rot < -90) rot += 180;
     anchor = "middle";
     radialShift = -fs * 0.5;
   } else {
+    const shape = st.lineShape || "straight";
     if (cfg.asTime) {
-      x = child.x - 3;
+      x = child.x - 3 + offX;
       y = child.y - 3 + offY;
       anchor = "end";
+      rot = 0;
+    } else if (shape === "slanted" || shape === "curved") {
+      x = (parent.x + child.x) / 2 + offX;
+      y = (parent.y + child.y) / 2 + offY;
+      anchor = "middle";
+      let ang = Math.atan2(child.y - parent.y, child.x - parent.x) * 180 / Math.PI;
+      if (ang > 90) ang -= 180;
+      if (ang < -90) ang += 180;
+      rot = ang;
     } else {
       x = (parent.x + child.x) / 2 + offX;
       y = child.y - 3 + offY;
       anchor = "middle";
+      rot = 0;
     }
   }
+
+  const transforms = [];
+  if (rot) transforms.push(`rotate(${rot} ${x} ${y})`);
+  if (radialShift) transforms.push(`translate(0 ${radialShift})`);
+  const transformStr = transforms.length ? transforms.join(" ") : undefined;
+
   const attrs = {
     x, y,
     "font-size": fs,
@@ -288,9 +313,12 @@ function drawLengthLabel(parent, child, radial) {
     "text-anchor": anchor,
     "dominant-baseline": "middle",
     fill: "#000000",
-    "data-id": child.id
+    "data-id": child.id,
+    "data-length-label": "1",
+    class: "length-label",
+    style: "cursor:move",
+    transform: transformStr
   };
-  if (radial) attrs.transform = `rotate(${rot} ${x} ${y}) translate(0 ${radialShift})`;
   const textEl = C.el("text", attrs);
   textEl.textContent = text;
   if (cfg.bgShow) {
@@ -300,14 +328,16 @@ function drawLengthLabel(parent, child, radial) {
         x: bb.x - 3, y: bb.y - 2, width: bb.width + 6, height: bb.height + 4,
         fill: cfg.bgFill || "#ffffff",
         stroke: (Number(cfg.bgBorderWidth) > 0) ? (cfg.bgBorderColor || "#999999") : "none",
-        "stroke-width": Number(cfg.bgBorderWidth) || 0
+        "stroke-width": Number(cfg.bgBorderWidth) || 0,
+        "data-length-label": "1",
+        class: "length-label",
+        style: "cursor:move",
+        transform: transformStr
       });
-      if (radial) rect.setAttribute("transform", `rotate(${rot} ${x} ${y}) translate(0 ${radialShift})`);
       C.getSvg().insertBefore(rect, textEl);
     } catch (_) {}
   }
 }
-
 function drawRectBranch(parent, child) {
   const st = C.state;
   const shape = st.lineShape || "straight";
@@ -337,18 +367,18 @@ function drawRectBranch(parent, child) {
     C.el("text", { x:(parent.x+child.x)/2, y:child.y-3, "font-size":9, "text-anchor":"middle", fill:"#9aa3a3", "data-id":child.id })
       .textContent = lenVal.toFixed(lenVal < 0.1 ? 3 : 2);
   }
-  if (st.extendBranches && st.labelPosition === "aligned" && T.isLeaf(child) && !child.collapsed) {
-    const gapX = Number.isFinite(Number(st.leafLabelOffsetX)) ? Number(st.leafLabelOffsetX) : 8;
-    const shift = Number(st.labelShift || 0);
-    const la = st.labelAnchorRect || "left";
-    const maxW = C.maxTextWidth || 100;
-    const inv = C.isTrue(st.invert);
-    const alignX = C.alignedLabelX() + shift;
-    let targetX;
-    if (!inv) { targetX = la === "left" ? alignX + gapX - 2 : alignX + maxW + gapX * 2; }
-    else       { targetX = la === "left" ? alignX - maxW - gapX * 2 : alignX - gapX + 2; }
-    if (Math.abs(targetX - child.x) > 0.5) C.el("line", { x1: child.x, y1: child.y, x2: targetX, y2: child.y, ...gapLineAttrs() });
-  }
+if (st.extendBranches && st.labelPosition === "aligned" && T.isLeaf(child) && !child.collapsed) {
+  const LABEL_GAP = 8;                    
+  const shift = Number(st.labelShift || 0);
+  const la = st.labelAnchorRect || "left";
+  const maxW = C.maxTextWidth || 100;
+  const inv = C.isTrue(st.invert);
+  const alignX = C.alignedLabelX() + shift;
+  let targetX;
+  if (!inv) { targetX = la === "left" ? alignX + LABEL_GAP - 2 : alignX + maxW + LABEL_GAP * 2; }
+  else       { targetX = la === "left" ? alignX - maxW - LABEL_GAP * 2 : alignX - LABEL_GAP + 2; }
+  if (Math.abs(targetX - child.x) > 0.5) C.el("line", { x1: child.x, y1: child.y, x2: targetX, y2: child.y, ...gapLineAttrs() });
+}
   if (child.truncated) {
     const mx = (parent.x + child.x) / 2, my = child.y;
     C.el("line", { x1: mx-5, y1: my+6, x2: mx-1, y2: my-6, stroke:"#3a3a3a", "stroke-width":1.8, "stroke-linecap":"round" });
@@ -385,19 +415,15 @@ function drawRadialBranch(parent, child) {
       ...commonLineAttrs(child, { branchId: child.id })
     });
   }
-
-  if (st.extendBranches && T.isLeaf(child) && !child.collapsed) {
-    const gapCirc = Number.isFinite(Number(st.leafLabelOffsetCirc)) ? Number(st.leafLabelOffsetCirc) : 8;
-    const shift = Number(st.labelShift || 0);
-    let rEnd;
-    if (st.labelPosition === "aligned") rEnd = C.getRadialLabelR() + shift + gapCirc - 2;
-    else rEnd = (child.r || 0) + 6;
-    if (rEnd > (child.r || 0) + 0.5) {
-      const tip = L.polar(470, 380, child.r || 0, child.angle || 0);
-      const end = L.polar(470, 380, rEnd, child.angle || 0);
-      C.el("line", { x1: tip.x, y1: tip.y, x2: end.x, y2: end.y, ...gapLineAttrs() });
-    }
+if (st.extendBranches && st.labelPosition === "aligned" && T.isLeaf(child) && !child.collapsed) {
+  const shift = Number(st.labelShift || 0);
+  const rEnd = C.getRadialLabelR() + shift - 2;
+  if (rEnd > (child.r || 0) + 0.5) {
+    const tip = L.polar(470, 380, child.r || 0, child.angle || 0);
+    const end = L.polar(470, 380, rEnd, child.angle || 0);
+    C.el("line", { x1: tip.x, y1: tip.y, x2: end.x, y2: end.y, ...gapLineAttrs() });
   }
+}
 
   if (child.truncated) {
     const mx = (parent.x + child.x) / 2, my = (parent.y + child.y) / 2;
@@ -513,37 +539,38 @@ function drawLeafLabel(n, radial) {
   if (!color) color = st.labelColor;
   const inv = isInvert();
   const isAligned = st.labelPosition === "aligned";
-  const GAP = 8; const shift = Number(st.labelShift || 0);
-  const gapX = Number.isFinite(Number(st.leafLabelOffsetX)) ? Number(st.leafLabelOffsetX) : 8;
-  const gapCirc = Number.isFinite(Number(st.leafLabelOffsetCirc)) ? Number(st.leafLabelOffsetCirc) : 8;
-  let x, y, anchor = "start", rotate = 0;
-  if (!radial) {
-    y = n.y + size * .34;
-    if (isAligned) {
-      const alignX = C.alignedLabelX() + shift;
-      const maxW = C.maxTextWidth || 100;
-      const la = st.labelAnchorRect || "left";
-      if (!inv) { if (la === "left") { x = alignX + gapX; anchor = "start"; } else { x = alignX + maxW + gapX * 2; anchor = "end"; } }
-      else { if (la === "left") { x = alignX - maxW - gapX * 2; anchor = "start"; } else { x = alignX - gapX; anchor = "end"; } }
-    } else {
-      if (!inv) { x = n.x + gapX; anchor = "start"; } else { x = n.x - gapX; anchor = "end"; }
-      if (st.extendBranches) C.el("line", { x1: n.x, y1: n.y, x2: x, y2: n.y, ...gapLineAttrs() });
-    }
+const LABEL_GAP = 8;                   
+const shift = Number(st.labelShift || 0);
+let x, y, anchor = "start", rotate = 0;
+
+if (!radial) {
+  y = n.y + size * .34;
+  if (isAligned) {
+    const alignX = C.alignedLabelX() + shift;
+    const maxW = C.maxTextWidth || 100;
+    const la = st.labelAnchorRect || "left";
+    if (!inv) { if (la === "left") { x = alignX + LABEL_GAP; anchor = "start"; } else { x = alignX + maxW + LABEL_GAP * 2; anchor = "end"; } }
+    else { if (la === "left") { x = alignX - maxW - LABEL_GAP * 2; anchor = "start"; } else { x = alignX - LABEL_GAP; anchor = "end"; } }
   } else {
-    const angle = n.angle || 0;
-    let rLabel;
-    if (isAligned) rLabel = C.getRadialLabelR() + shift + (gapCirc - (Number.isFinite(Number(st.leafLabelOffsetCirc)) ? 8 : 0));
-    else {
-      rLabel = (n.r || 0) + gapCirc + shift;                    
-      const tipR = n.r || 0, endR = tipR + gapCirc + shift; 
-      if (st.extendBranches && endR > tipR + 0.5) {
-        const pA = L.polar(470, 380, tipR, angle);
-        const pB = L.polar(470, 380, endR, angle);
-        C.el("line", { x1: pA.x, y1: pA.y, x2: pB.x, y2: pB.y, ...gapLineAttrs() });
-      }
+    if (!inv) { x = n.x + LABEL_GAP + shift; anchor = "start"; }
+    else { x = n.x - LABEL_GAP - shift; anchor = "end"; }
+    if (st.extendBranches) C.el("line", { x1: n.x, y1: n.y, x2: x, y2: n.y, ...gapLineAttrs() });
+  }
+} else {
+  const angle = n.angle || 0;
+  let rLabel;
+  if (isAligned) rLabel = C.getRadialLabelR() + shift;     
+  else {
+    rLabel = (n.r || 0) + LABEL_GAP + shift;
+    const tipR = n.r || 0, endR = tipR + LABEL_GAP + shift;
+    if (st.extendBranches && endR > tipR + 0.5) {
+      const pA = L.polar(470, 380, tipR, angle);
+      const pB = L.polar(470, 380, endR, angle);
+      C.el("line", { x1: pA.x, y1: pA.y, x2: pB.x, y2: pB.y, ...gapLineAttrs() });
     }
-    const p = L.polar(470, 380, rLabel, angle);
-    x = p.x; y = p.y;
+  }
+  const p = L.polar(470, 380, rLabel, angle);
+  x = p.x; y = p.y;
     const la = st.labelAnchorCirc || "auto";
     if (la === "left") anchor = "end"; else if (la === "right") anchor = "start";
     else anchor = (angle > 180 && angle < 360) ? "end" : "start";
@@ -652,8 +679,11 @@ if (radial) {
     baseY = pNode.y + offP.y + tangentUser.y + radialUser.y;
 
     rot = angle - 90;
-    if (rot > 90) rot -= 180;
-    if (rot < -90) rot += 180;
+    const readableFlip = true;   
+    if (readableFlip) {
+      if (rot > 90) rot -= 180;
+      if (rot < -90) rot += 180;
+    }
 } else {
     const inv = isInvert();
     const dx = Number(offX) || 0;
@@ -666,7 +696,12 @@ if (radial) {
     }
     baseY = n.y + dy;
   }
-  const group = C.el("g", { transform: `translate(${baseX} ${baseY})${rot ? " rotate(" + rot + ")" : ""}` });
+const group = C.el("g", {
+  transform: `translate(${baseX} ${baseY})${rot ? " rotate(" + rot + ")" : ""}`,
+  class: "node-label-group",
+  "data-node-label-group": "1",
+  style: "cursor:move"
+});
   const commonAttrs = {
     "font-size": fs, "font-family": st.fontFamily,
     "font-weight": cfg.bold ? "700" : "400",
@@ -742,7 +777,62 @@ if (radial) {
     });
   }
 }
+function drawPieMarkerForNode(n, radial) {
+  const st = C.state;
+  const cfg = st.pieMarker;
+  if (!cfg || !cfg.show || !cfg.columns || !cfg.columns.length) return null;
+  if (cfg.hideOnLeaves) {
+    const realKids = (n.children || []).filter(c => !c.deleted);
+    if (realKids.length === 0) return null;
+  }
 
+  const vals = cfg.columns.map(col => {
+    const m = (n.meta || []).find(mm => mm.field === col);
+    if (!m) return 0;
+    const v = parseFloat(Array.isArray(m.value) ? m.value[0] : m.value);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  });
+  const total = vals.reduce((a, b) => a + b, 0);
+  if (total <= 0) return null;
+
+  let cx, cy;
+  if (radial) {
+    const angle = n.angle || 0;
+    const p = L.polar(470, 380, (n.r || 0) + (Number(cfg.offsetRadial) || 0), angle);
+    const t = L.polar(0, 0, Number(cfg.offsetTangent) || 0, angle + 90);
+    cx = p.x + t.x; cy = p.y + t.y;
+  } else {
+    cx = n.x + (Number(cfg.offsetX) || 0);
+    cy = n.y + (Number(cfg.offsetY) || 0);
+  }
+
+  const r = Math.max(2, Number(cfg.radius) || 9);
+  const g = C.el('g', { class: 'pie-marker', 'data-pie-marker-group': '1',
+    'data-id': n.id, style: 'cursor:move', transform: `translate(${cx} ${cy})` });
+
+  const pal = global.TreePalette.getCategoricalScheme(cfg.palette || 'tableau10');
+  const colors = cfg.columns.map((col, i) =>
+    (cfg.columnColors && cfg.columnColors[col]) || pal[i % pal.length]);
+
+  let a0 = -90;
+  vals.forEach((v, i) => {
+    if (v <= 0) return;
+    const frac = v / total;
+    const a1 = a0 + frac * 360;
+    if (frac >= 0.999) {
+      C.el('circle', { cx: 0, cy: 0, r, fill: colors[i], 'pointer-events': 'none' }, g);
+      return;
+    }
+    const p0 = L.polar(0, 0, r, a0), p1 = L.polar(0, 0, r, a1);
+    const large = (a1 - a0) > 180 ? 1 : 0;
+    C.el('path', { d: `M 0 0 L ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y} Z`,
+      fill: colors[i], 'pointer-events': 'none' }, g);
+    a0 = a1;
+  });
+  C.el('circle', { cx: 0, cy: 0, r, fill: 'none', stroke: '#333',
+    'stroke-width': 0.8, 'pointer-events': 'none' }, g);
+  return g;
+}
 function drawRangeLabels(radial) {
   const st = C.state;
   const cfg = st.rangeLabelConfig || {};
@@ -878,6 +968,7 @@ function drawNodesAndLabels(radial) {
     if (st.showBootstrap && !T.isLeaf(n) && n.support) C.el("text", { x: n.x-4, y: n.y-5, "font-size": 10, "text-anchor": "end", fill: "#b5651d", "data-id": n.id }).textContent = formatBootstrapValue(n.support);
     if (st.labels && T.isLeaf(n)) drawLeafLabel(n, radial);
     drawNodeLabels(n, radial);
+    if (st.pieMarker && st.pieMarker.show) drawPieMarkerForNode(n, radial);
   });
 }
 function labelRightEdge() {
@@ -889,7 +980,8 @@ function labelRightEdge() {
   return r + 10;
 }
 global.TreeDrawNode = { formatBootstrapValue, drawSymbol, richTspans, drawLeafLabel,
-  drawNodesAndLabels, labelRightEdge, drawNodeLabels, drawRangeLabels, drawLengthLabel };
+  drawNodesAndLabels, labelRightEdge, drawNodeLabels, drawRangeLabels, drawLengthLabel,
+  drawPieMarkerForNode };
 
 
 function drawRectTicks(root) {

@@ -131,7 +131,7 @@ function renderGroupPaletteDropdown(container, opts) {
 }
 
 
-let drag = null, legendDrag = null, moveDrag = null, scaleDrag = null;
+let drag = null, legendDrag = null, moveDrag = null, scaleDrag = null, trackDrag = null, nodeLabelDrag = null, lengthLabelDrag = null, pieMarkerDrag = null;
 let moveLineEl = null, moveRingEl = null;
 let suppressSvgClick = false;
 function clientToSvg(svg, cx, cy) {
@@ -216,6 +216,102 @@ function enableDrag(svg) {
       e.stopPropagation();
       return;
     }
+    const nodeLabelEl = e.target.closest && e.target.closest("[data-node-label-group]");
+    if (nodeLabelEl) {
+      const rect = svg.getBoundingClientRect();
+      nodeLabelDrag = {
+        startX: e.clientX,
+        startY: e.clientY,
+        ox0: Number(st.nodeLabelCommon.offsetX) || 0,
+        oy0: Number(st.nodeLabelCommon.offsetY) || 0,
+        ot0: Number(st.nodeLabelCommon.offsetTangent) || 0,
+        or0: Number(st.nodeLabelCommon.offsetRadial) || 0,
+        unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
+        unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
+        isRadial: st.mode === "circular",
+        moved: false
+      };
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    const lengthLabelEl = e.target.closest && e.target.closest("[data-length-label]");
+    if (lengthLabelEl) {
+      const rect = svg.getBoundingClientRect();
+      let refAngleDeg = null;
+      if (st.mode === "circular") {
+        const nid = lengthLabelEl.getAttribute("data-id");
+        const nd = nid ? T.nodeById(nid) : null;
+        if (nd && nd.angle != null) {
+          refAngleDeg = nd.angle;
+        } else {
+          const pt = clientToSvg(svg, e.clientX, e.clientY);
+          const mx = pt.x - 470, my = pt.y - 380;
+          if (Math.hypot(mx, my) > 10) {
+            refAngleDeg = Math.atan2(my, mx) * 180 / Math.PI + 90;
+          }
+        }
+        if (refAngleDeg == null) {
+          refAngleDeg = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
+        }
+      }
+      lengthLabelDrag = {
+        startX: e.clientX,
+        startY: e.clientY,
+        ox0: Number(st.lengthLabel.offsetX) || 0,
+        oy0: Number(st.lengthLabel.offsetY) || 0,
+        ot0: Number(st.lengthLabel.offsetTangent) || 0,
+        or0: Number(st.lengthLabel.offsetRadial) || 0,
+        unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
+        unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
+        isRadial: st.mode === "circular",
+        refAngleDeg,
+        moved: false
+      };
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    const pieEl = e.target.closest && e.target.closest("[data-pie-marker-group]");
+    if (pieEl) {
+      const rect = svg.getBoundingClientRect();
+      pieMarkerDrag = {
+        startX: e.clientX, startY: e.clientY,
+        ox0: Number(st.pieMarker.offsetX) || 0,
+        oy0: Number(st.pieMarker.offsetY) || 0,
+        ot0: Number(st.pieMarker.offsetTangent) || 0,
+        or0: Number(st.pieMarker.offsetRadial) || 0,
+        unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
+        unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
+        isRadial: st.mode === "circular",
+        moved: false
+      };
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    const trackEl = e.target.closest && e.target.closest("[data-track-band]");
+    if (trackEl) {
+      const trackId = Number(trackEl.getAttribute("data-track-band"));
+      const track = global.TreeTracks && global.TreeTracks.tracks.find(x => x.id === trackId);
+      if (track) {
+        const rect = svg.getBoundingClientRect();
+        trackDrag = {
+          track,
+          trackId,
+          startX: e.clientX,
+          startY: e.clientY,
+          offset0: Number(track.offset) || 0,
+          unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
+          unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
+          isRadial: st.mode === "circular",
+          moved: false
+        };
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
 
     const rect = svg.getBoundingClientRect();
     drag = {
@@ -282,6 +378,107 @@ function enableDrag(svg) {
       return;
     }
 
+    if (nodeLabelDrag) {
+      const dx = (e.clientX - nodeLabelDrag.startX) * nodeLabelDrag.unitX;
+      const dy = (e.clientY - nodeLabelDrag.startY) * nodeLabelDrag.unitY;
+      if (!nodeLabelDrag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
+      if (!nodeLabelDrag.moved) {
+        C.snapshot();
+        nodeLabelDrag.moved = true;
+        suppressSvgClick = true;
+        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+      if (nodeLabelDrag.isRadial) {
+        const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
+        const radRad = (axisAngle - 90) * Math.PI / 180;
+        const tanRad = axisAngle * Math.PI / 180;
+        const dRadial  = dx * Math.cos(radRad) + dy * Math.sin(radRad);
+        const dTangent = dx * Math.cos(tanRad) + dy * Math.sin(tanRad);
+        st.nodeLabelCommon.offsetRadial  = nodeLabelDrag.or0 + dRadial;
+        st.nodeLabelCommon.offsetTangent = nodeLabelDrag.ot0 + dTangent;
+      } else {
+        st.nodeLabelCommon.offsetX = nodeLabelDrag.ox0 + dx;
+        st.nodeLabelCommon.offsetY = nodeLabelDrag.oy0 + dy;
+      }
+      global.TreeRenderer.draw();
+      return;
+    }
+    if (lengthLabelDrag) {
+      const dx = (e.clientX - lengthLabelDrag.startX) * lengthLabelDrag.unitX;
+      const dy = (e.clientY - lengthLabelDrag.startY) * lengthLabelDrag.unitY;
+      if (!lengthLabelDrag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
+      if (!lengthLabelDrag.moved) {
+        C.snapshot();
+        lengthLabelDrag.moved = true;
+        suppressSvgClick = true;
+        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+      if (lengthLabelDrag.isRadial) {
+        const ang = lengthLabelDrag.refAngleDeg;
+        const radRad = (ang - 90) * Math.PI / 180;
+        const tanRad = ang * Math.PI / 180;
+        const dRadial  = dx * Math.cos(radRad) + dy * Math.sin(radRad);
+        const dTangent = dx * Math.cos(tanRad) + dy * Math.sin(tanRad);
+        st.lengthLabel.offsetRadial  = lengthLabelDrag.or0 + dRadial;
+        st.lengthLabel.offsetTangent = lengthLabelDrag.ot0 + dTangent;
+      } else {
+        st.lengthLabel.offsetX = lengthLabelDrag.ox0 + dx;
+        st.lengthLabel.offsetY = lengthLabelDrag.oy0 + dy;
+      }
+      global.TreeRenderer.draw();
+      return;
+    }
+
+    if (pieMarkerDrag) {
+      const dx = (e.clientX - pieMarkerDrag.startX) * pieMarkerDrag.unitX;
+      const dy = (e.clientY - pieMarkerDrag.startY) * pieMarkerDrag.unitY;
+      if (!pieMarkerDrag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
+      if (!pieMarkerDrag.moved) {
+        C.snapshot();
+        pieMarkerDrag.moved = true;
+        suppressSvgClick = true;
+        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+      }
+      if (pieMarkerDrag.isRadial) {
+        const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
+        const radRad = (axisAngle - 90) * Math.PI / 180;
+        const tanRad = axisAngle * Math.PI / 180;
+        st.pieMarker.offsetRadial  = pieMarkerDrag.or0 + (dx * Math.cos(radRad) + dy * Math.sin(radRad));
+        st.pieMarker.offsetTangent = pieMarkerDrag.ot0 + (dx * Math.cos(tanRad) + dy * Math.sin(tanRad));
+      } else {
+        st.pieMarker.offsetX = pieMarkerDrag.ox0 + dx;
+        st.pieMarker.offsetY = pieMarkerDrag.oy0 + dy;
+      }
+      global.TreeRenderer.draw();
+      return;
+    }
+    if (trackDrag) {
+      const rawDx = e.clientX - trackDrag.startX;
+      const rawDy = e.clientY - trackDrag.startY;
+      if (!trackDrag.moved && Math.abs(rawDx) + Math.abs(rawDy) < 3) return;
+      if (!trackDrag.moved) {
+        C.snapshot();
+        trackDrag.moved = true;
+        suppressSvgClick = true;
+        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+        svg.style.cursor = 'grabbing';
+      }
+
+      if (trackDrag.isRadial) {
+        const axisAngle = (Number(C.state.rotation) || 0) + (Number(C.state.axisRotation) || 0);
+        const rad = (axisAngle - 90) * Math.PI / 180;
+        const ux = Math.cos(rad), uy = Math.sin(rad);
+        const dxSvg = rawDx * trackDrag.unitX;
+        const dySvg = rawDy * trackDrag.unitY;
+        const proj = dxSvg * ux + dySvg * uy;
+        trackDrag.track.offset = trackDrag.offset0 + proj;
+      } else {
+        const dxSvg = rawDx * trackDrag.unitX;
+        trackDrag.track.offset = trackDrag.offset0 + dxSvg;
+      }
+      global.TreeRenderer.draw();
+      return;
+    }
 
     if (moveDrag) {
       if (Math.abs(e.clientX - moveDrag.startX) + Math.abs(e.clientY - moveDrag.startY) < 3) return;
@@ -343,6 +540,87 @@ const endDrag = e => {
       try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
       const wasMoved = scaleDrag.moved;
       scaleDrag = null;
+      setTimeout(() => {
+        suppressSvgClick = false;
+        if (wasMoved) global.TreeRenderer.draw();
+      }, 0);
+      return;
+    }
+
+    if (nodeLabelDrag) {
+      try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+      const wasMoved = nodeLabelDrag.moved;
+      const isRadial = nodeLabelDrag.isRadial;
+      nodeLabelDrag = null;
+      setTimeout(() => {
+        suppressSvgClick = false;
+        if (wasMoved) {
+          if (isRadial) {
+            const ot = document.getElementById('nodeLabelOffsetTangent');
+            const or = document.getElementById('nodeLabelOffsetRadial');
+            if (ot) ot.value = Math.round(st.nodeLabelCommon.offsetTangent || 0);
+            if (or) or.value = Math.round(st.nodeLabelCommon.offsetRadial || 0);
+          } else {
+            const ox = document.getElementById('nodeLabelOffsetX');
+            const oy = document.getElementById('nodeLabelOffsetY');
+            if (ox) ox.value = Math.round(st.nodeLabelCommon.offsetX);
+            if (oy) oy.value = Math.round(st.nodeLabelCommon.offsetY);
+          }
+          global.TreeRenderer.draw();
+        }
+      }, 0);
+      return;
+    }
+    if (lengthLabelDrag) {
+      try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+      const wasMoved = lengthLabelDrag.moved;
+      lengthLabelDrag = null;
+      setTimeout(() => {
+        suppressSvgClick = false;
+        if (wasMoved) {
+          const ox = document.getElementById('lenLabelOffsetX');
+          const oy = document.getElementById('lenLabelOffsetY');
+          const ot = document.getElementById('lenLabelOffsetTangent');
+          const or = document.getElementById('lenLabelOffsetRadial');
+          if (ox) ox.value = Math.round(st.lengthLabel.offsetX || 0);
+          if (oy) oy.value = Math.round(st.lengthLabel.offsetY || 0);
+          if (ot) ot.value = Math.round(st.lengthLabel.offsetTangent || 0);
+          if (or) or.value = Math.round(st.lengthLabel.offsetRadial || 0);
+          global.TreeRenderer.draw();
+        }
+      }, 0);
+      return;
+    }
+
+    if (pieMarkerDrag) {
+      try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+      const wasMoved = pieMarkerDrag.moved;
+      const isRadial = pieMarkerDrag.isRadial;
+      pieMarkerDrag = null;
+      setTimeout(() => {
+        suppressSvgClick = false;
+        if (wasMoved) {
+          if (isRadial) {
+            const ot = document.getElementById('pieMarkerOffsetTangent');
+            const or = document.getElementById('pieMarkerOffsetRadial');
+            if (ot) ot.value = Math.round(st.pieMarker.offsetTangent || 0);
+            if (or) or.value = Math.round(st.pieMarker.offsetRadial || 0);
+          } else {
+            const ox = document.getElementById('pieMarkerOffsetX');
+            const oy = document.getElementById('pieMarkerOffsetY');
+            if (ox) ox.value = Math.round(st.pieMarker.offsetX);
+            if (oy) oy.value = Math.round(st.pieMarker.offsetY);
+          }
+          global.TreeRenderer.draw();
+        }
+      }, 0);
+      return;
+    }
+    if (trackDrag) {
+      try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+      const wasMoved = trackDrag.moved;
+      trackDrag = null;
+      svg.style.cursor = '';
       setTimeout(() => {
         suppressSvgClick = false;
         if (wasMoved) global.TreeRenderer.draw();
@@ -508,10 +786,6 @@ function renderBasicPanel(container) {
             <option value="tips" ${st.labelPosition==='tips'?'selected':''}>${I.t('optAtTips')}</option>
           </select>
         </div>
-        <div class="param-item"><label>${I.t('leafLabelOffsetX')}</label>
-          <input id="leafLabelOffsetX" type="number" value="${st.leafLabelOffsetX != null ? st.leafLabelOffsetX : 8}" step="1"></div>
-        <div class="param-item"><label>${I.t('leafLabelOffsetCirc')}</label>
-          <input id="leafLabelOffsetCirc" type="number" value="${st.leafLabelOffsetCirc != null ? st.leafLabelOffsetCirc : 8}" step="1"></div>
         <div class="param-item"><label>${I.t('panelLabelFontSize')}</label><input id="fontSize" type="number" value="${st.fontSize}" min="6" max="90"></div>
         <div class="param-item"><label>${I.t('panelLabelColor')}</label><input id="labelColor" type="color" value="${st.labelColor}"></div>
         <div class="param-item"><label class="mini-check"><input id="boldChk" type="checkbox" ${st.bold?'checked':''}> ${I.t('panelLabelBold')}</label></div>
@@ -833,7 +1107,8 @@ function renderAdvancedPanel(container) {
   metaFields.sort();
   const nodeDataColumns = ["support", "length", "cumLength", "uid", "label", ...metaFields];
   const rangeFields = metaFields;
-
+  const pieCfg = st.pieMarker || {};
+  const piePal = global.TreePalette.getCategoricalScheme(pieCfg.palette || 'tableau10');
   function renderNodeLabelItem(item, index) {
     const isText = item.mode === "text";
     const opts = nodeDataColumns.map(c => `<option value="${escapeAttr(c)}" ${item.column === c ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
@@ -950,8 +1225,14 @@ function renderAdvancedPanel(container) {
         </label></div>
         <div class="param-item"><label>${I.t('lengthLabelDecimals')}</label>
           <input id="lenLabelDecimals" type="number" value="${st.lengthLabel.decimals}" min="0" max="6"></div>
+        <div class="param-item"><label>${I.t('lengthLabelOffsetX')}</label>
+          <input id="lenLabelOffsetX" type="number" value="${st.lengthLabel.offsetX || 0}" step="1"></div>
         <div class="param-item"><label>${I.t('lengthLabelOffsetY')}</label>
           <input id="lenLabelOffsetY" type="number" value="${st.lengthLabel.offsetY}" step="1"></div>
+        <div class="param-item"><label>${I.t('lengthLabelOffsetTangent')}</label>
+          <input id="lenLabelOffsetTangent" type="number" value="${st.lengthLabel.offsetTangent || 0}" step="1"></div>
+        <div class="param-item"><label>${I.t('lengthLabelOffsetRadial')}</label>
+          <input id="lenLabelOffsetRadial" type="number" value="${st.lengthLabel.offsetRadial || 0}" step="1"></div>
         <div class="param-item"><label class="mini-check">
           <input id="lenLabelBgShow" type="checkbox" ${st.lengthLabel.bgShow ? 'checked' : ''}> ${I.t('lengthLabelBgShow')}
         </label></div>
@@ -1027,6 +1308,60 @@ function renderAdvancedPanel(container) {
       </div>
     </div>
 
+    <div class="param-panel"><div class="param-panel-title">${I.t('panelPieMarkerDisplay')}</div>
+      <div class="param-grid cols-4">
+        <div class="param-item"><label>${I.t('pieMarkerShow')}</label>
+          <select id="pieMarkerShow">
+            <option value="false" ${!pieCfg.show?'selected':''}>${I.t('optHidden')}</option>
+            <option value="true" ${pieCfg.show?'selected':''}>${I.t('optShown')}</option>
+          </select>
+        </div>
+        <div class="param-item"><label>${I.t('pieMarkerRadius')}</label>
+          <input id="pieMarkerRadius" type="number" value="${pieCfg.radius || 9}" min="2" max="40"></div>
+        <div class="param-item"><label class="mini-check">
+          <input type="checkbox" id="pieMarkerHideOnLeaves" ${pieCfg.hideOnLeaves?'checked':''}> ${I.t('pieMarkerHideOnLeaves')}
+        </label></div>
+        <div class="param-item"><label>${I.t('pieMarkerPalette')}</label>
+          <div class="palette-slot" id="pieMarkerPalette"></div>
+        </div>
+        <div class="param-item" style="grid-column: span 2;">
+          <label>${I.t('pieMarkerColumns')}</label>
+          <div class="multi-col-checks" style="max-height:140px;overflow:auto;border:1px solid #ddd;border-radius:4px;padding:6px;">
+            ${metaFields.length ? metaFields.map(f =>
+              `<label class="mini-check" style="display:block;padding:2px 0;">
+                <input type="checkbox" data-pie-col="${escapeAttr(f)}" ${(pieCfg.columns||[]).includes(f)?'checked':''}> ${escapeHtml(f)}
+              </label>`).join('') : `<div style="color:#999;font-size:12px;">${I.t('pieMarkerNoMetaFields')}</div>`}
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-section-title">${I.t('pieMarkerOffsetTitle')}</div>
+      <div class="param-grid cols-4">
+        <div class="param-item"><label>${I.t('pieMarkerOffsetX')}</label>
+          <input id="pieMarkerOffsetX" type="number" value="${pieCfg.offsetX || 0}" step="1"></div>
+        <div class="param-item"><label>${I.t('pieMarkerOffsetY')}</label>
+          <input id="pieMarkerOffsetY" type="number" value="${pieCfg.offsetY || 0}" step="1"></div>
+        <div class="param-item"><label>${I.t('pieMarkerOffsetTangent')}</label>
+          <input id="pieMarkerOffsetTangent" type="number" value="${pieCfg.offsetTangent || 0}" step="1"></div>
+        <div class="param-item"><label>${I.t('pieMarkerOffsetRadial')}</label>
+          <input id="pieMarkerOffsetRadial" type="number" value="${pieCfg.offsetRadial || 0}" step="1"></div>
+      </div>
+
+      ${(pieCfg.columns && pieCfg.columns.length) ? `
+      <div class="sub-section-title">${I.t('pieMarkerColumnColors')}</div>
+      <div class="custom-color-list" style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${pieCfg.columns.map((col, i) => {
+          const defColor = (pieCfg.columnColors && pieCfg.columnColors[col]) || piePal[i % piePal.length];
+          return `<label style="display:flex;align-items:center;gap:4px;font-size:12px;">
+            <input type="color" data-pie-colcolor="${escapeAttr(col)}" value="${defColor}"
+              style="width:30px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;">
+            <span>${escapeHtml(col)}</span>
+            <button class="btn-del-color" data-pie-delcolcolor="${escapeAttr(col)}" type="button" title="${I.t('btnDeleteTitle')}">×</button>
+          </label>`;
+        }).join('')}
+      </div>` : ''}
+    </div>
+
     <div class="param-panel"><div class="param-panel-title">${I.t('panelRangeLabelDisplay')}</div>
       <div class="param-grid cols-4">
         <div class="param-item"><label>${I.t('rangeLabelShow')}</label>
@@ -1099,7 +1434,11 @@ function renderAdvancedPanel(container) {
   container.querySelector('#lenLabelBold')?.addEventListener('change', e => setLen('bold', e.target.checked));
   container.querySelector('#lenLabelItalic')?.addEventListener('change', e => setLen('italic', e.target.checked));
   container.querySelector('#lenLabelDecimals')?.addEventListener('input', e => setLen('decimals', Number(e.target.value)));
+  container.querySelector('#lenLabelOffsetX')?.addEventListener('input', e => setLen('offsetX', Number(e.target.value)));
   container.querySelector('#lenLabelOffsetY')?.addEventListener('input', e => setLen('offsetY', Number(e.target.value)));
+  container.querySelector('#lenLabelOffsetTangent')?.addEventListener('input', e => setLen('offsetTangent', Number(e.target.value)));
+  container.querySelector('#lenLabelOffsetRadial')?.addEventListener('input', e => setLen('offsetRadial', Number(e.target.value)));
+
   container.querySelector('#lenLabelBgShow')?.addEventListener('change', e => setLen('bgShow', e.target.checked));
   container.querySelector('#lenLabelBgBorderColor')?.addEventListener('input', e => setLen('bgBorderColor', e.target.value));
   container.querySelector('#lenLabelBgBorderWidth')?.addEventListener('input', e => setLen('bgBorderWidth', Number(e.target.value)));
@@ -1151,8 +1490,62 @@ container.querySelector('#nodeLabelOffsetRadial')?.addEventListener('input', e =
   container.querySelector('#rangeLabelOutlineColor')?.addEventListener('input', e => setRange('outlineColor', e.target.value));
   container.querySelector('#rangeLabelOutlineWidth')?.addEventListener('input', e => setRange('outlineWidth', Number(e.target.value)));
   container.querySelector('#rangeLabelOpacity')?.addEventListener('input', e => setRange('opacity', Math.max(0, Math.min(1, Number(e.target.value)))));
+  const pieCfgSet = (k, v) => { C.snapshot(); st.pieMarker = st.pieMarker || {}; st.pieMarker[k] = v; global.TreeRenderer.draw(); };
+  container.querySelector('#pieMarkerShow')?.addEventListener('change', e => pieCfgSet('show', e.target.value === 'true'));
+  container.querySelector('#pieMarkerRadius')?.addEventListener('input', e => pieCfgSet('radius', Number(e.target.value) || 9));
+  container.querySelector('#pieMarkerHideOnLeaves')?.addEventListener('change', e => pieCfgSet('hideOnLeaves', e.target.checked));  container.querySelector('#pieMarkerOffsetX')?.addEventListener('input', e => pieCfgSet('offsetX', Number(e.target.value)));
+  container.querySelector('#pieMarkerOffsetY')?.addEventListener('input', e => pieCfgSet('offsetY', Number(e.target.value)));
+  container.querySelector('#pieMarkerOffsetTangent')?.addEventListener('input', e => pieCfgSet('offsetTangent', Number(e.target.value)));
+  container.querySelector('#pieMarkerOffsetRadial')?.addEventListener('input', e => pieCfgSet('offsetRadial', Number(e.target.value)));
 
+  container.querySelectorAll('[data-pie-col]').forEach(el => {
+    el.addEventListener('change', () => {
+      C.snapshot();
+      st.pieMarker = st.pieMarker || {};
+      const set = new Set(st.pieMarker.columns || []);
+      if (el.checked) set.add(el.dataset.pieCol); else set.delete(el.dataset.pieCol);
+      st.pieMarker.columns = [...set];
+      renderAdvancedPanel(container);
+      global.TreeRenderer.draw();
+    });
+  });
+  container.querySelectorAll('[data-pie-colcolor]').forEach(el => {
+    el.addEventListener('input', () => {
+      C.snapshot();
+      st.pieMarker = st.pieMarker || {};
+      st.pieMarker.columnColors = st.pieMarker.columnColors || {};
+      st.pieMarker.columnColors[el.dataset.pieColcolor] = el.value;
+      global.TreeRenderer.draw();
+    });
+  });
+  container.querySelectorAll('[data-pie-delcolcolor]').forEach(el => {
+    el.addEventListener('click', ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      C.snapshot();
+      if (st.pieMarker && st.pieMarker.columnColors) delete st.pieMarker.columnColors[el.dataset.pieDelcolcolor];
+      renderAdvancedPanel(container);
+      global.TreeRenderer.draw();
+    });
+  });
+
+  const piePaletteHost = container.querySelector('#pieMarkerPalette');
+  if (piePaletteHost) {
+    renderGroupPaletteDropdown(piePaletteHost, {
+      selected: (st.pieMarker && st.pieMarker.palette) || 'tableau10',
+      onSelect: (name) => {
+        C.snapshot();
+        st.pieMarker = st.pieMarker || {};
+        st.pieMarker.palette = name;
+        st.pieMarker.columnColors = {};
+        global.TreeRenderer.draw();
+        renderAdvancedPanel(container);
+      }
+    });
+  }
   bindGeoTimeControls(container);
+  if (global.TreeApp && typeof global.TreeApp.rebuildSidebarNav === 'function') {
+    try { global.TreeApp.rebuildSidebarNav(); } catch (_) {}
+  }
 }
 
 function bindGeoTimeControls(container) {
@@ -1501,12 +1894,18 @@ function renderDatasetsPanel(container) {
         <div class="param-item"><label>${I.t('rangeLabelTrackTitleLabel')}</label>
           <input id="rangeLabelTrackTitle" type="text" value="Groups">
         </div>
-        <div class="param-item"><label>${I.t('rangeLabelTrackOffsetLabel')}</label>
-          <input id="rangeLabelTrackOffset" type="number" step="1" value="0">
-        </div>
-        <div class="param-item"><label class="mini-check">
-          <input type="checkbox" id="rangeLabelTrackAutoWidthChk"> ${I.t('rangeLabelTrackAutoWidthChk')}
-        </label></div>
+<div class="param-item"><label>${I.t('rangeLabelTrackOffsetLabel')}</label>
+  <input id="rangeLabelTrackOffset" type="number" step="1" value="0">
+</div>
+<div class="param-item"><label>${I.t('rangeLabelTextOffsetX')}</label>         
+  <input id="rangeLabelTextOffsetX" type="number" step="1" value="0">
+</div>
+<div class="param-item"><label>${I.t('rangeLabelTextOffsetY')}</label>         
+  <input id="rangeLabelTextOffsetY" type="number" step="1" value="0">
+</div>
+<div class="param-item"><label class="mini-check">
+  <input type="checkbox" id="rangeLabelTrackAutoWidthChk"> ${I.t('rangeLabelTrackAutoWidthChk')}
+</label></div>
         <div class="param-item"><label>${I.t('rangeLabelTrackWidthLabel')}</label>
           <input id="rangeLabelTrackWidth" type="number" min="10" max="300" step="1" value="60">
         </div>
@@ -1556,6 +1955,7 @@ function renderDatasetsPanel(container) {
       <div class="param-grid cols-4" style="margin-top:12px;">
         <div class="param-item"><label>${I.t('customTrackType')}</label>
           <select id="newTrackType">
+            <option value="legend">${I.t('optLegend')}</option>
             <option value="colorstrip">${I.t('optColorstrip')}</option>
             <option value="binary">${I.t('optBinary')}</option>
             <option value="multisymbol">${I.t('optSymbols')}</option>
@@ -1641,7 +2041,8 @@ renderGroupPaletteDropdown(container.querySelector('#groupPaletteContainer'), {
   container.querySelector('#addTrackBtn')?.addEventListener('click', () => {
     const type = container.querySelector('#newTrackType')?.value || 'colorstrip';
     C.snapshot();
-    global.TreeTracks.addCustomTrack({ type });
+    const t = global.TreeTracks.addCustomTrack({ type });
+    global.TreeTracks.tracks.forEach(o => { if (o.id !== t.id) o.collapsed = true; });
     refreshTrackList(container);
     global.TreeRenderer.draw();
   });
@@ -1766,12 +2167,28 @@ function paletteWithColors(t, vals) {
     ${customColorBlock(t, vals)}
   `;
 }
-
+function toggleTrackAccordion(container, tid) {
+  const TT = global.TreeTracks;
+  const t = TT.tracks.find(x => x.id === tid);
+  if (!t) return;
+  const willExpand = !!t.collapsed;   
+  TT.toggleCustomTrack(tid);
+  if (willExpand) {
+    TT.tracks.forEach(o => { if (o.id !== tid) o.collapsed = true; });
+  }
+  refreshTrackList(container);
+}
 function refreshTrackList(container) {
   const box = container.querySelector('#trackList');
   if (!box) return;
   const TT = global.TreeTracks;
   if (!TT || !TT.tracks.length) { box.innerHTML = ''; return; }
+
+  const expanded = TT.tracks.filter(t => !t.collapsed);
+  if (expanded.length > 1) {
+    const keep = expanded[0];
+    TT.tracks.forEach(t => { if (t.id !== keep.id) t.collapsed = true; });
+  }
   const ld = global.TreeApp && global.TreeApp.leafData;
   const cols = (ld && ld.headers) ? ld.headers.slice() : [];
 
@@ -1781,7 +2198,42 @@ function refreshTrackList(container) {
     const typeLabel = TT.trackTypeLabel(t.type);
     let body = '';
 
-    if (t.type === 'colorstrip') {
+if (t.type === 'legend') {
+  const items = t.legendItems || [];
+  body = `
+    <div class="param-grid cols-4">
+      <div class="param-item"><label>${I.t('trackNameLabel')}</label>
+        <input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+    </div>
+    ${legendBlock(t)}
+    ${subTitle(I.t('legendItemsTitle'))}
+    <div id="legendItemsWrap_${t.id}" style="display:flex;flex-direction:column;gap:6px;">
+      ${items.map((it, i) => `
+        <div class="param-grid cols-4" style="align-items:end;">
+          <div class="param-item"><label>${I.t('legendItemLabel')}</label>
+            <input type="text" data-lgfield="label" data-lgtid="${t.id}" data-lgidx="${i}" value="${escapeAttr(it.label || '')}"></div>
+          <div class="param-item"><label>${I.t('legendItemShape')}</label>
+            <select data-lgfield="shape" data-lgtid="${t.id}" data-lgidx="${i}">
+              <option value="square" ${it.shape==='square'?'selected':''}>${I.t('optShapeSquare')}</option>
+              <option value="triangle" ${it.shape==='triangle'?'selected':''}>${I.t('optShapeTriangle')}</option>
+              <option value="circle" ${it.shape==='circle'?'selected':''}>${I.t('optShapeCircle')}</option>
+              <option value="star" ${it.shape==='star'?'selected':''}>${I.t('optShapeStar')}</option>
+              <option value="diamond2" ${it.shape==='diamond2'?'selected':''}>${I.t('optShapeDiamond')}</option>
+            </select></div>
+          <div class="param-item"><label>${I.t('legendItemFill')}</label>
+            <input type="color" data-lgfield="fillColor" data-lgtid="${t.id}" data-lgidx="${i}" value="${it.fillColor || '#4DBBD5'}"></div>
+          <div class="param-item"><label>${I.t('legendItemStroke')}</label>
+            <input type="color" data-lgfield="strokeColor" data-lgtid="${t.id}" data-lgidx="${i}" value="${it.strokeColor || '#333333'}"></div>
+          <div class="param-item"><label>${I.t('legendItemStrokeWidth')}</label>
+            <input type="number" data-lgfield="strokeWidth" data-lgtid="${t.id}" data-lgidx="${i}" value="${Number(it.strokeWidth) || 0}" min="0" max="6" step="0.5"></div>
+          <div class="param-item" style="align-self:end;">
+            <button class="btn btn-outline" data-del-legend-item="${t.id}" data-lgidx="${i}" type="button" style="padding:4px 10px;color:#a33;">×</button></div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn" data-add-legend-item="${t.id}" type="button" style="margin-top:8px;">${I.t('legendAddItem')}</button>
+  `;
+} else if (t.type === 'colorstrip') {
       const vals = TT.collectUniqueValues(t);
       body = `
         <div class="param-grid cols-4">
@@ -1796,20 +2248,25 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
           <div class="param-item"><label>${I.t('trackBorderColor')}</label><input type="color" data-tprop="borderColor" data-tid="${t.id}" value="${t.borderColor}"></div>
           <div class="param-item"><label>${I.t('trackBorderWidth')}</label><input type="number" data-tprop="borderWidth" data-tid="${t.id}" value="${t.borderWidth}" min="0" max="6"></div>
-          <div class="param-item"><label>${I.t('trackBlockOpacity')}</label><input type="number" data-tprop="fillOpacity" data-tid="${t.id}" value="${t.fillOpacity != null ? t.fillOpacity : 1}" min="0" max="1" step="0.05"></div>
-        </div>
-        ${subTitle(I.t('trackColorText'))}
-        <div class="param-grid cols-4">
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showText" data-tid="${t.id}" ${t.showText?'checked':''}> ${I.t('trackShowText')}</label></div>
-          <div class="param-item"><label>${I.t('trackFontSize')}</label><input type="number" data-tprop="textFontSize" data-tid="${t.id}" value="${t.textFontSize || 10}" min="6" max="40"></div>
-          <div class="param-item"><label>${I.t('trackTextColor')}</label><input type="color" data-tprop="textColor" data-tid="${t.id}" value="${t.textColor || '#333333'}"></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textBold" data-tid="${t.id}" ${t.textBold?'checked':''}> ${I.t('trackTextBold')}</label></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textItalic" data-tid="${t.id}" ${t.textItalic?'checked':''}> ${I.t('trackTextItalic')}</label></div>
-          <div class="param-item"><label>${I.t('trackTextOrientation')}</label><select data-tprop="textOrientation" data-tid="${t.id}">
-            <option value="horizontal" ${t.textOrientation!=='vertical'?'selected':''}>${I.t('trackTextHorizontal')}</option>
-            <option value="vertical" ${t.textOrientation==='vertical'?'selected':''}>${I.t('trackTextVertical')}</option>
-          </select></div>
-        </div>
+<div class="param-item"><label>${I.t('trackBlockOpacity')}</label>
+  <input type="number" data-tprop="fillOpacity" data-tid="${t.id}" value="${t.fillOpacity != null ? t.fillOpacity : 1}" min="0" max="1" step="0.05"></div>
+</div>
+${subTitle(I.t('trackColorText'))}
+<div class="param-grid cols-4">
+  <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showText" data-tid="${t.id}" ${t.showText?'checked':''}> ${I.t('trackShowText')}</label></div>
+  <div class="param-item"><label>${I.t('trackFontSize')}</label><input type="number" data-tprop="textFontSize" data-tid="${t.id}" value="${t.textFontSize || 10}" min="6" max="40"></div>
+  <div class="param-item"><label>${I.t('trackTextColor')}</label><input type="color" data-tprop="textColor" data-tid="${t.id}" value="${t.textColor || '#333333'}"></div>
+  <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textBold" data-tid="${t.id}" ${t.textBold?'checked':''}> ${I.t('trackTextBold')}</label></div>
+  <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="textItalic" data-tid="${t.id}" ${t.textItalic?'checked':''}> ${I.t('trackTextItalic')}</label></div>
+  <div class="param-item"><label>${I.t('trackTextOrientation')}</label><select data-tprop="textOrientation" data-tid="${t.id}">
+    <option value="horizontal" ${t.textOrientation!=='vertical'?'selected':''}>${I.t('trackTextHorizontal')}</option>
+    <option value="vertical" ${t.textOrientation==='vertical'?'selected':''}>${I.t('trackTextVertical')}</option>
+  </select></div>
+  <div class="param-item"><label>${I.t('colorstripTextOffsetX')}</label>             
+    <input type="number" data-tprop="colorstripTextOffsetX" data-tid="${t.id}" value="${t.colorstripTextOffsetX || 0}" step="1"></div>
+  <div class="param-item"><label>${I.t('colorstripTextOffsetY')}</label>             
+    <input type="number" data-tprop="colorstripTextOffsetY" data-tid="${t.id}" value="${t.colorstripTextOffsetY || 0}" step="1"></div>
+</div>
         <div class="param-grid cols-4" style="margin-top:8px;">${paletteWithColors(t, vals)}</div>
         ${legendBlock(t)}
       `;
@@ -2087,6 +2544,19 @@ ${t.type === 'stackedbar' ? `
           <div class="param-item"><label>${I.t('trackOutlineColorLabel')}</label><input type="color" data-tprop="borderColor" data-tid="${t.id}" value="${t.borderColor}"></div>
           <div class="param-item"><label>${I.t('trackOutlineWidthLabel')}</label><input type="number" data-tprop="borderWidth" data-tid="${t.id}" value="${t.borderWidth}" min="0" max="6"></div>
         </div>
+
+        ${subTitle(I.t('multiheatmapColLabelsTitle'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showColLabels" data-tid="${t.id}" ${t.showColLabels !== false ? 'checked' : ''}> ${I.t('multiheatmapShowColLabels')}</label></div>
+          <div class="param-item"><label>${I.t('multiheatmapColLabelFontSize')}</label><input type="number" data-tprop="colLabelFontSize" data-tid="${t.id}" value="${t.colLabelFontSize || 10}" min="6" max="30"></div>
+          <div class="param-item"><label>${I.t('multiheatmapColLabelColor')}</label><input type="color" data-tprop="colLabelColor" data-tid="${t.id}" value="${t.colLabelColor || '#333333'}"></div>
+          <div class="param-item"><label>${I.t('multiheatmapColLabelOffset')}</label><input type="number" data-tprop="colLabelOffset" data-tid="${t.id}" value="${t.colLabelOffset || 6}" step="1"></div>
+          <div class="param-item"><label>${I.t('multiheatmapColLabelOrientation')}</label><select data-tprop="colLabelOrientation" data-tid="${t.id}">
+            <option value="vertical" ${(t.colLabelOrientation || 'vertical') === 'vertical' ? 'selected' : ''}>${I.t('multiheatmapColLabelVertical')}</option>
+            <option value="horizontal" ${t.colLabelOrientation === 'horizontal' ? 'selected' : ''}>${I.t('multiheatmapColLabelHorizontal')}</option>
+          </select></div>
+        </div>
+
         ${subTitle(I.t('trackColorSettings'))}
         <div class="param-grid cols-4">
           <div class="param-item"><label>${I.t('trackMinValue')}</label><input type="number" data-tprop="gradientMin" data-tid="${t.id}" value="${t.gradientMin != null ? t.gradientMin : ''}" placeholder="empty = data min"></div>
@@ -2098,7 +2568,8 @@ ${t.type === 'stackedbar' ? `
     }
     return `
       <div class="track-item" data-track-id="${t.id}">
-        <div class="track-header">
+        <div class="track-header" draggable="true">
+          <span class="track-drag-handle" title="${I.t('trackDragHint')}">⋮⋮</span>
           <span class="track-title">${escapeHtml(typeLabel)}${I.t('trackTitleSep')}${escapeHtml(t.name || I.t('trackUntitled'))}</span>
           <button class="track-toggle" data-tid="${t.id}" type="button">${t.collapsed ? '▼' : '▲'}</button>
           <button class="track-remove" data-tid="${t.id}" type="button">×</button>
@@ -2293,8 +2764,7 @@ ${t.type === 'stackedbar' ? `
   box.querySelectorAll('.track-toggle').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      TT.toggleCustomTrack(Number(btn.dataset.tid));
-      refreshTrackList(container);
+      toggleTrackAccordion(container, Number(btn.dataset.tid));
     });
   });
   box.querySelectorAll('.track-remove').forEach(btn => {
@@ -2312,11 +2782,76 @@ ${t.type === 'stackedbar' ? `
       if (e.target.closest('.track-remove')) return;
       const tid = Number(hdr.querySelector('.track-toggle')?.dataset.tid);
       if (!Number.isFinite(tid)) return;
-      TT.toggleCustomTrack(tid);
-      refreshTrackList(container);
+      toggleTrackAccordion(container, tid);
     });
   });
 
+  let dragSrcId = null;
+
+  box.querySelectorAll('.track-header').forEach(header => {
+    const item = header.closest('.track-item');
+    if (!item) return;
+
+    header.addEventListener('dragstart', e => {
+      if (e.target.closest('button')) { e.preventDefault(); return; }
+      const tid = Number(item.dataset.trackId);
+      if (!Number.isFinite(tid)) return;
+      dragSrcId = tid;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', String(dragSrcId)); } catch (_) {}
+    });
+
+    header.addEventListener('dragend', () => {
+      dragSrcId = null;
+      box.querySelectorAll('.track-item').forEach(i =>
+        i.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom'));
+    });
+  });
+
+  box.querySelectorAll('.track-item').forEach(item => {
+    item.addEventListener('dragover', e => {
+      if (!dragSrcId) return;
+      e.preventDefault();                               
+      e.dataTransfer.dropEffect = 'move';
+      const tgtId = Number(item.dataset.trackId);
+      if (tgtId === dragSrcId) return;
+      const rect = item.getBoundingClientRect();
+      const isTop = e.clientY < rect.top + rect.height / 2;
+      item.classList.toggle('drag-over-top', isTop);
+      item.classList.toggle('drag-over-bottom', !isTop);
+    });
+
+    item.addEventListener('dragleave', e => {
+      if (item.contains(e.relatedTarget)) return;
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
+      const tgtId = Number(item.dataset.trackId);
+      if (!dragSrcId || tgtId === dragSrcId) { dragSrcId = null; return; }
+
+      C.snapshot();
+      const arr = TT.tracks;
+      const srcIdx = arr.findIndex(x => x.id === dragSrcId);
+      const tgtIdx = arr.findIndex(x => x.id === tgtId);
+      if (srcIdx < 0 || tgtIdx < 0) { dragSrcId = null; return; }
+
+      const rect = item.getBoundingClientRect();
+      const isTop = e.clientY < rect.top + rect.height / 2;
+      const [moved] = arr.splice(srcIdx, 1);
+      let insertIdx = tgtIdx;
+      if (srcIdx < tgtIdx) insertIdx -= 1;
+      if (!isTop) insertIdx += 1;
+      arr.splice(insertIdx, 0, moved);
+
+      dragSrcId = null;
+      refreshTrackList(container);
+      global.TreeRenderer.draw();
+    });
+  });
   box.querySelectorAll('[data-trestore-excluded]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.preventDefault(); e.stopPropagation();
@@ -2363,6 +2898,38 @@ ${t.type === 'stackedbar' ? `
       }
     });
   });
+box.querySelectorAll('[data-lgfield]').forEach(el => {
+  el.addEventListener('input', () => {
+    const tid = Number(el.dataset.lgtid), idx = Number(el.dataset.lgidx), field = el.dataset.lgfield;
+    const t = TT.tracks.find(x => x.id === tid);
+    if (!t || !t.legendItems || !t.legendItems[idx]) return;
+    C.snapshot();
+    t.legendItems[idx][field] = el.type === 'number' ? Number(el.value) : el.value;
+    global.TreeRenderer.draw();
+  });
+});
+box.querySelectorAll('[data-add-legend-item]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = Number(btn.dataset.addLegendItem);
+    const t = TT.tracks.find(x => x.id === id); if (!t) return;
+    C.snapshot();
+    t.legendItems = t.legendItems || [];
+    t.legendItems.push({ shape: 'square', fillColor: '#4DBBD5', strokeColor: '#333333',
+      strokeWidth: 0, label: 'Item ' + (t.legendItems.length + 1) });
+    refreshTrackList(container);
+    global.TreeRenderer.draw();
+  });
+});
+box.querySelectorAll('[data-del-legend-item]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = Number(btn.dataset.delLegendItem), idx = Number(btn.dataset.lgidx);
+    const t = TT.tracks.find(x => x.id === id); if (!t || !t.legendItems) return;
+    C.snapshot();
+    t.legendItems.splice(idx, 1);
+    refreshTrackList(container);
+    global.TreeRenderer.draw();
+  });
+});
 }
 
 function syncRangesControls(container) {
@@ -2390,6 +2957,8 @@ function syncRangesControls(container) {
   setChk('#rangeLabelTrackTitleShowChk', R.rangeLabelTrackTitleShow !== false);
   setVal('#rangeLabelTrackTitle', R.rangeLabelTrackTitle || 'Groups');
   setVal('#rangeLabelTrackOffset', R.rangeLabelTrackOffset || 0);
+setVal('#rangeLabelTextOffsetX', R.rangeLabelTrackTextOffsetX || 0);   
+setVal('#rangeLabelTextOffsetY', R.rangeLabelTrackTextOffsetY || 0);   
   setChk('#rangeLabelTrackAutoWidthChk', !!R.rangeLabelTrackAutoWidth);
   setVal('#rangeLabelTrackWidth', R.rangeLabelTrackWidth || 60);
   const autoW = !!R.rangeLabelTrackAutoWidth;
@@ -2427,6 +2996,16 @@ function syncRangesControls(container) {
     R.rangeLabelTrackOffset = Number(e.target.value) || 0;
     global.TreeRenderer.draw();
   });
+bindOnce(container.querySelector('#rangeLabelTextOffsetX'), 'input', e => {   
+  C.snapshot();
+  R.rangeLabelTrackTextOffsetX = Number(e.target.value) || 0;
+  global.TreeRenderer.draw();
+});
+bindOnce(container.querySelector('#rangeLabelTextOffsetY'), 'input', e => {  
+  C.snapshot();
+  R.rangeLabelTrackTextOffsetY = Number(e.target.value) || 0;
+  global.TreeRenderer.draw();
+});
   bindOnce(container.querySelector('#rangeLabelTrackAutoWidthChk'), 'change', e => {
     C.snapshot();
     R.rangeLabelTrackAutoWidth = e.target.checked;

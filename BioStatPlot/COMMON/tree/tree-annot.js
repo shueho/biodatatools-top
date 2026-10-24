@@ -112,6 +112,8 @@ let rangeLabelTrackOpacity = 1;
 let rangeLabelTrackTextOrientation = 'horizontal';
 let rangeLabelTrackTitle = 'Groups';
 let rangeLabelTrackTitleShow = true;
+let rangeLabelTrackTextOffsetX = 0;     
+let rangeLabelTrackTextOffsetY = 0;
 let ringPalette = "tableau10";
 
 const RING_PALETTES = (function () {
@@ -254,22 +256,30 @@ function drawRectangularRanges() {
     const range = rangeById(segment.id);
     if (!range) return;    
     let x0, width;
-    if (isInv) {
-      const alignedX = C.alignedLabelX();
-      if (rangeCover === "full") {
-        x0 = Math.min(labelEdge, axisMinX - 10);
-        const rightEdge = Math.max(vb.x + vb.w - 20, axisMaxX + 10);
-        width = Math.max(3, rightEdge - x0);
-      }
-      else if (rangeCover === "clade")  { x0 = labelEdge; width = Math.max(3, segment.x0 - labelEdge); }
-      else                              { x0 = labelEdge; width = Math.max(3, alignedX - labelEdge); }
-    } else {
-      x0 = rangeCover === "full" ? Math.min(40, axisMinX - 10)
-        : rangeCover === "clade" ? segment.x0
-        : st.labelPosition === "aligned" ? C.alignedLabelX()
-        : Math.min(...segment.leaves.map(l => l.x));
-      const rightEnd = rangeCover === "full" ? Math.max(labelEdge, axisMaxX + 10) : labelEdge;
-      width = Math.max(3, rightEnd - x0);
+if (isInv) {
+  const alignedX = C.alignedLabelX();
+  if (rangeCover === "full") {
+    x0 = Math.min(labelEdge, axisMinX - 10);
+    const rightEdge = Math.max(vb.x + vb.w - 20, axisMaxX + 10);
+    width = Math.max(3, rightEdge - x0);
+  }
+  else if (rangeCover === "clade" && C.state.rangeColorLabels) {
+    x0 = Math.min(labelEdge, alignedX + 2);
+    width = Math.max(3, segment.x0 - x0);
+  }
+  else if (rangeCover === "clade")  { x0 = labelEdge; width = Math.max(3, segment.x0 - labelEdge); }
+  else                              { x0 = labelEdge; width = Math.max(3, alignedX - labelEdge); }
+} else {
+x0 = rangeCover === "full" ? Math.min(40, axisMinX - 10)
+  : rangeCover === "clade" ? segment.x0
+  : st.labelPosition === "aligned" ? C.alignedLabelX()
+  : Math.min(...segment.leaves.map(l => l.x));
+let rightEnd;
+if (rangeCover === "full") rightEnd = Math.max(labelEdge, axisMaxX + 10);
+else if (rangeCover === "clade" && C.state.rangeColorLabels) {
+  rightEnd = Math.min(labelEdge, C.alignedLabelX() - 2);
+} else rightEnd = labelEdge;
+width = Math.max(3, rightEnd - x0);
     }
     const attrs = { x: x0, y: segment.top, width, height: segment.bottom - segment.top,
       fill: rangePaint(range, index, false, 0, 1, isInv), opacity: st.rangeOpacity,
@@ -312,9 +322,11 @@ function drawColoredRanges(radial) {
       const a0 = Math.min(...angs) - pad, a1 = Math.max(...angs) + pad;
       const cx = 470, cy = 380;
       let rIn, rOut;
-      if (rangeCover === "clade") { rIn = Math.max(0, n.r || 0); rOut = gTipR + 2 + extEndPx; }
-      else if (rangeCover === "full") { rIn = 0; rOut = gLabOut + extEndPx; }
-      else { rIn = gLabIn; rOut = gLabOut + extEndPx; }
+if (rangeCover === "clade") {
+  rIn = Math.max(0, n.r || 0);
+  rOut = (C.state.rangeColorLabels ? (C.getRadialLabelR() - 2) : (gTipR + 2)) + extEndPx;
+} else if (rangeCover === "full") { rIn = 0; rOut = gLabOut + extEndPx; }
+else { rIn = gLabIn; rOut = gLabOut + extEndPx; }
       const p0i = L.polar(cx, cy, rIn, a0), p0o = L.polar(cx, cy, rOut, a0);
       const p1o = L.polar(cx, cy, rOut, a1), p1i = L.polar(cx, cy, rIn, a1);
       const large = (a1 - a0) > 180 ? 1 : 0;
@@ -354,16 +366,16 @@ function drawRectangularRangeLabelTrack(xBase, leaves, isInv) {
     C.el("rect", { x: x0, y: seg.top, width: trackW, height: Math.max(1, seg.bottom - seg.top),
       fill: range.color, opacity: rangeLabelTrackOpacity,
       "data-range": seg.id, class: "range-label-track" });
-    if (rangeShowLabels && range.label) {
-      const cx = x0 + trackW / 2;
-      const cy = (seg.top + seg.bottom) / 2;
-      const attrs = { x: cx, y: cy, "text-anchor": "middle", "dominant-baseline": "middle",
-        "font-size": rangeLabelSize, "font-weight": rangeLabelBold ? 700 : 400,
-        "font-style": rangeLabelItalic ? "italic" : "normal", fill: textColor,
-        "font-family": ff, "pointer-events": "none", class: "range-label-track-text" };
-      if (vertical) attrs.transform = `rotate(-90 ${cx} ${cy})`;
-      C.el("text", attrs).textContent = range.label;
-    }
+if (rangeShowLabels && range.label) {
+  const cx = x0 + trackW / 2 + (Number(rangeLabelTrackTextOffsetX) || 0);  
+  const cy = (seg.top + seg.bottom) / 2 + (Number(rangeLabelTrackTextOffsetY) || 0);   
+  const attrs = { x: cx, y: cy, "text-anchor": "middle", "dominant-baseline": "middle",
+    "font-size": rangeLabelSize, "font-weight": rangeLabelBold ? 700 : 400,
+    "font-style": rangeLabelItalic ? "italic" : "normal", fill: textColor,
+    "font-family": ff, "pointer-events": "none", class: "range-label-track-text" };
+  if (vertical) attrs.transform = `rotate(-90 ${cx} ${cy})`;
+  C.el("text", attrs).textContent = range.label;
+}
   });
   if (rangeLabelTrackTitleShow && rangeLabelTrackTitle) {
     const titleFs = Number(tc.trackNameFontSize) || 11;
@@ -427,18 +439,21 @@ function drawRadialRangeLabelTrack(rBase, leaves) {
     const d = `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOut} ${rOut} 0 ${large} 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rIn} ${rIn} 0 ${large} 0 ${p0i.x} ${p0i.y} Z`;
     C.el("path", { d, fill: range.color, opacity: rangeLabelTrackOpacity,
       "data-range": range.id, class: "range-label-track" });
-    if (rangeShowLabels && range.label) {
-      const mid = (a0 + a1) / 2;
-      const midR = (rIn + rOut) / 2;
-      const lp = L.polar(cx, cy, midR, mid);
-      let rot;
-      if (vertical) { rot = mid; if (rot > 90 && rot < 270) rot -= 180; }
-      else { rot = mid - 90; if (rot > 90) rot -= 180; if (rot < -90) rot += 180; }
-      C.el("text", { x: lp.x, y: lp.y, "text-anchor": "middle", "dominant-baseline": "middle",
+if (rangeShowLabels && range.label) {
+  const mid = (a0 + a1) / 2;
+  const midR = (rIn + rOut) / 2 + (Number(rangeLabelTrackTextOffsetX) || 0);   
+  const lp = L.polar(cx, cy, midR, mid);
+  const tangentShift = Number(rangeLabelTrackTextOffsetY) || 0;               
+  const tp = L.polar(0, 0, tangentShift, mid + 90);
+  const tx = lp.x + tp.x, ty = lp.y + tp.y;
+  let rot;
+  if (vertical) { rot = mid; if (rot > 90 && rot < 270) rot -= 180; }
+  else { rot = mid - 90; if (rot > 90) rot -= 180; if (rot < -90) rot += 180; }
+  C.el("text", { x: tx, y: ty, "text-anchor": "middle", "dominant-baseline": "middle",
         "font-size": rangeLabelSize, "font-weight": rangeLabelBold ? 700 : 400,
         "font-style": rangeLabelItalic ? "italic" : "normal", fill: textColor,
         "font-family": ff, "pointer-events": "none", class: "range-label-track-text",
-        transform: `rotate(${rot} ${lp.x} ${lp.y})` }).textContent = range.label;
+      transform: `rotate(${rot} ${tx} ${ty})` }).textContent = range.label;
     }
   });
   if (rangeLabelTrackTitleShow && rangeLabelTrackTitle) {
@@ -1154,6 +1169,7 @@ C.registerSnapshot("ranges", () => ({
   rangeShowLabels, rangeLabelSize, rangeLabelColor, rangeLabelBold, rangeLabelItalic, rangeLabelOffset, rangeLabelFont,
   rangeLabelTrackShow, rangeLabelTrackWidth, rangeLabelTrackAutoWidth, rangeLabelTrackOffset,
   rangeLabelTrackOpacity, rangeLabelTrackTextOrientation, rangeLabelTrackTitle, rangeLabelTrackTitleShow,
+  rangeLabelTrackTextOffsetX, rangeLabelTrackTextOffsetY,
   geoTimeTracks: JSON.parse(JSON.stringify(geoTimeTracks)),
   geoTrackSeq, geoEntrySeq, geoTimeShow, geoScaleFactor,
   rangeSeq,          
@@ -1182,6 +1198,8 @@ C.registerSnapshot("ranges", () => ({
   if (typeof s.rangeLabelTrackTextOrientation === "string") rangeLabelTrackTextOrientation = s.rangeLabelTrackTextOrientation;
   if (typeof s.rangeLabelTrackTitle === "string") rangeLabelTrackTitle = s.rangeLabelTrackTitle;
   if (typeof s.rangeLabelTrackTitleShow === "boolean") rangeLabelTrackTitleShow = s.rangeLabelTrackTitleShow;
+  if (typeof s.rangeLabelTrackTextOffsetX === "number") rangeLabelTrackTextOffsetX = s.rangeLabelTrackTextOffsetX;   
+  if (typeof s.rangeLabelTrackTextOffsetY === "number") rangeLabelTrackTextOffsetY = s.rangeLabelTrackTextOffsetY;   
   if (Array.isArray(s.geoTimeTracks)) geoTimeTracks = s.geoTimeTracks;
   if (typeof s.geoTrackSeq === "number") geoTrackSeq = s.geoTrackSeq;
   if (typeof s.geoEntrySeq === "number") geoEntrySeq = s.geoEntrySeq;
@@ -1213,8 +1231,10 @@ global.TreeRanges = {
   get rangeLabelTrackOpacity() { return rangeLabelTrackOpacity; }, set rangeLabelTrackOpacity(v) { rangeLabelTrackOpacity = v; },
   get rangeLabelTrackTextOrientation() { return rangeLabelTrackTextOrientation; }, set rangeLabelTrackTextOrientation(v) { rangeLabelTrackTextOrientation = v; },
   get rangeLabelTrackTitle() { return rangeLabelTrackTitle; }, set rangeLabelTrackTitle(v) { rangeLabelTrackTitle = v; },
-  get rangeLabelTrackTitleShow() { return rangeLabelTrackTitleShow; }, set rangeLabelTrackTitleShow(v) { rangeLabelTrackTitleShow = v; },
-  get rangeSeq() { return rangeSeq; }, set rangeSeq(v) { rangeSeq = v; },
+get rangeLabelTrackTitleShow() { return rangeLabelTrackTitleShow; }, set rangeLabelTrackTitleShow(v) { rangeLabelTrackTitleShow = v; },
+get rangeLabelTrackTextOffsetX() { return rangeLabelTrackTextOffsetX; }, set rangeLabelTrackTextOffsetX(v) { rangeLabelTrackTextOffsetX = v; },  
+get rangeLabelTrackTextOffsetY() { return rangeLabelTrackTextOffsetY; }, set rangeLabelTrackTextOffsetY(v) { rangeLabelTrackTextOffsetY = v; },   
+get rangeSeq() { return rangeSeq; }, set rangeSeq(v) { rangeSeq = v; },
   get geoTimeTracks() { return geoTimeTracks; },
   get geoTimeShow() { return geoTimeShow; }, set geoTimeShow(v) { geoTimeShow = v; },
   get geoTrackSeq() { return geoTrackSeq; }, set geoTrackSeq(v) { geoTrackSeq = v; },
@@ -1254,7 +1274,8 @@ const TRACK_TYPE_LABEL_KEYS = {
   stackedbar: 'trackTypeStackedbar',
   pie: 'trackTypePie',
   groupedbar: 'trackTypeGroupedbar',
-  multiheatmap: 'trackTypeMultiheatmap'
+  multiheatmap: 'trackTypeMultiheatmap',
+legend: 'trackTypeLegend',
 };
 
 function trackTypeLabel(type) {
@@ -1294,11 +1315,19 @@ function newTrackDefaults(type) {
     textBold: false, textItalic: false, textFontSize: 10, textAlign: 'left',
     textOrientation: 'horizontal', textAutoWidth: false,
     fillOpacity: 1, showText: false, textColor: '#333333',
+    colorstripTextOffsetX: 0,                       
+    colorstripTextOffsetY: 0,  
     uniformShape: 'square', shapeMap: {}, columnColors: {}, percentMode: false, pieRadius: 9,
+showColLabels: true,         
+colLabelFontSize: 10,        
+colLabelColor: '#333333',        
+colLabelOffset: 6,              
+colLabelOrientation: 'vertical',  
     showLegend: true, legendTitle: '', legendOrientation: 'horizontal',
     legendX: null, legendY: null,
     excludedValues: [],
-    _colorCache: null, _shapeCache: null
+    _colorCache: null, _shapeCache: null,
+legendItems: [],
   };
 }
 
@@ -1406,6 +1435,7 @@ function isExcluded(track, value) {
 }
 function computeTrackWidth(track, opts) {
   opts = opts || {};
+  if (track.type === 'legend') return 0; 
   if (!opts.radial && track.type === 'colorstrip' && track.textAutoWidth && track.showText) {
     const ld = getLeafData();
     let maxW = 40;
@@ -1498,12 +1528,12 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
     const bold = track.textBold ? 700 : 400;
     const italic = track.textItalic ? 'italic' : 'normal';
     const vertical = track.textOrientation === 'vertical';
-    const drawBlock = (top, bottom, value) => {
-      C.el("rect", { x, y: top, width: w, height: Math.max(1, bottom - top),
-        fill: colorOf(track, value, colorMap), opacity: fillOpacity, stroke, "stroke-width": sw });
-      if (showText && value != null && value !== '') {
-        const cy = (top + bottom) / 2;
-        const cx = x + w / 2;
+const drawBlock = (top, bottom, value) => {
+  C.el("rect", { x, y: top, width: w, height: Math.max(1, bottom - top),
+    fill: colorOf(track, value, colorMap), opacity: fillOpacity, stroke, "stroke-width": sw });
+  if (showText && value != null && value !== '') {
+    const cy = (top + bottom) / 2 + (Number(track.colorstripTextOffsetY) || 0);   
+    const cx = x + w / 2 + (Number(track.colorstripTextOffsetX) || 0);  
         const attrs = { x: cx, y: cy, "text-anchor": "middle", "dominant-baseline": "middle",
           "font-size": fontSize, "font-weight": bold, "font-style": italic,
           fill: textColor, "font-family": ff, "pointer-events": "none" };
@@ -1634,8 +1664,19 @@ const r = Math.max(2, Math.min(h/2, Number(track.pieRadius) || 9));
   } else if (track.type === 'multiheatmap') {
     drawMultiHeatmapRect(track, x, w, leaves, rowOf);
   }
-}
 
+  const _yTop = Math.min(...leaves.map(l => rowOf(l).top));
+  const _yBot = Math.max(...leaves.map(l => rowOf(l).bottom));
+  C.el("rect", {
+    x, y: _yTop,
+    width: Math.max(1, w),
+    height: Math.max(1, _yBot - _yTop),
+    fill: "transparent",
+    "pointer-events": "all",
+    "data-track-band": track.id,
+    style: "cursor:grab"
+  });
+}
 function barDomain(track, leaves, percent) {
   const allVals = leaves.map(l => {
     const raw = datasetValue(track, l); if (raw == null) return [];
@@ -1897,9 +1938,88 @@ function drawMultiHeatmapRect(track, x, w, leaves, rowOf) {
         height: Math.max(1, row.bottom - row.top), fill, stroke, 'stroke-width': sw });
     });
   });
+
+  if (track.showColLabels !== false && cols.length) {
+    const fs = Math.max(6, Number(track.colLabelFontSize) || 10);
+    const offset = Number(track.colLabelOffset) || 6;
+    const color = track.colLabelColor || '#333333';
+    const vertical = (track.colLabelOrientation || 'vertical') === 'vertical';
+    const ff = C.state.fontFamily || 'Times New Roman';
+    const yBot = Math.max(...leaves.map(l => rowOf(l).bottom));
+    const anchorY = yBot + offset;
+
+    cols.forEach((col, i) => {
+      const anchorX = x + (i + 0.5) * cellW;
+      if (vertical) {
+        C.el('text', {
+          x: anchorX, y: anchorY,
+          'font-size': fs,
+          'font-family': ff,
+          'text-anchor': 'end',
+          'dominant-baseline': 'middle',
+          fill: color,
+          transform: `rotate(-90 ${anchorX} ${anchorY})`
+        }).textContent = col;
+      } else {
+        C.el('text', {
+          x: anchorX, y: anchorY,
+          'font-size': fs,
+          'font-family': ff,
+          'text-anchor': 'middle',
+          'dominant-baseline': 'hanging',
+          fill: color
+        }).textContent = col;
+      }
+    });
+  }
 }
+
+function drawCustomLegend(track, x, y) {
+  const tc = trackCommon;
+  const ff = fontFam();
+  const scale = tc.legendScale || 1;
+  const fs = Math.max(6, Number(tc.legendFontSize) || 11) * scale;
+  const bold = tc.legendBold ? 700 : 400;
+  const italic = tc.legendItalic ? 'italic' : 'normal';
+  const titleFS = Math.max(6, Number(tc.legendTitleFontSize) || 12) * scale;
+  const titleBold = tc.legendTitleBold ? 700 : 400;
+  const titleItalic = tc.legendTitleItalic ? 'italic' : 'normal';
+  const title = (tc.legendTitleShow && track.legendTitle) ? String(track.legendTitle) : '';
+  const maxPerRow = Math.max(0, Number(tc.legendMaxPerRow) || 0);
+  const items = track.legendItems || [];
+  if (!items.length && !title) return 0;
+
+  const g = C.el('g', { class: 'track-legend legend-box', 'data-legend': '1',
+    'data-track-id': track.id, style: 'cursor:move', transform: `translate(${x} ${y})` });
+  let xx = 0, yy = 0, rowItems = 0;
+  if (title) {
+    const tt = C.el('text', { x: 0, y: titleFS, 'font-size': titleFS,
+      'font-weight': titleBold, 'font-style': titleItalic, fill: '#333', 'font-family': ff }, g);
+    tt.textContent = title;
+    yy = titleFS + 14;
+  }
+  let maxItemW = 0;
+  items.forEach(it => {
+    const w = fs + 8 + estimateTextWidth(it.label || '', fs);
+    if (w > maxItemW) maxItemW = w;
+  });
+  items.forEach(it => {
+    const wItem = fs + 8 + estimateTextWidth(it.label || '', fs);
+    if (maxPerRow > 0 && rowItems >= maxPerRow) { xx = 0; yy += fs + 6; rowItems = 0; }
+    drawTrackSymbol(it.shape || 'square', xx + fs / 2, yy + fs / 2, fs * 0.45,
+      it.fillColor || '#4DBBD5', it.strokeColor || '#333333', Number(it.strokeWidth) || 0, g);
+    const t = C.el('text', { x: xx + fs + 4, y: yy + fs * 0.85, 'font-size': fs,
+      'font-weight': bold, 'font-style': italic, fill: '#333', 'font-family': ff }, g);
+    t.textContent = it.label || '';
+    xx += (maxPerRow > 0 ? maxItemW : wItem) + 8;
+    rowItems++;
+  });
+  return yy + fs + 8;
+}
+
 function drawTrackLegend(track, x, y, colorMap) {
   if (!track.showLegend || track.type === 'text') return 0;
+  if (track.type === 'legend') return drawCustomLegend(track, x, y);
   const tc = trackCommon;
   const ff = fontFam();
   const scale = tc.legendScale || 1;
@@ -2076,8 +2196,12 @@ function renderCustomTracks(radial) {
     const lowestOffset = Math.abs((maxNameWidth / 2) * Math.sin(angleRad)) + Math.abs((nameFs / 2) * Math.cos(angleRad));
     const titleY = Math.min(...ys) - rowH * 0.55 - lowestOffset - 4;
     const placed = [];
-    customTracks.forEach(track => {
-      const w = computeTrackWidth(track);
+customTracks.forEach(track => {
+  if (track.type === 'legend') {                
+    placed.push({ track, x: xBase, w: 0 });
+    return;
+  }
+  const w = computeTrackWidth(track);
       let x;
       if (isInv) {
         x = xBase - gap - (Number(track.offset) || 0) - (Number(track.offsetX) || 0) - w;
@@ -2138,8 +2262,12 @@ if (isInv) {
       rBase = global.TreeRanges.drawRadialRangeLabelTrack(rBase, leaves);
     }
     const placed = [];
-    customTracks.forEach(track => {
-      const ringW = Math.max(6, computeTrackWidth(track, { radial: true }));
+customTracks.forEach(track => {
+  if (track.type === 'legend') {                 
+    placed.push({ track, ringW: 0, ringStart: rBase });
+    return;
+  }
+  const ringW = Math.max(6, computeTrackWidth(track, { radial: true }));
       const colorMap = getTrackColorMap(track);
       const trackOffset = Number(track.offset) || 0;
 
@@ -2449,9 +2577,13 @@ if (isInv) {
         }
       }
       if (track.type === 'colorstrip' && track.showText) {
-        const drawOneText = (angle0, angle1, textVal) => {
-          const midAngle = (angle0 + angle1) / 2;
-          const p = L.polar(cx, cy, rMid, midAngle);
+const drawOneText = (angle0, angle1, textVal) => {
+  const midAngle = (angle0 + angle1) / 2;
+  const radialOff  = Number(track.colorstripTextOffsetX) || 0;    
+  const tangentOff = Number(track.colorstripTextOffsetY) || 0;   
+  const pR = L.polar(cx, cy, rMid + radialOff, midAngle);
+  const pT = L.polar(0, 0, tangentOff, midAngle + 90);
+  const p = { x: pR.x + pT.x, y: pR.y + pT.y };
           const vertical = track.textOrientation === 'vertical';
           const arcLength = Math.max(2, (angle1 - angle0) * Math.PI / 180 * rMid);
           const availLength = vertical ? Math.max(4, ringW - 4) : Math.max(4, arcLength - 4);
@@ -2514,6 +2646,26 @@ if (tc.trackNameShow && track.name) {
     transform: `rotate(${rot} ${p.x} ${p.y})`
   }).textContent = track.name;
 }
+      const hitAngs = leaves.map(l => l.angle).filter(a => a != null);
+      if (hitAngs.length) {
+        const aStartHit = Math.min(...hitAngs) - halfStep;
+        const aEndHit = Math.max(...hitAngs) + halfStep;
+        const arcSpan = aEndHit - aStartHit;
+        const largeArc = arcSpan > 180 ? 1 : 0;
+        const p0i = L.polar(cx, cy, ringStart, aStartHit);
+        const p0o = L.polar(cx, cy, ringStart, aEndHit);
+        const p1o = L.polar(cx, cy, ringStart + ringW, aEndHit);
+        const p1i = L.polar(cx, cy, ringStart + ringW, aStartHit);
+        C.el("path", {
+          d: `M ${p0i.x} ${p0i.y} A ${ringStart} ${ringStart} 0 ${largeArc} 1 ${p0o.x} ${p0o.y} L ${p1o.x} ${p1o.y} A ${ringStart + ringW} ${ringStart + ringW} 0 ${largeArc} 0 ${p1i.x} ${p1i.y} Z`,
+          fill: "transparent",
+          stroke: "none",
+          "pointer-events": "all",
+          "data-track-band": track.id,
+          style: "cursor:grab"
+        });
+      }
+
       placed.push({ track, ringW, ringStart });
       rBase = ringStart + ringW;
     });
