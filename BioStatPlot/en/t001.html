@@ -271,16 +271,27 @@
   </details>
 
   <details class="param-panel">
-    <summary>⑤ Add a prefix as a new column</summary>
+    <summary>⑤ Prefix an existing column (create new)</summary>
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>Prefix content (concatenated with leaf labels)</label>
+          <label>Column to prefix</label>
+          <select id="customPrefixColumn"></select>
+        </div>
+        <div class="param-item">
+          <label>Prefix</label>
           <input type="text" id="customPrefixInput" value="Sample_">
         </div>
+        <div class="param-item" style="grid-column: span 2;">
+          <label>New column name (empty = auto)</label>
+          <input type="text" id="customPrefixNewCol" placeholder="e.g. Sample_col1; empty = &lt;column&gt;_prefixed">
+        </div>
+      </div>
+      <div class="info-box" style="margin-top:8px;">
+        A new column will be appended at the right; each value = prefix + original value. The source column is unchanged.
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="applyCustomPrefixBtn" type="button">Generate prefix column</button>
+        <button class="btn" id="applyCustomPrefixBtn" type="button">Create prefixed column</button>
       </div>
     </div>
   </details>
@@ -355,7 +366,7 @@
 <script>
 (function() {
     var need = ['TreeCore','TreeParser','TreeTraverse','TreeLayout','TreeDrawBranch','TreeDrawNode',
-    'TreeRenderer','TreeLegend','TreeRanges','TreeDatasets','TreeTracks','TreeDrag',
+    'TreeRenderer','TreeLegend','TreeRanges','TreeTracks','TreeDrag',
     'TreeUI','TreeExport','TreeApp','TreeOps','TreeSerialize'];
     var missing = need.filter(function(k) { return !window[k]; });
     if (missing.length) {

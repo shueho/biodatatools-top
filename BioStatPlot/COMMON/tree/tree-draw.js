@@ -6,8 +6,8 @@ const L = global.TreeLayout;
 const GAP_COLOR = "#888888";
 const TICK_FONT = "#555";
 
-function isInvert() { const v = C.state.invert; return v === true || v === "true"; }
-function isDashed() { const v = C.state.dashed; return v === true || v === "true"; }
+function isInvert() { return C.isTrue(C.state.invert); }
+function isDashed() { return C.isTrue(C.state.dashed); }
 function dashAttr() { if (!isDashed()) return ""; const st = C.state; return `${Math.max(1, st.dashSize * 8)} ${Math.max(2, st.dashSize * 12)}`; }
 function niceRound(v) {
   if (!isFinite(v) || v <= 0) return 1;
@@ -154,9 +154,7 @@ function passesThreshold(item, value) {
   return true;
 }
 
-function hasRealChildren(n) {
-  return !!(n && (n.children || []).some(c => !c.deleted));
-}
+const hasRealChildren = T.hasRealChildren;
 function branchStroke(n) {
   const st = C.state;
   if (n.branchColor) return n.branchColor;
@@ -344,7 +342,7 @@ function drawRectBranch(parent, child) {
     const shift = Number(st.labelShift || 0);
     const la = st.labelAnchorRect || "left";
     const maxW = C.maxTextWidth || 100;
-    const inv = (st.invert === true || st.invert === "true");
+    const inv = C.isTrue(st.invert);
     const alignX = C.alignedLabelX() + shift;
     let targetX;
     if (!inv) { targetX = la === "left" ? alignX + gapX - 2 : alignX + maxW + gapX * 2; }
@@ -759,7 +757,7 @@ function drawRangeLabels(radial) {
     ? global.TreeLayout.getRadialInnerBase() : 24;
   const maxR = 285 * (st.scaleH || 1);
 
-  const isInv = (st.invert === true || st.invert === "true");
+  const isInv = C.isTrue(st.invert);
   const left = 90;
   const scale = treeW / maxD;
   const lineH = Math.max(1, Number(cfg.lineHeight) || 8);
@@ -792,7 +790,7 @@ function drawRangeLabels(radial) {
       }
       C.el("line", { x1: x0, x2: x3, y1: y, y2: y, stroke: color, "stroke-width": lineH, "stroke-linecap": "butt", "pointer-events": "none", opacity });
     } else {
-      const isRev = (st.axisReverse === true || st.axisReverse === "true");
+      const isRev = C.isTrue(st.axisReverse);
       const r1 = innerBase + maxR * ((isRev ? maxD - lo : lo) / maxD);
       const r2 = innerBase + maxR * ((isRev ? maxD - hi : hi) / maxD);
       const rLo = Math.min(r1, r2), rHi = Math.max(r1, r2);
@@ -1037,8 +1035,7 @@ function drawCircularTicks(root) {
   const cx = 470, cy = 380;
   const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
   const unifyFs = Math.max(6, Number(st.tickLabelFontSize) || 11);
-  const isReverse = (st.axisReverse === true || st.axisReverse === "true");
-
+  const isReverse = C.isTrue(st.axisReverse);
   const interval = (tP.interval && tP.interval > 0) ? tP.interval : (maxD / 10);
   const tCircle = -innerBase * maxD / maxR;
   const tMax = maxD + extEnd;
@@ -1214,9 +1211,10 @@ function drawRect() {
   drawNodesAndLabels(false);
   if (global.TreeRanges) global.TreeRanges.drawColoredRanges(false);
   drawRangeLabels(false);
-  if (global.TreeDatasets) global.TreeDatasets.drawDatasets(false);
+  if (global.TreeTracks && global.TreeTracks.renderCustomTracks) global.TreeTracks.renderCustomTracks(false);
   if (global.TreeRanges && global.TreeRanges.drawGeoTimeTracks) global.TreeRanges.drawGeoTimeTracks(false);
 }
+
 function drawRadial() {
   L.layoutRadial(); clearSvg();
   const st = C.state;
@@ -1242,15 +1240,15 @@ function drawRadial() {
   drawNodesAndLabels(true);
   if (global.TreeRanges) global.TreeRanges.drawColoredRanges(true);
   drawRangeLabels(true);
-  if (global.TreeDatasets) global.TreeDatasets.drawDatasets(true);
+  if (global.TreeTracks && global.TreeTracks.renderCustomTracks) global.TreeTracks.renderCustomTracks(true);
   if (global.TreeRanges && global.TreeRanges.drawGeoTimeTracks) global.TreeRanges.drawGeoTimeTracks(true);
 }
 function draw() {
   _nodeValueRangeCache = {};
   const svg = C.getSvg(); if (!svg || !C.getRoot()) return;
   if (C.state.mode === "rectangular") drawRect(); else drawRadial();
-  refitViewBox();
-  drawScaleBox(C.getRoot(), false);
+  drawScaleBox(C.getRoot(), false);   
+  refitViewBox();                    
   const vb = C.getViewBox(), st = C.state;
   svg.setAttribute("viewBox", `${vb.x - (st.panX || 0)} ${vb.y - (st.panY || 0)} ${vb.w / st.zoom} ${vb.h / st.zoom}`);
   if (global.TreeUI && global.TreeUI.renderEditor) global.TreeUI.renderEditor();

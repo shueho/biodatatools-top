@@ -71,9 +71,23 @@
             .replace(/'/g, '&#39;');
     }
 
+    function charWidth(code, fs) {
+        return (code >= 0x4e00 && code <= 0x9fff) ||
+               (code >= 0x3000 && code <= 0x303f) ||
+               (code >= 0xff00 && code <= 0xffef) ? fs : fs * 0.6;
+    }
+
+    function measureText(text, fs) {
+        const s = String(text || '');
+        let w = 0;
+        for (let i = 0; i < s.length; i++) w += charWidth(s.charCodeAt(i), fs);
+        return w;
+    }
+
     global.PlotCommon = global.PlotCommon || {};
     Object.assign(global.PlotCommon, {
-        detectDelimiter, splitLine, parseTable, inferColumnTypes, escapeHtml
+        detectDelimiter, splitLine, parseTable, inferColumnTypes, escapeHtml,
+        charWidth, measureText
     });
     global.TreeCommon = global.PlotCommon;
 })(window);

@@ -103,6 +103,7 @@ function branchLen(c) {
 }
 let alignedLabelXCache = 690;
 function alignedLabelX() { return alignedLabelXCache; }
+function isTrue(v) { return v === true || v === "true"; }
 function nextId() { return "n" + (++ctx.idSeq); }
 function resetIdSeq() { ctx.idSeq = 0; }
 function restoreParents(n, parent) { 
@@ -144,7 +145,8 @@ global.TreeCore = {
   get undoStack() { return ctx.undoStack; }, get initialSnapshot() { return ctx.initialSnapshot; },
   setInitialSnapshot: s => { ctx.initialSnapshot = s; },
   nextId, resetIdSeq, restoreParents, branchLen, alignedLabelX, el,
-  snapshot, captureSnapshot, applySnapshot, undo, resetToInitial, registerSnapshot, buildSnapshotObj
+  snapshot, captureSnapshot, applySnapshot, undo, resetToInitial, registerSnapshot, buildSnapshotObj,
+  isTrue
 };
 
 function emptyNode(parent) { return { name: "", length: 0.12, children: [], parent, collapsed: false, deleted: false, color: null, label: null, highlight: false, support: "", meta: [], _hasExplicitLength: false }; }
@@ -424,7 +426,9 @@ function leafRowBounds(leaves, fallbackHeight) {
 }
 function countInnerLeaves(n) { let c = 0; (function rec(m) { if (m.deleted) return; const kids = (m.children || []).filter(k => !k.deleted); if (!kids.length) { c++; return; } kids.forEach(rec); })(n); return c; }
 function collectInnerLeaves(n) { const out = []; (function rec(m) { if (m.deleted) return; const kids = (m.children || []).filter(k => !k.deleted); if (!kids.length) { out.push(m); return; } kids.forEach(rec); })(n); return out; }
-global.TreeTraverse = { walk, allWalk, visibleChildren, isLeaf, labelOf, visibleLeaves, maxDepth, nodeById, leavesUnder, leafRowBounds, countInnerLeaves, collectInnerLeaves };
+
+function hasRealChildren(n) { return !!(n && (n.children || []).some(c => !c.deleted)); }
+global.TreeTraverse = { walk, allWalk, visibleChildren, isLeaf, labelOf, visibleLeaves, maxDepth, nodeById, leavesUnder, leafRowBounds, countInnerLeaves, collectInnerLeaves, hasRealChildren };
 
 function polar(cx, cy, r, aDeg) { const a = (aDeg - 90) * Math.PI / 180; return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }; }
 function shiftSubtreeY(n, dy) { n.y += dy; visibleChildren(n).forEach(c => shiftSubtreeY(c, dy)); }
@@ -447,7 +451,7 @@ function layoutRect() {
   const top = 58, bottom = 52, left = 90;
   const maxD = Math.max(maxDepth(ctx.root), .01);
   const rowH = Math.max(14, st.fontSize * 1.05) * (st.scaleV || 1);
-  const isInv = (st.invert === true || st.invert === "true");
+  const isInv = isTrue(st.invert);
   const scaleH = st.scaleH || 1; const treeW = 560 * scaleH;
   const units = [];
   (function collect(n) {
@@ -530,7 +534,7 @@ function getRadialInnerBase() {
     });
   }
 
-  const isRev = (st.axisReverse === true || st.axisReverse === "true");
+  const isRev = isTrue(st.axisReverse);
   const tMin = isRev ? (maxD - vMax) : vMin;
   let base = 0;
   if (tMin < -1e-9) base = Math.max(0, -tMin * maxR / maxD);

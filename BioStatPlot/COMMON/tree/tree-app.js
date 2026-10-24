@@ -136,14 +136,21 @@ const I = global.TreeI18N;
     '@media (max-width:900px){#treeSidebar{top:auto !important;bottom:60px;max-height:280px;}}',
     '.donate-popup, .donate-modal, .donate-box, #donateModal, #donatePopup { z-index: 20000 !important; position: fixed !important; }',
     '.donate-popup *, .donate-modal *, #donateModal *, #donatePopup * { z-index: inherit; }',
-    '.modal-backdrop, .popup-backdrop { z-index: 19000 !important; }'
+    '.modal-backdrop, .popup-backdrop { z-index: 19000 !important; }',
+    '.param-grid.cols-4{grid-template-columns:repeat(4,minmax(0,1fr)) !important;}',
+    '.param-grid.cols-3{grid-template-columns:repeat(3,minmax(0,1fr)) !important;}',
+    '.param-grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}',
+    '.param-item{min-width:0 !important;}',
+    '.param-item label{word-break:break-word;overflow-wrap:anywhere;line-height:1.35;}',
+    '.param-item input,.param-item select,.param-item textarea{width:100% !important;box-sizing:border-box !important;min-width:0 !important;}',
+    '.param-item .mini-check{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}',
+    '.param-item .mini-check input[type=checkbox]{width:auto !important;flex:0 0 auto;}'
   ].join('');
   var s = document.createElement('style'); s.id = 'tree-float-style'; s.textContent = css; document.head.appendChild(s);
 })();
 
 function refreshTreeView() {
   if (global.TreeRenderer && global.TreeRenderer.draw) global.TreeRenderer.draw();
-  if (global.TreeDatasets && global.TreeDatasets.renderDatasetList) global.TreeDatasets.renderDatasetList();
   if (global.TreeRanges && global.TreeRanges.renderRangesPanel) global.TreeRanges.renderRangesPanel();
 }
 
@@ -573,21 +580,43 @@ function applyClusterColumn() {
 }
 function applyCustomPrefixColumn() {
   if (!leafData.rows.length) { alert(I.t('alertNeedTree')); return; }
-  C.snapshot();  
+  const col = document.getElementById("customPrefixColumn")?.value || "";
+  if (!col) { alert(I.t('alertNeedSelectColumn')); return; }
   const prefix = (document.getElementById("customPrefixInput")?.value || "").trim();
   if (!prefix) { alert(I.t('alertNeedPrefix')); return; }
-  const base = "prefix-" + prefix.replace(/\s+/g, "_");
+  const customName = (document.getElementById("customPrefixNewCol")?.value || "").trim();
+  const base = customName || (col + "_prefixed");
   const colName = uniqueColName(base);
+  C.snapshot();
   leafData.headers.push(colName);
+  let count = 0;
   leafData.rows.forEach(row => {
-    const name = String(row.Leaf || "");
-    row[colName] = prefix + name;
+    const raw = row[col];
+    if (raw == null || raw === "") { row[colName] = ""; return; }
+    row[colName] = prefix + String(raw);
+    count++;
   });
-  leafData.columnTypes[colName] = "categorical";
+  leafData.columnTypes[colName] = leafData.columnTypes[col] || "categorical";
   renderLeafDataPreview();
   refreshDataSummary();
+  const st = document.getElementById("status");
+  if (count === 0) {
+    if (st) st.textContent = I.t('statusPrefixNoData');
+    return;
+  }
+  if (st) st.textContent = I.t('statusPrefixCreated', { col: colName, n: count, prefix, src: col });
 }
-
+function refreshCustomPrefixColumns() {
+  const sel = document.getElementById("customPrefixColumn");
+  if (!sel) return;
+  const cur = sel.value;
+  const headers = leafData.headers.slice();
+  sel.innerHTML = `<option value="">${I.t('colPlaceholder')}</option>` +
+    headers.map(h => {
+      const display = h === "Leaf" ? `${h}` : h;
+      return `<option value="${escapeHtml(h)}" ${h === cur ? 'selected' : ''}>${escapeHtml(display)}</option>`;
+    }).join('');
+}
 function formatMetaValue(v) {
   if (v == null) return "";
   if (Array.isArray(v)) {
@@ -1102,7 +1131,7 @@ panel.querySelectorAll("[data-range-action]").forEach(rbtn => {
     if (rbtn.disabled) return;
     const ract = rbtn.dataset.rangeAction;
     if (ract === "create") {
-      global.TreeRanges.openRangeModal();
+      global.TreeRanges.createRangeForSelected();
       const rect = panel.getBoundingClientRect();
       panel.style.display = "none";
       setTimeout(() => {
@@ -1522,43 +1551,39 @@ function loadTree(text) {
     if (fmt === "xml")   { showTreeMsg(I.t('treeMsgXmlUnsupport'), "error"); return; }
     const t = (P.parseTree && P.parseTree(text)) || P.parseNewick(text);
     if (!t) { showTreeMsg(I.t('treeMsgParseFail'), "error"); return; }
-    C.resetIdSeq();
-    P.assign(t, null);
-    C.setRoot(t);
+const leafCount = T.visibleLeaves(t).length;
+if (leafCount < 2) { showTreeMsg(I.t('treeMsgTooFew', { n: leafCount }), "error"); return; }
 
-    if (global.TreeRanges) {
-      global.TreeRanges.clearAllColorRanges();   
-      global.TreeRanges.rangeSeq = 0;
-      if (Array.isArray(global.TreeRanges.geoTimeTracks)) {
-        global.TreeRanges.geoTimeTracks.length = 0;
-      }
-      global.TreeRanges.geoTrackSeq = 0;
-      global.TreeRanges.geoEntrySeq = 0;
-      global.TreeRanges.geoTimeShow = false;
-    }
-    if (global.TreeTracks && Array.isArray(global.TreeTracks.tracks)) {
-      global.TreeTracks.tracks.length = 0;       
-    }
-    C.state.legendOffsetX = 0;
-    C.state.legendOffsetY = 0;
+C.resetIdSeq();
+P.assign(t, null);
+C.setRoot(t);
 
-    const isTime = detectAndFixTimeTree(t);
+if (global.TreeRanges) {
+  global.TreeRanges.clearAllColorRanges();   
+  global.TreeRanges.rangeSeq = 0;
+  if (Array.isArray(global.TreeRanges.geoTimeTracks)) {
+    global.TreeRanges.geoTimeTracks.length = 0;
+  }
+  global.TreeRanges.geoTrackSeq = 0;
+  global.TreeRanges.geoEntrySeq = 0;
+  global.TreeRanges.geoTimeShow = false;
+}
+if (global.TreeTracks && Array.isArray(global.TreeTracks.tracks)) {
+  global.TreeTracks.tracks.length = 0;       
+}
+C.state.legendOffsetX = 0;
+C.state.legendOffsetY = 0;
 
-    const rootKids = (t.children || []).filter(c => !c.deleted);
-    if (t.rootFlag === false) C.state.hasRoot = false;
-    else if (t.rootFlag === true) C.state.hasRoot = true;
-    else C.state.hasRoot = (t._hasExplicitLength === true && Number(t.length) > 0);
+const isTime = detectAndFixTimeTree(t);
 
-    C.setInitialSnapshot(C.captureSnapshot());
-
-    const leafCount = T.visibleLeaves(t).length;
-    if (leafCount < 2) { showTreeMsg(I.t('treeMsgTooFew', { n: leafCount }), "error"); return; }
-
+if (t.rootFlag === false) C.state.hasRoot = false;
+else if (t.rootFlag === true) C.state.hasRoot = true;
+else C.state.hasRoot = (t._hasExplicitLength === true && Number(t.length) > 0);
     rebuildLeafRowsFromTree();
     renderLeafDataPreview();
     refreshDataSummary();
     renderNodeTable();
-
+    C.setInitialSnapshot(C.captureSnapshot());
     if (global.TreeUI) {
       if (global.TreeUI.renderBasicPanel) global.TreeUI.renderBasicPanel(document.getElementById("basicStylePanel"));
       if (global.TreeUI.renderAdvancedPanel) global.TreeUI.renderAdvancedPanel(document.getElementById("advancedStylePanel"));
@@ -1697,6 +1722,13 @@ function renderDataPanel() {
   document.getElementById("exportLeafTemplateBtn")?.addEventListener("click", exportLeafTemplate);
   document.getElementById("copyTableBtn")?.addEventListener("click", copyTableToClipboard);
   document.getElementById("clearTableBtn")?.addEventListener("click", resetTableToLeaves);
+
+  const prefixSel = document.getElementById("customPrefixColumn");
+  if (prefixSel) {
+    prefixSel.addEventListener("focus", refreshCustomPrefixColumns);
+    prefixSel.addEventListener("pointerdown", refreshCustomPrefixColumns);
+    refreshCustomPrefixColumns();
+  }
 }
 
 function bindAllControls() {
@@ -1887,22 +1919,30 @@ on(document.getElementById("tickPrimaryCustom"), "change", e => {
     refreshTreeView();
   });
   on(document.getElementById("rpList"), "click", e => { const x = e.target.closest(".rp-x"); if (x) { C.snapshot(); global.TreeRanges.removeRange(Number(x.dataset.range)); refreshTreeView(); } });
-  on(document.getElementById("rpList"), "change", e => {
-    const inp = e.target.closest(".rp-lb-edit");
-    if (inp) { const r = global.TreeRanges.colorRanges.find(x => x.id === Number(inp.dataset.range)); if (r) { C.snapshot(); r.label = inp.value || ""; refreshTreeView(); } }
-  });
-  on(document.getElementById("rpList"), "input", e => {
-    const inp = e.target.closest(".rp-color-edit"); if (!inp) return;
-    const range = global.TreeRanges.colorRanges.find(r => r.id === Number(inp.dataset.rangeColor)); if (!range) return;
-    if (inp.dataset.editing !== "1") { C.snapshot(); inp.dataset.editing = "1"; }
-    range.color = inp.value; refreshTreeView();
-  });
-  on(document.getElementById("rpList"), "change", e => {
-    const inp = e.target.closest(".rp-color-edit"); if (!inp) return;
-    const range = global.TreeRanges.colorRanges.find(r => r.id === Number(inp.dataset.rangeColor)); if (!range) return;
-    if (inp.dataset.editing !== "1") C.snapshot();
-    range.color = inp.value; delete inp.dataset.editing; refreshTreeView();
-  });
+on(document.getElementById("rpList"), "input", e => {
+  const inp = e.target.closest(".rp-color-edit"); if (!inp) return;
+  const range = global.TreeRanges.colorRanges.find(r => r.id === Number(inp.dataset.rangeColor)); if (!range) return;
+  if (inp.dataset.editing !== "1") { C.snapshot(); inp.dataset.editing = "1"; }
+  range.color = inp.value;
+});
+on(document.getElementById("rpList"), "change", e => {
+  const lb = e.target.closest(".rp-lb-edit");
+  if (lb) {
+    const r = global.TreeRanges.colorRanges.find(x => x.id === Number(lb.dataset.range));
+    if (r) { C.snapshot(); r.label = lb.value || ""; refreshTreeView(); }
+  }
+  const ce = e.target.closest(".rp-color-edit");
+  if (ce) {
+    const range = global.TreeRanges.colorRanges.find(r => r.id === Number(ce.dataset.rangeColor));
+    if (range) {
+      if (ce.dataset.editing !== "1") C.snapshot();
+      range.color = ce.value;
+      delete ce.dataset.editing;
+      refreshTreeView();
+    }
+  }
+});
+
   on(document.getElementById("rpLabelSize"), "input", e => { global.TreeRanges.rangeLabelSize = Number(e.target.value) || 13; refreshTreeView(); });
   on(document.getElementById("rpLabelOffset"), "input", e => { global.TreeRanges.rangeLabelOffset = Number(e.target.value) || 0; refreshTreeView(); });
   on(document.getElementById("rpLabelColor"), "input", e => { global.TreeRanges.rangeLabelColor = e.target.value; refreshTreeView(); });

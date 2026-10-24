@@ -7,29 +7,15 @@ const N = global.TreeDrawNode;
 const I = global.TreeI18N;
 
 function fontFam() { return C.state.fontFamily || 'Times New Roman'; }
-function hasRealChildren(n) { return !!(n && (n.children || []).some(c => !c.deleted)); }
+const hasRealChildren = T.hasRealChildren;
 
 function estimateTextWidth(text, fontSize) {
-  let w = 0; const s = String(text || '');
-  for (let i = 0; i < s.length; i++) {
-    const code = s.charCodeAt(i);
-    if (code >= 0x4e00 && code <= 0x9fff) w += fontSize;
-    else if (code >= 0x3000 && code <= 0x303f) w += fontSize;
-    else if (code >= 0xff00 && code <= 0xffef) w += fontSize;
-    else w += fontSize * 0.6;
-  }
-  return w;
+  return global.PlotCommon.measureText(text, fontSize);
 }
+
 function fitText(text, maxW, fs) {
   if (!text) return '';
-  const getW = (s) => {
-    let w = 0;
-    for (let i = 0; i < s.length; i++) {
-      const code = s.charCodeAt(i);
-      w += (code >= 0x4e00 && code <= 0x9fff) || (code >= 0x3000 && code <= 0x303f) || (code >= 0xff00 && code <= 0xffef) ? fs : fs * 0.6;
-    }
-    return w;
-  };
+  const getW = (s) => global.PlotCommon.measureText(s, fs);
   if (getW(text) <= maxW) return text;
   
   const ellipsis = '.'; 
@@ -77,7 +63,7 @@ function drawLegend(customX, customY) {
     transform: `translate(${lx} ${ly})` });
   let xx = 0, yy = 0, rowItems = 0;
   if (title) {
-    const tt = C.el("text", { x: pad, y: titleFS, "font-size": titleFS, "font-weight": titleBold,
+    const tt = C.el("text", { x: 0, y: titleFS, "font-size": titleFS, "font-weight": titleBold,
       "font-style": titleItalic, fill: fc, "pointer-events": "none", "font-family": ff }, g);
     tt.textContent = title;
     yy = titleFS + 14;
@@ -85,16 +71,16 @@ function drawLegend(customX, customY) {
 
   let maxItemW = 0;
   items.forEach(it => {
-    const w = fs + 8 + it.label.length * fs * 0.6;
+    const w = fs + 8 + estimateTextWidth(it.label, fs);
     if (w > maxItemW) maxItemW = w;
   });
 
   let maxX = 0;
   items.forEach(it => {
-    const wItem = fs + 8 + it.label.length * fs * 0.6;
+    const wItem = fs + 8 + estimateTextWidth(it.label, fs);
     if (maxPerRow > 0 && rowItems >= maxPerRow) { xx = 0; yy += fs + 6; rowItems = 0; }
     C.el("rect", { x: xx, y: yy, width: fs, height: fs, fill: it.color, rx: 2 }, g);
-    const lt = C.el("text", { x: xx + fs + 6, y: yy + fs * 0.85, "font-size": fs,
+    const lt = C.el("text", { x: xx + fs + 4, y: yy + fs * 0.85, "font-size": fs,
       "font-weight": bw, "font-style": fsStyle, fill: fc, "font-family": ff }, g);
     lt.textContent = it.label;
     
@@ -212,7 +198,7 @@ function drawRectangularRanges() {
   if (rangeCover === "off" || rangeCover === "none") return;
   const leaves = T.visibleLeaves(C.getRoot());
   const st = C.state;
-  const isInv = (st.invert === true || st.invert === "true");
+  const isInv = C.isTrue(st.invert);
   const rowH = Math.max(14, st.fontSize * 1.05) * (st.scaleV || 1);
   const segments = rectangularRangeSegments(leaves, colorRanges, rowH);
   let labelEdge = N.labelRightEdge();
@@ -456,18 +442,18 @@ function drawRadialRangeLabelTrack(rBase, leaves) {
     }
   });
   if (rangeLabelTrackTitleShow && rangeLabelTrackTitle) {
-    const sortedGroups = [...groups].sort((a, b) => a.a0 - b.a0);
-    const lastA1 = sortedGroups[sortedGroups.length-1].a1;
-    const firstA0 = sortedGroups[0].a0;
-    let gapMid = (lastA1 + (firstA0 + 360)) / 2;
-    if (gapMid >= 360) gapMid -= 360;
+    const tc2 = (global.TreeTracks && global.TreeTracks.trackCommon) || {};
+    const nameFs = Math.max(6, Number(tc2.trackNameFontSize) || 11);
+    const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
     const titleR = (rIn + rOut) / 2;
-    const tp = L.polar(cx, cy, titleR, gapMid);
-    let rot = gapMid;
+    const tp = L.polar(cx, cy, titleR, axisAngle);
+    let rot = axisAngle;
     while (rot > 90) rot -= 180;
     while (rot < -90) rot += 180;
     C.el("text", { x: tp.x, y: tp.y, "text-anchor": "middle", "dominant-baseline": "middle",
-      "font-size": Math.max(10, rangeLabelSize - 2), "font-weight": 700,
+      "font-size": nameFs,
+      "font-weight": tc2.trackNameBold !== false ? 700 : 400,
+      "font-style": tc2.trackNameItalic ? 'italic' : 'normal',
       fill: "#3a4a4a", "font-family": ff, class: "range-label-track-title",
       transform: `rotate(${rot} ${tp.x} ${tp.y})` }).textContent = rangeLabelTrackTitle;
   }
@@ -507,7 +493,7 @@ function renderRangesPanel() {
 
 function removeRange(id) { colorRanges = colorRanges.filter(r => r.id !== id); T.allWalk(C.getRoot(), n => { if (n.rangeId === id) n.rangeId = null; }); }
 
-function openRangeModal() {
+function createRangeForSelected() {
   const n = T.nodeById(C.getSelectedId()); if (!n) return;
   C.snapshot();
   const id = ++rangeSeq;
@@ -867,7 +853,7 @@ function drawGeoTimeTracks(radial) {
 
   const maxD = Math.max(T.maxDepth(root, 0), 1e-9);
   const treeW = 560 * (st.scaleH || 1);
-  const isInv = (st.invert === true || st.invert === "true");
+  const isInv = C.isTrue(st.invert);
   const ys = leaves.map(l => l.y);
   const yTop = Math.min(...ys) - 20;
   const yBot = Math.max(...ys) + 20;
@@ -991,7 +977,7 @@ function drawGeoTimeTracksRadial(leaves) {
   const R_base = innerBase + maxR + extEndPx;
 
   const cx = 470, cy = 380;
-  const isReverse = (st.axisReverse === true || st.axisReverse === "true");
+  const isReverse = C.isTrue(st.axisReverse);
   const baseAngle = Number(st.rotation) || 0;
   const axisAngle = baseAngle + (Number(st.axisRotation) || 0);
 
@@ -1243,7 +1229,7 @@ global.TreeRanges = {
   rangeById, rangeMembers, clearAllColorRanges, rectangularRangeSegments, rangePaint,
   drawRectangularRanges, drawColoredRanges, renderRangesPanel, removeRange,
   drawRectangularRangeLabelTrack, drawRadialRangeLabelTrack,
-  openRangeModal,
+  createRangeForSelected,
   applyOneGroup, lcaOfLeaves, applyGroupsByColumn,
   applyLeafLabelColumn, resetLeafLabels
 };
@@ -1266,7 +1252,9 @@ const TRACK_TYPE_LABEL_KEYS = {
   text: 'trackTypeText',
   multisymbol: 'trackTypeMultisymbol',
   stackedbar: 'trackTypeStackedbar',
-  pie: 'trackTypePie'
+  pie: 'trackTypePie',
+  groupedbar: 'trackTypeGroupedbar',
+  multiheatmap: 'trackTypeMultiheatmap'
 };
 
 function trackTypeLabel(type) {
@@ -1309,6 +1297,7 @@ function newTrackDefaults(type) {
     uniformShape: 'square', shapeMap: {}, columnColors: {}, percentMode: false, pieRadius: 9,
     showLegend: true, legendTitle: '', legendOrientation: 'horizontal',
     legendX: null, legendY: null,
+    excludedValues: [],
     _colorCache: null, _shapeCache: null
   };
 }
@@ -1343,9 +1332,13 @@ function buildMultiTrackData(columns) {
 }
 function refreshTrackData(t) {
   if (!t) return;
-  if (t.type === 'stackedbar' || t.type === 'pie') t.data = buildMultiTrackData(t.columns);
-  else if (t.type === 'multisymbol') t.data = buildTrackData(t.column || t.shapeColumn);
-  else t.data = buildTrackData(t.column);
+  if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'multiheatmap') {
+    t.data = buildMultiTrackData(t.columns);
+  } else if (t.type === 'multisymbol') {
+    t.data = buildTrackData(t.column || t.shapeColumn);
+  } else {
+    t.data = buildTrackData(t.column);
+  }
   t._colorCache = null; t._shapeCache = null;
 }
 function defaultLegendTitle(t) {
@@ -1380,8 +1373,9 @@ function toggleCustomTrack(id) { const t = customTracks.find(x => x.id === id); 
 
 function collectUniqueValues(t) {
   const out = []; const seen = new Set();
+  const excluded = new Set((t.excludedValues || []).map(String));
   const leaves = T.visibleLeaves(C.getRoot());
-  const add = v => { const s = String(v); if (!seen.has(s)) { seen.add(s); out.push(s); } };
+  const add = v => { const s = String(v); if (excluded.has(s)) return; if (!seen.has(s)) { seen.add(s); out.push(s); } };
   leaves.forEach(l => {
     const raw = datasetValue(t, l);
     if (raw == null || raw === '') return;
@@ -1401,6 +1395,14 @@ function getTrackColorMap(t) {
 function colorOf(track, value, colorMap) {
   const v = String(value);
   return (track.customColors && track.customColors[v]) || colorMap[v] || '#cccccc';
+}
+function isExcluded(track, value) {
+  if (!track || !track.excludedValues || !track.excludedValues.length) return false;
+  const s = String(value);
+  for (let i = 0; i < track.excludedValues.length; i++) {
+    if (String(track.excludedValues[i]) === s) return true;
+  }
+  return false;
 }
 function computeTrackWidth(track, opts) {
   opts = opts || {};
@@ -1428,6 +1430,12 @@ function computeTrackWidth(track, opts) {
     case 'multisymbol': return 22;
     case 'stackedbar': return 80;
     case 'pie': return 30;
+    case 'groupedbar': return 100;
+    case 'multiheatmap': {
+      const cellW = Number(track.cellWidth) > 0 ? Number(track.cellWidth) : 20;
+      const n = Math.max(1, (track.columns || []).length);
+      return cellW * n;
+    }
     default: return 22;
   }
 }
@@ -1510,7 +1518,7 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
       ordered.forEach(l => {
         const v = datasetValue(track, l);
         const row = rowOf(l);
-        if (v == null || v === '') { if (curV !== null) { segs.push({ v: curV, top: curTop, bot: curBot }); curV = null; } return; }
+        if (v == null || v === '' || isExcluded(track, v)) { if (curV !== null) { segs.push({ v: curV, top: curTop, bot: curBot }); curV = null; } return; }
         if (String(v) !== curV) {
           if (curV !== null) segs.push({ v: curV, top: curTop, bot: curBot });
           curV = String(v); curTop = row.top; curBot = row.bottom;
@@ -1522,6 +1530,7 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
       leaves.forEach(l => {
         const v = datasetValue(track, l);
         if (v == null || v === '') return;
+        if (isExcluded(track, v)) return;
         const row = rowOf(l);
         drawBlock(row.top, row.bottom, v);
       });
@@ -1544,6 +1553,7 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
     leaves.forEach(l => {
       const v = datasetValue(track, l);
       if (v == null || v === '') return;
+      if (isExcluded(track, v)) return;
       const ok = evalBinaryLogic(track, v);
       if (!ok && !track.binaryShowFalse) return;
       const fill = ok ? track.binaryTrueColor : track.binaryFalseColor;
@@ -1564,6 +1574,7 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
     leaves.forEach(l => {
       const v = datasetValue(track, l);
       if (v == null || v === '') return;
+      if (isExcluded(track, v)) return;
       const txt = String(v);
       const fill = colorOf(track, txt, colorMap);
       const t = C.el('text', {
@@ -1580,6 +1591,7 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
     leaves.forEach(l => {
       const v = datasetValue(track, l);
       if (v == null || v === '') return;
+      if (isExcluded(track, v)) return;
       const key = String(v);
       const shape = (track.shapeMap && track.shapeMap[key]) || track.uniformShape || 'square';
       const fill = colorOf(track, key, colorMap);
@@ -1617,6 +1629,10 @@ const r = Math.max(2, Math.min(h/2, Number(track.pieRadius) || 9));
         a0 = a1;
       });
     });
+  } else if (track.type === 'groupedbar') {
+    drawGroupedBarAdvanced(track, x, w, leaves, rowOf, invert);
+  } else if (track.type === 'multiheatmap') {
+    drawMultiHeatmapRect(track, x, w, leaves, rowOf);
   }
 }
 
@@ -1759,7 +1775,129 @@ function drawBarTrackAdvanced(track, x, w, leaves, rowOf, invert) {
       'stroke-dasharray': rl.dashed ? '4 3' : '' });
   });
 }
+function drawGroupedBarAdvanced(track, x, w, leaves, rowOf, invert) {
+  const cols = track.columns || [];
+  if (!cols.length) return;
+  const N = cols.length;
+  const { mn, mx } = barDomain(track, leaves, false);
+  const range = mx - mn || 1;
+  const pos = v => invert ? (x + w - (v - mn) / range * w) : (x + (v - mn) / range * w);
+  const ff = fontFam();
+  const yTop = Math.min(...leaves.map(l => rowOf(l).top));
+  const yBottom = Math.max(...leaves.map(l => rowOf(l).bottom));
+  const sampleRow = rowOf(leaves[0]);
+  const rowHeight = sampleRow.bottom - sampleRow.top;
+  const barH = (rowHeight * 0.85) / N;
+  const palette = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
+  const colorFor = (col, i) => (track.columnColors && track.columnColors[col]) || palette[i % palette.length];
+  const fs = Math.max(6, Number(trackCommon.legendFontSize) || 10);
 
+  if (track.showBox) {
+    const yAxis = yBottom + 24 + fs;
+    C.el('rect', { x, y: yTop, width: w, height: yAxis - yTop, fill: 'none',
+      stroke: track.boxColor || '#bbb',
+      'stroke-width': Number(track.boxWidth) || 0.5,
+      'stroke-dasharray': track.boxDashed ? '4 3' : '' });
+  }
+
+  const baseX = pos(mn);
+  leaves.forEach(l => {
+    const raw = datasetValue(track, l);
+    if (raw == null || raw === '') return;
+    const vals = String(raw).split(',').map(parseFloat);
+    const row = rowOf(l);
+    const cy = (row.top + row.bottom) / 2;
+    const startY = cy - (barH * N) / 2;
+    vals.forEach((v, i) => {
+      if (!Number.isFinite(v) || i >= N) return;
+      const vx = pos(v);
+      const barLen = Math.abs(vx - baseX);
+      const rectX = Math.min(vx, baseX);
+      const rectY = startY + i * barH;
+      C.el('rect', {
+        x: rectX, y: rectY + barH * 0.1,
+        width: Math.max(0.5, barLen), height: barH * 0.8,
+        fill: colorFor(cols[i], i),
+        stroke: track.barOutlineWidth > 0 ? track.barOutlineColor : 'none',
+        'stroke-width': track.barOutlineWidth || 0,
+        'stroke-dasharray': (track.barOutlineWidth > 0 && track.barOutlineDashed) ? '4 3' : ''
+      });
+    });
+  });
+
+  const yAxis = yBottom + 6;
+  C.el('line', { x1: x, y1: yAxis, x2: x + w, y2: yAxis, stroke: '#333', 'stroke-width': 0.8 });
+  C.el('line', { x1: baseX, y1: yTop, x2: baseX, y2: yAxis, stroke: '#333', 'stroke-width': 0.8 });
+
+  if (track.showAxisNumbers) {
+    const interval = track.axisInterval || (mx - mn) / 2;
+    const ticks = [];
+    const start = Math.ceil(mn / interval) * interval;
+    for (let v = start; v <= mx + 1e-9; v += interval) ticks.push(v);
+    ticks.forEach(v => {
+      const px = pos(v);
+      C.el('line', { x1: px, y1: yAxis, x2: px, y2: yAxis + 3, stroke: '#555', 'stroke-width': 0.8 });
+      const t = C.el('text', { x: px, y: yAxis + fs + 4, 'font-size': fs, 'text-anchor': 'middle', fill: '#333', 'font-family': ff });
+      t.textContent = Number(v.toFixed(2));
+    });
+  }
+
+  (track.refLines || []).forEach(rl => {
+    if (!Number.isFinite(Number(rl.value))) return;
+    const px = pos(Number(rl.value));
+    C.el('line', { x1: px, y1: yTop, x2: px, y2: yBottom,
+      stroke: rl.color || '#e74c3c', 'stroke-width': Number(rl.width) || 1,
+      'stroke-dasharray': rl.dashed ? '4 3' : '' });
+  });
+}
+
+function drawMultiHeatmapRect(track, x, w, leaves, rowOf) {
+  const cols = track.columns || [];
+  if (!cols.length) return;
+  const N = cols.length;
+  const cellW = w / N;
+
+  const allNums = [];
+  const ld = global.TreeApp && global.TreeApp.leafData;
+  if (ld && ld.rows) {
+    ld.rows.forEach(r => {
+      cols.forEach(c => {
+        const v = parseFloat(r[c]);
+        if (Number.isFinite(v)) allNums.push(v);
+      });
+    });
+  }
+  if (!allNums.length) {
+    leaves.forEach(l => {
+      const raw = datasetValue(track, l);
+      if (raw == null || raw === '') return;
+      String(raw).split(',').forEach(s => { const v = parseFloat(s); if (Number.isFinite(v)) allNums.push(v); });
+    });
+  }
+  const gMinRaw = track.gradientMin;
+  const gMaxRaw = track.gradientMax;
+  let gMin = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw))) ? Number(gMinRaw) : (allNums.length ? Math.min(...allNums) : 0);
+  let gMax = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw))) ? Number(gMaxRaw) : (allNums.length ? Math.max(...allNums) : 1);
+  if (gMin === gMax) gMax = gMin + 1;
+  const border = Number(track.borderWidth) > 0 && track.showBorder !== false;
+  const stroke = border ? (track.borderColor || '#333') : 'none';
+  const sw = border ? Number(track.borderWidth) : 0;
+
+  leaves.forEach(l => {
+    const raw = datasetValue(track, l);
+    if (raw == null || raw === '') return;
+    const vals = String(raw).split(',').map(parseFloat);
+    const row = rowOf(l);
+    vals.forEach((v, i) => {
+      if (!Number.isFinite(v) || i >= N) return;
+      let t = (v - gMin) / (gMax - gMin);
+      if (track.gradientReverse) t = 1 - t;
+      const fill = sampleTrackColor(track, t);
+      C.el('rect', { x: x + i * cellW, y: row.top, width: cellW,
+        height: Math.max(1, row.bottom - row.top), fill, stroke, 'stroke-width': sw });
+    });
+  });
+}
 function drawTrackLegend(track, x, y, colorMap) {
   if (!track.showLegend || track.type === 'text') return 0;
   const tc = trackCommon;
@@ -1785,17 +1923,33 @@ function drawTrackLegend(track, x, y, colorMap) {
     items = collectUniqueValues(track).map(v => ({ label: v, color: colorOf(track, v, colorMap) }));
   } else if (track.type === 'binary') {
     items = [{ label: 'True', color: track.binaryTrueColor }, { label: 'False', color: track.binaryFalseColor }];
-  } else if (track.type === 'stackedbar' || track.type === 'pie') {
+  } else if (track.type === 'stackedbar' || track.type === 'pie' || track.type === 'groupedbar') {
     const cols = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
     items = (track.columns || []).map((c, i) => ({ label: c, color: (track.columnColors && track.columnColors[c]) || cols[i % cols.length] }));
-  } else if (track.type === 'heatstrip') {
-    const nums = Object.values(track.data || {}).map(parseFloat).filter(Number.isFinite);
-    let mn = Number(track.gradientMin);
-    let mx = Number(track.gradientMax);
-    if (!Number.isFinite(mn)) mn = nums.length ? Math.min(...nums) : 0;
-    if (!Number.isFinite(mx)) mx = nums.length ? Math.max(...nums) : 1;
+  } else if (track.type === 'heatstrip' || track.type === 'multiheatmap') {
+    const nums = [];
+    if (track.type === 'multiheatmap' && track.columns && track.columns.length) {
+      const ld = global.TreeApp && global.TreeApp.leafData;
+      if (ld && ld.rows) {
+        ld.rows.forEach(r => {
+          track.columns.forEach(c => {
+            const v = parseFloat(r[c]);
+            if (Number.isFinite(v)) nums.push(v);
+          });
+        });
+      }
+    }
+    if (!nums.length) {
+      Object.values(track.data || {}).forEach(raw => {
+        if (raw == null || raw === '') return;
+        String(raw).split(',').forEach(s => { const v = parseFloat(s); if (Number.isFinite(v)) nums.push(v); });
+      });
+    }
+    const gMinRaw = track.gradientMin;
+    const gMaxRaw = track.gradientMax;
+    let mn = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw))) ? Number(gMinRaw) : (nums.length ? Math.min(...nums) : 0);
+    let mx = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw))) ? Number(gMaxRaw) : (nums.length ? Math.max(...nums) : 1);
     if (mn === mx) mx = mn + 1;
-
     const isVertical = track.legendOrientation === 'vertical';
     const tickDecimals = Math.max(0, Math.min(6,
       track.legendTickDecimals != null && Number.isFinite(Number(track.legendTickDecimals))
@@ -1865,12 +2019,12 @@ function drawTrackLegend(track, x, y, colorMap) {
 
   let maxItemW = 0;
   items.forEach(it => {
-    const w = fs + 8 + it.label.length * fs * 0.6;
+    const w = fs + 8 + estimateTextWidth(it.label, fs);
     if (w > maxItemW) maxItemW = w;
   });
 
   items.forEach(it => {
-    const wItem = fs + 8 + it.label.length * fs * 0.6;
+    const wItem = fs + 8 + estimateTextWidth(it.label, fs);
     if (maxPerRow > 0 && rowItems >= maxPerRow) { xx = 0; yy += fs + 6; rowItems = 0; }
     if (drawAsSymbol) {
       drawTrackSymbol(it.shape, xx + fs / 2, yy + fs / 2, fs * 0.45, it.color, track.outlineColor, track.outlineWidth || 0, g);
@@ -1992,10 +2146,65 @@ if (isInv) {
       rBase += gap + trackOffset; 
       const ringStart = rBase;
       const rMid = ringStart + ringW / 2;
+
+      const isBarLike = track.type === 'bar' || track.type === 'stackedbar' || track.type === 'groupedbar';
+      let halfAngle = halfStep;
+      let stackDomain = null;
+      let colRanges = null;
+      if (isBarLike) {
+        const fullArcPx = (2 * halfStep) * Math.PI / 180 * rMid;
+        const bw = Number(track.barWidth);
+        const barPx = (bw > 0) ? bw : fullArcPx * 0.6;
+        const ratio = Math.max(0.05, Math.min(1, barPx / Math.max(1, fullArcPx)));
+        halfAngle = halfStep * ratio;
+      }
+      if (track.type === 'stackedbar') {
+        stackDomain = barDomain(track, leaves, track.percentMode);
+      } else if (track.type === 'groupedbar') {
+        stackDomain = barDomain(track, leaves, false);
+      } else if (track.type === 'multiheatmap') {
+        const allNums = [];
+        leaves.forEach(l => {
+          const raw = datasetValue(track, l);
+          if (raw == null || raw === '') return;
+          String(raw).split(',').forEach(s => { const v = parseFloat(s); if (Number.isFinite(v)) allNums.push(v); });
+        });
+        const gMinRaw = track.gradientMin;
+        const gMaxRaw = track.gradientMax;
+        let gMin = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw))) ? Number(gMinRaw) : (allNums.length ? Math.min(...allNums) : 0);
+        let gMax = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw))) ? Number(gMaxRaw) : (allNums.length ? Math.max(...allNums) : 1);
+        if (gMin === gMax) gMax = gMin + 1;
+        colRanges = { min: gMin, max: gMax };
+      }
+      let barBoxAngles = null;
+      if (isBarLike) {
+        const sortedA = leaves.map(l => l.angle).filter(a => a != null).sort((a, b) => a - b);
+        if (sortedA.length) {
+          const aStart = sortedA[0] - halfAngle;
+          const aEnd = sortedA[sortedA.length - 1] + halfAngle;
+          barBoxAngles = { aStart, aEnd };
+          if (track.showBox) {
+            const large = (aEnd - aStart) > 180 ? 1 : 0;
+            const rOuter = ringStart + ringW;
+            const rInner = Math.max(0.5, ringStart);
+            const p0i = L.polar(cx, cy, rInner, aStart);
+            const p0o = L.polar(cx, cy, rOuter, aStart);
+            const p1o = L.polar(cx, cy, rOuter, aEnd);
+            const p1i = L.polar(cx, cy, rInner, aEnd);
+            C.el('path', {
+              d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOuter} ${rOuter} 0 ${large} 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rInner} ${rInner} 0 ${large} 0 ${p0i.x} ${p0i.y} Z`,
+              fill: 'none',
+              stroke: track.boxColor || '#bbbbbb',
+              'stroke-width': Number(track.boxWidth) || 0.5,
+              'stroke-dasharray': track.boxDashed ? '4 3' : ''
+            });
+          }
+        }
+      }
       leaves.forEach(l => {
         if (l.angle == null) return;
         const v = datasetValue(track, l);
-        const a0 = l.angle - halfStep, a1 = l.angle + halfStep;
+        const a0 = l.angle - halfAngle, a1 = l.angle + halfAngle;
         const drawRingSegment = (rIn, rOut, fill) => {
           const p0i = L.polar(cx, cy, rIn, a0), p0o = L.polar(cx, cy, rOut, a0);
           const p1o = L.polar(cx, cy, rOut, a1), p1i = L.polar(cx, cy, rIn, a1);
@@ -2003,6 +2212,7 @@ if (isInv) {
         };
         if (track.type === 'colorstrip') {
           if (v == null || v === '') return;
+          if (isExcluded(track, v)) return;
           const fillOpacity = track.fillOpacity != null ? Number(track.fillOpacity) : 1;
           const p0i = L.polar(cx, cy, ringStart, a0), p0o = L.polar(cx, cy, ringStart + ringW, a0);
           const p1o = L.polar(cx, cy, ringStart + ringW, a1), p1i = L.polar(cx, cy, ringStart, a1);
@@ -2022,6 +2232,7 @@ if (isInv) {
           drawRingSegment(ringStart, ringStart + ringW, sampleTrackColor(track, t));
         } else if (track.type === 'binary') {
           if (v == null || v === '') return;
+          if (isExcluded(track, v)) return;
           const ok = evalBinaryLogic(track, v);
           if (!ok && !track.binaryShowFalse) return;
           const fill = ok ? track.binaryTrueColor : track.binaryFalseColor;
@@ -2042,6 +2253,7 @@ if (isInv) {
           drawRingSegment(ringStart, ringStart + ringW * t, track.barColor);
         } else if (track.type === 'text') {
           if (v == null || v === '') return;
+          if (isExcluded(track, v)) return;
           const txt = String(v);
           const fill = colorOf(track, txt, colorMap);
           const p = L.polar(cx, cy, rMid, l.angle);
@@ -2056,6 +2268,7 @@ if (isInv) {
           t.textContent = txt;
         } else if (track.type === 'multisymbol') {
           if (v == null || v === '') return;
+          if (isExcluded(track, v)) return;
           const key = String(v);
           const shape = (track.shapeMap && track.shapeMap[key]) || track.uniformShape || 'square';
           const fill = colorOf(track, key, colorMap);
@@ -2073,15 +2286,21 @@ if (isInv) {
             const tot0 = vals.reduce((a, b) => a + Math.max(0, b), 0) || 1;
             vals = vals.map(x => Math.max(0, x) / tot0 * 100);
           }
-          const tot = track.percentMode ? 100 : (vals.reduce((a, b) => a + Math.max(0, b), 0) || 1);
+          const span = stackDomain ? (stackDomain.mx - stackDomain.mn) : 1;
           const cols = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
-          let rCur = ringStart;
+          let cum = 0;
           vals.forEach((val, i) => {
-            const fraction = Math.max(0, val) / tot;
-            const rNext = rCur + ringW * fraction;
+            const vv = Math.max(0, val);
+            const nextCum = cum + vv;
+            const r0 = ringStart + ringW * cum / (span || 1);
+            const r1 = ringStart + ringW * nextCum / (span || 1);
             const color = (track.columnColors && track.columnColors[track.columns[i]]) || cols[i % cols.length];
-            drawRingSegment(rCur, rNext, color);
-            rCur = rNext;
+            drawRingSegment(
+              Math.min(r0, ringStart + ringW),
+              Math.min(r1, ringStart + ringW),
+              color
+            );
+            cum = nextCum;
           });
         } else if (track.type === 'pie') {
           if (v == null || v === '') return;
@@ -2106,9 +2325,129 @@ if (isInv) {
             C.el('path', { d: `M ${center.x} ${center.y} L ${pp0.x} ${pp0.y} A ${rPie} ${rPie} 0 ${large} 1 ${pp1.x} ${pp1.y} Z`, fill: color });
             pa0 = pa1;
           });
+        } else if (track.type === 'groupedbar') {
+          if (v == null || v === '') return;
+          const vals = String(v).split(',').map(parseFloat);
+          const N = (track.columns || []).length;
+          if (!N) return;
+          const dom = stackDomain || barDomain(track, leaves, false);
+          const span = dom.mx - dom.mn || 1;
+          const localHalf = halfAngle / N;
+          const pal = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
+          vals.forEach((val, i) => {
+            if (!Number.isFinite(val) || i >= N) return;
+            const t = (val - dom.mn) / span;
+            const r1 = ringStart + ringW * Math.max(0, t);
+            const centerAngle = l.angle + (i - (N - 1) / 2) * (2 * localHalf);
+            const a0 = centerAngle - localHalf;
+            const a1 = centerAngle + localHalf;
+            const color = (track.columnColors && track.columnColors[track.columns[i]]) || pal[i % pal.length];
+            const p0i = L.polar(cx, cy, ringStart, a0), p0o = L.polar(cx, cy, r1, a0);
+            const p1o = L.polar(cx, cy, r1, a1), p1i = L.polar(cx, cy, ringStart, a1);
+            C.el("path", { d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${r1} ${r1} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${ringStart} ${ringStart} 0 0 0 ${p0i.x} ${p0i.y} Z`, fill: color });
+          });
+        } else if (track.type === 'multiheatmap') {
+          if (v == null || v === '') return;
+          if (!colRanges) return;
+          const vals = String(v).split(',').map(parseFloat);
+          const N = (track.columns || []).length;
+          if (!N) return;
+          const cellW = ringW / N;
+          vals.forEach((val, i) => {
+            if (!Number.isFinite(val) || i >= N) return;
+            let t = (val - colRanges.min) / (colRanges.max - colRanges.min);
+            if (track.gradientReverse) t = 1 - t;
+            const fill = sampleTrackColor(track, t);
+            const r0 = ringStart + i * cellW;
+            const r1 = ringStart + (i + 1) * cellW;
+            const a0 = l.angle - halfStep;
+            const a1 = l.angle + halfStep;
+            const p0i = L.polar(cx, cy, r0, a0), p0o = L.polar(cx, cy, r1, a0);
+            const p1o = L.polar(cx, cy, r1, a1), p1i = L.polar(cx, cy, r0, a1);
+            C.el("path", { d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${r1} ${r1} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${r0} ${r0} 0 0 0 ${p0i.x} ${p0i.y} Z`, fill });
+          });
         }
       });
-      // 环形色带的文字处理（单独抽出来，支持合并）
+      if (isBarLike && barBoxAngles) {
+        const { aStart, aEnd } = barBoxAngles;
+        const large = (aEnd - aStart) > 180 ? 1 : 0;
+
+        if (track.showAxisNumbers) {
+          const pb0 = L.polar(cx, cy, ringStart, aStart);
+          const pb1 = L.polar(cx, cy, ringStart, aEnd);
+          C.el('path', {
+            d: `M ${pb0.x} ${pb0.y} A ${ringStart} ${ringStart} 0 ${large} 1 ${pb1.x} ${pb1.y}`,
+            fill: 'none', stroke: '#333', 'stroke-width': 0.8
+          });
+        }
+
+        if (track.showBox && track.showAxisNumbers) {
+          let tickMn, tickMx;
+          if (track.type === 'stackedbar') {
+            const dom = stackDomain || barDomain(track, leaves, track.percentMode);
+            tickMn = dom.mn; tickMx = dom.mx;
+          } else {
+            const nums = leaves.map(x => parseFloat(datasetValue(track, x))).filter(Number.isFinite);
+            tickMn = Number.isFinite(Number(track.axisMin)) ? Number(track.axisMin) : Math.min(0, ...nums);
+            tickMx = Number.isFinite(Number(track.axisMax)) ? Number(track.axisMax) : Math.max(...nums);
+            if (tickMn === tickMx) tickMx = tickMn + 1;
+          }
+          const spanT = tickMx - tickMn || 1;
+          const interval = (track.axisInterval && track.axisInterval > 0) ? track.axisInterval : spanT / 2;
+          const startT = Math.ceil(tickMn / interval - 1e-9) * interval;
+          for (let vv = startT; vv <= tickMx + 1e-9; vv += interval) {
+            const t = (vv - tickMn) / spanT;
+            if (t < -1e-9 || t > 1 + 1e-9) continue;
+            const rv = ringStart + ringW * t;
+            if (rv < 0.5) continue;
+            const p0 = L.polar(cx, cy, rv, aStart);
+            const p1 = L.polar(cx, cy, rv, aEnd);
+            C.el('path', {
+              d: `M ${p0.x} ${p0.y} A ${rv} ${rv} 0 ${large} 1 ${p1.x} ${p1.y}`,
+              fill: 'none',
+              stroke: track.boxColor || '#bbbbbb',
+              'stroke-width': Number(track.boxWidth) || 0.5,
+              'stroke-dasharray': track.boxDashed ? '4 3' : ''
+            });
+          }
+        }
+      }
+      if (isBarLike && (track.refLines || []).length) {
+        let refMn, refMx;
+        if (track.type === 'stackedbar') {
+          const dom = stackDomain || barDomain(track, leaves, track.percentMode);
+          refMn = dom.mn; refMx = dom.mx;
+        } else {
+          const nums = leaves.map(x => parseFloat(datasetValue(track, x))).filter(Number.isFinite);
+          refMn = Number.isFinite(Number(track.axisMin)) ? Number(track.axisMin) : Math.min(0, ...nums);
+          refMx = Number.isFinite(Number(track.axisMax)) ? Number(track.axisMax) : Math.max(...nums);
+          if (refMn === refMx) refMx = refMn + 1;
+        }
+        if (refMx !== refMn) {
+          const sortedA = leaves.map(l => l.angle).filter(a => a != null).sort((a, b) => a - b);
+          if (sortedA.length) {
+            const aStart = sortedA[0] - halfAngle;
+            const aEnd = sortedA[sortedA.length - 1] + halfAngle;
+            const large = (aEnd - aStart) > 180 ? 1 : 0;
+            (track.refLines || []).forEach(rl => {
+              const rv = Number(rl.value);
+              if (!Number.isFinite(rv)) return;
+              const t = (rv - refMn) / (refMx - refMn);
+              if (t < 0 || t > 1) return;
+              const rr = ringStart + ringW * t;
+              const p0 = L.polar(cx, cy, rr, aStart);
+              const p1 = L.polar(cx, cy, rr, aEnd);
+              C.el('path', {
+                d: `M ${p0.x} ${p0.y} A ${rr} ${rr} 0 ${large} 1 ${p1.x} ${p1.y}`,
+                fill: 'none',
+                stroke: rl.color || '#e74c3c',
+                'stroke-width': Number(rl.width) || 1,
+                'stroke-dasharray': rl.dashed ? '4 3' : ''
+              });
+            });
+          }
+        }
+      }
       if (track.type === 'colorstrip' && track.showText) {
         const drawOneText = (angle0, angle1, textVal) => {
           const midAngle = (angle0 + angle1) / 2;
@@ -2223,21 +2562,5 @@ global.TreeTracks = {
   _legendDrawn: false
 };
 
-let datasets = [];
-let datasetSeq = 0;
-const DS_PALETTE = ["#E64B35","#4DBBD5","#00A087","#3C5488","#F39B7F","#8491B4","#91D1C2","#DC0000"];
-function renderDatasetList() {
-  const box = document.getElementById("datasetList"); if (!box) return;
-  box.innerHTML = datasets.map(d => `<div class="ds-row"><span class="ds-sw" style="background:${d.base}"></span><span class="ds-nm">${d.name} <small>(${d.type})</small></span><button class="ds-x" data-ds="${d.id}">×</button></div>`).join("");
-}
-C.registerSnapshot("datasets", () => ({ datasets: JSON.parse(JSON.stringify(datasets)), datasetSeq }),
-  s => { if (Array.isArray(s.datasets)) datasets = s.datasets; if (typeof s.datasetSeq === "number") datasetSeq = s.datasetSeq; });
-
-global.TreeDatasets = {
-  get datasets() { return datasets; },
-  DS_PALETTE,
-  renderDatasetList,
-  drawDatasets(radial) { renderCustomTracks(radial); }
-};
 
 })(window);

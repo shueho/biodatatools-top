@@ -101,7 +101,6 @@ function renderGroupPaletteDropdown(container, opts) {
       opt.addEventListener("click", e => {
         e.stopPropagation();
         current = name;
-        if (global.TreeRanges) global.TreeRanges.ringPalette = name;
         trigger.querySelector(".palette-name").textContent = name;
         trigger.querySelector(".palette-preview-slot").innerHTML = swatchesHtml(name);
         dropdown.querySelectorAll(".palette-option").forEach(o =>
@@ -1560,10 +1559,12 @@ function renderDatasetsPanel(container) {
             <option value="colorstrip">${I.t('optColorstrip')}</option>
             <option value="binary">${I.t('optBinary')}</option>
             <option value="multisymbol">${I.t('optSymbols')}</option>
-            <option value="heatstrip">${I.t('optGradient')}</option>
             <option value="bar">${I.t('optSimpleBar')}</option>
             <option value="stackedbar">${I.t('optMultibar')}</option>
+            <option value="groupedbar">${I.t('optGroupedbar')}</option>
             <option value="pie">${I.t('optPiechart')}</option>
+            <option value="heatstrip">${I.t('optGradient')}</option>
+            <option value="multiheatmap">${I.t('optMultiheatmap')}</option>
             <option value="text">${I.t('optText')}</option>
           </select>
         </div>
@@ -1574,15 +1575,18 @@ function renderDatasetsPanel(container) {
     </div>
   `;
 
-  renderGroupPaletteDropdown(container.querySelector('#groupPaletteContainer'), {
-    onSelect: (name) => {
-      if (global.TreeRanges && global.TreeRanges.colorRanges.length) {
-        C.snapshot();
-        global.TreeRanges.recolorRangesByPalette();
-        if (global.TreeRenderer) global.TreeRenderer.draw();
-      }
+renderGroupPaletteDropdown(container.querySelector('#groupPaletteContainer'), {
+  selected: global.TreeRanges ? global.TreeRanges.ringPalette : 'tableau10',
+  onSelect: (name) => {
+    if (!global.TreeRanges) return;
+    global.TreeRanges.ringPalette = name;             
+    if (global.TreeRanges.colorRanges.length) {
+      C.snapshot();
+      global.TreeRanges.recolorRangesByPalette();
+      if (global.TreeRenderer) global.TreeRenderer.draw();
     }
-  });
+  }
+});
 
   bindTrackCommonControls(container);
   syncRangesControls(container);
@@ -1703,7 +1707,7 @@ function legendBlock(t) {
     <div class="param-grid cols-4">
       <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showLegend" data-tid="${t.id}" ${t.showLegend?'checked':''}> ${I.t('legendShowChk')}</label></div>
       <div class="param-item"><label>${I.t('legendTitleLabel')}</label><input type="text" data-tprop="legendTitle" data-tid="${t.id}" value="${escapeAttr(t.legendTitle || '')}" placeholder="${I.t('trackUntitled')}"></div>
-      ${t.type === 'heatstrip' ? `
+      ${t.type === 'heatstrip' || t.type === 'multiheatmap' ? `
         <div class="param-item"><label>${I.t('legendDirection')}</label><select data-tprop="legendOrientation" data-tid="${t.id}">
           <option value="horizontal" ${t.legendOrientation!=='vertical'?'selected':''}>${I.t('legendHorizontal')}</option>
           <option value="vertical" ${t.legendOrientation==='vertical'?'selected':''}>${I.t('legendVertical')}</option></select></div>
@@ -1713,19 +1717,29 @@ function legendBlock(t) {
     </div>`;
 }
 function customColorBlock(t, values) {
-  if (!values.length) return '';
   const cur = t.customColors || {};
-  return subTitle(I.t('trackCustomColors')) + `
-    <div class="custom-color-list" style="display:flex;flex-wrap:wrap;gap:8px;">
-      ${values.map(v => `
-        <label style="display:flex;align-items:center;gap:4px;font-size:12px;">
-          <input type="color" data-tcolor="${t.id}" data-cval="${escapeAttr(v)}"
-                 value="${escapeAttr(cur[v] || '#cccccc')}"
-                 style="width:30px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;">
-          <span>${escapeHtml(v)}</span>
-          <button class="btn-del-color" data-tdelcolor="${t.id}" data-cval="${escapeAttr(v)}" type="button" title="delete">×</button>
-        </label>`).join('')}
+  const excluded = t.excludedValues || [];
+  let html = '';
+  if (values.length) {
+    html += subTitle(I.t('trackCustomColors')) + `
+      <div class="custom-color-list" style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${values.map(v => `
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;">
+            <input type="color" data-tcolor="${t.id}" data-cval="${escapeAttr(v)}"
+                   value="${escapeAttr(cur[v] || '#cccccc')}"
+                   style="width:30px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;">
+            <span>${escapeHtml(v)}</span>
+            <button class="btn-del-color" data-tdelcolor="${t.id}" data-cval="${escapeAttr(v)}" type="button" title="delete">×</button>
+          </label>`).join('')}
+      </div>`;
+  }
+  if (excluded.length) {
+    html += `<div style="margin-top:6px;font-size:12px;color:#888;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <span>${I.t('trackExcludedLabel')}${excluded.map(v => escapeHtml(v)).join(', ')}</span>
+      <button class="btn btn-outline" data-trestore-excluded="${t.id}" type="button" style="padding:2px 8px;font-size:12px;">${I.t('btnRestoreExcluded')}</button>
     </div>`;
+  }
+  return html;
 }
 
 function shapeMapBlock(t, values) {
@@ -1762,7 +1776,7 @@ function refreshTrackList(container) {
   const cols = (ld && ld.headers) ? ld.headers.slice() : [];
 
   box.innerHTML = TT.tracks.map(t => {
-    const colOpts = (sel) => `<option value="">${I.t('trackDataColumn')}</option>` +
+    const colOpts = (sel) => `<option value="">${I.t('colPlaceholder')}</option>` +
       cols.map(c => `<option value="${escapeAttr(c)}" ${c === sel ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
     const typeLabel = TT.trackTypeLabel(t.type);
     let body = '';
@@ -1966,10 +1980,11 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
           ${t.type === 'pie' ? `<div class="param-item"><label>${I.t('trackPieRadius')}</label><input type="number" data-tprop="pieRadius" data-tid="${t.id}" value="${t.pieRadius || 9}" min="2" max="40"></div>` : ''}
-          ${t.type === 'stackedbar' ? `
-            <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="percentMode" data-tid="${t.id}" ${t.percentMode?'checked':''}> ${I.t('trackPercentMode')}</label></div>
-            <div class="param-item"><label>${I.t('trackTrackLength')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 80}" min="20" max="400"></div>
-          ` : ''}
+${t.type === 'stackedbar' ? `
+  <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="percentMode" data-tid="${t.id}" ${t.percentMode?'checked':''}> ${I.t('trackPercentMode')}</label></div>
+  <div class="param-item"><label>${I.t('trackTrackLength')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 80}" min="20" max="400"></div>
+  <div class="param-item"><label>${I.t('trackBarWidth')}</label><input type="number" data-tprop="barWidth" data-tid="${t.id}" value="${t.barWidth || 0}" min="0" max="40" placeholder="0"></div>
+` : ''}
           <div class="param-item"><label>${I.t('groupPaletteLabel')}</label><div class="palette-slot" data-palette="${t.id}"></div></div>
         </div>
         ${subTitle(I.t('trackColumnColors'))}
@@ -2003,8 +2018,84 @@ function refreshTrackList(container) {
         ` : ''}
         ${legendBlock(t)}
       `;
+    } else if (t.type === 'groupedbar') {
+      const colorVals = t.columns || [];
+      body = `
+        <div class="param-grid cols-4">
+          <div class="param-item" style="grid-column: span 2;"><label>${I.t('trackMultiColData')}</label>
+            <div class="multi-col-checks" style="max-height:120px;overflow:auto;border:1px solid #ddd;border-radius:4px;padding:6px;">
+              ${cols.map(c => `<label class="mini-check" style="display:block;padding:2px 0;">
+                <input type="checkbox" data-tcol="${t.id}" data-cname="${escapeAttr(c)}" ${(t.columns||[]).includes(c)?'checked':''}> ${escapeHtml(c)}
+              </label>`).join('')}
+            </div>
+          </div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('trackTrackLength')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || 100}" min="20" max="400"></div>
+          <div class="param-item"><label>${I.t('groupPaletteLabel')}</label><div class="palette-slot" data-palette="${t.id}"></div></div>
+        </div>
+        ${subTitle(I.t('trackColumnColors'))}
+        <div class="custom-color-list" style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${colorVals.map((c, i) => {
+            const cols2 = global.TreePalette.getCategoricalScheme(t.palette || 'tableau10');
+            const defColor = (t.columnColors && t.columnColors[c]) || cols2[i % cols2.length];
+            return `<label style="display:flex;align-items:center;gap:4px;font-size:12px;">
+              <input type="color" data-tcolcolor="${t.id}" data-cname="${escapeAttr(c)}" value="${escapeAttr(defColor)}"
+                style="width:30px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;">
+              <span>${escapeHtml(c)}</span>
+              <button class="btn-del-color" data-tdelcolcolor="${t.id}" data-cname="${escapeAttr(c)}" type="button" title="delete">×</button>
+            </label>`;
+          }).join('')}
+        </div>
+        ${subTitle(I.t('trackBarOutline'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label>${I.t('trackBarOutlineColor')}</label><input type="color" data-tprop="barOutlineColor" data-tid="${t.id}" value="${t.barOutlineColor}"></div>
+          <div class="param-item"><label>${I.t('trackBarOutlineWidth')}</label><input type="number" data-tprop="barOutlineWidth" data-tid="${t.id}" value="${t.barOutlineWidth}" min="0" max="6"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="barOutlineDashed" data-tid="${t.id}" ${t.barOutlineDashed?'checked':''}> ${I.t('trackBarOutlineDashed')}</label></div>
+        </div>
+        ${subTitle(I.t('trackBox'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showBox" data-tid="${t.id}" ${t.showBox?'checked':''}> ${I.t('trackShowBox')}</label></div>
+          <div class="param-item"><label>${I.t('trackBoxColor')}</label><input type="color" data-tprop="boxColor" data-tid="${t.id}" value="${t.boxColor || '#bbbbbb'}"></div>
+          <div class="param-item"><label>${I.t('trackBoxWidth')}</label><input type="number" data-tprop="boxWidth" data-tid="${t.id}" value="${t.boxWidth || 0.5}" min="0" max="6" step="0.1"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="boxDashed" data-tid="${t.id}" ${t.boxDashed?'checked':''}> ${I.t('trackBoxDashed')}</label></div>
+        </div>
+        ${subTitle(I.t('trackXAxis'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showAxisNumbers" data-tid="${t.id}" ${t.showAxisNumbers!==false?'checked':''}> ${I.t('trackShowAxisTicks')}</label></div>
+          <div class="param-item"><label>${I.t('trackMinValue')}</label><input type="number" data-tprop="axisMin" data-tid="${t.id}" value="${t.axisMin != null ? t.axisMin : ''}" placeholder="auto"></div>
+          <div class="param-item"><label>${I.t('trackMaxValue')}</label><input type="number" data-tprop="axisMax" data-tid="${t.id}" value="${t.axisMax != null ? t.axisMax : ''}" placeholder="auto"></div>
+          <div class="param-item"><label>${I.t('trackAxisInterval')}</label><input type="number" data-tprop="axisInterval" data-tid="${t.id}" value="${t.axisInterval != null ? t.axisInterval : ''}" placeholder="auto"></div>
+        </div>
+        ${legendBlock(t)}
+      `;
+    } else if (t.type === 'multiheatmap') {
+      body = `
+        <div class="param-grid cols-4">
+          <div class="param-item" style="grid-column: span 2;"><label>${I.t('trackMultiColData')}</label>
+            <div class="multi-col-checks" style="max-height:120px;overflow:auto;border:1px solid #ddd;border-radius:4px;padding:6px;">
+              ${cols.map(c => `<label class="mini-check" style="display:block;padding:2px 0;">
+                <input type="checkbox" data-tcol="${t.id}" data-cname="${escapeAttr(c)}" ${(t.columns||[]).includes(c)?'checked':''}> ${escapeHtml(c)}
+              </label>`).join('')}
+            </div>
+          </div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escapeAttr(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item" style="grid-column: span 2;"><label>${I.t('trackContinuousPalette')}</label><div class="palette-slot" data-palette-continuous="${t.id}"></div></div>
+          <div class="param-item"><label>${I.t('trackHeatCellWidth')}</label><input type="number" data-tprop="cellWidth" data-tid="${t.id}" value="${t.cellWidth || 20}" min="4" max="200"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showBorder" data-tid="${t.id}" ${t.showBorder!==false?'checked':''}> ${I.t('trackShowBorder')}</label></div>
+          <div class="param-item"><label>${I.t('trackOutlineColorLabel')}</label><input type="color" data-tprop="borderColor" data-tid="${t.id}" value="${t.borderColor}"></div>
+          <div class="param-item"><label>${I.t('trackOutlineWidthLabel')}</label><input type="number" data-tprop="borderWidth" data-tid="${t.id}" value="${t.borderWidth}" min="0" max="6"></div>
+        </div>
+        ${subTitle(I.t('trackColorSettings'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label>${I.t('trackMinValue')}</label><input type="number" data-tprop="gradientMin" data-tid="${t.id}" value="${t.gradientMin != null ? t.gradientMin : ''}" placeholder="empty = data min"></div>
+          <div class="param-item"><label>${I.t('trackMaxValue')}</label><input type="number" data-tprop="gradientMax" data-tid="${t.id}" value="${t.gradientMax != null ? t.gradientMax : ''}" placeholder="empty = data max"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="gradientReverse" data-tid="${t.id}" ${t.gradientReverse?'checked':''}> ${I.t('trackReverse')}</label></div>
+        </div>
+        ${legendBlock(t)}
+      `;
     }
-
     return `
       <div class="track-item" data-track-id="${t.id}">
         <div class="track-header">
@@ -2060,6 +2151,8 @@ function refreshTrackList(container) {
       const t = TT.tracks.find(x => x.id === id);
       if (!t) return;
       C.snapshot();
+      t.excludedValues = t.excludedValues || [];
+      if (!t.excludedValues.includes(val)) t.excludedValues.push(val);
       if (t.customColors) delete t.customColors[val];
       t._colorCache = null;
       refreshTrackList(container);
@@ -2146,6 +2239,10 @@ function refreshTrackList(container) {
       const t = TT.tracks.find(x => x.id === id);
       if (!t) return;
       C.snapshot();
+      if (Array.isArray(t.columns)) {
+        t.columns = t.columns.filter(c => c !== cname);
+        TT.updateCustomTrack(id, { columns: t.columns });
+      }
       if (t.columnColors) delete t.columnColors[cname];
       refreshTrackList(container);
       global.TreeRenderer.draw();
@@ -2194,15 +2291,40 @@ function refreshTrackList(container) {
   });
 
   box.querySelectorAll('.track-toggle').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
       TT.toggleCustomTrack(Number(btn.dataset.tid));
       refreshTrackList(container);
     });
   });
   box.querySelectorAll('.track-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
       C.snapshot();
       TT.removeCustomTrack(Number(btn.dataset.tid));
+      refreshTrackList(container);
+      global.TreeRenderer.draw();
+    });
+  });
+  box.querySelectorAll('.track-header').forEach(hdr => {
+    hdr.style.cursor = 'pointer';
+    hdr.addEventListener('click', e => {
+      if (e.target.closest('.track-remove')) return;
+      const tid = Number(hdr.querySelector('.track-toggle')?.dataset.tid);
+      if (!Number.isFinite(tid)) return;
+      TT.toggleCustomTrack(tid);
+      refreshTrackList(container);
+    });
+  });
+
+  box.querySelectorAll('[data-trestore-excluded]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      const id = Number(btn.dataset.trestoreExcluded);
+      const t = TT.tracks.find(x => x.id === id);
+      if (!t) return;
+      C.snapshot();
+      t.excludedValues = [];
       refreshTrackList(container);
       global.TreeRenderer.draw();
     });
@@ -2343,6 +2465,7 @@ function syncRangesControls(container) {
     global.TreeRenderer.draw();
   });
   bindOnce(container.querySelector('#rpLabelSize'), 'input', e => {
+    C.snapshot();
     R.rangeLabelSize = Number(e.target.value) || 13;
     global.TreeRenderer.draw();
   });
@@ -2357,6 +2480,7 @@ function syncRangesControls(container) {
     global.TreeRenderer.draw();
   });
   bindOnce(container.querySelector('#rpLabelColor'), 'input', e => {
+    C.snapshot();
     R.rangeLabelColor = e.target.value;
     global.TreeRenderer.draw();
   });

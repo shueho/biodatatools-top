@@ -271,16 +271,27 @@
   </details>
 
   <details class="param-panel">
-    <summary>⑤ 添加前缀作为新列</summary>
+    <summary>⑤ 为已有列添加前缀（新建列）</summary>
     <div style="padding:10px 12px;">
       <div class="param-grid cols-4">
         <div class="param-item">
-          <label>前缀内容（与叶标签拼接）</label>
+          <label>选择要加前缀的列</label>
+          <select id="customPrefixColumn"></select>
+        </div>
+        <div class="param-item">
+          <label>前缀内容</label>
           <input type="text" id="customPrefixInput" value="Sample_">
         </div>
+        <div class="param-item" style="grid-column: span 2;">
+          <label>新列名（留空自动生成）</label>
+          <input type="text" id="customPrefixNewCol" placeholder="例如 Sample_col1，留空则自动为 原列名_prefixed">
+        </div>
+      </div>
+      <div class="info-box" style="margin-top:8px;">
+        将在表格最右侧新建一列，值为“前缀+所选列的原始值”；原有列保持不变。
       </div>
       <div class="btn-group" style="margin-top:8px;">
-        <button class="btn" id="applyCustomPrefixBtn" type="button">生成前缀列</button>
+        <button class="btn" id="applyCustomPrefixBtn" type="button">新建前缀列</button>
       </div>
     </div>
   </details>
@@ -353,7 +364,7 @@
 <script>
 (function() {
     var need = ['TreeCore','TreeParser','TreeTraverse','TreeLayout','TreeDrawBranch','TreeDrawNode',
-    'TreeRenderer','TreeLegend','TreeRanges','TreeDatasets','TreeTracks','TreeDrag',
+    'TreeRenderer','TreeLegend','TreeRanges','TreeTracks','TreeDrag',
     'TreeUI','TreeExport','TreeApp','TreeOps','TreeSerialize'];
     var missing = need.filter(function(k) { return !window[k]; });
     if (missing.length) {
