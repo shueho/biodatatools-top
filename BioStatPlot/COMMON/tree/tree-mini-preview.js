@@ -8,9 +8,8 @@
             collapse: '折叠',
             expand: '展开',
             refresh: '刷新',
-            hint: '调整参数后，建议点击右上角 ⟳ 刷新预览。开启放大镜后，点击预览区可固定观察位置，再次点击放大镜即可释放。',
-            zoomTitle: '设置放大镜倍数',
-            zoomPrompt: '请输入放大倍数：',
+            resetTitle: '恢复视角',
+            hint: '本预览框仅供查看效果，支持拖动平移与滚轮缩放；为避免误触，如需拖拽图例等组件位置，请到第六步完成。右上角 ⟳ 刷新、↺ 恢复视角，拖动左上角可调整窗口大小。'
         },
         en: {
             title: 'Preview (for preview only — please export the image in the final step)',
@@ -18,9 +17,8 @@
             collapse: 'Collapse',
             expand: 'Expand',
             refresh: 'Refresh',
-            hint: 'After adjusting parameters, click ⟳ (top right) to refresh the preview. With the magnifier enabled, click the preview to pin the view; click the magnifier again to release.',
-            zoomTitle: 'Set magnifier zoom',
-            zoomPrompt: 'Enter magnifier zoom factor:',
+            resetTitle: 'Reset view',
+            hint: 'This preview is for reference only. Drag to pan and scroll to zoom. To avoid accidental edits, please adjust component positions (such as legends) in Step 6. Use ⟳ to refresh and ↺ to reset the view; drag the top-left corner to resize the window.'
         }
     };
 
@@ -44,13 +42,16 @@
     right: 20px;
     bottom: 20px;
     width: 560px;
+    height: 480px;
     background: #ffffff;
     border: 1px solid #c8d2de;
-    border-radius: 10px;
+    border-radius: 8px;
     box-shadow: 0 8px 26px rgba(15, 35, 60, .18);
     z-index: 9998;
     font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-    overflow: hidden;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
     transition: box-shadow .2s ease;
 }
 .mini-preview.dragging {
@@ -62,13 +63,16 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 7px 10px;
+    padding: 7px 10px 7px 24px;
     background: linear-gradient(135deg, #1f4068 0%, #2a5a8e 100%);
     color: #fff;
     cursor: move;
     user-select: none;
     -webkit-user-select: none;
     touch-action: none;
+    flex-shrink: 0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
 }
 .mini-preview-title {
     font-size: 12px;
@@ -107,7 +111,8 @@
     to   { transform: rotate(360deg); }
 }
 .mini-preview-body {
-    height: 420px;
+    flex: 1 1 auto;
+    min-height: 0;
     background: #f7fafd;
     padding: 8px;
     box-sizing: border-box;
@@ -115,25 +120,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
 }
+.mini-preview-body.dragging { cursor: grabbing; }
 .mini-preview-body svg {
     display: block;
     width: 100%;
     height: 100%;
 }
-
 .mini-preview-body svg,
 .mini-preview-body svg * {
     pointer-events: none !important;
-    cursor: default !important;
 }
-
-.mini-preview-magnifier .mag-content,
-.mini-preview-magnifier .mag-content * {
-    pointer-events: none !important;
-    cursor: default !important;
-}
-
 .mini-preview-empty {
     color: #9aa7b6;
     font-size: 12px;
@@ -154,16 +155,41 @@
     white-space: normal;
     word-break: break-word;
     line-height: 1.55;
+    flex-shrink: 0;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+.mini-preview-resize {
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    width: 16px;
+    height: 16px;
+    padding: 2px;
+    box-sizing: border-box;
+    cursor: nwse-resize;
+    z-index: 11;
+    color: rgba(255, 255, 255, 0.55);
+    touch-action: none;
+    display: block;
+}
+.mini-preview-resize:hover { color: rgba(255, 255, 255, 1); }
+.mini-preview-resize svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
 }
 .mini-preview.collapsed {
-    width: auto;
+    width: auto !important;
+    height: auto !important;
     min-width: 110px;
 }
 .mini-preview.collapsed .mini-preview-body,
-.mini-preview.collapsed .mini-preview-hint { display: none; }
+.mini-preview.collapsed .mini-preview-hint,
+.mini-preview.collapsed .mini-preview-resize { display: none; }
 @media (max-width: 640px) {
-    .mini-preview { width: 200px; right: 10px; bottom: 10px; }
-    .mini-preview-body { height: 150px; }
+    .mini-preview { width: 240px; height: 200px; right: 10px; bottom: 10px; }
     .mini-preview-hint { font-size: 10px; padding: 4px 6px; line-height: 1.5; }
 }
 `;
@@ -175,10 +201,15 @@
         root.id = 'treeMiniPreview';
         root.className = 'mini-preview';
         root.innerHTML = [
+            '<div class="mini-preview-resize" title="拖拽调整窗口大小">',
+            '  <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">',
+            '    <path d="M1 1 L9 9 M1 4 L6 9 M4 1 L9 6"/>',
+            '  </svg>',
+            '</div>',
             '<div class="mini-preview-header">',
             '  <span class="mini-preview-title"></span>',
             '  <div class="mini-preview-actions">',
-            '    <button type="button" class="mini-preview-btn" data-act="zoom"></button>',
+            '    <button type="button" class="mini-preview-btn" data-act="reset"></button>',
             '    <button type="button" class="mini-preview-btn" data-act="refresh"></button>',
             '    <button type="button" class="mini-preview-btn" data-act="toggle"></button>',
             '  </div>',
@@ -196,11 +227,18 @@
     let titleEl = null;
     let toggleBtn = null;
     let refreshBtn = null;
-    let zoomBtn = null;
+    let resetBtn = null;
     let hintEl = null;
+    let resizeHandle = null;
     let observer = null;
     let refreshTimer = null;
     let collapsed = false;
+
+    let originalVB = null;
+    let currentVB = null;
+    let panDragging = false;
+    let panStartX = 0, panStartY = 0;
+    let panVBStartX = 0, panVBStartY = 0;
 
     function updateTexts() {
         if (!rootEl) return;
@@ -210,14 +248,12 @@
         toggleBtn.textContent = collapsed ? '+' : '−';
         refreshBtn.title = t.refresh;
         refreshBtn.textContent = '⟳';
-        if (zoomBtn) {
-            zoomBtn.title = t.zoomTitle;
-            if (!zoomBtn.querySelector('svg')) {
-                zoomBtn.innerHTML =
-                    '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" ' +
-                    'stroke="currentColor" stroke-width="1.6" stroke-linecap="round">' +
-                    '<circle cx="7" cy="7" r="4.4"/>' +
-                    '<line x1="10.4" y1="10.4" x2="14" y2="14"/>' +
+        if (resetBtn) {
+            resetBtn.title = t.resetTitle;
+            if (!resetBtn.querySelector('svg')) {
+                resetBtn.innerHTML =
+                    '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">' +
+                    '<path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>' +
                     '</svg>';
             }
         }
@@ -227,13 +263,186 @@
         }
     }
 
+    function readSvgViewBox() {
+        if (!bodyEl) return null;
+        const svgEl = bodyEl.querySelector('svg');
+        if (!svgEl) return null;
+        let vb = null;
+        try { vb = svgEl.viewBox && svgEl.viewBox.baseVal; } catch (_) {}
+        if (!vb || !vb.width || !vb.height) return null;
+        return { x: vb.x, y: vb.y, w: vb.width, h: vb.height };
+    }
+
+    function applyViewBox() {
+        if (!currentVB || !bodyEl) return;
+        const svgEl = bodyEl.querySelector('svg');
+        if (!svgEl) return;
+        svgEl.setAttribute('viewBox', `${currentVB.x} ${currentVB.y} ${currentVB.w} ${currentVB.h}`);
+    }
+
+    function resetView() {
+        if (!originalVB) return;
+        currentVB = { x: originalVB.x, y: originalVB.y, w: originalVB.w, h: originalVB.h };
+        applyViewBox();
+    }
+
+    function isViewModified() {
+        if (!originalVB || !currentVB) return false;
+        return Math.abs(currentVB.w - originalVB.w) > 0.001 ||
+               Math.abs(currentVB.x - originalVB.x) > 0.001 ||
+               Math.abs(currentVB.y - originalVB.y) > 0.001;
+    }
+
+    function setupZoomPan() {
+        if (!bodyEl) return;
+
+        bodyEl.addEventListener('wheel', (e) => {
+            if (!currentVB || !originalVB) return;
+            if (!bodyEl.querySelector('svg')) return;
+            e.preventDefault();
+            const rect = bodyEl.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            const fx = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const fy = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+            const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+            const minW = originalVB.w * 0.05;
+            const maxW = originalVB.w * 20;
+            const newW = Math.max(minW, Math.min(maxW, currentVB.w / factor));
+            const ratio = originalVB.h / originalVB.w;
+            const newH = newW * ratio;
+            const wx = currentVB.x + fx * currentVB.w;
+            const wy = currentVB.y + fy * currentVB.h;
+            currentVB = {
+                x: wx - fx * newW,
+                y: wy - fy * newH,
+                w: newW,
+                h: newH
+            };
+            applyViewBox();
+        }, { passive: false });
+
+        bodyEl.addEventListener('pointerdown', (e) => {
+            if (!currentVB) return;
+            if (e.button !== 0) return;
+            if (!bodyEl.querySelector('svg')) return;
+            panDragging = true;
+            panStartX = e.clientX;
+            panStartY = e.clientY;
+            panVBStartX = currentVB.x;
+            panVBStartY = currentVB.y;
+            bodyEl.classList.add('dragging');
+            try { bodyEl.setPointerCapture(e.pointerId); } catch (_) {}
+            e.preventDefault();
+        });
+
+        bodyEl.addEventListener('pointermove', (e) => {
+            if (!panDragging) return;
+            const rect = bodyEl.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            const dxPx = e.clientX - panStartX;
+            const dyPx = e.clientY - panStartY;
+            currentVB.x = panVBStartX - dxPx * currentVB.w / rect.width;
+            currentVB.y = panVBStartY - dyPx * currentVB.h / rect.height;
+            applyViewBox();
+        });
+
+        function endPan(e) {
+            if (!panDragging) return;
+            panDragging = false;
+            bodyEl.classList.remove('dragging');
+            try { bodyEl.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
+        bodyEl.addEventListener('pointerup', endPan);
+        bodyEl.addEventListener('pointercancel', endPan);
+    }
+
+    function setupResize(handle) {
+        if (!handle || !rootEl) return;
+        let resizing = false;
+        let startX = 0, startY = 0;
+        let startW = 0, startH = 0;
+        let startLeft = 0, startTop = 0;
+        let rightEdge = 0, bottomEdge = 0;
+
+        handle.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const rect = rootEl.getBoundingClientRect();
+            resizing = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startW = rect.width;
+            startH = rect.height;
+            startLeft = rect.left;
+            startTop = rect.top;
+            rightEdge = startLeft + startW;
+            bottomEdge = startTop + startH;
+            rootEl.style.right = 'auto';
+            rootEl.style.bottom = 'auto';
+            rootEl.style.left = startLeft + 'px';
+            rootEl.style.top = startTop + 'px';
+            rootEl.style.width = startW + 'px';
+            rootEl.style.height = startH + 'px';
+            try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+        });
+
+        handle.addEventListener('pointermove', (e) => {
+            if (!resizing) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            const minW = 240, minH = 200;
+            const maxW = Math.max(minW, rightEdge - 8);
+            const maxH = Math.max(minH, bottomEdge - 8);
+
+            let newLeft = startLeft + dx;
+            let newWidth = rightEdge - newLeft;
+            if (newWidth < minW) { newWidth = minW; newLeft = rightEdge - minW; }
+            if (newWidth > maxW) { newWidth = maxW; newLeft = rightEdge - maxW; }
+            if (newLeft < 8) { newLeft = 8; newWidth = rightEdge - 8; }
+
+            let newTop = startTop + dy;
+            let newHeight = bottomEdge - newTop;
+            if (newHeight < minH) { newHeight = minH; newTop = bottomEdge - minH; }
+            if (newHeight > maxH) { newHeight = maxH; newTop = bottomEdge - maxH; }
+            if (newTop < 8) { newTop = 8; newHeight = bottomEdge - 8; }
+
+            rootEl.style.left = newLeft + 'px';
+            rootEl.style.top = newTop + 'px';
+            rootEl.style.width = newWidth + 'px';
+            rootEl.style.height = newHeight + 'px';
+        });
+
+        function endResize(e) {
+            if (!resizing) return;
+            resizing = false;
+            try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
+        handle.addEventListener('pointerup', endResize);
+        handle.addEventListener('pointercancel', endResize);
+    }
+
     function doRefresh() {
         if (!bodyEl) return;
-        magSvgClone = null;
-        if (magContentWrap) magContentWrap.innerHTML = '';
+
+        const oldOriginal = originalVB;
+        const oldCurrent = currentVB;
+        const hadModified = isViewModified();
+
+        let zoomRatio = 1;
+        let relCenterX = 0.5;
+        let relCenterY = 0.5;
+        if (hadModified && oldOriginal && oldCurrent) {
+            zoomRatio = oldCurrent.w / oldOriginal.w;
+            relCenterX = (oldCurrent.x + oldCurrent.w / 2 - oldOriginal.x) / oldOriginal.w;
+            relCenterY = (oldCurrent.y + oldCurrent.h / 2 - oldOriginal.y) / oldOriginal.h;
+        }
 
         if (!global.TreeExport || typeof global.TreeExport.exportSvgString !== 'function') {
             bodyEl.innerHTML = '<div class="mini-preview-empty">' + T().empty + '</div>';
+            originalVB = null;
+            currentVB = null;
             return;
         }
 
@@ -246,6 +455,8 @@
 
         if (!svgText || svgText.indexOf('<svg') < 0) {
             bodyEl.innerHTML = '<div class="mini-preview-empty">' + T().empty + '</div>';
+            originalVB = null;
+            currentVB = null;
             return;
         }
 
@@ -258,6 +469,8 @@
             svgEl.setAttribute('width', '100%');
             svgEl.setAttribute('height', '100%');
             svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            svgEl.setAttribute('shape-rendering', 'geometricPrecision');
+            svgEl.setAttribute('text-rendering', 'geometricPrecision');
             svgEl.style.width = '100%';
             svgEl.style.height = '100%';
             svgEl.style.background = '#ffffff';
@@ -274,6 +487,8 @@
                 svgEl.setAttribute('width', '100%');
                 svgEl.setAttribute('height', '100%');
                 svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                svgEl.setAttribute('shape-rendering', 'geometricPrecision');
+                svgEl.setAttribute('text-rendering', 'geometricPrecision');
                 svgEl.style.width = '100%';
                 svgEl.style.height = '100%';
                 svgEl.style.background = '#ffffff';
@@ -282,12 +497,27 @@
             }
         }
 
-        if (magLocked && magEl && magEl.style.display !== 'none') {
-            const svgEl = bodyEl.querySelector('svg');
-            if (svgEl) {
-                repositionLockedMag();
-                renderMagContent(svgEl, magLockRelX, magLockRelY);
-            }
+        const newOriginal = readSvgViewBox();
+        if (!newOriginal) {
+            originalVB = null;
+            currentVB = null;
+            return;
+        }
+
+        originalVB = newOriginal;
+
+        if (hadModified) {
+            const newW = newOriginal.w * zoomRatio;
+            const newH = newW * (newOriginal.h / newOriginal.w);
+            currentVB = {
+                x: newOriginal.x + relCenterX * newOriginal.w - newW / 2,
+                y: newOriginal.y + relCenterY * newOriginal.h - newH / 2,
+                w: newW,
+                h: newH
+            };
+            applyViewBox();
+        } else {
+            currentVB = { x: newOriginal.x, y: newOriginal.y, w: newOriginal.w, h: newOriginal.h };
         }
     }
 
@@ -319,19 +549,6 @@
         rootEl.classList.toggle('collapsed', collapsed);
         updateTexts();
         clampIntoViewport();
-
-        if (magEl) {
-            if (collapsed) {
-                magEl.style.display = 'none';
-            } else if (magLocked) {
-                const svgEl = bodyEl.querySelector('svg');
-                if (svgEl) {
-                    magEl.style.display = 'block';
-                    repositionLockedMag();
-                    renderMagContent(svgEl, magLockRelX, magLockRelY);
-                }
-            }
-        }
     }
 
     function clampIntoViewport() {
@@ -348,17 +565,16 @@
             const t = Math.min(Math.max(8, parseFloat(rootEl.style.top) || 0), maxTop);
             rootEl.style.top = t + 'px';
         }
-
-        repositionLockedMag();
     }
 
-    function bindDrag(header) {
-        let dragging = false;
+    function bindHeaderDrag(header) {
+        let hDragging = false;
         let moved = false;
         let startX = 0, startY = 0, startLeft = 0, startTop = 0;
 
         header.addEventListener('pointerdown', function (e) {
             if (e.target.closest('.mini-preview-btn')) return;
+            if (e.target.closest('.mini-preview-resize')) return;
             if (e.button !== undefined && e.button !== 0) return;
 
             const rect = rootEl.getBoundingClientRect();
@@ -366,7 +582,7 @@
             startY = e.clientY;
             startLeft = rect.left;
             startTop = rect.top;
-            dragging = true;
+            hDragging = true;
             moved = false;
 
             rootEl.style.left = startLeft + 'px';
@@ -380,7 +596,7 @@
         });
 
         header.addEventListener('pointermove', function (e) {
-            if (!dragging) return;
+            if (!hDragging) return;
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
             if (!moved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) moved = true;
@@ -394,185 +610,23 @@
 
             rootEl.style.left = nx + 'px';
             rootEl.style.top = ny + 'px';
-
-            if (magLocked) repositionLockedMag();
         });
 
-        function endDrag(e) {
-            if (!dragging) return;
-            dragging = false;
+        function endHeaderDrag(e) {
+            if (!hDragging) return;
+            hDragging = false;
             rootEl.classList.remove('dragging');
             try { header.releasePointerCapture(e.pointerId); } catch (err) {}
-            if (magLocked) repositionLockedMag();
         }
-        header.addEventListener('pointerup', endDrag);
-        header.addEventListener('pointercancel', endDrag);
+        header.addEventListener('pointerup', endHeaderDrag);
+        header.addEventListener('pointercancel', endHeaderDrag);
 
         header.addEventListener('click', function (e) {
             if (e.target.closest('.mini-preview-btn')) return;
+            if (e.target.closest('.mini-preview-resize')) return;
             if (moved) { moved = false; return; }
             setCollapsed(!collapsed);
         });
-    }
-
-    let magEl = null;
-    let magSvgClone = null;
-    const MAG_SIZE = 200;
-    let MAG_ZOOM = 1;
-
-    let magLocked = false;
-    let magLockRelX = 0.5;
-    let magLockRelY = 0.5;
-    let magContentWrap = null;
-
-    function syncMagLockUI() {
-        if (!magEl) return;
-        if (magLocked) {
-            magEl.classList.add('locked');
-            magEl.style.borderColor = '#d93025';
-            magEl.style.boxShadow = '0 8px 24px rgba(217,48,37,.45), inset 0 0 0 2px #fff';
-            magEl.style.pointerEvents = 'auto';
-            magEl.style.cursor = 'pointer';
-        } else {
-            magEl.classList.remove('locked');
-            magEl.style.borderColor = '#2a5a8e';
-            magEl.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3), inset 0 0 0 2px #fff';
-            magEl.style.pointerEvents = 'none';
-            magEl.style.cursor = '';
-        }
-    }
-
-    function positionMagAt(clientX, clientY) {
-        magEl.style.left = (clientX - MAG_SIZE / 2) + 'px';
-        magEl.style.top = (clientY - MAG_SIZE / 2) + 'px';
-    }
-
-    function repositionLockedMag() {
-        if (!magLocked || !bodyEl || !magEl) return;
-        if (bodyEl.offsetWidth === 0 || bodyEl.offsetHeight === 0) return;
-        const r = bodyEl.getBoundingClientRect();
-        const cx = r.left + magLockRelX * r.width;
-        const cy = r.top + magLockRelY * r.height;
-        positionMagAt(cx, cy);
-    }
-
-    function renderMagContent(svgEl, relX, relY) {
-        if (!svgEl || !magContentWrap) return;
-        const vb = svgEl.viewBox && svgEl.viewBox.baseVal;
-        if (!vb || !vb.width) return;
-        if (!magSvgClone || magSvgClone.parentNode !== magContentWrap) {
-            magSvgClone = svgEl.cloneNode(true);
-            magSvgClone.removeAttribute('width');
-            magSvgClone.removeAttribute('height');
-            magSvgClone.setAttribute('width', '100%');
-            magSvgClone.setAttribute('height', '100%');
-            magSvgClone.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-            magSvgClone.style.width = '100%';
-            magSvgClone.style.height = '100%';
-            magSvgClone.style.display = 'block';
-            magSvgClone.style.pointerEvents = 'none';
-            magSvgClone.setAttribute('pointer-events', 'none');
-            magContentWrap.innerHTML = '';
-            magContentWrap.appendChild(magSvgClone);
-        }
-        const magVBW = vb.width / MAG_ZOOM;
-        const magVBH = vb.height / MAG_ZOOM;
-        const vx = vb.x + relX * vb.width - magVBW / 2;
-        const vy = vb.y + relY * vb.height - magVBH / 2;
-        magSvgClone.setAttribute('viewBox', `${vx} ${vy} ${magVBW} ${magVBH}`);
-    }
-
-    function lockMagnifier(relX, relY, clientX, clientY) {
-        if (!bodyEl) return;
-        magLocked = true;
-        magLockRelX = Math.max(0, Math.min(1, relX));
-        magLockRelY = Math.max(0, Math.min(1, relY));
-        magEl.style.display = 'block';
-        positionMagAt(clientX, clientY);
-        const svgEl = bodyEl.querySelector('svg');
-        if (svgEl) renderMagContent(svgEl, magLockRelX, magLockRelY);
-        syncMagLockUI();
-    }
-
-    function unlockMagnifier() {
-        if (!magLocked) return;
-        magLocked = false;
-        syncMagLockUI();
-        magEl.style.display = 'none';
-        magSvgClone = null;
-        if (magContentWrap) magContentWrap.innerHTML = '';
-    }
-
-    function setupMagnifier() {
-        if (!rootEl || !bodyEl) return;
-
-        magEl = document.createElement('div');
-        magEl.className = 'mini-preview-magnifier';
-        magEl.style.cssText = `
-            position: fixed;
-            width: ${MAG_SIZE}px;
-            height: ${MAG_SIZE}px;
-            border-radius: 4px;
-            border: 2px solid #2a5a8e;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3), inset 0 0 0 2px #fff;
-            overflow: hidden;
-            pointer-events: none;
-            display: none;
-            background: #fff;
-            z-index: 99999;
-            transition: border-color .15s ease, box-shadow .15s ease;
-        `;
-        document.body.appendChild(magEl);
-
-        magContentWrap = document.createElement('div');
-        magContentWrap.className = 'mag-content';   
-        magContentWrap.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
-        magEl.appendChild(magContentWrap);
-
-        bodyEl.addEventListener('mousemove', (e) => {
-            if (magLocked) return;
-            if (Number(MAG_ZOOM) <= 1) { magEl.style.display = 'none'; return; }
-            const svgEl = bodyEl.querySelector('svg');
-            if (!svgEl) { magEl.style.display = 'none'; return; }
-            const bodyRect = bodyEl.getBoundingClientRect();
-            const x = e.clientX - bodyRect.left;
-            const y = e.clientY - bodyRect.top;
-            if (x < 0 || y < 0 || x > bodyRect.width || y > bodyRect.height) {
-                magEl.style.display = 'none';
-                return;
-            }
-            const vb = svgEl.viewBox && svgEl.viewBox.baseVal;
-            if (!vb || !vb.width) { magEl.style.display = 'none'; return; }
-
-            magEl.style.display = 'block';
-            positionMagAt(e.clientX, e.clientY);
-            renderMagContent(svgEl, x / bodyRect.width, y / bodyRect.height);
-        });
-
-        bodyEl.addEventListener('mouseleave', () => {
-            if (!magLocked && magEl) magEl.style.display = 'none';
-        });
-
-        bodyEl.addEventListener('click', (e) => {
-            if (Number(MAG_ZOOM) <= 1) return;
-            if (magLocked) return;
-            const svgEl = bodyEl.querySelector('svg');
-            if (!svgEl) return;
-            const bodyRect = bodyEl.getBoundingClientRect();
-            const x = e.clientX - bodyRect.left;
-            const y = e.clientY - bodyRect.top;
-            if (x < 0 || y < 0 || x > bodyRect.width || y > bodyRect.height) return;
-            lockMagnifier(x / bodyRect.width, y / bodyRect.height, e.clientX, e.clientY);
-        });
-
-        magEl.addEventListener('click', (e) => {
-            if (!magLocked) return;
-            e.preventDefault();
-            e.stopPropagation();
-            unlockMagnifier();
-        });
-
-        syncMagLockUI();
     }
 
     function init() {
@@ -591,12 +645,14 @@
         titleEl = rootEl.querySelector('.mini-preview-title');
         toggleBtn = rootEl.querySelector('[data-act="toggle"]');
         refreshBtn = rootEl.querySelector('[data-act="refresh"]');
-        zoomBtn = rootEl.querySelector('[data-act="zoom"]');
+        resetBtn = rootEl.querySelector('[data-act="reset"]');
         hintEl = rootEl.querySelector('.mini-preview-hint');
+        resizeHandle = rootEl.querySelector('.mini-preview-resize');
 
         updateTexts();
-        bindDrag(rootEl.querySelector('.mini-preview-header'));
-        setupMagnifier();
+        bindHeaderDrag(rootEl.querySelector('.mini-preview-header'));
+        setupZoomPan();
+        setupResize(resizeHandle);
 
         toggleBtn.addEventListener('click', function (e) {
             e.stopPropagation();
@@ -608,25 +664,12 @@
             manualRefresh();
         });
 
-        zoomBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            const cur = Number(MAG_ZOOM) || 3;
-            const input = prompt(T().zoomPrompt, String(cur));
-            if (input == null) return;
-            const num = Number(input);
-            if (!isFinite(num) || num <= 0) return;
-            MAG_ZOOM = num;
-            magSvgClone = null;
-            if (magContentWrap) magContentWrap.innerHTML = '';
-
-            if (MAG_ZOOM <= 1) {
-                if (magLocked) unlockMagnifier();
-                else if (magEl) magEl.style.display = 'none';
-            } else if (magLocked && bodyEl) {
-                const svgEl = bodyEl.querySelector('svg');
-                if (svgEl) renderMagContent(svgEl, magLockRelX, magLockRelY);
-            }
-        });
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                resetView();
+            });
+        }
 
         observer = new MutationObserver(scheduleRefresh);
         observer.observe(preview, { childList: true, subtree: true });
@@ -643,6 +686,7 @@
 
     global.TreeMiniPreview = {
         refresh: manualRefresh,
+        resetView: resetView,
         collapse: function () { setCollapsed(true); },
         expand: function () { setCollapsed(false); },
         toggle: function () { setCollapsed(!collapsed); }
