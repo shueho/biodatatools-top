@@ -28,28 +28,30 @@ function refitViewBox() {
     }
   } catch (_) {}
 }
+
 function drawScaleBox(root) {
   const st = C.state;
   if (st.showScaleBox === false) return;
   if (!root) return;
+  const SS = global.TreeStyle;
   const maxD = T.maxDepth(root, 0) || 1;
-let treeSpan;
-if (st.mode === "unrooted") {
-  let maxR = 0;
-  T.allWalk(root, n => {
-    if (n.deleted) return;
-    const kids = (n.children || []).filter(c => !c.deleted);
-    if (!kids.length) {
-      const r = Math.hypot(n.x - 470, n.y - 380);
-      if (r > maxR) maxR = r;
-    }
-  });
-  treeSpan = Math.max(maxR, 100);
-} else if (st.mode === "circular") {
-  treeSpan = 285 * (st.scaleH || 1);
-} else {
-  treeSpan = 560 * (st.scaleH || 1);
-}
+  let treeSpan;
+  if (st.mode === "unrooted") {
+    let maxR = 0;
+    T.allWalk(root, n => {
+      if (n.deleted) return;
+      const kids = (n.children || []).filter(c => !c.deleted);
+      if (!kids.length) {
+        const r = Math.hypot(n.x - 470, n.y - 380);
+        if (r > maxR) maxR = r;
+      }
+    });
+    treeSpan = Math.max(maxR, 100);
+  } else if (st.mode === "circular") {
+    treeSpan = 285 * (st.scaleH || 1);
+  } else {
+    treeSpan = 560 * (st.scaleH || 1);
+  }
   const pxPerUnit = treeSpan / maxD;
   let value = Number(st.scaleBoxSize);
   if (!isFinite(value) || value <= 0) {
@@ -63,15 +65,60 @@ if (st.mode === "unrooted") {
   const x0 = vb.x + 20 + ox, y0 = vb.y + 26 + oy;
   const title = st.scaleBoxTitle || "Scale";
   const g = C.el("g", { class: "scale-box", "data-scale-box": "1", style: "cursor:move", transform: `translate(${x0} ${y0})` });
-  const titleStyle = global.TreeText.fromParts({ font: st.fontFamily, size: 12, bold: true, color: "#333" });
-  global.TreeText.draw(g, 0, -18, title, titleStyle);
+
+  const tsTitle = SS ? SS.textStyle(Object.assign({}, st.textStyles.scaleBoxTitle || {}, { fontFamily: st.fontFamily })) : {
+    fontFamily: st.fontFamily, fontSize: 12, bold: true, italic: false, color: "#333333", opacity: 1,
+    bgShow: false, bgColor: "#ffffff", bgOpacity: 1, bgBorderColor: "#999999", bgBorderWidth: 0
+  };
+  const titleStyle = global.TreeText.fromParts({ font: tsTitle.fontFamily || st.fontFamily, size: tsTitle.fontSize, bold: tsTitle.bold, italic: tsTitle.italic, color: tsTitle.color });
+  const txT = (tsTitle.x != null ? tsTitle.x : 0);
+  const tyT = -18 + (tsTitle.y != null ? tsTitle.y : 0);
+  const titleEl = global.TreeText.draw(g, txT, tyT, title, titleStyle, { opacity: tsTitle.opacity != null ? tsTitle.opacity : 1 });
+  if (tsTitle.bgShow && titleEl) {
+    try {
+      const bb = titleEl.getBBox();
+      const bgRect = C.el("rect", {
+        x: bb.x - 3, y: bb.y - 2, width: bb.width + 6, height: bb.height + 4,
+        fill: tsTitle.bgColor || "#ffffff",
+        "fill-opacity": tsTitle.bgOpacity != null ? tsTitle.bgOpacity : 1,
+        stroke: (tsTitle.bgBorderWidth > 0) ? tsTitle.bgBorderColor : "none",
+        "stroke-width": tsTitle.bgBorderWidth || 0,
+        "pointer-events": "none"
+      }, g);
+      g.insertBefore(bgRect, titleEl);
+    } catch (_) {}
+  }
+
   C.el("line", { x1: 0, y1: 0, x2: barLen, y2: 0, stroke: "#333", "stroke-width": 2 }, g);
   C.el("line", { x1: 0, y1: -5, x2: 0, y2: 5, stroke: "#333", "stroke-width": 2 }, g);
   C.el("line", { x1: barLen, y1: -5, x2: barLen, y2: 5, stroke: "#333", "stroke-width": 2 }, g);
-  const valStyle = global.TreeText.fromParts({ font: st.fontFamily, size: 12, color: "#333" });
-  global.TreeText.draw(g, barLen / 2, 16, String(value), valStyle, { "text-anchor": "middle" });
+
+  const tsVal = SS ? SS.textStyle(Object.assign({}, st.textStyles.scaleBoxText || {}, { fontFamily: st.fontFamily })) : {
+    fontFamily: st.fontFamily, fontSize: 12, bold: false, italic: false, color: "#333333", opacity: 1,
+    bgShow: false, bgColor: "#ffffff", bgOpacity: 1, bgBorderColor: "#999999", bgBorderWidth: 0
+  };
+  const valStyle = global.TreeText.fromParts({ font: tsVal.fontFamily || st.fontFamily, size: tsVal.fontSize, bold: tsVal.bold, italic: tsVal.italic, color: tsVal.color });
+  const txV = barLen / 2 + (tsVal.x != null ? tsVal.x : 0);
+  const tyV = 16 + (tsVal.y != null ? tsVal.y : 0);
+  const valEl = global.TreeText.draw(g, txV, tyV, String(value), valStyle, { "text-anchor": "middle", opacity: tsVal.opacity != null ? tsVal.opacity : 1 });
+  if (tsVal.bgShow && valEl) {
+    try {
+      const bb = valEl.getBBox();
+      const bgRect = C.el("rect", {
+        x: bb.x - 3, y: bb.y - 2, width: bb.width + 6, height: bb.height + 4,
+        fill: tsVal.bgColor || "#ffffff",
+        "fill-opacity": tsVal.bgOpacity != null ? tsVal.bgOpacity : 1,
+        stroke: (tsVal.bgBorderWidth > 0) ? tsVal.bgBorderColor : "none",
+        "stroke-width": tsVal.bgBorderWidth || 0,
+        "pointer-events": "none"
+      }, g);
+      g.insertBefore(bgRect, valEl);
+    } catch (_) {}
+  }
+
   C.el("rect", { x: -12, y: -34, width: barLen + 24, height: 64, fill: "transparent", "pointer-events": "all" }, g);
 }
+
 function drawRect() {
   L.layoutRect(); clearSvg();
   const st = C.state, root = C.getRoot();

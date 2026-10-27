@@ -5,40 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Phylogenetic Tree Visualization - BioDataTools</title>
 <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon">
-<link rel="stylesheet" href="../COMMON/plot-common.css">
 <link rel="stylesheet" href="../COMMON/tree/tree-theme.css">
-<style>
-#chartPreview {
-    position: relative;
-    overflow: auto;
-    min-height: 500px;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: stretch !important;
-}
-#chartPreview > .placeholder { margin: auto; }
-#treeSvg {
-    display: block;
-    width: 100%;
-    height: 600px;
-    cursor: default;
-    background: #fff;
-}
-#treeSvg.dragging { cursor: grabbing; }
-.hidden { display: none !important; }
-.btn-group .spacer { flex: 1; }
-.bdt-donate-l { z-index: 10000 !important; }
-</style>
 </head>
 <body>
-
 <div id="common-header"></div>
-
 <div id="treeSidebar">
     <button class="tsb-toggle" id="tsbToggle" type="button" title="Collapse / expand navigation">☰</button>
     <nav class="tsb-nav"></nav>
 </div>
-
 <div class="main">
     <div class="page-intro">
         <h2>Phylogenetic Tree Visualization</h2>
@@ -54,13 +28,9 @@
             <summary>Import Node Metadata</summary>
             <div style="padding:10px 12px;">
                 <div class="info-box" style="margin-bottom:8px;line-height:1.7;">
-                    The unique identifier of a node is ID. If the header of the first column is ID (case-insensitive), matching is performed by ID.
-                    Otherwise, matching uses Label / UID (duplicates may exist; only the first match will be taken).
-                    Remaining columns are merged as meta fields. Labels, branch lengths, support values and other non-meta data will NOT be modified.
-                    If you are unsure about the ID corresponding to a node, you can view the details in the collapsible node data table below.
+                    The unique identifier of a node is ID. If the header of the first column is ID (case-insensitive), matching is performed by ID. Otherwise, matching uses Label / UID (duplicates may exist; only the first match will be taken). Remaining columns are merged as meta fields. Labels, branch lengths, support values and other non-meta data will NOT be modified.
                 </div>
-                <textarea id="nodeMetaText" class="import-text" spellcheck="false"
-                    placeholder="First column: Node ID or Label&#10;Other columns: Metadata"></textarea>
+                <textarea id="nodeMetaText" class="import-text" spellcheck="false" placeholder="First column: Node ID or Label&#10;Other columns: Metadata"></textarea>
                 <div class="btn-group" style="margin-top:8px;">
                     <button class="btn" id="fillNodeIdsBtn" type="button">Fill All Node IDs</button>
                     <button class="btn" id="generateNodeRandomBtn" type="button">Generate Random Data</button>
@@ -72,14 +42,13 @@
         <details class="param-panel" id="nodeTableBox" style="margin-top:12px;">
             <summary>Node data table (auto-generated after loading a tree)</summary>
             <div style="padding:10px 12px;">
-                <div class="param-inline" style="margin-bottom:8px;flex-wrap:wrap;gap:10px;">
+                <div class="param-inline" style="margin-bottom:8px;">
                     <label class="mini-check"><input type="checkbox" id="showLeafNodes" checked> Leaf nodes</label>
                     <label class="mini-check"><input type="checkbox" id="showInternalNodes" checked> Internal nodes</label>
                     <label class="mini-check"><input type="checkbox" id="showOnlyWithSupport"> Only with support</label>
-                    <input type="text" id="nodeTableSearch" placeholder="Search ID / label / parent / metadata"
-                        style="flex:1;min-width:220px;">
+                    <input type="text" id="nodeTableSearch" placeholder="Search ID / label / parent / metadata" style="flex:1;min-width:220px;">
                 </div>
-                <div class="info-box" style="margin-bottom:8px;padding:6px 10px;background:#eef3f9;border-left:3px solid #1f4068;font-size:12px;color:#1f4068;line-height:1.6;">
+                <div class="info-box" style="margin-bottom:8px;padding:6px 10px;font-size:12px;line-height:1.6;">
                     Hint: Double-click the "Label", "Length", "Support", or "Meta: xxx" cells to edit. Press Enter to save, Esc to cancel.
                 </div>
                 <div id="nodeTableWrap" class="table-wrap" style="max-height:420px;overflow:auto;">
@@ -96,7 +65,7 @@
     <div class="step-card" id="step2">
         <div class="step-title">Step 2: Import Leaf Label Data Table</div>
         <div class="info-box">
-            To associate data with each leaf node or rename leaf labels, you can upload a data table here. You may prepare the data in Excel and import it, or use the built-in algorithms to generate it automatically. Use the collapsible sections below to add new columns; the final result will appear in the table at the bottom of the page. If you used any of the example data in Step 1, you can <a href="https://www.biodatatools.top/BioStatPlot/COMMON/tree/data.txt" target="_blank" rel="noopener noreferrer">click here to download the example table</a>.
+            To associate data with each leaf node or rename leaf labels, you can upload a data table here. You may prepare the data in Excel and import it, or use the built-in algorithms. Use the collapsible sections below to add new columns; the final result will appear in the table at the bottom of the page. If you used any of the example data in Step 1, you can <a href="https://www.biodatatools.top/BioStatPlot/COMMON/tree/data.txt" target="_blank" rel="noopener noreferrer">click here to download the example table</a>.
         </div>
 
         <details class="param-panel">
@@ -110,12 +79,9 @@
                     <input type="file" id="extDataFile" class="import-file" accept=".csv,.tsv,.txt">
                 </div>
                 <div class="ext-text-input">
-                    <textarea id="externalDataText" class="import-text" spellcheck="false"
-                        placeholder="The first column must contain leaf names (Leaf); the remaining columns may be numeric or plain text."></textarea>
+                    <textarea id="externalDataText" class="import-text" spellcheck="false" placeholder="The first column must contain leaf names (Leaf); the remaining columns may be numeric or plain text."></textarea>
                 </div>
-                <div class="info-box" style="margin-top:8px;">
-                    The first column must match the leaf labels on the tree. Missing values will be filled according to each column's type (NA if missing).
-                </div>
+                <div class="info-box" style="margin-top:8px;">The first column must match the leaf labels on the tree. Missing values will be filled according to each column's type (NA if missing).</div>
                 <div class="btn-group" style="margin-top:8px;">
                     <button class="btn" id="autoFillLeavesBtn" type="button">Fill all leaf names</button>
                     <button class="btn" id="generateRandomBtn" type="button">Generate random data</button>
@@ -128,16 +94,14 @@
             <summary>② Generate a column from leaf-name prefixes</summary>
             <div style="padding:10px 12px;">
                 <div class="param-grid cols-4">
-                    <div class="param-item">
-                        <label>Extraction rule</label>
+                    <div class="param-item"><label>Extraction rule</label>
                         <select id="prefixRule">
                             <option value="chars">First N characters</option>
                             <option value="delimiter">Before delimiter</option>
                             <option value="digit">Before digits</option>
                         </select>
                     </div>
-                    <div class="param-item">
-                        <label>Parameter (N or delimiter)</label>
+                    <div class="param-item"><label>Parameter (N or delimiter)</label>
                         <input type="text" id="prefixParam" value="3">
                     </div>
                 </div>
@@ -151,8 +115,7 @@
             <summary>③ Group by branch depth</summary>
             <div style="padding:10px 12px;">
                 <div class="param-grid cols-4">
-                    <div class="param-item">
-                        <label>Depth level (starting from root, 1 = first-level branch)</label>
+                    <div class="param-item"><label>Depth level (1 = first-level branch)</label>
                         <input type="number" id="cladeDepth" value="1" min="1" max="20">
                     </div>
                 </div>
@@ -166,8 +129,7 @@
             <summary>④ Group by clustering</summary>
             <div style="padding:10px 12px;">
                 <div class="param-grid cols-4">
-                    <div class="param-item">
-                        <label>Number of clusters N</label>
+                    <div class="param-item"><label>Number of clusters N</label>
                         <input type="number" id="clusterN" value="5" min="2" max="20">
                     </div>
                 </div>
@@ -181,22 +143,18 @@
             <summary>⑤ Prefix an existing column (create new)</summary>
             <div style="padding:10px 12px;">
                 <div class="param-grid cols-4">
-                    <div class="param-item">
-                        <label>Column to prefix</label>
+                    <div class="param-item"><label>Column to prefix</label>
                         <select id="customPrefixColumn"></select>
                     </div>
-                    <div class="param-item">
-                        <label>Prefix</label>
+                    <div class="param-item"><label>Prefix</label>
                         <input type="text" id="customPrefixInput" value="Sample_">
                     </div>
                     <div class="param-item" style="grid-column: span 2;">
                         <label>New column name (empty = auto)</label>
-                        <input type="text" id="customPrefixNewCol" placeholder="e.g. Sample_col1; empty = &lt;column&gt;_prefixed">
+                        <input type="text" id="customPrefixNewCol" placeholder="e.g. Sample_col1">
                     </div>
                 </div>
-                <div class="info-box" style="margin-top:8px;">
-                    A new column will be appended at the right; each value = prefix + original value. The source column is unchanged.
-                </div>
+                <div class="info-box" style="margin-top:8px;">A new column will be appended at the right; each value = prefix + original value. The source column is unchanged.</div>
                 <div class="btn-group" style="margin-top:8px;">
                     <button class="btn" id="applyCustomPrefixBtn" type="button">Create prefixed column</button>
                 </div>
@@ -246,19 +204,18 @@
         </div>
     </div>
 </div>
-
 <div id="common-footer"></div>
 
 <script src="../COMMON/script/plot-header.js"></script>
 <script src="../COMMON/script/plot-footer-en.js"></script>
-
 <script src="../COMMON/tree/tree-bootstrap.js"></script>
 <script src="../COMMON/tree/tree-i18n.js"></script>
 <script src="../COMMON/tree/tree-common.js"></script>
 <script src="../COMMON/tree/tree-text.js"></script>
 <script src="../COMMON/tree/tree-palette.js"></script>
 <script src="../COMMON/tree/tree-continuous-palette.js"></script>
-
+<script src="../COMMON/tree/tree-style-types.js"></script>
+<script src="../COMMON/tree/tree-common-widgets.js"></script>
 <script src="../COMMON/tree/tree-core.js"></script>
 <script src="../COMMON/tree/tree-parser.js"></script>
 <script src="../COMMON/tree/tree-traverse.js"></script>
@@ -267,41 +224,28 @@
 <script src="../COMMON/tree/tree-draw-node.js"></script>
 <script src="../COMMON/tree/tree-draw-ticks.js"></script>
 <script src="../COMMON/tree/tree-draw.js"></script>
-
 <script src="../COMMON/tree/tree-geo-preset.js"></script>
 <script src="../COMMON/tree/tree-annot-ranges.js"></script>
 <script src="../COMMON/tree/tree-annot-tracks.js"></script>
 <script src="../COMMON/tree/tree-annot-geo.js"></script>
-
 <script src="../COMMON/tree/tree-ui-shared.js"></script>
 <script src="../COMMON/tree/tree-ui-basic.js"></script>
 <script src="../COMMON/tree/tree-ui-advanced.js"></script>
 <script src="../COMMON/tree/tree-ui-tracks.js"></script>
-
 <script src="../COMMON/tree/tree-app-data.js"></script>
 <script src="../COMMON/tree/tree-app-nodes.js"></script>
 <script src="../COMMON/tree/tree-app-export.js"></script>
 <script src="../COMMON/tree/tree-app.js"></script>
-
 <script src="../COMMON/tree/tree-mini-preview.js"></script>
 <script src="../COMMON/donate-widget-left.js"></script>
 
 <script>
 (function () {
-    var need = [
-        'TreeCore', 'TreeParser', 'TreeTraverse', 'TreeLayout',
-        'TreeText', 'TreeDrawBranch', 'TreeDrawNode', 'TreeDrawTicks',
-        'TreeRenderer', 'TreeLegend', 'TreeRanges', 'TreeTracks', 'TreeDrag',
-        'TreeUI', 'TreeUIBasic', 'TreeUIAdvanced', 'TreeUITracks',
-        'TreeAppData', 'TreeAppNodes', 'TreeExport', 'TreeApp', 'TreeSerialize'
-    ];
-    var missing = need.filter(function (k) { return !window[k]; });
+    var need = ['TreeCore','TreeParser','TreeTraverse','TreeLayout','TreeText','TreeDrawBranch','TreeDrawNode','TreeDrawTicks','TreeRenderer','TreeLegend','TreeRanges','TreeTracks','TreeDrag','TreeUI','TreeUIBasic','TreeUIAdvanced','TreeUITracks','TreeAppData','TreeAppNodes','TreeExport','TreeApp','TreeSerialize','TreeStyle','TreeCommonWidgets'];
+    var missing = need.filter(function(k){return !window[k];});
     if (missing.length) {
         var box = document.getElementById('msgTip3');
-        if (box) {
-            box.className = 'tip-text error';
-            box.textContent = '❌ Missing modules: ' + missing.join(', ');
-        }
+        if (box) { box.className='tip-text error'; box.textContent='❌ Missing modules: ' + missing.join(', '); }
         console.error('[TreeApp] Missing modules:', missing);
     }
 })();

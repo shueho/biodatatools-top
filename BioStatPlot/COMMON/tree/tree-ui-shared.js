@@ -4,9 +4,7 @@ const C = global.TreeCore;
 const T = global.TreeTraverse;
 const I = global.TreeI18N;
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
-}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
 function escapeAttr(s) { return escapeHtml(s).replace(/'/g, "&#39;"); }
 
 function renderGroupPaletteDropdown(container, opts) {
@@ -19,27 +17,19 @@ function renderGroupPaletteDropdown(container, opts) {
   ];
   const pal = global.TreePalette;
   let current = opts.selected || (global.TreeRanges && global.TreeRanges.ringPalette) || "tableau10";
-
   function swatchesHtml(name) {
     let cols = [];
     try { cols = pal.getCategoricalScheme(name) || []; } catch (_) {}
     if (!cols.length) cols = ["#cccccc"];
     return `<div class="palette-swatches-mini">${cols.map(c => `<div style="background:${c}"></div>`).join('')}</div>`;
   }
-
   container.innerHTML = "";
   container.className = "palette-select-wrap";
-
   const trigger = document.createElement("div");
   trigger.className = "palette-select-trigger";
-  trigger.innerHTML =
-    `<span class="palette-name">${current}</span>` +
-    `<span class="palette-preview-slot">${swatchesHtml(current)}</span>` +
-    `<span class="caret">▼</span>`;
-
+  trigger.innerHTML = `<span class="palette-name">${current}</span><span class="palette-preview-slot">${swatchesHtml(current)}</span><span class="caret">▼</span>`;
   const dropdown = document.createElement("div");
   dropdown.className = "palette-select-dropdown";
-
   groups.forEach(g => {
     const gl = document.createElement("div");
     gl.className = "palette-group-label";
@@ -51,37 +41,28 @@ function renderGroupPaletteDropdown(container, opts) {
       opt.className = "palette-option" + (name === current ? " active" : "");
       opt.dataset.value = name;
       opt.dataset.group = g.key;
-      opt.innerHTML =
-        `<span class="palette-name">${name}</span>` + swatchesHtml(name) + `<span class="palette-check">✓</span>`;
+      opt.innerHTML = `<span class="palette-name">${name}</span>${swatchesHtml(name)}<span class="palette-check">✓</span>`;
       opt.addEventListener("click", e => {
         e.stopPropagation();
         current = name;
         trigger.querySelector(".palette-name").textContent = name;
         trigger.querySelector(".palette-preview-slot").innerHTML = swatchesHtml(name);
-        dropdown.querySelectorAll(".palette-option").forEach(o =>
-          o.classList.toggle("active", o.dataset.value === name));
+        dropdown.querySelectorAll(".palette-option").forEach(o => o.classList.toggle("active", o.dataset.value === name));
         if (opts.onSelect) opts.onSelect(name);
       });
       dropdown.appendChild(opt);
     });
   });
-
   trigger.addEventListener("click", e => {
     e.stopPropagation();
-    document.querySelectorAll(".palette-select-wrap.open").forEach(el => {
-      if (el !== container) el.classList.remove("open");
-    });
+    document.querySelectorAll(".palette-select-wrap.open").forEach(el => { if (el !== container) el.classList.remove("open"); });
     container.classList.toggle("open");
   });
-
   container.appendChild(trigger);
   container.appendChild(dropdown);
-
   if (!document.__paletteDropdownClickBound) {
     document.__paletteDropdownClickBound = true;
-    document.addEventListener("click", () => {
-      document.querySelectorAll(".palette-select-wrap.open").forEach(el => el.classList.remove("open"));
-    });
+    document.addEventListener("click", () => { document.querySelectorAll(".palette-select-wrap.open").forEach(el => el.classList.remove("open")); });
   }
 }
 
@@ -101,7 +82,6 @@ function nodeSize(n) { return T.isLeaf(n) ? 4.5 : 3.8; }
 function enableDrag(svg) {
   if (!svg || svg.dataset.dragBound === "1") return;
   svg.dataset.dragBound = "1";
-
   let legendRaf = null;
   let legendPending = null;
 
@@ -109,7 +89,6 @@ function enableDrag(svg) {
     if (e.button !== 0) return;
     const st = C.state;
     const vb = C.getViewBox();
-
     const legendEl = e.target.closest && e.target.closest(".legend-box");
     if (legendEl) {
       const rect = svg.getBoundingClientRect();
@@ -123,12 +102,7 @@ function enableDrag(svg) {
           if (t.legendX == null || t.legendY == null) {
             const tr = legendEl.getAttribute("transform") || "";
             const m = tr.match(/translate\(([-\d.]+)\s+([-\d.]+)\)/);
-            if (m) {
-              initialX = parseFloat(m[1]);
-              initialY = parseFloat(m[2]);
-              t.legendX = initialX;
-              t.legendY = initialY;
-            }
+            if (m) { initialX = parseFloat(m[1]); initialY = parseFloat(m[2]); t.legendX = initialX; t.legendY = initialY; }
           }
         }
       }
@@ -136,13 +110,9 @@ function enableDrag(svg) {
       let autoY = Number(st.legendY) || 60;
       const tr = legendEl.getAttribute("transform") || "";
       const m = tr.match(/translate\(([-\d.]+)\s+([-\d.]+)\)/);
-      if (m) {
-        autoX = parseFloat(m[1]) - (st.legendOffsetX || 0);
-        autoY = parseFloat(m[2]) - (st.legendOffsetY || 0);
-      }
+      if (m) { autoX = parseFloat(m[1]) - (st.legendOffsetX || 0); autoY = parseFloat(m[2]) - (st.legendOffsetY || 0); }
       legendDrag = {
-        el: legendEl,
-        trackId: trackId ? Number(trackId) : null,
+        el: legendEl, trackId: trackId ? Number(trackId) : null,
         startX: e.clientX, startY: e.clientY,
         x0: trackId ? initialX : (autoX + (st.legendOffsetX || 0)),
         y0: trackId ? initialY : (autoY + (st.legendOffsetY || 0)),
@@ -151,31 +121,25 @@ function enableDrag(svg) {
         unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
         moved: false
       };
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       return;
     }
-
     const scaleEl = e.target.closest && e.target.closest(".scale-box");
     if (scaleEl) {
       const rect = svg.getBoundingClientRect();
       scaleDrag = {
-        el: scaleEl,
-        startX: e.clientX, startY: e.clientY,
-        ox0: Number(st.scaleBoxOffsetX) || 0,
-        oy0: Number(st.scaleBoxOffsetY) || 0,
+        el: scaleEl, startX: e.clientX, startY: e.clientY,
+        ox0: Number(st.scaleBoxOffsetX) || 0, oy0: Number(st.scaleBoxOffsetY) || 0,
         unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
         unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
         moved: false
       };
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       return;
     }
-
     const nodeLabelEl = e.target.closest && e.target.closest("[data-node-label-group]");
     if (nodeLabelEl) {
-      if (st.mode === "unrooted") { e.preventDefault(); e.stopPropagation(); return; }  
+      if (st.mode === "unrooted") { e.preventDefault(); e.stopPropagation(); return; }
       const rect = svg.getBoundingClientRect();
       nodeLabelDrag = {
         startX: e.clientX, startY: e.clientY,
@@ -188,14 +152,12 @@ function enableDrag(svg) {
         isRadial: st.mode === "circular",
         moved: false
       };
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       return;
     }
-
     const lengthLabelEl = e.target.closest && e.target.closest("[data-length-label]");
     if (lengthLabelEl) {
-      if (st.mode === "unrooted") { e.preventDefault(); e.stopPropagation(); return; }   
+      if (st.mode === "unrooted") { e.preventDefault(); e.stopPropagation(); return; }
       const rect = svg.getBoundingClientRect();
       let refAngleDeg = null;
       if (st.mode === "circular") {
@@ -207,9 +169,7 @@ function enableDrag(svg) {
           const mx = pt.x - 470, my = pt.y - 380;
           if (Math.hypot(mx, my) > 10) refAngleDeg = Math.atan2(my, mx) * 180 / Math.PI + 90;
         }
-        if (refAngleDeg == null) {
-          refAngleDeg = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
-        }
+        if (refAngleDeg == null) refAngleDeg = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
       }
       lengthLabelDrag = {
         startX: e.clientX, startY: e.clientY,
@@ -219,34 +179,26 @@ function enableDrag(svg) {
         or0: Number(st.lengthLabel.offsetRadial) || 0,
         unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
         unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
-        isRadial: st.mode === "circular",
-        refAngleDeg, moved: false
+        isRadial: st.mode === "circular", refAngleDeg, moved: false
       };
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       return;
     }
-
     const pieEl = e.target.closest && e.target.closest("[data-pie-marker-group]");
     if (pieEl) {
       if (st.mode === "unrooted") { e.preventDefault(); e.stopPropagation(); return; }
       const rect = svg.getBoundingClientRect();
       pieMarkerDrag = {
         startX: e.clientX, startY: e.clientY,
-        ox0: Number(st.pieMarker.offsetX) || 0,
-        oy0: Number(st.pieMarker.offsetY) || 0,
-        ot0: Number(st.pieMarker.offsetTangent) || 0,
-        or0: Number(st.pieMarker.offsetRadial) || 0,
+        ox0: Number(st.pieMarker.offsetX) || 0, oy0: Number(st.pieMarker.offsetY) || 0,
+        ot0: Number(st.pieMarker.offsetTangent) || 0, or0: Number(st.pieMarker.offsetRadial) || 0,
         unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
         unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
-        isRadial: st.mode === "circular",
-        moved: false
+        isRadial: st.mode === "circular", moved: false
       };
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       return;
     }
-
     const trackEl = e.target.closest && e.target.closest("[data-track-band]");
     if (trackEl) {
       const trackId = Number(trackEl.getAttribute("data-track-band"));
@@ -254,20 +206,16 @@ function enableDrag(svg) {
       if (track) {
         const rect = svg.getBoundingClientRect();
         trackDrag = {
-          track, trackId,
-          startX: e.clientX, startY: e.clientY,
+          track, trackId, startX: e.clientX, startY: e.clientY,
           offset0: Number(track.offset) || 0,
           unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
           unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
-          isRadial: st.mode === "circular",
-          moved: false
+          isRadial: st.mode === "circular", moved: false
         };
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         return;
       }
     }
-
     const rect = svg.getBoundingClientRect();
     drag = {
       startX: e.clientX, startY: e.clientY,
@@ -280,7 +228,6 @@ function enableDrag(svg) {
 
   svg.addEventListener("pointermove", e => {
     const st = C.state;
-
     if (legendDrag) {
       const dx = (e.clientX - legendDrag.startX) * legendDrag.unitX;
       const dy = (e.clientY - legendDrag.startY) * legendDrag.unitY;
@@ -311,31 +258,21 @@ function enableDrag(svg) {
       }
       return;
     }
-
     if (scaleDrag) {
       const dx = (e.clientX - scaleDrag.startX) * scaleDrag.unitX;
       const dy = (e.clientY - scaleDrag.startY) * scaleDrag.unitY;
       if (!scaleDrag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
-      if (!scaleDrag.moved) {
-        scaleDrag.moved = true;
-        suppressSvgClick = true;
-        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
-      }
+      if (!scaleDrag.moved) { scaleDrag.moved = true; suppressSvgClick = true; try { svg.setPointerCapture(e.pointerId); } catch (_) {} }
       st.scaleBoxOffsetX = scaleDrag.ox0 + dx;
       st.scaleBoxOffsetY = scaleDrag.oy0 + dy;
       global.TreeRenderer.draw();
       return;
     }
-
     if (nodeLabelDrag) {
       const dx = (e.clientX - nodeLabelDrag.startX) * nodeLabelDrag.unitX;
       const dy = (e.clientY - nodeLabelDrag.startY) * nodeLabelDrag.unitY;
       if (!nodeLabelDrag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
-      if (!nodeLabelDrag.moved) {
-        nodeLabelDrag.moved = true;
-        suppressSvgClick = true;
-        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
-      }
+      if (!nodeLabelDrag.moved) { nodeLabelDrag.moved = true; suppressSvgClick = true; try { svg.setPointerCapture(e.pointerId); } catch (_) {} }
       if (nodeLabelDrag.isRadial) {
         const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
         const radRad = (axisAngle - 90) * Math.PI / 180;
@@ -349,16 +286,11 @@ function enableDrag(svg) {
       global.TreeRenderer.draw();
       return;
     }
-
     if (lengthLabelDrag) {
       const dx = (e.clientX - lengthLabelDrag.startX) * lengthLabelDrag.unitX;
       const dy = (e.clientY - lengthLabelDrag.startY) * lengthLabelDrag.unitY;
       if (!lengthLabelDrag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
-      if (!lengthLabelDrag.moved) {
-        lengthLabelDrag.moved = true;
-        suppressSvgClick = true;
-        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
-      }
+      if (!lengthLabelDrag.moved) { lengthLabelDrag.moved = true; suppressSvgClick = true; try { svg.setPointerCapture(e.pointerId); } catch (_) {} }
       if (lengthLabelDrag.isRadial) {
         const ang = lengthLabelDrag.refAngleDeg;
         const radRad = (ang - 90) * Math.PI / 180;
@@ -372,16 +304,11 @@ function enableDrag(svg) {
       global.TreeRenderer.draw();
       return;
     }
-
     if (pieMarkerDrag) {
       const dx = (e.clientX - pieMarkerDrag.startX) * pieMarkerDrag.unitX;
       const dy = (e.clientY - pieMarkerDrag.startY) * pieMarkerDrag.unitY;
       if (!pieMarkerDrag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
-      if (!pieMarkerDrag.moved) {
-        pieMarkerDrag.moved = true;
-        suppressSvgClick = true;
-        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
-      }
+      if (!pieMarkerDrag.moved) { pieMarkerDrag.moved = true; suppressSvgClick = true; try { svg.setPointerCapture(e.pointerId); } catch (_) {} }
       if (pieMarkerDrag.isRadial) {
         const axisAngle = (Number(st.rotation) || 0) + (Number(st.axisRotation) || 0);
         const radRad = (axisAngle - 90) * Math.PI / 180;
@@ -395,25 +322,18 @@ function enableDrag(svg) {
       global.TreeRenderer.draw();
       return;
     }
-
     if (trackDrag) {
       const rawDx = e.clientX - trackDrag.startX;
       const rawDy = e.clientY - trackDrag.startY;
       if (!trackDrag.moved && Math.abs(rawDx) + Math.abs(rawDy) < 3) return;
-      if (!trackDrag.moved) {
-        trackDrag.moved = true;
-        suppressSvgClick = true;
-        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
-        svg.style.cursor = 'grabbing';
-      }
+      if (!trackDrag.moved) { trackDrag.moved = true; suppressSvgClick = true; try { svg.setPointerCapture(e.pointerId); } catch (_) {} svg.style.cursor = 'grabbing'; }
       if (trackDrag.isRadial) {
         const axisAngle = (Number(C.state.rotation) || 0) + (Number(C.state.axisRotation) || 0);
         const rad = (axisAngle - 90) * Math.PI / 180;
         const ux = Math.cos(rad), uy = Math.sin(rad);
         const dxSvg = rawDx * trackDrag.unitX;
         const dySvg = rawDy * trackDrag.unitY;
-        const proj = dxSvg * ux + dySvg * uy;
-        trackDrag.track.offset = trackDrag.offset0 + proj;
+        trackDrag.track.offset = trackDrag.offset0 + (dxSvg * ux + dySvg * uy);
       } else {
         const dxSvg = rawDx * trackDrag.unitX;
         trackDrag.track.offset = trackDrag.offset0 + dxSvg;
@@ -421,7 +341,6 @@ function enableDrag(svg) {
       global.TreeRenderer.draw();
       return;
     }
-
     if (moveDrag) {
       if (Math.abs(e.clientX - moveDrag.startX) + Math.abs(e.clientY - moveDrag.startY) < 3) return;
       if (!moveDrag.moved) {
@@ -430,32 +349,19 @@ function enableDrag(svg) {
         try { svg.setPointerCapture(e.pointerId); } catch (_) {}
         const src = T.nodeById(moveDrag.srcId);
         if (src) {
-          moveRingEl = C.el("circle", {
-            cx: src.x, cy: src.y, r: nodeSize(src) + 6,
-            fill: "none", stroke: "#ff3b3b", "stroke-width": 2
-          });
-          moveLineEl = C.el("line", {
-            x1: src.x, y1: src.y, x2: src.x, y2: src.y,
-            stroke: "#2f6bd8", "stroke-width": 2, "stroke-dasharray": "5 4"
-          });
+          moveRingEl = C.el("circle", { cx: src.x, cy: src.y, r: nodeSize(src) + 6, fill: "none", stroke: "#ff3b3b", "stroke-width": 2 });
+          moveLineEl = C.el("line", { x1: src.x, y1: src.y, x2: src.x, y2: src.y, stroke: "#2f6bd8", "stroke-width": 2, "stroke-dasharray": "5 4" });
         }
       }
       const loc = clientToSvg(svg, e.clientX, e.clientY);
-      if (moveLineEl) {
-        moveLineEl.setAttribute("x2", loc.x);
-        moveLineEl.setAttribute("y2", loc.y);
-      }
+      if (moveLineEl) { moveLineEl.setAttribute("x2", loc.x); moveLineEl.setAttribute("y2", loc.y); }
       return;
     }
-
     if (!drag) return;
     const dx = (e.clientX - drag.startX) * drag.unitX;
     const dy = (e.clientY - drag.startY) * drag.unitY;
     if (Math.abs(dx) + Math.abs(dy) < 2) return;
-    if (!drag.snapped) {
-      drag.snapped = true;
-      try { svg.setPointerCapture(e.pointerId); } catch (_) {}
-    }
+    if (!drag.snapped) { drag.snapped = true; try { svg.setPointerCapture(e.pointerId); } catch (_) {} }
     suppressSvgClick = true;
     st.panX = drag.panX + dx;
     st.panY = drag.panY + dy;
@@ -470,26 +376,13 @@ function enableDrag(svg) {
       try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
       const wasMoved = legendDrag.moved;
       legendDrag = null;
-      setTimeout(() => {
-        suppressSvgClick = false;
-        if (wasMoved) global.TreeRenderer.draw();
-      }, 0);
+      setTimeout(() => { suppressSvgClick = false; if (wasMoved) global.TreeRenderer.draw(); }, 0);
       return;
     }
-    if (scaleDrag) {
-      try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
-      const wasMoved = scaleDrag.moved;
-      scaleDrag = null;
-      setTimeout(() => {
-        suppressSvgClick = false;
-        if (wasMoved) global.TreeRenderer.draw();
-      }, 0);
-      return;
-    }
+    if (scaleDrag) { try { svg.releasePointerCapture(e.pointerId); } catch (_) {} const wasMoved = scaleDrag.moved; scaleDrag = null; setTimeout(() => { suppressSvgClick = false; if (wasMoved) global.TreeRenderer.draw(); }, 0); return; }
     if (nodeLabelDrag) {
       try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
-      const wasMoved = nodeLabelDrag.moved;
-      const isRadial = nodeLabelDrag.isRadial;
+      const wasMoved = nodeLabelDrag.moved; const isRadial = nodeLabelDrag.isRadial;
       nodeLabelDrag = null;
       setTimeout(() => {
         suppressSvgClick = false;
@@ -534,8 +427,7 @@ function enableDrag(svg) {
     }
     if (pieMarkerDrag) {
       try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
-      const wasMoved = pieMarkerDrag.moved;
-      const isRadial = pieMarkerDrag.isRadial;
+      const wasMoved = pieMarkerDrag.moved; const isRadial = pieMarkerDrag.isRadial;
       pieMarkerDrag = null;
       setTimeout(() => {
         suppressSvgClick = false;
@@ -562,10 +454,7 @@ function enableDrag(svg) {
       const wasMoved = trackDrag.moved;
       trackDrag = null;
       svg.style.cursor = '';
-      setTimeout(() => {
-        suppressSvgClick = false;
-        if (wasMoved) global.TreeRenderer.draw();
-      }, 0);
+      setTimeout(() => { suppressSvgClick = false; if (wasMoved) global.TreeRenderer.draw(); }, 0);
       return;
     }
     if (moveDrag) {
@@ -591,9 +480,7 @@ function enableDrag(svg) {
       setTimeout(() => suppressSvgClick = false, 0);
       return;
     }
-    if (drag && e.pointerId !== undefined) {
-      try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
-    }
+    if (drag && e.pointerId !== undefined) { try { svg.releasePointerCapture(e.pointerId); } catch (_) {} }
     drag = null;
     svg.classList.remove("dragging");
     setTimeout(() => suppressSvgClick = false, 0);
@@ -617,9 +504,7 @@ function bindSvgClick(svg) {
         C.setSelectedBranchId(bn.id);
         global.TreeRenderer.draw();
         const cx = e.clientX, cy = e.clientY;
-        if (global.TreeApp && typeof global.TreeApp.showBranchActionPanel === "function") {
-          setTimeout(() => global.TreeApp.showBranchActionPanel(bn.id, cx, cy), 0);
-        }
+        if (global.TreeApp && typeof global.TreeApp.showBranchActionPanel === "function") setTimeout(() => global.TreeApp.showBranchActionPanel(bn.id, cx, cy), 0);
         return;
       }
     }
@@ -641,9 +526,7 @@ function bindSvgClick(svg) {
     C.setSelectedId(n.id);
     global.TreeRenderer.draw();
     const cx = e.clientX, cy = e.clientY;
-    if (global.TreeApp && typeof global.TreeApp.showNodeActionPanel === "function") {
-      setTimeout(() => global.TreeApp.showNodeActionPanel(n.id, cx, cy), 0);
-    }
+    if (global.TreeApp && typeof global.TreeApp.showNodeActionPanel === "function") setTimeout(() => global.TreeApp.showNodeActionPanel(n.id, cx, cy), 0);
   });
 }
 
@@ -660,19 +543,9 @@ function renderEditor() {
     <button class="btn btn-outline" id="selCollapse" type="button">${n.collapsed ? I.t('editorExpand') : I.t('editorCollapse')}</button>
     <button class="btn btn-outline" id="selDelete" type="button" style="color:#dc3545;border-color:#dc3545;">${I.t('editorDelete')}</button>
   </div>`;
-  document.getElementById("selApply").onclick = () => {
-    n.label = document.getElementById("selLabel").value;
-    n.color = document.getElementById("selColor").value;
-    global.TreeRenderer.draw();
-  };
-  document.getElementById("selCollapse").onclick = () => {
-    n.collapsed = !n.collapsed;
-    global.TreeRenderer.draw();
-  };
-  document.getElementById("selDelete").onclick = () => {
-    n.deleted = true;
-    global.TreeRenderer.draw();
-  };
+  document.getElementById("selApply").onclick = () => { n.label = document.getElementById("selLabel").value; n.color = document.getElementById("selColor").value; global.TreeRenderer.draw(); };
+  document.getElementById("selCollapse").onclick = () => { n.collapsed = !n.collapsed; global.TreeRenderer.draw(); };
+  document.getElementById("selDelete").onclick = () => { n.deleted = true; global.TreeRenderer.draw(); };
 }
 
 function refreshTreeView() {

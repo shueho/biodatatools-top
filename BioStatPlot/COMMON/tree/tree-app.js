@@ -4,6 +4,7 @@ const C = global.TreeCore;
 const P = global.TreeParser;
 const T = global.TreeTraverse;
 const I = global.TreeI18N;
+const SS = global.TreeStyle;
 
 function enableWheelZoom(svg) {
   if (!svg || svg.dataset.wheelZoomBound === "1") return;
@@ -35,13 +36,13 @@ function enableWheelZoom(svg) {
 }
 
 const TIME_KEY_PATTERNS = [
-  { pattern: /^height[_\s]*median$/i,               kind: 'median', looksAge: false },
-  { pattern: /^height[_\s]*mean$/i,                 kind: 'mean',   looksAge: false },
-  { pattern: /^height[_\s]*95%?[_\s]*(hpd)?$/i,     kind: 'hpd',    looksAge: false },
-  { pattern: /^height[_\s]*range$/i,                kind: 'hpd',    looksAge: false },
-  { pattern: /^height$/i,                           kind: 'mean',   looksAge: false },
-  { pattern: /^(node[_\s]*)?age$/i,                 kind: 'mean',   looksAge: true  },
-  { pattern: /^(node[_\s]*)?time$/i,                kind: 'mean',   looksAge: true  }
+  { pattern: /^height[_\s]*median$/i, kind: 'median', looksAge: false },
+  { pattern: /^height[_\s]*mean$/i, kind: 'mean', looksAge: false },
+  { pattern: /^height[_\s]*95%?[_\s]*(hpd)?$/i, kind: 'hpd', looksAge: false },
+  { pattern: /^height[_\s]*range$/i, kind: 'hpd', looksAge: false },
+  { pattern: /^height$/i, kind: 'mean', looksAge: false },
+  { pattern: /^(node[_\s]*)?age$/i, kind: 'mean', looksAge: true },
+  { pattern: /^(node[_\s]*)?time$/i, kind: 'mean', looksAge: true }
 ];
 
 function detectAndFixTimeTree(root) {
@@ -66,49 +67,24 @@ function detectAndFixTimeTree(root) {
     });
   });
   const hasHeight = medianKeys.size > 0 || hpdKeys.size > 0 || meanKeys.size > 0;
-  if (!hasHeight) {
-    C.state.isTimeTree = false;
-    C.state.timeTreeMode = false;
-    C.state.timeTreeMeta = null;
-    return false;
-  }
-
+  if (!hasHeight) { C.state.isTimeTree = false; C.state.timeTreeMode = false; C.state.timeTreeMeta = null; return false; }
   T.allWalk(root, n => {
-    if (!isFinite(n.length) || n.length < 0) {
-      if (n.length < 0) console.warn('[TreeApp] negative branch length fixed:', n.name || n.id, n.length);
-      n.length = 0.12;
-    }
+    if (!isFinite(n.length) || n.length < 0) n.length = 0.12;
   });
-
   const rootBl = Number(root.length) || 0;
-  if (rootBl > 0) {
-    root._originalRootLength = rootBl;
-    root.length = 0;
-  }
-
-  if (C.state.timeScaleFactor == null
-      || !isFinite(C.state.timeScaleFactor)
-      || C.state.timeScaleFactor <= 0) {
-    C.state.timeScaleFactor = 1;
-  }
-
+  if (rootBl > 0) { root._originalRootLength = rootBl; root.length = 0; }
+  if (C.state.timeScaleFactor == null || !isFinite(C.state.timeScaleFactor) || C.state.timeScaleFactor <= 0) C.state.timeScaleFactor = 1;
   C.state.axisReverse = true;
   C.state.forceMidpointRoot = true;
   C.state.hasRoot = true;
   C.state.showRoot = true;
-
   if (!C.state.lengthLabel) C.state.lengthLabel = {};
   C.state.lengthLabel.asTime = true;
   C.state.lengthLabel.timeRootAge = 0;
   C.state.lengthLabel.timeFactor = C.state.timeScaleFactor;
-
   C.state.isTimeTree = true;
   C.state.timeTreeMode = true;
-  C.state.timeTreeMeta = {
-    medianKeys: [...medianKeys],
-    hpdKeys: [...hpdKeys],
-    meanKeys: [...meanKeys]
-  };
+  C.state.timeTreeMeta = { medianKeys: [...medianKeys], hpdKeys: [...hpdKeys], meanKeys: [...meanKeys] };
   return true;
 }
 function snapshotLeafSet(raw) {
@@ -150,9 +126,7 @@ function applyLoadedState(raw, opts) {
     }
   } catch (_) {}
   C.applySnapshot(raw);
-  C.state.zoom = 1;
-  C.state.panX = 0;
-  C.state.panY = 0;
+  C.state.zoom = 1; C.state.panX = 0; C.state.panY = 0;
   if (keepRoot && currentRoot) {
     C.setRoot(currentRoot);
     C.restoreParents(currentRoot, null);
@@ -173,7 +147,6 @@ function applyLoadedState(raw, opts) {
   if (!global.TreeAppData.leafData.rows.length) global.TreeAppData.rebuildLeafRowsFromTree();
   global.TreeAppData.renderLeafDataPreview();
   global.TreeAppData.refreshDataSummary();
-
   if (global.TreeUIBasic) global.TreeUIBasic.renderBasicPanel(document.getElementById("basicStylePanel"));
   if (global.TreeUIAdvanced) global.TreeUIAdvanced.renderAdvancedPanel(document.getElementById("advancedStylePanel"));
   if (global.TreeUITracks) global.TreeUITracks.renderDatasetsPanel(document.getElementById("datasetsPanel"));
@@ -191,8 +164,7 @@ function renderTreeImportPanel() {
       <label><input type="radio" name="treeMode" value="text"> ${I.t('importPasteText')}</label>
     </div>
     <div class="file-input">
-      <input type="file" id="treeFileInput" class="import-file"
-             accept=".nwk,.tree,.tre,.newick,.nex,.nexus,.xml,.phyloxml,.nhx,.txt">
+      <input type="file" id="treeFileInput" class="import-file" accept=".nwk,.tree,.tre,.newick,.nex,.nexus,.xml,.phyloxml,.nhx,.txt">
     </div>
     <div class="text-input">
       <textarea id="treeInput" class="import-text" placeholder="${I.t('importPlaceholder')}"></textarea>
@@ -207,10 +179,8 @@ function renderTreeImportPanel() {
       <input type="file" id="treeStateFile" accept=".json" style="display:none;">
     </div>
   `;
-
   const textarea = document.getElementById("treeInput");
   const fileInput = document.getElementById("treeFileInput");
-
   function applyTreeMode() {
     const mode = c.querySelector('input[name="treeMode"]:checked').value;
     if (mode === "file") { fileInput.disabled = false; textarea.disabled = true; }
@@ -218,15 +188,11 @@ function renderTreeImportPanel() {
   }
   applyTreeMode();
   c.querySelectorAll('input[name="treeMode"]').forEach(r => r.addEventListener("change", applyTreeMode));
-
   fileInput?.addEventListener("change", e => {
     const f = e.target.files[0];
     if (!f) return;
     const reader = new FileReader();
-    reader.onload = ev => {
-      loadTree(ev.target.result);
-      showTreeMsg(I.t('treeMsgFileLoaded', { name: f.name }), "success");
-    };
+    reader.onload = ev => { loadTree(ev.target.result); showTreeMsg(I.t('treeMsgFileLoaded', { name: f.name }), "success"); };
     reader.readAsText(f);
   });
   document.getElementById("loadTreeBtn")?.addEventListener("click", () => {
@@ -236,11 +202,8 @@ function renderTreeImportPanel() {
       const reader = new FileReader();
       reader.onload = ev => loadTree(ev.target.result);
       reader.readAsText(fileInput.files[0]);
-    } else {
-      loadTree(textarea.value);
-    }
+    } else loadTree(textarea.value);
   });
-
   const loadExample = async (filename, btn) => {
     const textRadio = c.querySelector('input[name="treeMode"][value="text"]');
     if (textRadio && !textRadio.checked) { textRadio.checked = true; textRadio.dispatchEvent(new Event("change")); }
@@ -251,11 +214,8 @@ function renderTreeImportPanel() {
     const JSDELIVR_PATH = `shueho/biodatatools-top@main/BioStatPlot/COMMON/tree/${filename}`;
     const REMOTE_RAW = `https://raw.githubusercontent.com/shueho/biodatatools-top/main/BioStatPlot/COMMON/tree/${filename}`;
     const candidates = [
-      `https://jsd.onmicrosoft.cn/gh/${JSDELIVR_PATH}`,
-      `https://fastly.jsdelivr.net/gh/${JSDELIVR_PATH}`,
-      `https://gcore.jsdelivr.net/gh/${JSDELIVR_PATH}`,
-      `https://cdn.jsdelivr.net/gh/${JSDELIVR_PATH}`,
-      REMOTE_RAW
+      `https://jsd.onmicrosoft.cn/gh/${JSDELIVR_PATH}`, `https://fastly.jsdelivr.net/gh/${JSDELIVR_PATH}`,
+      `https://gcore.jsdelivr.net/gh/${JSDELIVR_PATH}`, `https://cdn.jsdelivr.net/gh/${JSDELIVR_PATH}`, REMOTE_RAW
     ];
     async function fetchWithTimeout(url, ms = 8000) {
       const controller = new AbortController();
@@ -266,23 +226,15 @@ function renderTreeImportPanel() {
         return await res.text();
       } finally { clearTimeout(timer); }
     }
-    let text = '';
-    let lastErr = null;
+    let text = '', lastErr = null;
     for (const url of candidates) {
-      try {
-        text = await fetchWithTimeout(url);
-        if (text && text.trim()) break;
-      } catch (err) { lastErr = err; }
+      try { text = await fetchWithTimeout(url); if (text && text.trim()) break; } catch (err) { lastErr = err; }
     }
     btn.textContent = oldText;
     btn.disabled = false;
     if (!text || !text.trim()) {
-      const msg = lastErr
-        ? I.t('treeMsgLoadExampleFail', { msg: lastErr.message, filename })
-        : I.t('treeMsgLoadExampleFailNoErr', { filename });
-      if (confirm(msg)) {
-        window.open(`https://github.com/shueho/biodatatools-top/blob/main/BioStatPlot/COMMON/tree/${filename}`, '_blank');
-      }
+      const msg = lastErr ? I.t('treeMsgLoadExampleFail', { msg: lastErr.message, filename }) : I.t('treeMsgLoadExampleFailNoErr', { filename });
+      if (confirm(msg)) window.open(`https://github.com/shueho/biodatatools-top/blob/main/BioStatPlot/COMMON/tree/${filename}`, '_blank');
       showTreeMsg(I.t('treeMsgLoadExampleFailNoErr', { filename }), 'error');
       return;
     }
@@ -292,10 +244,7 @@ function renderTreeImportPanel() {
   document.getElementById("loadExampleTimeBtn")?.addEventListener("click", (e) => loadExample('time.tree', e.target));
   document.getElementById("loadExampleBIBtn")?.addEventListener("click", (e) => loadExample('BI.tre', e.target));
   document.getElementById("loadExampleMLBtn")?.addEventListener("click", (e) => loadExample('ml.contree', e.target));
-
-  document.getElementById("loadTreeStateBtn")?.addEventListener("click", () => {
-    document.getElementById("treeStateFile")?.click();
-  });
+  document.getElementById("loadTreeStateBtn")?.addEventListener("click", () => document.getElementById("treeStateFile")?.click());
   document.getElementById("treeStateFile")?.addEventListener("change", e => {
     const f = e.target.files[0];
     if (!f) return;
@@ -316,9 +265,7 @@ function showTreeMsg(msg, type) {
   if (!el) return;
   el.className = "tip-text " + (type || "");
   el.textContent = msg;
-  setTimeout(() => {
-    if (el.textContent === msg) { el.textContent = ""; el.className = "tip-text"; }
-  }, 4000);
+  setTimeout(() => { if (el.textContent === msg) { el.textContent = ""; el.className = "tip-text"; } }, 4000);
 }
 function loadTree(text) {
   try {
@@ -330,64 +277,47 @@ function loadTree(text) {
     if (!t) { showTreeMsg(I.t('treeMsgParseFail'), "error"); return; }
     const leafCount = T.visibleLeaves(t).length;
     if (leafCount < 2) { showTreeMsg(I.t('treeMsgTooFew', { n: leafCount }), "error"); return; }
-
     C.resetIdSeq();
     P.assign(t, null);
     C.setRoot(t);
-
     if (global.TreeRanges) {
       global.TreeRanges.clearAllColorRanges();
       global.TreeRanges.rangeSeq = 0;
-      if (Array.isArray(global.TreeRanges.geoTimeTracks)) {
-        global.TreeRanges.geoTimeTracks.length = 0;
-      }
+      if (Array.isArray(global.TreeRanges.geoTimeTracks)) global.TreeRanges.geoTimeTracks.length = 0;
       global.TreeRanges.geoTrackSeq = 0;
       global.TreeRanges.geoEntrySeq = 0;
       global.TreeRanges.geoTimeShow = false;
     }
-    if (global.TreeTracks && Array.isArray(global.TreeTracks.tracks)) {
-      global.TreeTracks.tracks.length = 0;
-    }
+    if (global.TreeTracks && Array.isArray(global.TreeTracks.tracks)) global.TreeTracks.tracks.length = 0;
     C.state.legendOffsetX = 0;
     C.state.legendOffsetY = 0;
-
+    if (!C.state.extendLineStyle) C.state.extendLineStyle = SS.lineStyle({});
+    if (!C.state.textStyles) C.state.textStyles = {};
+    ["rangeLabel","geoText","pieMarker","scaleBoxTitle","scaleBoxText","legendTitle","legendText","trackText"].forEach(k => {
+      C.state.textStyles[k] = SS.textStyle(C.state.textStyles[k] || {});
+    });
     const isTime = detectAndFixTimeTree(t);
-
-    if (isTime) {
-      C.state.hasRoot = true;
-      C.state.forceMidpointRoot = true;
-      C.state.showRoot = true;
-    } else if (t.rootFlag === false) {
-      C.state.hasRoot = false;
-    } else if (t.rootFlag === true) {
-      C.state.hasRoot = true;
-    } else {
-      C.state.hasRoot = (t._hasExplicitLength === true && Number(t.length) > 0);
-    }
-
+    if (isTime) { C.state.hasRoot = true; C.state.forceMidpointRoot = true; C.state.showRoot = true; }
+    else if (t.rootFlag === false) C.state.hasRoot = false;
+    else if (t.rootFlag === true) C.state.hasRoot = true;
+    else C.state.hasRoot = (t._hasExplicitLength === true && Number(t.length) > 0);
     global.TreeAppData.rebuildLeafRowsFromTree();
     global.TreeAppData.renderLeafDataPreview();
     global.TreeAppData.refreshDataSummary();
     global.TreeAppNodes.renderNodeTable();
-
     if (global.TreeUIBasic) global.TreeUIBasic.renderBasicPanel(document.getElementById("basicStylePanel"));
     if (global.TreeUIAdvanced) global.TreeUIAdvanced.renderAdvancedPanel(document.getElementById("advancedStylePanel"));
     if (global.TreeUITracks) global.TreeUITracks.renderDatasetsPanel(document.getElementById("datasetsPanel"));
     bindAllControls();
     syncControls();
     rebuildSidebarNav();
-
     const fmtLabel = { newick: "Newick", nexus: "NEXUS", phyloxml: "PhyloXML" }[fmt] || fmt;
     const rootSuffix = C.state.hasRoot ? I.t('treeMsgHasRoot') : I.t('treeMsgNoRoot');
     let extraMsg = '';
     if (t._alternativeTrees > 1) {
-      extraMsg = '（该 NEXUS 含 ' + t._alternativeTrees + ' 棵树，已加载 "' +
-                 (t._chosenTreeName || 'tree1') + '"）';
+      extraMsg = '（该 NEXUS 含 ' + t._alternativeTrees + ' 棵树，已加载 "' + (t._chosenTreeName || 'tree1') + '"）';
     }
-    showTreeMsg((isTime
-      ? I.t('treeMsgLoadedTime', { fmt: fmtLabel, n: leafCount }) + rootSuffix
-      : I.t('treeMsgLoaded', { fmt: fmtLabel, n: leafCount }) + rootSuffix) + extraMsg,
-      "success");
+    showTreeMsg((isTime ? I.t('treeMsgLoadedTime', { fmt: fmtLabel, n: leafCount }) + rootSuffix : I.t('treeMsgLoaded', { fmt: fmtLabel, n: leafCount }) + rootSuffix) + extraMsg, "success");
     drawTree();
   } catch (e) {
     console.error("[TreeApp] loadTree error:", e);
@@ -399,9 +329,7 @@ function showTip(id, msg, type) {
   if (!el) return;
   el.className = "tip-text " + (type || "");
   el.textContent = msg;
-  setTimeout(() => {
-    if (el.textContent === msg) { el.textContent = ""; el.className = "tip-text"; }
-  }, 5000);
+  setTimeout(() => { if (el.textContent === msg) { el.textContent = ""; el.className = "tip-text"; } }, 5000);
 }
 function showToolbar(msg) {
   const el = document.getElementById("toolbarTip");
@@ -427,10 +355,7 @@ function drawTreeActual() {
   if (!svg) {
     svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.id = "treeSvg";
-    svg.style.width = "100%";
-    svg.style.height = "600px";
-    svg.style.display = "block";
-    svg.style.cursor = "default";
+    svg.style.width = "100%"; svg.style.height = "600px"; svg.style.display = "block"; svg.style.cursor = "default";
     preview.insertBefore(svg, preview.firstChild);
     C.setSvg(svg);
     if (global.TreeDrag) global.TreeDrag.enableDrag(svg);
@@ -446,17 +371,10 @@ function drawTreeActual() {
   }
   const root = C.getRoot();
   if (root) {
-    if (C.state.isTimeTree) {
-      C.state.hasRoot = true;
-      C.state.forceMidpointRoot = true;
-      C.state.showRoot = true;
-    } else if (root.rootFlag === false) {
-      C.state.hasRoot = false;
-    } else if (root.rootFlag === true) {
-      C.state.hasRoot = true;
-    } else {
-      C.state.hasRoot = (root._hasExplicitLength === true && Number(root.length) > 0);
-    }
+    if (C.state.isTimeTree) { C.state.hasRoot = true; C.state.forceMidpointRoot = true; C.state.showRoot = true; }
+    else if (root.rootFlag === false) C.state.hasRoot = false;
+    else if (root.rootFlag === true) C.state.hasRoot = true;
+    else C.state.hasRoot = (root._hasExplicitLength === true && Number(root.length) > 0);
   }
   global.TreeUI.refreshTreeView();
   const vb = C.getViewBox();
@@ -498,20 +416,14 @@ function bindAllControls() {
   };
   const bindChk = (id, key) => {
     const el = document.getElementById(id);
-    on(el, "change", e => {
-      C.state[key] = e.target.checked;
-      global.TreeUI.refreshTreeView();
-    });
+    on(el, "change", e => { C.state[key] = e.target.checked; global.TreeUI.refreshTreeView(); });
   };
   const bindPath = (id, path, cast) => {
     const el = document.getElementById(id);
     on(el, "input", () => {
       const parts = path.split(".");
       let obj = C.state;
-      for (let i = 0; i < parts.length - 1; i++) {
-        if (!obj[parts[i]]) obj[parts[i]] = {};
-        obj = obj[parts[i]];
-      }
+      for (let i = 0; i < parts.length - 1; i++) { if (!obj[parts[i]]) obj[parts[i]] = {}; obj = obj[parts[i]]; }
       const last = parts[parts.length - 1];
       let v;
       if (el.type === "checkbox") v = el.checked;
@@ -522,24 +434,18 @@ function bindAllControls() {
       global.TreeUI.refreshTreeView();
     });
   };
-  const btn = (id, fn) => {
-    const el = document.getElementById(id);
-    if (el) el.onclick = fn;
-  };
+  const btn = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
 
   bindSel("fontFamily", "fontFamily");
   bindSel("ignoreLength", "ignoreLength", "bool");
   bindSel("branchLengthField", "branchLengthField");
   bindSel("bootstrapRangeSelect", "bootstrapRange");
-  bindSel("invertSelect", "invert", "bool");   
-on(document.getElementById("forceMidpointRoot"), "change", e => {
-  C.state.forceMidpointRoot = e.target.checked;
-  if (e.target.checked) {
-    C.state.hasRoot = true;
-    C.state.showRoot = true;
-  }
-  global.TreeUI.refreshTreeView();
-});
+  bindSel("invertSelect", "invert", "bool");
+  on(document.getElementById("forceMidpointRoot"), "change", e => {
+    C.state.forceMidpointRoot = e.target.checked;
+    if (e.target.checked) { C.state.hasRoot = true; C.state.showRoot = true; }
+    global.TreeUI.refreshTreeView();
+  });
   bindSel("labelsSelect", "labels", "bool");
   bindSel("labelPositionSelect", "labelPosition");
   bindInp("fontSize", "fontSize", "num");
@@ -552,70 +458,57 @@ on(document.getElementById("forceMidpointRoot"), "change", e => {
   bindSel("dashedSelect", "dashed", "bool");
   bindInp("dashSize", "dashSize", "num");
   bindInp("circularInvertInnerRadius", "circularInvertInnerRadius", "num");
-
-
-  on(document.getElementById("sortModeSelect"), "change", e => {
-    C.state.sortMode = e.target.value;
-    global.TreeUI.refreshTreeView();
-  });
+  on(document.getElementById("sortModeSelect"), "change", e => { C.state.sortMode = e.target.value; global.TreeUI.refreshTreeView(); });
   on(document.getElementById("leafReverseSelect"), "change", e => {
     const v = e.target.value === "true";
     if (C.state.leafReverse === v) return;
     C.state.leafReverse = v;
-    if (C.getRoot()) {
-      T.allWalk(C.getRoot(), n => {
-        if (n.children && n.children.length > 1) n.children.reverse();
-      });
-    }
+    if (C.getRoot()) T.allWalk(C.getRoot(), n => { if (n.children && n.children.length > 1) n.children.reverse(); });
     global.TreeUI.refreshTreeView();
   });
-
   bindSel("axisShowSelect", "axisShow", "bool");
   bindSel("axisPosSelect", "axisPos");
   bindInp("axisRotationInput", "axisRotation", "num");
   bindChk("axisReverseChk", "axisReverse");
-  bindInp("axisMinValInput", "axisMinVal", "num");
-  bindInp("axisMaxValInput", "axisMaxVal", "num");
+  const bindNullableNum = (id, key) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    on(el, "input", e => {
+      const raw = e.target.value;
+      C.state[key] = (raw === '') ? null : Number(raw);
+      global.TreeUI.refreshTreeView();
+    });
+  };
+  bindNullableNum("axisMinValInput", "axisMinVal");
+  bindNullableNum("axisMaxValInput", "axisMaxVal");
   bindPath("tickLabelFontSize", "tickLabelFontSize", "num");
   bindPath("tickLabelBold", "tickLabelBold");
   bindPath("tickLabelItalic", "tickLabelItalic");
-
   bindPath("tickPrimaryInterval", "tickPrimary.interval", "num");
   bindPath("tickPrimaryShowLabels", "tickPrimary.showLabels", "bool");
   bindPath("tickPrimaryShowGrid", "tickPrimary.showGrid", "bool");
   bindPath("tickPrimaryGridDashed", "tickPrimary.gridDashed", "bool");
   bindPath("tickPrimaryGridWidth", "tickPrimary.gridWidth", "num");
   bindPath("tickPrimaryGridColor", "tickPrimary.gridColor");
-
   on(document.getElementById("tickPrimaryCustom"), "change", e => {
     const raw = String(e.target.value == null ? "" : e.target.value).trim();
-    const arr = raw
-      ? raw.split(/[,;\s]+/).map(s => Number(s)).filter(v => isFinite(v) && v >= 0)
-      : [];
+    const arr = raw ? raw.split(/[,;\s]+/).map(s => Number(s)).filter(v => isFinite(v) && v >= 0) : [];
     C.state.tickPrimary.customTicks = arr;
     global.TreeUI.refreshTreeView();
   });
   bindPath("customTickColor", "customTickColor");
   bindPath("customTickBold", "customTickBold");
-
   bindPath("tickSecondaryInterval", "tickSecondary.interval", "num");
   bindPath("tickSecondaryShowLabels", "tickSecondary.showLabels", "bool");
   bindPath("tickSecondaryShowGrid", "tickSecondary.showGrid", "bool");
   bindPath("tickSecondaryGridDashed", "tickSecondary.gridDashed", "bool");
   bindPath("tickSecondaryGridWidth", "tickSecondary.gridWidth", "num");
   bindPath("tickSecondaryGridColor", "tickSecondary.gridColor");
-
   bindChk("showScaleBoxChk", "showScaleBox");
   bindInp("scaleBoxSizeInput", "scaleBoxSize", "num");
   bindInp("scaleBoxTitleInput", "scaleBoxTitle");
-
   bindInp("rootTickValueInput", "rootTickValue", "num");
   bindInp("timeScaleFactorInput", "timeScaleFactor", "num");
-
-  bindSel("nodeIdsSelect", "nodeIds", "bool");
-  bindSel("showLengthSelect", "showLength", "bool");
-  bindSel("showBootstrapSelect", "showBootstrap", "bool");
-  bindSel("bootstrapFormat", "bootstrapFormat");
   bindInp("scaleH", "scaleH", "num");
   bindInp("scaleV", "scaleV", "num");
   bindSel("leafSymbolsSelect", "leafSymbols", "bool");
@@ -632,12 +525,6 @@ on(document.getElementById("forceMidpointRoot"), "change", e => {
   bindInp("intSymBW", "intSymBW", "num");
   bindChk("showLegendChk", "showLegend");
   bindInp("legendTitle", "legendTitle");
-  bindInp("legendColor", "legendColor");
-  bindInp("ringWidth", "ringWidth", "num");
-  bindInp("ringGap", "ringGap", "num");
-  bindInp("ringStroke", "ringStroke");
-  bindInp("ringStrokeWidth", "ringStrokeWidth", "num");
-
   on(document.getElementById("rpBorder"), "input", e => { global.TreeRanges.rangeBorder = Number(e.target.value) || 0; global.TreeUI.refreshTreeView(); });
   on(document.getElementById("rpBorderColor"), "input", e => { global.TreeRanges.rangeBorderColor = e.target.value; global.TreeUI.refreshTreeView(); });
   on(document.getElementById("rangeGradient"), "change", e => { C.state.rangeGradient = e.target.value === "true"; global.TreeUI.refreshTreeView(); });
@@ -646,28 +533,13 @@ on(document.getElementById("forceMidpointRoot"), "change", e => {
     C.state.rangeOpacity = 1 - transparency;
     global.TreeUI.refreshTreeView();
   });
-  on(document.getElementById("rangeCoverSelect"), "change", e => {
-    global.TreeRanges.rangeCover = e.target.value;
-    global.TreeUI.refreshTreeView();
-  });
-  on(document.getElementById("rangeShowLabelsSelect"), "change", e => {
-    global.TreeRanges.rangeShowLabels = e.target.checked;
-    global.TreeUI.refreshTreeView();
-  });
-  on(document.getElementById("rpLabelBoldChk"), "change", e => {
-    global.TreeRanges.rangeLabelBold = e.target.checked;
-    global.TreeUI.refreshTreeView();
-  });
-  on(document.getElementById("rpLabelItalicChk"), "change", e => {
-    global.TreeRanges.rangeLabelItalic = e.target.checked;
-    global.TreeUI.refreshTreeView();
-  });
+  on(document.getElementById("rangeCoverSelect"), "change", e => { global.TreeRanges.rangeCover = e.target.value; global.TreeUI.refreshTreeView(); });
+  on(document.getElementById("rangeShowLabelsSelect"), "change", e => { global.TreeRanges.rangeShowLabels = e.target.checked; global.TreeUI.refreshTreeView(); });
+  on(document.getElementById("rpLabelBoldChk"), "change", e => { global.TreeRanges.rangeLabelBold = e.target.checked; global.TreeUI.refreshTreeView(); });
+  on(document.getElementById("rpLabelItalicChk"), "change", e => { global.TreeRanges.rangeLabelItalic = e.target.checked; global.TreeUI.refreshTreeView(); });
   on(document.getElementById("rpList"), "click", e => {
     const x = e.target.closest(".rp-x");
-    if (x) {
-      global.TreeRanges.removeRange(Number(x.dataset.range));
-      global.TreeUI.refreshTreeView();
-    }
+    if (x) { global.TreeRanges.removeRange(Number(x.dataset.range)); global.TreeUI.refreshTreeView(); }
   });
   on(document.getElementById("rpList"), "input", e => {
     const inp = e.target.closest(".rp-color-edit");
@@ -688,29 +560,12 @@ on(document.getElementById("forceMidpointRoot"), "change", e => {
       if (range) { range.color = ce.value; global.TreeUI.refreshTreeView(); }
     }
   });
-  on(document.getElementById("rpLabelSize"), "input", e => {
-    global.TreeRanges.rangeLabelSize = Number(e.target.value) || 13;
-    global.TreeUI.refreshTreeView();
-  });
-  on(document.getElementById("rpLabelColor"), "input", e => {
-    global.TreeRanges.rangeLabelColor = e.target.value;
-    global.TreeUI.refreshTreeView();
-  });
-
   btn("autoCollapseBtn", () => {
     const kind = document.getElementById("autoCollapse").value;
     const t = Math.max(1, Number(document.getElementById("collapseThreshold").value) || 3);
     let count = 0;
-    if (kind === "short") {
-      T.allWalk(C.getRoot(), n => {
-        if (!T.isLeaf(n) && n !== C.getRoot() && T.visibleLeaves(n).length <= t) { n.collapsed = true; count++; }
-      });
-    }
-    if (kind === "long") {
-      T.allWalk(C.getRoot(), n => {
-        if (!T.isLeaf(n) && n !== C.getRoot() && T.visibleLeaves(n).length >= t) { n.collapsed = true; count++; }
-      });
-    }
+    if (kind === "short") T.allWalk(C.getRoot(), n => { if (!T.isLeaf(n) && n !== C.getRoot() && T.visibleLeaves(n).length <= t) { n.collapsed = true; count++; } });
+    if (kind === "long") T.allWalk(C.getRoot(), n => { if (!T.isLeaf(n) && n !== C.getRoot() && T.visibleLeaves(n).length >= t) { n.collapsed = true; count++; } });
     const st = document.getElementById("status");
     if (st) st.textContent = I.t('statusCollapsed', { n: count });
     global.TreeUI.refreshTreeView();
@@ -718,10 +573,7 @@ on(document.getElementById("forceMidpointRoot"), "change", e => {
   });
   btn("expandAllBtn", () => {
     let count = 0;
-    T.allWalk(C.getRoot(), n => {
-      if (n.collapsed) { n.collapsed = false; count++; }
-      if (n.deleted) { n.deleted = false; count++; }
-    });
+    T.allWalk(C.getRoot(), n => { if (n.collapsed) { n.collapsed = false; count++; } if (n.deleted) { n.deleted = false; count++; } });
     const st = document.getElementById("status");
     if (st) st.textContent = I.t('statusExpanded', { n: count });
     global.TreeUI.refreshTreeView();
@@ -738,10 +590,7 @@ on(document.getElementById("forceMidpointRoot"), "change", e => {
       if (!lbl.includes(q)) return;
       if (scope === "leaf" && isL) { n.deleted = true; hideCount++; }
       else if (scope === "internal" && !isL) { n.collapsed = true; collapseCount++; }
-      else if (scope === "both") {
-        if (isL) { n.deleted = true; hideCount++; }
-        else { n.collapsed = true; collapseCount++; }
-      }
+      else if (scope === "both") { if (isL) { n.deleted = true; hideCount++; } else { n.collapsed = true; collapseCount++; } }
     });
     const st = document.getElementById("status");
     if (st) st.textContent = I.t('statusHidden', { h: hideCount, c: collapseCount });
@@ -813,10 +662,6 @@ function syncControls() {
   set("scaleBoxTitleInput", st.scaleBoxTitle || "Scale");
   set("rootTickValueInput", st.rootTickValue != null ? st.rootTickValue : 0);
   set("timeScaleFactorInput", st.timeScaleFactor);
-  set("nodeIdsSelect", String(st.nodeIds));
-  set("showLengthSelect", String(st.showLength));
-  set("showBootstrapSelect", String(st.showBootstrap));
-  set("bootstrapFormat", st.bootstrapFormat);
   set("scaleH", st.scaleH);
   set("scaleV", st.scaleV);
   set("leafSymbolsSelect", String(st.leafSymbols));
@@ -833,11 +678,6 @@ function syncControls() {
   set("intSymBW", st.intSymBW);
   set("showLegendChk", st.showLegend);
   set("legendTitle", st.legendTitle);
-  set("legendColor", st.legendColor);
-  set("ringWidth", st.ringWidth);
-  set("ringGap", st.ringGap);
-  set("ringStroke", st.ringStroke);
-  set("ringStrokeWidth", st.ringStrokeWidth);
 }
 
 function rebuildSidebarNav() {
@@ -914,14 +754,8 @@ function initSidebar() {
   window.addEventListener("resize", updatePos);
   window.addEventListener("scroll", updatePos, { passive: true });
   const header = document.getElementById("common-header");
-  if (header && window.ResizeObserver) {
-    const ro = new ResizeObserver(() => updatePos());
-    ro.observe(header);
-  }
-  if (header && window.MutationObserver) {
-    const mo = new MutationObserver(() => updatePos());
-    mo.observe(header, { childList: true, subtree: true, attributes: true });
-  }
+  if (header && window.ResizeObserver) { const ro = new ResizeObserver(() => updatePos()); ro.observe(header); }
+  if (header && window.MutationObserver) { const mo = new MutationObserver(() => updatePos()); mo.observe(header, { childList: true, subtree: true, attributes: true }); }
   const nav = sidebar.querySelector(".tsb-nav");
   if (nav) {
     nav.addEventListener("click", e => {
@@ -943,19 +777,15 @@ function initSidebar() {
 function init() {
   if (window.__treeAppInited) return;
   window.__treeAppInited = true;
-
   renderTreeImportPanel();
   global.TreeAppData.renderDataPanel();
   initSidebar();
-
   if (global.TreeUIBasic) global.TreeUIBasic.renderBasicPanel(document.getElementById("basicStylePanel"));
   if (global.TreeUIAdvanced) global.TreeUIAdvanced.renderAdvancedPanel(document.getElementById("advancedStylePanel"));
   if (global.TreeUITracks) global.TreeUITracks.renderDatasetsPanel(document.getElementById("datasetsPanel"));
-
   syncControls();
   bindAllControls();
   rebuildSidebarNav();
-
   ["showLeafNodes", "showInternalNodes", "showOnlyWithSupport"].forEach(id => {
     document.getElementById(id)?.addEventListener("change", global.TreeAppNodes.renderNodeTable);
   });
@@ -965,10 +795,7 @@ function init() {
   document.getElementById("fillNodeIdsBtn")?.addEventListener("click", global.TreeAppNodes.fillNodeIdsInMetaPanel);
   document.getElementById("generateNodeRandomBtn")?.addEventListener("click", global.TreeAppNodes.generateNodeRandomData);
   document.getElementById("mergeNodeMetaBtn")?.addEventListener("click", global.TreeAppNodes.mergeNodeMetaData);
-  document.getElementById("nodeTableBox")?.addEventListener("toggle", e => {
-    if (e.target.open) global.TreeAppNodes.renderNodeTable();
-  });
-
+  document.getElementById("nodeTableBox")?.addEventListener("toggle", e => { if (e.target.open) global.TreeAppNodes.renderNodeTable(); });
   document.addEventListener("click", (e) => {
     const panel = document.getElementById("nodeActionPanel");
     if (panel && !panel.contains(e.target)) panel.style.display = "none";
@@ -993,7 +820,6 @@ function init() {
       bp.style.top = Math.max(8, t) + "px";
     }
   });
-
   document.getElementById("drawBtn")?.addEventListener("click", drawTree);
   document.getElementById("exportSvgBtn")?.addEventListener("click", () => {
     if (!C.getSvg()) return;
@@ -1002,36 +828,27 @@ function init() {
   });
   document.getElementById("exportPngBtn")?.addEventListener("click", async () => {
     if (!C.getSvg()) return;
-    try {
-      await global.TreeExport.downloadPng(2, "phylogenetic_tree.png");
-      showToolbar(I.t('treeMsgExportPng'));
-    } catch (_) { showToolbar(I.t('treeMsgExportPngErr')); }
+    try { await global.TreeExport.downloadPng(2, "phylogenetic_tree.png"); showToolbar(I.t('treeMsgExportPng')); }
+    catch (_) { showToolbar(I.t('treeMsgExportPngErr')); }
   });
   document.getElementById("saveExportStateBtn")?.addEventListener("click", () => {
     if (!C.getRoot()) return;
     const raw = C.captureSnapshot();
     global.TreeExport.download("tree-export-state.json", raw, "application/json");
   });
-
   global.TreeAppData.refreshDataSummary();
   global.TreeAppData.renderLeafDataPreview();
-
   if (global.PlotBootstrap && PlotBootstrap.ensureD3) PlotBootstrap.ensureD3().catch(() => {});
-
   setTimeout(() => {
     ['donateModal', 'donatePopup', 'donateBox'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) {
-        el.style.zIndex = '20000';
-        if (getComputedStyle(el).position === 'absolute') el.style.position = 'fixed';
-      }
+      if (el) { el.style.zIndex = '20000'; if (getComputedStyle(el).position === 'absolute') el.style.position = 'fixed'; }
     });
   }, 300);
 }
 
 global.TreeApp = {
-  init, drawTree, loadTree,
-  enableWheelZoom,
+  init, drawTree, loadTree, enableWheelZoom,
   refreshTreeView: () => global.TreeUI.refreshTreeView(),
   showNodeActionPanel: (id, x, y) => global.TreeAppNodes.showNodeActionPanel(id, x, y),
   showBranchActionPanel: (id, x, y) => global.TreeAppNodes.showBranchActionPanel(id, x, y),
@@ -1040,5 +857,4 @@ global.TreeApp = {
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
 else init();
-
 })(window);

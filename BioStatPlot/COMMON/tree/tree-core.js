@@ -1,6 +1,5 @@
 (function (global) {
 'use strict';
-
 const ctx = {
   svg: null, root: null, idSeq: 0,
   viewBox: { x: 0, y: 0, w: 1000, h: 760 },
@@ -22,14 +21,10 @@ const ctx = {
     labelAnchorRect: "left",
     labelAnchorCirc: "auto",
     labelShift: 0,
-    leafLabelOffsetX: 8,
-    leafLabelOffsetCirc: 8,
-    showLegend: true, legendX: 760, legendY: 60, legendSize: 14, legendFont: "",
-    legendColor: "#222222", legendBold: false, legendItalic: false, legendTitle: "Groups",
-    ringWidth: 18, ringGap: 16, ringStroke: "#ffffff", ringStrokeWidth: 0,
+    showLegend: true, legendX: 760, legendY: 60, 
+    legendColor: "#222222", legendTitle: "Groups",
     extendBranches: true, branchWidth: 1, branchColor: "#262626",
     rangeGradient: false, rangeOpacity: 0.85,
-    barShowAxis: true, barShowValues: true, barWidth: 110, barFontSize: 16,
     dashed: false, dashSize: 0.3,
     nodeIds: false,
     leafSymbols: false, internalSymbols: false,
@@ -45,6 +40,7 @@ const ctx = {
     hasRoot: true,
     axisShow: true, axisPos: "bottom", axisRotation: 0, axisReverse: false,
     axisMinVal: null, axisMaxVal: null,
+    axisExtendStart: 0, axisExtendEnd: 0,
     tickPrimary: { interval: 0, showLabels: true, showGrid: false, gridDashed: false, gridWidth: 1, gridColor: "#dddddd", customTicks: [] },
     tickSecondary: { interval: 0, showLabels: false, showGrid: false, gridDashed: false, gridWidth: 1, gridColor: "#dddddd", customTicks: [] },
     tickLabelFontSize: 15, tickLabelBold: false, tickLabelItalic: false,
@@ -54,15 +50,18 @@ const ctx = {
     scaleBoxOffsetX: 0, scaleBoxOffsetY: 0,
     lengthLabel: {
       show: false, fontSize: 9, bold: false, italic: false,
+      color: "#000000", opacity: 1,
       decimals: 2, offsetX: 0, offsetY: -3,
       offsetTangent: 0, offsetRadial: 0,
-      bgShow: false, bgBorderColor: "#999999", bgBorderWidth: 1, bgFill: "#ffffff",
+      bgShow: false, bgColor: "#ffffff", bgOpacity: 1,
+      bgBorderColor: "#999999", bgBorderWidth: 1, bgFill: "#ffffff",
       asTime: false, timeRootAge: 0, timeFactor: 1,
       ciField: ""
     },
     nodeLabels: [],
     nodeLabelCommon: {
       fontSize: 15, bold: false, italic: false,
+      color: "#333333", opacity: 1,
       offsetX: -10, offsetY: -6,
       offsetTangent: 0, offsetRadial: -40,
       bgShow: false, bgBorderColor: "#999999", bgBorderWidth: 1, bgFill: "#ffffff",
@@ -78,6 +77,36 @@ const ctx = {
       lineHeight: 8, color: "#67cb9e",
       outlineColor: "#333333", outlineWidth: 0,
       opacity: 0.8
+    },
+    extendLineStyle: {
+      stroke: '#888888', strokeWidth: 1, opacity: 0.7,
+      lineStyle: 'dashed', dashSize: 2, gapSize: 3
+    },
+    textStyles: {
+      rangeLabel: { fontFamily: '', fontSize: 12, bold: true, italic: false, color: '#333333', opacity: 1,
+                    bgShow: false, bgColor: '#ffffff', bgOpacity: 1, bgBorderColor: '#999999', bgBorderWidth: 0,
+                    align: 'middle', x: null, y: null, offsetTangent: 0, offsetRadial: 0 },
+      geoText:   { fontFamily: '', fontSize: 11, bold: true, italic: false, color: '#222222', opacity: 1,
+                    bgShow: false, bgColor: '#ffffff', bgOpacity: 1, bgBorderColor: '#999999', bgBorderWidth: 0,
+                    align: 'middle', x: null, y: null, offsetTangent: 0, offsetRadial: 0 },
+      pieMarker: { fontFamily: '', fontSize: 10, bold: false, italic: false, color: '#333333', opacity: 1,
+                    bgShow: false, bgColor: '#ffffff', bgOpacity: 1, bgBorderColor: '#999999', bgBorderWidth: 0,
+                    align: 'middle', x: null, y: null, offsetTangent: 0, offsetRadial: 0 },
+      scaleBoxTitle: { fontFamily: '', fontSize: 12, bold: true, italic: false, color: '#333333', opacity: 1,
+                    bgShow: false, bgColor: '#ffffff', bgOpacity: 1, bgBorderColor: '#999999', bgBorderWidth: 0,
+                    align: 'middle', x: null, y: null, offsetTangent: 0, offsetRadial: 0 },
+      scaleBoxText:  { fontFamily: '', fontSize: 12, bold: false, italic: false, color: '#333333', opacity: 1,
+                    bgShow: false, bgColor: '#ffffff', bgOpacity: 1, bgBorderColor: '#999999', bgBorderWidth: 0,
+                    align: 'middle', x: null, y: null, offsetTangent: 0, offsetRadial: 0 },
+      legendTitle:   { fontFamily: '', fontSize: 30, bold: true, italic: false, color: '#333333', opacity: 1,
+                    bgShow: false, bgColor: '#ffffff', bgOpacity: 1, bgBorderColor: '#999999', bgBorderWidth: 0,
+                    align: 'middle', x: null, y: null, offsetTangent: 0, offsetRadial: 0 },
+      legendText:    { fontFamily: '', fontSize: 15, bold: false, italic: false, color: '#333333', opacity: 1,
+                    bgShow: false, bgColor: '#ffffff', bgOpacity: 1, bgBorderColor: '#999999', bgBorderWidth: 0,
+                    align: 'middle', x: null, y: null, offsetTangent: 0, offsetRadial: 0 },
+      trackText:     { fontFamily: '', fontSize: 10, bold: false, italic: false, color: '#333333', opacity: 1,
+                    bgShow: false, bgColor: '#ffffff', bgOpacity: 1, bgBorderColor: '#999999', bgBorderWidth: 0,
+                    align: 'middle', x: null, y: null, offsetTangent: 0, offsetRadial: 0 }
     }
   }
 };
@@ -97,37 +126,28 @@ function el(tag, attrs, parent) {
 }
 
 function isTrue(v) { return v === true || v === "true"; }
+
 function getAxisRange(maxD) {
   const st = ctx.state;
   const isTime = !!st.timeTreeMode;
   const timeFactor = isTime ? (Number(st.timeScaleFactor) || 1) : 1;
   const rootTick = isTime ? (Number(st.rootTickValue) || 0) : 0;
-
   const dataDefaultMin = rootTick;
   const dataDefaultMax = rootTick + maxD * timeFactor;
-
   const minRaw = st.axisMinVal;
   const maxRaw = st.axisMaxVal;
-  const hasMin = minRaw !== null && minRaw !== undefined && minRaw !== ''
-              && Number.isFinite(Number(minRaw));
-  const hasMax = maxRaw !== null && maxRaw !== undefined && maxRaw !== ''
-              && Number.isFinite(Number(maxRaw));
-
+  const hasMin = minRaw !== null && minRaw !== undefined && minRaw !== '' && Number.isFinite(Number(minRaw));
+  const hasMax = maxRaw !== null && maxRaw !== undefined && maxRaw !== '' && Number.isFinite(Number(maxRaw));
   const dataMin = hasMin ? Number(minRaw) : dataDefaultMin;
   const dataMax = hasMax ? Number(maxRaw) : dataDefaultMax;
-
   const hLo = (dataMin - rootTick) / timeFactor;
   const hHi = (dataMax - rootTick) / timeFactor;
-
-  return {
-    vLo: Math.min(hLo, hHi),
-    vHi: Math.max(hLo, hHi),
-    hasMin, hasMax
-  };
+  return { vLo: Math.min(hLo, hHi), vHi: Math.max(hLo, hHi), hasMin, hasMax };
 }
 
 function nextId() { return "n" + (++ctx.idSeq); }
 function resetIdSeq() { ctx.idSeq = 0; }
+
 function restoreParents(n, parent) {
   if (!n) return;
   n.parent = parent;
@@ -144,6 +164,7 @@ function buildSnapshotObj() {
   };
 }
 function captureSnapshot() { return JSON.stringify(buildSnapshotObj()); }
+
 function applySnapshot(raw) {
   const snap = JSON.parse(raw);
   if (snap.root) { ctx.root = snap.root; restoreParents(ctx.root, null); }

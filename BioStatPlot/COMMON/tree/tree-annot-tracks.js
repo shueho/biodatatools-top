@@ -6,8 +6,56 @@ const L = global.TreeLayout;
 const N = global.TreeDrawNode;
 const TT = global.TreeText;
 const I = global.TreeI18N;
+const SS = global.TreeStyle;
+const W = global.TreeCommonWidgets;
+const drawText = (p, x, y, t, s, ts, e) => W.drawTextWithBg(TT, p, x, y, t, s, ts, e);
 
 function fontFam() { return C.state.fontFamily || 'Times New Roman'; }
+
+function trackTextStyle(t) {
+  const base = Object.assign({}, C.state.textStyles.trackText || {});
+  const ts = t.textStyle || {};
+  return SS.textStyle(Object.assign({}, base, {
+    fontFamily: ts.fontFamily || base.fontFamily || C.state.fontFamily,
+    fontSize: ts.fontSize != null ? ts.fontSize : (t.textFontSize || base.fontSize || 10),
+    bold: ts.bold != null ? ts.bold : (t.textBold != null ? t.textBold : base.bold),
+    italic: ts.italic != null ? ts.italic : (t.textItalic != null ? t.textItalic : base.italic),
+    color: ts.color || t.textColor || base.color || '#333333',
+    opacity: ts.opacity != null ? ts.opacity : (base.opacity != null ? base.opacity : 1),
+    bgShow: ts.bgShow != null ? ts.bgShow : base.bgShow,
+    bgColor: ts.bgColor || base.bgColor,
+    bgOpacity: ts.bgOpacity != null ? ts.bgOpacity : base.bgOpacity,
+    bgBorderColor: ts.bgBorderColor || base.bgBorderColor,
+    bgBorderWidth: ts.bgBorderWidth != null ? ts.bgBorderWidth : base.bgBorderWidth,
+    align: ts.align || base.align,
+    x: ts.x != null ? ts.x : base.x,
+    y: ts.y != null ? ts.y : base.y,
+    offsetTangent: ts.offsetTangent != null ? ts.offsetTangent : base.offsetTangent,
+    offsetRadial: ts.offsetRadial != null ? ts.offsetRadial : base.offsetRadial
+  }));
+}
+function trackBorderStyle(t) {
+  const bs = t.borderStyle || {};
+  return SS.lineStyle({
+    stroke: bs.stroke || t.borderColor || '#ffffff',
+    strokeWidth: bs.strokeWidth != null ? bs.strokeWidth : (t.borderWidth || 0),
+    opacity: bs.opacity != null ? bs.opacity : 1,
+    lineStyle: bs.lineStyle || (t.boxDashed ? 'dashed' : 'solid'),
+    dashSize: bs.dashSize != null ? bs.dashSize : 4,
+    gapSize: bs.gapSize != null ? bs.gapSize : 3
+  });
+}
+function trackShapeStyle(t) {
+  const ss = t.shapeStyle || {};
+  return SS.shapeStyle({
+    shape: ss.shape || t.shape || 'square',
+    size: ss.size != null ? ss.size : (t.binarySize || t.symbolSize || 0),
+    fillColor: ss.fillColor || t.fill1 || '#E64B35',
+    fillOpacity: ss.fillOpacity != null ? ss.fillOpacity : 1,
+    strokeColor: ss.strokeColor || t.outlineColor || '#333333',
+    strokeWidth: ss.strokeWidth != null ? ss.strokeWidth : (t.outlineWidth || 0)
+  });
+}
 
 let customTracks = [];
 let trackSeq = 0;
@@ -20,26 +68,14 @@ let trackCommon = {
   autoShapeSize: true
 };
 const TRACK_TYPE_LABEL_KEYS = {
-  colorstrip: 'trackTypeColorstrip',
-  binary: 'trackTypeBinary',
-  heatstrip: 'trackTypeHeatstrip',
-  bar: 'trackTypeBar',
-  text: 'trackTypeText',
-  multisymbol: 'trackTypeMultisymbol',
-  stackedbar: 'trackTypeStackedbar',
-  pie: 'trackTypePie',
-  groupedbar: 'trackTypeGroupedbar',
-  multiheatmap: 'trackTypeMultiheatmap',
-  legend: 'trackTypeLegend'
+  colorstrip: 'trackTypeColorstrip', binary: 'trackTypeBinary', heatstrip: 'trackTypeHeatstrip',
+  bar: 'trackTypeBar', text: 'trackTypeText', multisymbol: 'trackTypeMultisymbol',
+  stackedbar: 'trackTypeStackedbar', pie: 'trackTypePie', groupedbar: 'trackTypeGroupedbar',
+  multiheatmap: 'trackTypeMultiheatmap', legend: 'trackTypeLegend'
 };
 
-function trackTypeLabel(type) {
-  const k = TRACK_TYPE_LABEL_KEYS[type];
-  return k ? I.t(k) : type;
-}
-function trackDefaultName(type, column) {
-  return column ? column : trackTypeLabel(type);
-}
+function trackTypeLabel(type) { const k = TRACK_TYPE_LABEL_KEYS[type]; return k ? I.t(k) : type; }
+function trackDefaultName(type, column) { return column ? column : trackTypeLabel(type); }
 
 function newTrackDefaults(type) {
   return {
@@ -48,8 +84,10 @@ function newTrackDefaults(type) {
     collapsed: false, offset: 0, offsetX: 0, width: 0,
     palette: 'tableau10',
     borderColor: '#ffffff', borderWidth: 0,
+    borderStyle: null,
     showBorder: true, mergeGroups: false, customColors: {},
     shape: 'square', outlineColor: '#333333', outlineWidth: 1,
+    shapeStyle: null,
     binarySize: 0, symbolSize: 0,
     fill0: '#ffffff', fill1: '#E64B35',
     binaryLogic: 'eq', binaryValue: '',
@@ -58,15 +96,16 @@ function newTrackDefaults(type) {
     gradient: 'Viridis', gradientMin: null, gradientMax: null,
     gradientReverse: false, gradientStops: null,
     legendTickInterval: null, legendTickDecimals: 2,
-    legendTickCount: 3,
-    legendTickBold: true,
-    barColor: '#4DBBD5',
+    legendTickCount: 3, legendTickBold: true,
+    barColor: '#4DBBD5', barColorMode: 'uniform', barColorColumn: '',
+    barAxisValue: 0,
+    _barColorCache: null, _barColorMap: null,
     barOutlineColor: '#333333', barOutlineWidth: 0, barOutlineDashed: false,
     boxColor: '#bbbbbb', boxWidth: 0.5, boxDashed: false, showBox: false,
     barLength: 100, barWidth: 0, showValues: true, showAxisNumbers: true,
     refLines: [], axisMin: null, axisMax: null, axisInterval: null,
     textBold: false, textItalic: false, textFontSize: 10, textAlign: 'left',
-    textOrientation: 'horizontal', textAutoWidth: false,
+    textOrientation: 'horizontal', textAutoWidth: false, textStyle: null,
     fillOpacity: 1, showText: false, textColor: '#333333',
     colorstripTextOffsetX: 0, colorstripTextOffsetY: 0,
     uniformShape: 'square', shapeMap: {}, columnColors: {},
@@ -87,6 +126,65 @@ function datasetValue(ds, leaf) {
   const v = ds.data[T.labelOf(leaf)];
   if (v != null) return v;
   return ds.data[leaf.name];
+}
+function getLeafColumnValue(leaf, column) {
+  const ld = getLeafData();
+  if (!ld || !column) return null;
+  const candidates = [];
+  if (leaf.name) candidates.push(String(leaf.name).trim());
+  const lbl = T.labelOf(leaf);
+  if (lbl && candidates.indexOf(String(lbl).trim()) < 0) candidates.push(String(lbl).trim());
+  for (let ci = 0; ci < candidates.length; ci++) {
+    const key = candidates[ci];
+    if (!key) continue;
+    if (ld.leafMap) { const row = ld.leafMap.get(key); if (row) return row[column]; }
+    if (ld.rows) {
+      for (let i = 0; i < ld.rows.length; i++) {
+        if (String(ld.rows[i].Leaf || '').trim() === key) return ld.rows[i][column];
+      }
+    }
+  }
+  return null;
+}
+function getBarColumnValues(track) {
+  if (!track || !track.barColorColumn) return [];
+  const out = []; const seen = new Set();
+  T.visibleLeaves(C.getRoot()).forEach(l => {
+    const v = getLeafColumnValue(l, track.barColorColumn);
+    if (v == null || v === '') return;
+    const s = String(v);
+    if (seen.has(s)) return;
+    seen.add(s); out.push(s);
+  });
+  out.sort();
+  return out;
+}
+function getBarColorMap(track) {
+  if (track._barColorMap) return track._barColorMap;
+  const map = {};
+  if (track.barColorMode !== 'column' || !track.barColorColumn) { track._barColorMap = map; return map; }
+  const vals = getBarColumnValues(track);
+  const pal = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
+  vals.forEach((v, i) => { map[v] = (track.customColors && track.customColors[v]) || pal[i % pal.length]; });
+  track._barColorMap = map;
+  return map;
+}
+function barColorOf(track, leaf, colorMap) {
+  const mode = track.barColorMode || 'uniform';
+  if (mode === 'leafGroup' && global.TreeRanges && typeof global.TreeRanges.getRangeColorForNode === 'function') {
+    const c = global.TreeRanges.getRangeColorForNode(leaf);
+    if (c) return c;
+    return track.barColor || '#4DBBD5';
+  }
+  if (mode === 'column' && track.barColorColumn) {
+    const v = getLeafColumnValue(leaf, track.barColorColumn);
+    if (v == null || v === '') return track.barColor || '#4DBBD5';
+    const s = String(v);
+    if (/^#[0-9a-fA-F]{3,8}$/.test(s) || /^rgb/.test(s)) return s;
+    const map = getBarColorMap(track);
+    return map[s] || track.barColor || '#4DBBD5';
+  }
+  return track.barColor || '#4DBBD5';
 }
 function buildTrackData(column) {
   const ld = getLeafData(); const data = {};
@@ -111,18 +209,14 @@ function buildMultiTrackData(columns) {
 }
 function refreshTrackData(t) {
   if (!t) return;
-  if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'multiheatmap') {
-    t.data = buildMultiTrackData(t.columns);
-  } else if (t.type === 'multisymbol') {
-    t.data = buildTrackData(t.column || t.shapeColumn);
-  } else {
-    t.data = buildTrackData(t.column);
-  }
+  if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'multiheatmap') t.data = buildMultiTrackData(t.columns);
+  else if (t.type === 'multisymbol') t.data = buildTrackData(t.column || t.shapeColumn);
+  else t.data = buildTrackData(t.column);
   t._colorCache = null; t._shapeCache = null;
 }
 function defaultLegendTitle(t) {
   if (!t) return '';
-  if (t.type === 'stackedbar' || t.type === 'pie') return (t.columns && t.columns[0]) || '';
+  if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar') return (t.columns && t.columns[0]) || '';
   if (t.type === 'multisymbol') return t.column || t.shapeColumn || '';
   return t.column || '';
 }
@@ -146,6 +240,9 @@ function updateCustomTrack(id, patch) {
     if (titleWasDefault) t.legendTitle = defaultLegendTitle(t);
   }
   if (patch.palette || patch.customColors) t._colorCache = null;
+  if (patch.palette || patch.customColors || patch.barColorColumn || patch.barColorMode || patch.barColor) t._barColorMap = null;
+  if (['barColorMode','barColorColumn','barColor','palette','customColors'].some(k => k in patch)) t._barColorCache = null;
+  if (patch.shapeStyle) t._shapeCache = null;
 }
 function removeCustomTrack(id) { customTracks = customTracks.filter(x => x.id !== id); }
 function toggleCustomTrack(id) {
@@ -157,11 +254,7 @@ function collectUniqueValues(t) {
   const out = []; const seen = new Set();
   const excluded = new Set((t.excludedValues || []).map(String));
   const leaves = T.visibleLeaves(C.getRoot());
-  const add = v => {
-    const s = String(v);
-    if (excluded.has(s)) return;
-    if (!seen.has(s)) { seen.add(s); out.push(s); }
-  };
+  const add = v => { const s = String(v); if (excluded.has(s)) return; if (!seen.has(s)) { seen.add(s); out.push(s); } };
   leaves.forEach(l => {
     const raw = datasetValue(t, l);
     if (raw == null || raw === '') return;
@@ -175,22 +268,21 @@ function getTrackColorMap(t) {
   const pal = global.TreePalette.getCategoricalScheme(t.palette || 'tableau10');
   const cache = {};
   const uniq = collectUniqueValues(t);
-  uniq.forEach((v, i) => {
-    cache[v] = (t.customColors && t.customColors[v]) || pal[i % pal.length];
-  });
+  uniq.forEach((v, i) => { cache[v] = (t.customColors && t.customColors[v]) || pal[i % pal.length]; });
   t._colorCache = cache;
   return cache;
 }
-function colorOf(track, value, colorMap) {
+function colorOf(track, value, colorMap, fallbackColor) {
   const v = String(value);
-  return (track.customColors && track.customColors[v]) || colorMap[v] || '#cccccc';
+  const custom = track.customColors && track.customColors[v];
+  if (custom) return custom;
+  if (fallbackColor) return fallbackColor;
+  return colorMap[v] || '#cccccc';
 }
 function isExcluded(track, value) {
   if (!track || !track.excludedValues || !track.excludedValues.length) return false;
   const s = String(value);
-  for (let i = 0; i < track.excludedValues.length; i++) {
-    if (String(track.excludedValues[i]) === s) return true;
-  }
+  for (let i = 0; i < track.excludedValues.length; i++) if (String(track.excludedValues[i]) === s) return true;
   return false;
 }
 function computeTrackWidth(track, opts) {
@@ -198,6 +290,7 @@ function computeTrackWidth(track, opts) {
   if (track.type === 'legend') return 0;
   if (!opts.radial && track.type === 'colorstrip' && track.textAutoWidth && track.showText) {
     const ld = getLeafData();
+    const ts = trackTextStyle(track);
     let maxW = 40;
     if (ld && ld.rows && track.column) {
       const seen = new Set();
@@ -207,7 +300,7 @@ function computeTrackWidth(track, opts) {
         const s = String(v);
         if (seen.has(s)) return;
         seen.add(s);
-        const tw = global.PlotCommon.measureText(s, Number(track.textFontSize) || 10);
+        const tw = global.PlotCommon.measureText(s, ts.fontSize);
         if (tw > maxW) maxW = tw;
       });
     }
@@ -232,8 +325,9 @@ function computeTrackWidth(track, opts) {
     default: return 22;
   }
 }
-function drawTrackSymbol(shape, cx, cy, s, fill, stroke, sw, parent) {
+function drawTrackSymbol(shape, cx, cy, s, fill, stroke, sw, parent, fillOpacity) {
   const attrs = { fill };
+  if (fillOpacity != null && fillOpacity < 1) attrs["fill-opacity"] = fillOpacity;
   if (stroke && sw > 0) { attrs.stroke = stroke; attrs['stroke-width'] = sw; }
   if (shape === 'square') return C.el('rect', { x: cx - s, y: cy - s, width: s * 2, height: s * 2, ...attrs }, parent);
   if (shape === 'triangle') return C.el('polygon', { points: `${cx},${cy - s} ${cx + s},${cy + s} ${cx - s},${cy + s}`, ...attrs }, parent);
@@ -286,35 +380,30 @@ function evalBinaryLogic(track, v) {
 function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
   const colorMap = getTrackColorMap(track);
   const ff = fontFam();
-  const border = Number(track.borderWidth) > 0 && track.showBorder !== false;
-  const stroke = border ? (track.borderColor || '#333') : 'none';
-  const sw = border ? Number(track.borderWidth) : 0;
+  const bs = trackBorderStyle(track);
+  const showBorder = (track.showBorder !== false) && bs.strokeWidth > 0;
+  const stroke = showBorder ? bs.stroke : 'none';
+  const sw = showBorder ? bs.strokeWidth : 0;
+  const dashArr = showBorder ? SS.dashArrayOf(bs) : '';
+  const opa = showBorder ? bs.opacity : 1;
   const rowOf = l => (rowBounds && rowBounds.get(l)) || { top: l.y - rowH / 2, bottom: l.y + rowH / 2 };
+  const ts = trackTextStyle(track);
 
   if (track.type === 'colorstrip') {
     const fillOpacity = track.fillOpacity != null ? Number(track.fillOpacity) : 1;
     const showText = !!track.showText;
-    const fontSize = Number(track.textFontSize) || 10;
-    const textColor = track.textColor || '#333333';
-    const bold = track.textBold ? 700 : 400;
-    const italic = track.textItalic ? 'italic' : 'normal';
     const vertical = track.textOrientation === 'vertical';
-    const textStyle = TT.fromParts({ font: ff, size: fontSize, bold: track.textBold, italic: track.textItalic, color: textColor });
+    const textStyle = TT.fromParts({ font: ts.fontFamily || ff, size: ts.fontSize, bold: ts.bold, italic: ts.italic, color: ts.color });
     const drawBlock = (top, bottom, value) => {
-      C.el("rect", {
-        x, y: top, width: w, height: Math.max(1, bottom - top),
-        fill: colorOf(track, value, colorMap), opacity: fillOpacity,
-        stroke, "stroke-width": sw
-      });
+      const attrs = { x, y: top, width: w, height: Math.max(1, bottom - top), fill: colorOf(track, value, colorMap), opacity: fillOpacity };
+      if (showBorder) { attrs.stroke = stroke; attrs["stroke-width"] = sw; attrs["stroke-dasharray"] = dashArr; attrs["stroke-opacity"] = opa; }
+      C.el("rect", attrs);
       if (showText && value != null && value !== '') {
         const cy = (top + bottom) / 2 + (Number(track.colorstripTextOffsetY) || 0);
         const cx = x + w / 2 + (Number(track.colorstripTextOffsetX) || 0);
-        const extra = {
-          "text-anchor": "middle", "dominant-baseline": "middle",
-          "pointer-events": "none"
-        };
+        const extra = { "text-anchor": "middle", "dominant-baseline": "middle", "pointer-events": "none" };
         if (vertical) extra.transform = `rotate(-90 ${cx} ${cy})`;
-        TT.draw(null, cx, cy, String(value), textStyle, extra);
+        drawText(null, cx, cy, String(value), textStyle, ts, extra);
       }
     };
     if (track.mergeGroups) {
@@ -356,13 +445,12 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
       if (track.gradientReverse) t = 1 - t;
       const fill = sampleTrackColor(track, t);
       const row = rowOf(l);
-      C.el("rect", {
-        x, y: row.top, width: w,
-        height: row.bottom - row.top,
-        fill, stroke, "stroke-width": sw
-      });
+      const attrs = { x, y: row.top, width: w, height: row.bottom - row.top, fill };
+      if (showBorder) { attrs.stroke = stroke; attrs["stroke-width"] = sw; attrs["stroke-dasharray"] = dashArr; attrs["stroke-opacity"] = opa; }
+      C.el("rect", attrs);
     });
   } else if (track.type === 'binary') {
+    const shapeStyle = trackShapeStyle(track);
     leaves.forEach(l => {
       const v = datasetValue(track, l);
       if (v == null || v === '') return;
@@ -373,43 +461,41 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
       const row = rowOf(l);
       const cy = (row.top + row.bottom) / 2;
       const autoSize = Math.min(row.bottom - row.top, w) * 0.42;
-      const useManual = (trackCommon.autoShapeSize === false) && Number(track.binarySize) > 0;
-      const size = useManual ? Math.max(1, Number(track.binarySize)) : autoSize;
-      drawTrackSymbol(track.shape || 'square', x + w / 2, cy, size, fill, track.outlineColor, track.outlineWidth);
+      const useManual = (trackCommon.autoShapeSize === false) && Number(shapeStyle.size) > 0;
+      const size = useManual ? Math.max(1, Number(shapeStyle.size)) : autoSize;
+      drawTrackSymbol(shapeStyle.shape || 'square', x + w / 2, cy, size, fill, shapeStyle.strokeColor, shapeStyle.strokeWidth, null, shapeStyle.fillOpacity);
     });
   } else if (track.type === 'bar') {
     drawBarTrackAdvanced(track, x, w, leaves, rowOf, invert);
   } else if (track.type === 'text') {
     const align = track.textAlign || 'left';
     const actualAlign = invert ? (align === 'left' ? 'right' : align === 'right' ? 'left' : 'center') : align;
-    const fs = Number(track.textFontSize) || 10;
-    const textStyle = TT.fromParts({ font: ff, size: fs, bold: track.textBold, italic: track.textItalic });
     leaves.forEach(l => {
       const v = datasetValue(track, l);
       if (v == null || v === '') return;
       if (isExcluded(track, v)) return;
       const txt = String(v);
-      const fill = colorOf(track, txt, colorMap);
+      const fill = colorOf(track, txt, colorMap, ts.color);
       const xPos = actualAlign === 'left' ? x + 2 : actualAlign === 'right' ? x + w - 2 : x + w / 2;
       const anchor = actualAlign === 'left' ? 'start' : actualAlign === 'right' ? 'end' : 'middle';
-      TT.draw(null, xPos, l.y + fs * 0.34, txt, textStyle.clone({ color: fill }), {
-        'text-anchor': anchor
-      });
+      const style = TT.fromParts({ font: ts.fontFamily || ff, size: ts.fontSize, bold: ts.bold, italic: ts.italic, color: fill });
+      drawText(null, xPos, l.y + ts.fontSize * 0.34, txt, style, ts, { 'text-anchor': anchor });
     });
   } else if (track.type === 'multisymbol') {
+    const shapeStyle = trackShapeStyle(track);
     leaves.forEach(l => {
       const v = datasetValue(track, l);
       if (v == null || v === '') return;
       if (isExcluded(track, v)) return;
       const key = String(v);
-      const shape = (track.shapeMap && track.shapeMap[key]) || track.uniformShape || 'square';
+      const shape = (track.shapeMap && track.shapeMap[key]) || shapeStyle.shape || 'square';
       const fill = colorOf(track, key, colorMap);
       const row = rowOf(l);
       const cy = (row.top + row.bottom) / 2;
       const autoSize = Math.min(row.bottom - row.top, w) * 0.42;
-      const useManual = (trackCommon.autoShapeSize === false) && Number(track.symbolSize) > 0;
-      const size = useManual ? Math.max(1, Number(track.symbolSize)) : autoSize;
-      drawTrackSymbol(shape, x + w / 2, cy, size, fill, track.outlineColor, track.outlineWidth || 0);
+      const useManual = (trackCommon.autoShapeSize === false) && Number(shapeStyle.size) > 0;
+      const size = useManual ? Math.max(1, Number(shapeStyle.size)) : autoSize;
+      drawTrackSymbol(shape, x + w / 2, cy, size, fill, shapeStyle.strokeColor, shapeStyle.strokeWidth, null, shapeStyle.fillOpacity);
     });
   } else if (track.type === 'stackedbar') {
     drawStackedBarAdvanced(track, x, w, leaves, rowOf, invert);
@@ -433,17 +519,11 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
       vals.forEach((v, i) => {
         const frac = Math.max(0, v) / tot;
         const a1 = a0 + frac * 360;
-        if (frac >= 0.999) {
-          C.el('circle', { cx: x + w / 2, cy, r, fill: colorFor(track.columns[i], i) });
-          return;
-        }
+        if (frac >= 0.999) { C.el('circle', { cx: x + w / 2, cy, r, fill: colorFor(track.columns[i], i) }); return; }
         const p0 = L.polar(x + w / 2, cy, r, a0);
         const p1 = L.polar(x + w / 2, cy, r, a1);
         const large = (a1 - a0) > 180 ? 1 : 0;
-        C.el('path', {
-          d: `M ${x + w / 2} ${cy} L ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y} Z`,
-          fill: colorFor(track.columns[i], i)
-        });
+        C.el('path', { d: `M ${x + w / 2} ${cy} L ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y} Z`, fill: colorFor(track.columns[i], i) });
         a0 = a1;
       });
     });
@@ -455,12 +535,7 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
 
   const _yTop = Math.min(...leaves.map(l => rowOf(l).top));
   const _yBot = Math.max(...leaves.map(l => rowOf(l).bottom));
-  C.el("rect", {
-    x, y: _yTop,
-    width: Math.max(1, w), height: Math.max(1, _yBot - _yTop),
-    fill: "transparent", "pointer-events": "all",
-    "data-track-band": track.id, style: "cursor:grab"
-  });
+  C.el("rect", { x, y: _yTop, width: Math.max(1, w), height: Math.max(1, _yBot - _yTop), fill: "transparent", "pointer-events": "all", "data-track-band": track.id, style: "cursor:grab" });
 }
 
 function barDomain(track, leaves, percent) {
@@ -477,6 +552,11 @@ function barDomain(track, leaves, percent) {
   else {
     if (!Number.isFinite(mn)) mn = Math.min(0, ...(isStack ? sums : flat));
     if (!Number.isFinite(mx)) mx = Math.max(...(isStack ? sums : flat));
+  }
+  if (track.type === 'bar') {
+    const ax = Number(track.barAxisValue) || 0;
+    if (mn > ax) mn = ax;
+    if (mx < ax) mx = ax;
   }
   if (mn === mx) mx = mn + 1;
   return { mn, mx };
@@ -511,24 +591,16 @@ function drawStackedBarAdvanced(track, x, w, leaves, rowOf, invert) {
       const nextPos = pos(mn + nextVal);
       const segStart = Math.min(cursor, nextPos);
       const segWidth = Math.abs(nextPos - cursor);
-      C.el('rect', {
-        x: segStart, y: cy - h / 2,
-        width: Math.max(0, segWidth), height: h,
-        fill: colorFor(track.columns[i], i)
-      });
+      C.el('rect', { x: segStart, y: cy - h / 2, width: Math.max(0, segWidth), height: h, fill: colorFor(track.columns[i], i) });
       cursor = nextPos; cum = nextVal;
     });
   });
   const ff = fontFam();
-  const fs = Math.max(6, Number(trackCommon.legendFontSize) || 10);
+  const ts = trackTextStyle(track);
+  const fs = Math.max(6, Number(ts.fontSize) || 10);
   if (track.showBox) {
     const yAxis = yBottom + 24 + fs;
-    C.el('rect', {
-      x, y: yTop, width: w, height: yAxis - yTop, fill: 'none',
-      stroke: track.boxColor || '#bbb',
-      'stroke-width': Number(track.boxWidth) || 0.5,
-      'stroke-dasharray': track.boxDashed ? '4 3' : ''
-    });
+    C.el('rect', { x, y: yTop, width: w, height: yAxis - yTop, fill: 'none', stroke: track.boxColor || '#bbb', 'stroke-width': Number(track.boxWidth) || 0.5, 'stroke-dasharray': track.boxDashed ? '4 3' : '' });
   }
   const yAxis = yBottom + 6;
   C.el('line', { x1: x, y1: yAxis, x2: x + w, y2: yAxis, stroke: '#333', 'stroke-width': 0.8 });
@@ -543,56 +615,50 @@ function drawStackedBarAdvanced(track, x, w, leaves, rowOf, invert) {
     ticks.forEach(v => {
       const px = pos(v);
       C.el('line', { x1: px, y1: yAxis, x2: px, y2: yAxis + 3, stroke: '#555', 'stroke-width': 0.8 });
-      TT.draw(null, px, yAxis + fs + 4,
-        track.percentMode ? v.toFixed(0) + '%' : Number(v.toFixed(2)),
-        tickStyle, { 'text-anchor': 'middle' });
+      TT.draw(null, px, yAxis + fs + 4, track.percentMode ? v.toFixed(0) + '%' : Number(v.toFixed(2)), tickStyle, { 'text-anchor': 'middle' });
     });
   }
 }
 
 function drawBarTrackAdvanced(track, x, w, leaves, rowOf, invert) {
   const { mn, mx } = barDomain(track, leaves, false);
+  const axVal = Number(track.barAxisValue) || 0;
   const range = mx - mn || 1;
   const pos = v => invert ? (x + w - (v - mn) / range * w) : (x + (v - mn) / range * w);
   const ff = fontFam();
+  const ts = trackTextStyle(track);
+  const colorMap = getTrackColorMap(track);
   const yTop = Math.min(...leaves.map(l => rowOf(l).top));
   const yBottom = Math.max(...leaves.map(l => rowOf(l).bottom));
   const sampleRow = rowOf(leaves[0]);
   const rowHeight = sampleRow.bottom - sampleRow.top;
   const barW = Math.max(1, Math.min(Number(track.barWidth) || rowHeight * 0.6, 40));
-  const fs = Math.max(6, Number(trackCommon.legendFontSize) || 10);
-  const tickStyle = TT.fromParts({ font: ff, size: fs, color: '#333', bold: trackCommon.legendBold });
+  const fs = Math.max(6, Number(ts.fontSize) || 10);
+  const tickStyle = TT.fromParts({ font: ff, size: fs, color: ts.color || '#333', bold: ts.bold });
+  const baseX = pos(axVal);
   if (track.showBox) {
     const yAxis = yBottom + 24 + fs;
-    C.el('rect', {
-      x, y: yTop, width: w, height: yAxis - yTop, fill: 'none',
-      stroke: track.boxColor || '#bbb',
-      'stroke-width': Number(track.boxWidth) || 0.5,
-      'stroke-dasharray': track.boxDashed ? '4 3' : ''
-    });
+    C.el('rect', { x, y: yTop, width: w, height: yAxis - yTop, fill: 'none', stroke: track.boxColor || '#bbb', 'stroke-width': Number(track.boxWidth) || 0.5, 'stroke-dasharray': track.boxDashed ? '4 3' : '' });
   }
   leaves.forEach(l => {
     const v = parseFloat(datasetValue(track, l)); if (!Number.isFinite(v)) return;
     const vx = pos(v);
-    const baseX = pos(mn);
     const barLen = Math.abs(vx - baseX);
     const rectX = Math.min(vx, baseX);
     C.el('rect', {
       x: rectX, y: l.y - barW / 2, width: Math.max(0.5, barLen), height: barW,
-      fill: track.barColor,
+      fill: barColorOf(track, l, colorMap),
       stroke: track.barOutlineWidth > 0 ? track.barOutlineColor : 'none',
       'stroke-width': track.barOutlineWidth || 0,
       'stroke-dasharray': (track.barOutlineWidth > 0 && track.barOutlineDashed) ? '4 3' : ''
     });
     if (track.showValues) {
       const textX = invert ? (vx - 4) : (vx + 4);
-      TT.draw(null, textX, l.y + fs * 0.34, Number(v).toFixed(2), tickStyle,
-        { 'text-anchor': invert ? 'end' : 'start' });
+      TT.draw(null, textX, l.y + fs * 0.34, Number(v).toFixed(2), tickStyle, { 'text-anchor': invert ? 'end' : 'start' });
     }
   });
   const yAxis = yBottom + 6;
   C.el('line', { x1: x, y1: yAxis, x2: x + w, y2: yAxis, stroke: '#333', 'stroke-width': 0.8 });
-  const baseX = pos(mn);
   C.el('line', { x1: baseX, y1: yTop, x2: baseX, y2: yAxis, stroke: '#333', 'stroke-width': 0.8 });
   if (track.showAxisNumbers) {
     const interval = track.axisInterval || (mx - mn) / 2;
@@ -608,11 +674,7 @@ function drawBarTrackAdvanced(track, x, w, leaves, rowOf, invert) {
   (track.refLines || []).forEach(rl => {
     if (!Number.isFinite(Number(rl.value))) return;
     const px = pos(Number(rl.value));
-    C.el('line', {
-      x1: px, y1: yTop, x2: px, y2: yBottom,
-      stroke: rl.color || '#e74c3c', 'stroke-width': Number(rl.width) || 1,
-      'stroke-dasharray': rl.dashed ? '4 3' : ''
-    });
+    C.el('line', { x1: px, y1: yTop, x2: px, y2: yBottom, stroke: rl.color || '#e74c3c', 'stroke-width': Number(rl.width) || 1, 'stroke-dasharray': rl.dashed ? '4 3' : '' });
   });
 }
 
@@ -631,16 +693,12 @@ function drawGroupedBarAdvanced(track, x, w, leaves, rowOf, invert) {
   const barH = (rowHeight * 0.85) / N;
   const palette = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
   const colorFor = (col, i) => (track.columnColors && track.columnColors[col]) || palette[i % palette.length];
-  const fs = Math.max(6, Number(trackCommon.legendFontSize) || 10);
-  const tickStyle = TT.fromParts({ font: ff, size: fs, color: '#333' });
+  const ts = trackTextStyle(track);
+  const fs = Math.max(6, Number(ts.fontSize) || 10);
+  const tickStyle = TT.fromParts({ font: ff, size: fs, color: ts.color || '#333', bold: ts.bold });
   if (track.showBox) {
     const yAxis = yBottom + 24 + fs;
-    C.el('rect', {
-      x, y: yTop, width: w, height: yAxis - yTop, fill: 'none',
-      stroke: track.boxColor || '#bbb',
-      'stroke-width': Number(track.boxWidth) || 0.5,
-      'stroke-dasharray': track.boxDashed ? '4 3' : ''
-    });
+    C.el('rect', { x, y: yTop, width: w, height: yAxis - yTop, fill: 'none', stroke: track.boxColor || '#bbb', 'stroke-width': Number(track.boxWidth) || 0.5, 'stroke-dasharray': track.boxDashed ? '4 3' : '' });
   }
   const baseX = pos(mn);
   leaves.forEach(l => {
@@ -657,8 +715,7 @@ function drawGroupedBarAdvanced(track, x, w, leaves, rowOf, invert) {
       const rectX = Math.min(vx, baseX);
       const rectY = startY + i * barH;
       C.el('rect', {
-        x: rectX, y: rectY + barH * 0.1,
-        width: Math.max(0.5, barLen), height: barH * 0.8,
+        x: rectX, y: rectY + barH * 0.1, width: Math.max(0.5, barLen), height: barH * 0.8,
         fill: colorFor(cols[i], i),
         stroke: track.barOutlineWidth > 0 ? track.barOutlineColor : 'none',
         'stroke-width': track.barOutlineWidth || 0,
@@ -683,11 +740,7 @@ function drawGroupedBarAdvanced(track, x, w, leaves, rowOf, invert) {
   (track.refLines || []).forEach(rl => {
     if (!Number.isFinite(Number(rl.value))) return;
     const px = pos(Number(rl.value));
-    C.el('line', {
-      x1: px, y1: yTop, x2: px, y2: yBottom,
-      stroke: rl.color || '#e74c3c', 'stroke-width': Number(rl.width) || 1,
-      'stroke-dasharray': rl.dashed ? '4 3' : ''
-    });
+    C.el('line', { x1: px, y1: yTop, x2: px, y2: yBottom, stroke: rl.color || '#e74c3c', 'stroke-width': Number(rl.width) || 1, 'stroke-dasharray': rl.dashed ? '4 3' : '' });
   });
 }
 
@@ -699,32 +752,25 @@ function drawMultiHeatmapRect(track, x, w, leaves, rowOf) {
   const allNums = [];
   const ld = global.TreeAppData && global.TreeAppData.leafData;
   if (ld && ld.rows) {
-    ld.rows.forEach(r => {
-      cols.forEach(c => {
-        const v = parseFloat(r[c]);
-        if (Number.isFinite(v)) allNums.push(v);
-      });
-    });
+    ld.rows.forEach(r => { cols.forEach(c => { const v = parseFloat(r[c]); if (Number.isFinite(v)) allNums.push(v); }); });
   }
   if (!allNums.length) {
     leaves.forEach(l => {
       const raw = datasetValue(track, l);
       if (raw == null || raw === '') return;
-      String(raw).split(',').forEach(s => {
-        const v = parseFloat(s);
-        if (Number.isFinite(v)) allNums.push(v);
-      });
+      String(raw).split(',').forEach(s => { const v = parseFloat(s); if (Number.isFinite(v)) allNums.push(v); });
     });
   }
   const gMinRaw = track.gradientMin, gMaxRaw = track.gradientMax;
-  let gMin = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw)))
-    ? Number(gMinRaw) : (allNums.length ? Math.min(...allNums) : 0);
-  let gMax = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw)))
-    ? Number(gMaxRaw) : (allNums.length ? Math.max(...allNums) : 1);
+  let gMin = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw))) ? Number(gMinRaw) : (allNums.length ? Math.min(...allNums) : 0);
+  let gMax = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw))) ? Number(gMaxRaw) : (allNums.length ? Math.max(...allNums) : 1);
   if (gMin === gMax) gMax = gMin + 1;
-  const border = Number(track.borderWidth) > 0 && track.showBorder !== false;
-  const stroke = border ? (track.borderColor || '#333') : 'none';
-  const sw = border ? Number(track.borderWidth) : 0;
+  const bs = trackBorderStyle(track);
+  const showBorder = (track.showBorder !== false) && bs.strokeWidth > 0;
+  const stroke = showBorder ? bs.stroke : 'none';
+  const sw = showBorder ? bs.strokeWidth : 0;
+  const dashArr = showBorder ? SS.dashArrayOf(bs) : '';
+  const opa = showBorder ? bs.opacity : 1;
   leaves.forEach(l => {
     const raw = datasetValue(track, l);
     if (raw == null || raw === '') return;
@@ -735,11 +781,9 @@ function drawMultiHeatmapRect(track, x, w, leaves, rowOf) {
       let t = (v - gMin) / (gMax - gMin);
       if (track.gradientReverse) t = 1 - t;
       const fill = sampleTrackColor(track, t);
-      C.el('rect', {
-        x: x + i * cellW, y: row.top, width: cellW,
-        height: Math.max(1, row.bottom - row.top),
-        fill, stroke, 'stroke-width': sw
-      });
+      const attrs = { x: x + i * cellW, y: row.top, width: cellW, height: Math.max(1, row.bottom - row.top), fill };
+      if (showBorder) { attrs.stroke = stroke; attrs["stroke-width"] = sw; attrs["stroke-dasharray"] = dashArr; attrs["stroke-opacity"] = opa; }
+      C.el('rect', attrs);
     });
   });
   if (track.showColLabels !== false && cols.length) {
@@ -754,58 +798,43 @@ function drawMultiHeatmapRect(track, x, w, leaves, rowOf) {
     cols.forEach((col, i) => {
       const anchorX = x + (i + 0.5) * cellW;
       if (vertical) {
-        TT.draw(null, anchorX, anchorY, col, labelStyle, {
-          'text-anchor': 'end', 'dominant-baseline': 'middle',
-          transform: `rotate(-90 ${anchorX} ${anchorY})`
-        });
+        TT.draw(null, anchorX, anchorY, col, labelStyle, { 'text-anchor': 'end', 'dominant-baseline': 'middle', transform: `rotate(-90 ${anchorX} ${anchorY})` });
       } else {
-        TT.draw(null, anchorX, anchorY, col, labelStyle, {
-          'text-anchor': 'middle', 'dominant-baseline': 'hanging'
-        });
+        TT.draw(null, anchorX, anchorY, col, labelStyle, { 'text-anchor': 'middle', 'dominant-baseline': 'hanging' });
       }
     });
   }
 }
 
+function legendTextStyles() {
+  const tsTitle = SS.textStyle(C.state.textStyles.legendTitle);
+  const tsItem = SS.textStyle(C.state.textStyles.legendText);
+  return { tsTitle, tsItem };
+}
+
 function drawCustomLegend(track, x, y) {
   const tc = trackCommon;
   const ff = fontFam();
+  const { tsTitle, tsItem } = legendTextStyles();
   const scale = tc.legendScale || 1;
-  const fs = Math.max(6, Number(tc.legendFontSize) || 11) * scale;
-  const titleFS = Math.max(6, Number(tc.legendTitleFontSize) || 12) * scale;
+  const fs = Math.max(6, Number(tsItem.fontSize) || 11) * scale;
+  const titleFS = Math.max(6, Number(tsTitle.fontSize) || 12) * scale;
   const title = (tc.legendTitleShow && track.legendTitle) ? String(track.legendTitle) : '';
   const maxPerRow = Math.max(0, Number(tc.legendMaxPerRow) || 0);
   const items = track.legendItems || [];
   if (!items.length && !title) return 0;
-  const g = C.el('g', {
-    class: 'track-legend legend-box', 'data-legend': '1',
-    'data-track-id': track.id, style: 'cursor:move',
-    transform: `translate(${x} ${y})`
-  });
-  const titleStyle = TT.fromParts({
-    font: ff, size: titleFS,
-    bold: tc.legendTitleBold, italic: tc.legendTitleItalic, color: '#333'
-  });
-  const itemStyle = TT.fromParts({
-    font: ff, size: fs,
-    bold: tc.legendBold, italic: tc.legendItalic, color: '#333'
-  });
+  const g = C.el('g', { class: 'track-legend legend-box', 'data-legend': '1', 'data-track-id': track.id, style: 'cursor:move', transform: `translate(${x} ${y})` });
+  const titleStyle = TT.fromParts({ font: tsTitle.fontFamily || ff, size: titleFS, bold: tsTitle.bold, italic: tsTitle.italic, color: tsTitle.color });
+  const itemStyle = TT.fromParts({ font: tsItem.fontFamily || ff, size: fs, bold: tsItem.bold, italic: tsItem.italic, color: tsItem.color });
   let xx = 0, yy = 0, rowItems = 0;
-  if (title) {
-    TT.draw(g, 0, titleFS, title, titleStyle);
-    yy = titleFS + 14;
-  }
+  if (title) { drawText(g, 0, titleFS, title, titleStyle, tsTitle); yy = titleFS + 14; }
   let maxItemW = 0;
-  items.forEach(it => {
-    const w = fs + 8 + global.PlotCommon.measureText(it.label || '', fs);
-    if (w > maxItemW) maxItemW = w;
-  });
+  items.forEach(it => { const w = fs + 8 + global.PlotCommon.measureText(it.label || '', fs); if (w > maxItemW) maxItemW = w; });
   items.forEach(it => {
     const wItem = fs + 8 + global.PlotCommon.measureText(it.label || '', fs);
     if (maxPerRow > 0 && rowItems >= maxPerRow) { xx = 0; yy += fs + 6; rowItems = 0; }
-    drawTrackSymbol(it.shape || 'square', xx + fs / 2, yy + fs / 2, fs * 0.45,
-      it.fillColor || '#4DBBD5', it.strokeColor || '#333333', Number(it.strokeWidth) || 0, g);
-    TT.draw(g, xx + fs + 4, yy + fs * 0.85, it.label || '', itemStyle);
+    drawTrackSymbol(it.shape || 'square', xx + fs / 2, yy + fs / 2, fs * 0.45, it.fillColor || '#4DBBD5', it.strokeColor || '#333333', Number(it.strokeWidth) || 0, g);
+    drawText(g, xx + fs + 4, yy + fs * 0.85, it.label || '', itemStyle, tsItem);
     xx += (maxPerRow > 0 ? maxItemW : wItem) + 8;
     rowItems++;
   });
@@ -817,71 +846,52 @@ function drawTrackLegend(track, x, y, colorMap) {
   if (track.type === 'legend') return drawCustomLegend(track, x, y);
   const tc = trackCommon;
   const ff = fontFam();
+  const { tsTitle, tsItem } = legendTextStyles();
   const scale = tc.legendScale || 1;
-  const fs = Math.max(6, Number(tc.legendFontSize) || 11) * scale;
-  const titleFS = Math.max(6, Number(tc.legendTitleFontSize) || 12) * scale;
-  const title = (tc.legendTitleShow && track.legendTitle) ? String(track.legendTitle) : '';
+  const fs = Math.max(6, Number(tsItem.fontSize) || 11) * scale;
+  const titleFS = Math.max(6, Number(tsTitle.fontSize) || 12) * scale;
+  const _fallbackTitle = (track.type === 'bar' && track.barColorMode === 'column' && track.barColorColumn) ? track.barColorColumn : '';
+  const _effectiveTitle = track.legendTitle || _fallbackTitle;
+  const title = (tc.legendTitleShow && _effectiveTitle) ? String(_effectiveTitle) : '';
   const maxPerRow = Math.max(0, Number(tc.legendMaxPerRow) || 0);
-  const titleStyle = TT.fromParts({
-    font: ff, size: titleFS, bold: tc.legendTitleBold,
-    italic: tc.legendTitleItalic, color: '#333'
-  });
-  const itemStyle = TT.fromParts({
-    font: ff, size: fs, bold: tc.legendBold,
-    italic: tc.legendItalic, color: '#333'
-  });
+  const titleStyle = TT.fromParts({ font: tsTitle.fontFamily || ff, size: titleFS, bold: tsTitle.bold, italic: tsTitle.italic, color: tsTitle.color });
+  const itemStyle = TT.fromParts({ font: tsItem.fontFamily || ff, size: fs, bold: tsItem.bold, italic: tsItem.italic, color: tsItem.color });
   let items = [];
   let drawAsSymbol = false;
-  if (track.type === 'multisymbol') {
+  if (track.type === 'bar') {
+    if (track.barColorMode === 'column' && track.barColorColumn) {
+      const _vals = getBarColumnValues(track);
+      const _cmap = getBarColorMap(track);
+      items = _vals.map(v => ({ label: v, color: _cmap[v] || track.barColor || '#4DBBD5' }));
+    } else return 0;
+  } else if (track.type === 'multisymbol') {
     drawAsSymbol = true;
-    items = collectUniqueValues(track).map(v => ({
-      label: v, color: colorOf(track, v, colorMap),
-      shape: (track.shapeMap && track.shapeMap[v]) || track.uniformShape || 'square'
-    }));
+    items = collectUniqueValues(track).map(v => ({ label: v, color: colorOf(track, v, colorMap), shape: (track.shapeMap && track.shapeMap[v]) || track.uniformShape || 'square' }));
   } else if (track.type === 'colorstrip' || track.type === 'text') {
     items = collectUniqueValues(track).map(v => ({ label: v, color: colorOf(track, v, colorMap) }));
   } else if (track.type === 'binary') {
-    items = [
-      { label: 'True', color: track.binaryTrueColor },
-      { label: 'False', color: track.binaryFalseColor }
-    ];
+    items = [{ label: 'True', color: track.binaryTrueColor }, { label: 'False', color: track.binaryFalseColor }];
   } else if (track.type === 'stackedbar' || track.type === 'pie' || track.type === 'groupedbar') {
     const cols = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
-    items = (track.columns || []).map((c, i) => ({
-      label: c, color: (track.columnColors && track.columnColors[c]) || cols[i % cols.length]
-    }));
+    items = (track.columns || []).map((c, i) => ({ label: c, color: (track.columnColors && track.columnColors[c]) || cols[i % cols.length] }));
   } else if (track.type === 'heatstrip' || track.type === 'multiheatmap') {
     const nums = [];
     if (track.type === 'multiheatmap' && track.columns && track.columns.length) {
       const ld = global.TreeAppData && global.TreeAppData.leafData;
-      if (ld && ld.rows) {
-        ld.rows.forEach(r => {
-          track.columns.forEach(c => {
-            const v = parseFloat(r[c]);
-            if (Number.isFinite(v)) nums.push(v);
-          });
-        });
-      }
+      if (ld && ld.rows) ld.rows.forEach(r => { track.columns.forEach(c => { const v = parseFloat(r[c]); if (Number.isFinite(v)) nums.push(v); }); });
     }
     if (!nums.length) {
       Object.values(track.data || {}).forEach(raw => {
         if (raw == null || raw === '') return;
-        String(raw).split(',').forEach(s => {
-          const v = parseFloat(s);
-          if (Number.isFinite(v)) nums.push(v);
-        });
+        String(raw).split(',').forEach(s => { const v = parseFloat(s); if (Number.isFinite(v)) nums.push(v); });
       });
     }
     const gMinRaw = track.gradientMin, gMaxRaw = track.gradientMax;
-    let mn = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw)))
-      ? Number(gMinRaw) : (nums.length ? Math.min(...nums) : 0);
-    let mx = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw)))
-      ? Number(gMaxRaw) : (nums.length ? Math.max(...nums) : 1);
+    let mn = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw))) ? Number(gMinRaw) : (nums.length ? Math.min(...nums) : 0);
+    let mx = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw))) ? Number(gMaxRaw) : (nums.length ? Math.max(...nums) : 1);
     if (mn === mx) mx = mn + 1;
     const isVertical = track.legendOrientation === 'vertical';
-    const tickDecimals = Math.max(0, Math.min(6,
-      track.legendTickDecimals != null && Number.isFinite(Number(track.legendTickDecimals))
-        ? Number(track.legendTickDecimals) : 2));
+    const tickDecimals = Math.max(0, Math.min(6, track.legendTickDecimals != null && Number.isFinite(Number(track.legendTickDecimals)) ? Number(track.legendTickDecimals) : 2));
     const tickInterval = Number(track.legendTickInterval);
     let stops = getGradientStops(track);
     if (track.gradientReverse) stops = stops.slice().reverse();
@@ -889,10 +899,7 @@ function drawTrackLegend(track, x, y, colorMap) {
     if (Number.isFinite(tickInterval) && tickInterval > 0) {
       ticks = [];
       const start = Math.ceil(mn / tickInterval - 1e-9) * tickInterval;
-      for (let v = start; v <= mx + 1e-9; v += tickInterval) {
-        ticks.push(Number(v.toFixed(10)));
-        if (ticks.length > 200) break;
-      }
+      for (let v = start; v <= mx + 1e-9; v += tickInterval) { ticks.push(Number(v.toFixed(10))); if (ticks.length > 200) break; }
       if (!ticks.length) ticks = [mn, mx];
     } else {
       const tickCount = Math.max(2, Math.min(11, Number(track.legendTickCount) || 3));
@@ -901,67 +908,40 @@ function drawTrackLegend(track, x, y, colorMap) {
     }
     const gid = 'tkl-grad-' + track.id + '-' + Math.random().toString(36).slice(2, 8);
     const defs = C.getSvg().querySelector('defs') || C.el('defs');
-    const grad = C.el('linearGradient', {
-      id: gid,
-      x1: '0%', y1: isVertical ? '100%' : '0%',
-      x2: isVertical ? '0%' : '100%', y2: '0%'
-    }, defs);
-    stops.forEach((c, i) => C.el('stop', {
-      offset: (i / (stops.length - 1) * 100) + '%', 'stop-color': c
-    }, grad));
+    const grad = C.el('linearGradient', { id: gid, x1: '0%', y1: isVertical ? '100%' : '0%', x2: isVertical ? '0%' : '100%', y2: '0%' }, defs);
+    stops.forEach((c, i) => C.el('stop', { offset: (i / (stops.length - 1) * 100) + '%', 'stop-color': c }, grad));
     const barW = (isVertical ? 12 : 80) * scale;
     const barH = (isVertical ? 80 : 12) * scale;
-    const g = C.el('g', {
-      class: 'track-legend legend-box', 'data-legend': '1',
-      'data-track-id': track.id, style: 'cursor:move',
-      transform: `translate(${x} ${y})`
-    });
+    const g = C.el('g', { class: 'track-legend legend-box', 'data-legend': '1', 'data-track-id': track.id, style: 'cursor:move', transform: `translate(${x} ${y})` });
     let cursorY = 0;
-    if (title) {
-      TT.draw(g, 0, titleFS, title, titleStyle);
-      cursorY = titleFS + 14;
-    }
-    C.el('rect', {
-      x: 0, y: cursorY, width: barW, height: barH,
-      fill: `url(#${gid})`, stroke: '#999', 'stroke-width': 0.5
-    }, g);
+    if (title) { drawText(g, 0, titleFS, title, titleStyle, tsTitle); cursorY = titleFS + 14; }
+    C.el('rect', { x: 0, y: cursorY, width: barW, height: barH, fill: `url(#${gid})`, stroke: '#999', 'stroke-width': 0.5 }, g);
     ticks.forEach(v => {
       const t = Math.max(0, Math.min(1, (v - mn) / (mx - mn)));
       const pos = isVertical ? (cursorY + (1 - t) * barH) : (t * barW);
       const labelX = isVertical ? (barW + 4) : pos;
       const labelY = isVertical ? (pos + fs * 0.34) : (cursorY + barH + fs + 3);
       const anchor = isVertical ? 'start' : 'middle';
-      TT.draw(g, labelX, labelY, Number(v).toFixed(tickDecimals), itemStyle,
-        { 'text-anchor': anchor });
+      drawText(g, labelX, labelY, Number(v).toFixed(tickDecimals), itemStyle, tsItem, { 'text-anchor': anchor });
     });
     return cursorY + barH + fs + 8;
   }
   if (!items.length) return 0;
-  const g = C.el('g', {
-    class: 'track-legend legend-box', 'data-legend': '1',
-    'data-track-id': track.id, style: 'cursor:move',
-    transform: `translate(${x} ${y})`
-  });
+  const g = C.el('g', { class: 'track-legend legend-box', 'data-legend': '1', 'data-track-id': track.id, style: 'cursor:move', transform: `translate(${x} ${y})` });
   let xx = 0, yy = 0, rowItems = 0;
-  if (title) {
-    TT.draw(g, 0, titleFS, title, titleStyle);
-    yy = titleFS + 14;
-  }
+  if (title) { drawText(g, 0, titleFS, title, titleStyle, tsTitle); yy = titleFS + 14; }
   let maxItemW = 0;
-  items.forEach(it => {
-    const w = fs + 8 + global.PlotCommon.measureText(it.label, fs);
-    if (w > maxItemW) maxItemW = w;
-  });
+  items.forEach(it => { const w = fs + 8 + global.PlotCommon.measureText(it.label, fs); if (w > maxItemW) maxItemW = w; });
   items.forEach(it => {
     const wItem = fs + 8 + global.PlotCommon.measureText(it.label, fs);
     if (maxPerRow > 0 && rowItems >= maxPerRow) { xx = 0; yy += fs + 6; rowItems = 0; }
     if (drawAsSymbol) {
-      drawTrackSymbol(it.shape, xx + fs / 2, yy + fs / 2, fs * 0.45, it.color,
-        track.outlineColor, track.outlineWidth || 0, g);
+      const shapeStyle = trackShapeStyle(track);
+      drawTrackSymbol(it.shape, xx + fs / 2, yy + fs / 2, fs * 0.45, it.color, shapeStyle.strokeColor, shapeStyle.strokeWidth, g, shapeStyle.fillOpacity);
     } else {
       C.el('rect', { x: xx, y: yy, width: fs, height: fs, fill: it.color, rx: 2 }, g);
     }
-    TT.draw(g, xx + fs + 4, yy + fs * 0.85, it.label, itemStyle);
+    drawText(g, xx + fs + 4, yy + fs * 0.85, it.label, itemStyle, tsItem);
     xx += (maxPerRow > 0 ? maxItemW : wItem) + 8;
     rowItems++;
   });
@@ -1001,24 +981,13 @@ function renderCustomTracks(radial) {
     const trackNameAngle = (tc.trackNameAngle != null) ? Number(tc.trackNameAngle) : -45;
     const angleRad = trackNameAngle * Math.PI / 180;
     let maxNameWidth = 0;
-    customTracks.forEach(t => {
-      if (t.name) {
-        const w = global.PlotCommon.measureText(t.name, nameFs);
-        if (w > maxNameWidth) maxNameWidth = w;
-      }
-    });
+    customTracks.forEach(t => { if (t.name) { const w = global.PlotCommon.measureText(t.name, nameFs); if (w > maxNameWidth) maxNameWidth = w; } });
     const lowestOffset = Math.abs((maxNameWidth / 2) * Math.sin(angleRad)) + Math.abs((nameFs / 2) * Math.cos(angleRad));
     const titleY = Math.min(...ys) - rowH * 0.55 - lowestOffset - 4;
     const placed = [];
-    const titleStyle = TT.fromParts({
-      font: ff, size: nameFs,
-      bold: tc.trackNameBold, italic: tc.trackNameItalic, color: "#3a4a4a"
-    });
+    const titleStyle = TT.fromParts({ font: ff, size: nameFs, bold: tc.trackNameBold, italic: tc.trackNameItalic, color: "#3a4a4a" });
     customTracks.forEach(track => {
-      if (track.type === 'legend') {
-        placed.push({ track, x: xBase, w: 0 });
-        return;
-      }
+      if (track.type === 'legend') { placed.push({ track, x: xBase, w: 0 }); return; }
       const w = computeTrackWidth(track);
       let x;
       if (isInv) {
@@ -1031,8 +1000,7 @@ function renderCustomTracks(radial) {
       if (tc.trackNameShow && track.name) {
         const cx = x + w / 2;
         TT.draw(null, cx, titleY, track.name, titleStyle, {
-          "text-anchor": "middle", "dominant-baseline": "middle",
-          "data-track-title": track.id,
+          "text-anchor": "middle", "dominant-baseline": "middle", "data-track-title": track.id,
           transform: trackNameAngle ? `rotate(${trackNameAngle} ${cx} ${titleY})` : undefined
         });
       }
@@ -1043,9 +1011,7 @@ function renderCustomTracks(radial) {
     if (isInv) {
       const root = C.getRoot();
       autoLegendX = (root ? (root.x || 0) : 800) + 40;
-    } else {
-      autoLegendX = xBase + 24;
-    }
+    } else autoLegendX = xBase + 24;
     let legendY = Math.min(...ys) - rowH * 0.85 - 10;
     placed.forEach(item => {
       if (!item.track.showLegend || item.track.type === 'text') return;
@@ -1061,39 +1027,29 @@ function renderCustomTracks(radial) {
     }
   } else {
     const cx = 470, cy = 380;
-    const maxD = Math.max(T.maxDepth(C.getRoot(), 0), 0.01);
+    const maxD2 = Math.max(T.maxDepth(C.getRoot(), 0), 0.01);
     const gl = leaves.map(l => l.angle).filter(a => a != null).sort((a, b) => a - b);
     const gStep = gl.length > 1 ? (gl[gl.length - 1] - gl[0]) / (gl.length - 1) : 6;
     const halfStep = gStep / 2;
     const isInv = C.isTrue(st.invert);
-
     const labelEdges = leaves.map(l => {
       let w = T.labelOf(l).length * st.fontSize * (l.labelSizeFactor || 1) * 0.6;
       const lbl = C.getSvg().querySelector('.leaf-label[data-id="' + l.id + '"]');
       if (lbl) { try { w = lbl.getBBox().width; } catch (_) {} }
-      return isInv
-        ? Math.max(4, C.getRadialLabelR() - w - 4)
-        : (C.getRadialLabelR() + w + 4);
+      return isInv ? Math.max(4, C.getRadialLabelR() - w - 4) : (C.getRadialLabelR() + w + 4);
     });
-
-    const ar = C.getAxisRange(maxD);                                       
-    const tMaxUsed = Math.max(maxD, ar.vHi);
-    const rOutMax = L.getRadialInnerBase() + (285 * (st.scaleH || 1)) * tMaxUsed / maxD;
+    const ar = C.getAxisRange(maxD2);
+    const tMaxUsed = Math.max(maxD2, ar.vHi);
+    const rOutMax = L.getRadialInnerBase() + (285 * (st.scaleH || 1)) * tMaxUsed / maxD2;
     let rBase;
-    if (isInv) {
-      rBase = Math.max(20, Math.min(...labelEdges) - 20);
-    } else {
-      rBase = Math.max(...labelEdges, C.getRadialLabelR(), rOutMax) + 20;
-    }
+    if (isInv) rBase = Math.max(20, Math.min(...labelEdges) - 20);
+    else rBase = Math.max(...labelEdges, C.getRadialLabelR(), rOutMax) + 20;
     if (global.TreeRanges && global.TreeRanges.colorRanges.length && global.TreeRanges.rangeLabelTrackShow) {
       rBase = global.TreeRanges.drawRadialRangeLabelTrack(rBase, leaves);
     }
     const placed = [];
     customTracks.forEach(track => {
-      if (track.type === 'legend') {
-        placed.push({ track, ringW: 0, ringStart: rBase });
-        return;
-      }
+      if (track.type === 'legend') { placed.push({ track, ringW: 0, ringStart: rBase }); return; }
       const ringW = Math.max(6, computeTrackWidth(track, { radial: true }));
       const colorMap = getTrackColorMap(track);
       const trackOffset = Number(track.offset) || 0;
@@ -1102,6 +1058,9 @@ function renderCustomTracks(radial) {
         rBase -= (gap + trackOffset);
         const outer = rBase;
         ringStart = Math.max(4, outer - ringW);
+        const _customInner = Number(st.circularInvertInnerRadius);
+        const _userBoundary = (Number.isFinite(_customInner) && _customInner > 0) ? _customInner : 0;
+        if (_userBoundary > 0 && ringStart < _userBoundary) ringStart = _userBoundary;
         rMid = ringStart + ringW / 2;
         rBase = ringStart;
       } else {
@@ -1127,16 +1086,11 @@ function renderCustomTracks(radial) {
         leaves.forEach(l => {
           const raw = datasetValue(track, l);
           if (raw == null || raw === '') return;
-          String(raw).split(',').forEach(s => {
-            const v = parseFloat(s);
-            if (Number.isFinite(v)) allNums.push(v);
-          });
+          String(raw).split(',').forEach(s => { const v = parseFloat(s); if (Number.isFinite(v)) allNums.push(v); });
         });
         const gMinRaw = track.gradientMin, gMaxRaw = track.gradientMax;
-        let gMin = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw)))
-          ? Number(gMinRaw) : (allNums.length ? Math.min(...allNums) : 0);
-        let gMax = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw)))
-          ? Number(gMaxRaw) : (allNums.length ? Math.max(...allNums) : 1);
+        let gMin = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw))) ? Number(gMinRaw) : (allNums.length ? Math.min(...allNums) : 0);
+        let gMax = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw))) ? Number(gMaxRaw) : (allNums.length ? Math.max(...allNums) : 1);
         if (gMin === gMax) gMax = gMin + 1;
         colRanges = { min: gMin, max: gMax };
       }
@@ -1157,10 +1111,7 @@ function renderCustomTracks(radial) {
             const p1i = L.polar(cx, cy, rInner, aEnd);
             C.el('path', {
               d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOuter} ${rOuter} 0 ${large} 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rInner} ${rInner} 0 ${large} 0 ${p0i.x} ${p0i.y} Z`,
-              fill: 'none',
-              stroke: track.boxColor || '#bbbbbb',
-              'stroke-width': Number(track.boxWidth) || 0.5,
-              'stroke-dasharray': track.boxDashed ? '4 3' : ''
+              fill: 'none', stroke: track.boxColor || '#bbbbbb', 'stroke-width': Number(track.boxWidth) || 0.5, 'stroke-dasharray': track.boxDashed ? '4 3' : ''
             });
           }
         }
@@ -1172,24 +1123,16 @@ function renderCustomTracks(radial) {
         const drawRingSegment = (rIn, rOut, fill) => {
           const p0i = L.polar(cx, cy, rIn, a0), p0o = L.polar(cx, cy, rOut, a0);
           const p1o = L.polar(cx, cy, rOut, a1), p1i = L.polar(cx, cy, rIn, a1);
-          C.el("path", {
-            d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOut} ${rOut} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rIn} ${rIn} 0 0 0 ${p0i.x} ${p0i.y} Z`,
-            fill
-          });
+          C.el("path", { d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOut} ${rOut} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rIn} ${rIn} 0 0 0 ${p0i.x} ${p0i.y} Z`, fill });
         };
-        const segInner = (t) => isInv
-          ? (ringStart + ringW * (1 - t))
-          : (ringStart + ringW * t);
+        const segInner = (t) => isInv ? (ringStart + ringW * (1 - t)) : (ringStart + ringW * t);
         if (track.type === 'colorstrip') {
           if (v == null || v === '') return;
           if (isExcluded(track, v)) return;
           const fillOpacity = track.fillOpacity != null ? Number(track.fillOpacity) : 1;
           const p0i = L.polar(cx, cy, ringStart, a0), p0o = L.polar(cx, cy, ringStart + ringW, a0);
           const p1o = L.polar(cx, cy, ringStart + ringW, a1), p1i = L.polar(cx, cy, ringStart, a1);
-          C.el("path", {
-            d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${ringStart + ringW} ${ringStart + ringW} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${ringStart} ${ringStart} 0 0 0 ${p0i.x} ${p0i.y} Z`,
-            fill: colorOf(track, v, colorMap), opacity: fillOpacity
-          });
+          C.el("path", { d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${ringStart + ringW} ${ringStart + ringW} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${ringStart} ${ringStart} 0 0 0 ${p0i.x} ${p0i.y} Z`, fill: colorOf(track, v, colorMap), opacity: fillOpacity });
         } else if (track.type === 'heatstrip') {
           const nums = leaves.map(x => parseFloat(datasetValue(track, x))).filter(Number.isFinite);
           let mn = track.gradientMin, mx = track.gradientMax;
@@ -1208,49 +1151,56 @@ function renderCustomTracks(radial) {
           const fill = ok ? track.binaryTrueColor : track.binaryFalseColor;
           const p = L.polar(cx, cy, rMid, l.angle);
           const autoSize = Math.min(ringW * 0.42, (gStep * Math.PI / 180) * rMid * 0.42);
-          const useManual = (tc.autoShapeSize === false) && Number(track.binarySize) > 0;
-          const size = useManual ? Math.max(1, Number(track.binarySize)) : autoSize;
-          const el = drawTrackSymbol(track.shape || 'square', p.x, p.y, size, fill,
-            track.outlineColor, track.outlineWidth);
+          const shapeStyle = trackShapeStyle(track);
+          const useManual = (tc.autoShapeSize === false) && Number(shapeStyle.size) > 0;
+          const size = useManual ? Math.max(1, Number(shapeStyle.size)) : autoSize;
+          const el = drawTrackSymbol(shapeStyle.shape || 'square', p.x, p.y, size, fill, shapeStyle.strokeColor, shapeStyle.strokeWidth, null, shapeStyle.fillOpacity);
           if (el) el.setAttribute("transform", `rotate(${(l.angle - 90)} ${p.x} ${p.y})`);
         } else if (track.type === 'bar') {
-          const nums = leaves.map(x => parseFloat(datasetValue(track, x))).filter(Number.isFinite);
-          let mn = track.axisMin, mx = track.axisMax;
-          if (!Number.isFinite(mn)) mn = Math.min(0, ...nums);
-          if (!Number.isFinite(mx)) mx = Math.max(...nums);
-          if (mn === mx) mx = mn + 1;
+          const dom = barDomain(track, leaves, false);
+          const { mn, mx } = dom;
+          const axVal = Number(track.barAxisValue) || 0;
           const num = parseFloat(v); if (!Number.isFinite(num)) return;
-          const t = (num - mn) / (mx - mn);
-          drawRingSegment(Math.min(segInner(t), ringStart + ringW), Math.max(segInner(t), ringStart), track.barColor);
+          const t = Math.max(0, Math.min(1, (num - mn) / (mx - mn)));
+          const tAxis = Math.max(0, Math.min(1, (axVal - mn) / (mx - mn)));
+          const rStart = segInner(tAxis);
+          const rEnd = segInner(t);
+          const barColor = barColorOf(track, l, colorMap);
+          drawRingSegment(Math.min(rStart, rEnd), Math.max(rStart, rEnd), barColor);
+          if (track.showValues) {
+            const tsB = trackTextStyle(track);
+            const fs = Math.max(6, Number(tsB.fontSize) || 10);
+            const pad = fs * 0.8 + 4;
+            const rTxt = isInv ? (rEnd - pad) : (rEnd + pad);
+            const pTxt = L.polar(cx, cy, rTxt, l.angle);
+            let rot = l.angle - 90;
+            if (l.angle > 180 && l.angle < 360) rot += 180;
+            const style = TT.fromParts({ font: ff, size: fs, color: tsB.color || '#333', bold: tsB.bold });
+            TT.draw(null, pTxt.x, pTxt.y, Number(num).toFixed(2), style, { 'text-anchor': 'middle', 'dominant-baseline': 'middle', transform: `rotate(${rot} ${pTxt.x} ${pTxt.y})` });
+          }
         } else if (track.type === 'text') {
           if (v == null || v === '') return;
           if (isExcluded(track, v)) return;
           const txt = String(v);
-          const fill = colorOf(track, txt, colorMap);
+          const ts = trackTextStyle(track);
+          const fill = colorOf(track, txt, colorMap, ts.color);
           const p = L.polar(cx, cy, rMid, l.angle);
           let rot = l.angle - 90, anchor = 'start';
           if (l.angle > 180 && l.angle < 360) { rot += 180; anchor = 'end'; }
-          const fs = Number(track.textFontSize) || 10;
-          const style = TT.fromParts({
-            font: ff, size: fs, bold: track.textBold,
-            italic: track.textItalic, color: fill
-          });
-          TT.draw(null, p.x, p.y, txt, style, {
-            'text-anchor': anchor, 'dominant-baseline': 'middle',
-            transform: `rotate(${rot} ${p.x} ${p.y})`
-          });
+          const style = TT.fromParts({ font: ts.fontFamily || ff, size: ts.fontSize, bold: ts.bold, italic: ts.italic, color: fill });
+          drawText(null, p.x, p.y, txt, style, ts, { 'text-anchor': anchor, 'dominant-baseline': 'middle', transform: `rotate(${rot} ${p.x} ${p.y})` });
         } else if (track.type === 'multisymbol') {
           if (v == null || v === '') return;
           if (isExcluded(track, v)) return;
           const key = String(v);
-          const shape = (track.shapeMap && track.shapeMap[key]) || track.uniformShape || 'square';
+          const shapeStyle = trackShapeStyle(track);
+          const shape = (track.shapeMap && track.shapeMap[key]) || shapeStyle.shape || 'square';
           const fill = colorOf(track, key, colorMap);
           const p = L.polar(cx, cy, rMid, l.angle);
           const autoSize = Math.min(ringW * 0.42, (gStep * Math.PI / 180) * rMid * 0.42);
-          const useManual = (tc.autoShapeSize === false) && Number(track.symbolSize) > 0;
-          const size = useManual ? Math.max(1, Number(track.symbolSize)) : autoSize;
-          const el = drawTrackSymbol(shape, p.x, p.y, size, fill,
-            track.outlineColor, track.outlineWidth || 0);
+          const useManual = (tc.autoShapeSize === false) && Number(shapeStyle.size) > 0;
+          const size = useManual ? Math.max(1, Number(shapeStyle.size)) : autoSize;
+          const el = drawTrackSymbol(shape, p.x, p.y, size, fill, shapeStyle.strokeColor, shapeStyle.strokeWidth, null, shapeStyle.fillOpacity);
           if (el) el.setAttribute("transform", `rotate(${(l.angle - 90)} ${p.x} ${p.y})`);
         } else if (track.type === 'stackedbar') {
           if (v == null || v === '') return;
@@ -1266,46 +1216,31 @@ function renderCustomTracks(radial) {
           vals.forEach((val, i) => {
             const vv = Number.isFinite(val) ? Math.max(0, val) : 0;
             const nextCum = cum + vv;
-            const r0 = isInv
-              ? (ringStart + ringW * (1 - nextCum / (span || 1)))
-              : (ringStart + ringW * cum / (span || 1));
-            const r1 = isInv
-              ? (ringStart + ringW * (1 - cum / (span || 1)))
-              : (ringStart + ringW * nextCum / (span || 1));
+            const r0 = isInv ? (ringStart + ringW * (1 - nextCum / (span || 1))) : (ringStart + ringW * cum / (span || 1));
+            const r1 = isInv ? (ringStart + ringW * (1 - cum / (span || 1))) : (ringStart + ringW * nextCum / (span || 1));
             const color = (track.columnColors && track.columnColors[track.columns[i]]) || cols[i % cols.length];
             drawRingSegment(Math.min(r0, r1), Math.max(r0, r1), color);
             cum = nextCum;
           });
         } else if (track.type === 'pie') {
           if (v == null || v === '') return;
-          const vals = String(v).split(',').map(x => {
-            const num = parseFloat(x);
-            return Number.isFinite(num) ? Math.max(0, num) : 0;
-          });
+          const vals = String(v).split(',').map(x => { const num = parseFloat(x); return Number.isFinite(num) ? Math.max(0, num) : 0; });
           if (!vals.length) return;
           const center = L.polar(cx, cy, rMid, l.angle);
           const tot = vals.reduce((a, b) => a + b, 0) || 1;
           const useManual = (tc.autoShapeSize === false) && Number(track.pieRadius) > 0;
-          const rPie = useManual
-            ? Math.max(2, Number(track.pieRadius))
-            : Math.max(2, Math.min(Number(track.pieRadius) || 9, ringW * 0.45, (gStep * Math.PI / 180) * rMid * 0.45));
+          const rPie = useManual ? Math.max(2, Number(track.pieRadius)) : Math.max(2, Math.min(Number(track.pieRadius) || 9, ringW * 0.45, (gStep * Math.PI / 180) * rMid * 0.45));
           const cols = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
           let pa0 = -90;
           vals.forEach((val, i) => {
             const frac = Math.max(0, val) / tot;
             const pa1 = pa0 + frac * 360;
             const color = (track.columnColors && track.columnColors[track.columns[i]]) || cols[i % cols.length];
-            if (frac >= 0.999) {
-              C.el('circle', { cx: center.x, cy: center.y, r: rPie, fill: color });
-              return;
-            }
+            if (frac >= 0.999) { C.el('circle', { cx: center.x, cy: center.y, r: rPie, fill: color }); return; }
             const pp0 = L.polar(center.x, center.y, rPie, pa0);
             const pp1 = L.polar(center.x, center.y, rPie, pa1);
             const large = (pa1 - pa0) > 180 ? 1 : 0;
-            C.el('path', {
-              d: `M ${center.x} ${center.y} L ${pp0.x} ${pp0.y} A ${rPie} ${rPie} 0 ${large} 1 ${pp1.x} ${pp1.y} Z`,
-              fill: color
-            });
+            C.el('path', { d: `M ${center.x} ${center.y} L ${pp0.x} ${pp0.y} A ${rPie} ${rPie} 0 ${large} 1 ${pp1.x} ${pp1.y} Z`, fill: color });
             pa0 = pa1;
           });
         } else if (track.type === 'groupedbar') {
@@ -1319,22 +1254,17 @@ function renderCustomTracks(radial) {
           const pal = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
           vals.forEach((val, i) => {
             if (!Number.isFinite(val) || i >= N) return;
-            const t = (val - dom.mn) / span;
-            const segR = isInv
-              ? (ringStart + ringW * (1 - t))
-              : (ringStart + ringW * Math.max(0, t));
+            const t = Math.max(0, Math.min(1, (val - dom.mn) / span));
+            const rStart = isInv ? (ringStart + ringW) : ringStart;
+            const rEnd = isInv ? (ringStart + ringW * (1 - t)) : (ringStart + ringW * t);
+            const rIn = Math.min(rStart, rEnd);
+            const rOut = Math.max(rStart, rEnd);
             const centerAngle = l.angle + (i - (N - 1) / 2) * (2 * localHalf);
-            const a0 = centerAngle - localHalf;
-            const a1 = centerAngle + localHalf;
+            const a0b = centerAngle - localHalf, a1b = centerAngle + localHalf;
             const color = (track.columnColors && track.columnColors[track.columns[i]]) || pal[i % pal.length];
-            const rIn = Math.min(segR, ringStart + ringW);
-            const rOut = Math.max(segR, ringStart + ringW);
-            const p0i = L.polar(cx, cy, rIn, a0), p0o = L.polar(cx, cy, rOut, a0);
-            const p1o = L.polar(cx, cy, rOut, a1), p1i = L.polar(cx, cy, rIn, a1);
-            C.el("path", {
-              d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOut} ${rOut} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rIn} ${rIn} 0 0 0 ${p0i.x} ${p0i.y} Z`,
-              fill: color
-            });
+            const p0i = L.polar(cx, cy, rIn, a0b), p0o = L.polar(cx, cy, rOut, a0b);
+            const p1o = L.polar(cx, cy, rOut, a1b), p1i = L.polar(cx, cy, rIn, a1b);
+            C.el("path", { d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOut} ${rOut} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rIn} ${rIn} 0 0 0 ${p0i.x} ${p0i.y} Z`, fill: color });
           });
         } else if (track.type === 'multiheatmap') {
           if (v == null || v === '') return;
@@ -1348,101 +1278,17 @@ function renderCustomTracks(radial) {
             let t = (val - colRanges.min) / (colRanges.max - colRanges.min);
             if (track.gradientReverse) t = 1 - t;
             const fill = sampleTrackColor(track, t);
-            const r0 = ringStart + i * cellW;
-            const r1 = ringStart + (i + 1) * cellW;
-            const a0 = l.angle - halfStep, a1 = l.angle + halfStep;
-            const p0i = L.polar(cx, cy, r0, a0), p0o = L.polar(cx, cy, r1, a0);
-            const p1o = L.polar(cx, cy, r1, a1), p1i = L.polar(cx, cy, r0, a1);
-            C.el("path", {
-              d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${r1} ${r1} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${r0} ${r0} 0 0 0 ${p0i.x} ${p0i.y} Z`,
-              fill
-            });
+            const r0 = ringStart + i * cellW, r1 = ringStart + (i + 1) * cellW;
+            const a0b = l.angle - halfStep, a1b = l.angle + halfStep;
+            const p0i = L.polar(cx, cy, r0, a0b), p0o = L.polar(cx, cy, r1, a0b);
+            const p1o = L.polar(cx, cy, r1, a1b), p1i = L.polar(cx, cy, r0, a1b);
+            C.el("path", { d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${r1} ${r1} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${r0} ${r0} 0 0 0 ${p0i.x} ${p0i.y} Z`, fill });
           });
         }
       });
-      if (isBarLike && barBoxAngles) {
-        const { aStart, aEnd } = barBoxAngles;
-        const large = (aEnd - aStart) > 180 ? 1 : 0;
-        if (track.showAxisNumbers) {
-          const pb0 = L.polar(cx, cy, ringStart, aStart);
-          const pb1 = L.polar(cx, cy, ringStart, aEnd);
-          C.el('path', {
-            d: `M ${pb0.x} ${pb0.y} A ${ringStart} ${ringStart} 0 ${large} 1 ${pb1.x} ${pb1.y}`,
-            fill: 'none', stroke: '#333', 'stroke-width': 0.8
-          });
-        }
-        if (track.showBox && track.showAxisNumbers) {
-          let tickMn, tickMx;
-          if (track.type === 'stackedbar') {
-            const dom = stackDomain || barDomain(track, leaves, track.percentMode);
-            tickMn = dom.mn; tickMx = dom.mx;
-          } else {
-            const nums = leaves.map(x => parseFloat(datasetValue(track, x))).filter(Number.isFinite);
-            tickMn = Number.isFinite(Number(track.axisMin)) ? Number(track.axisMin) : Math.min(0, ...nums);
-            tickMx = Number.isFinite(Number(track.axisMax)) ? Number(track.axisMax) : Math.max(...nums);
-            if (tickMn === tickMx) tickMx = tickMn + 1;
-          }
-          const spanT = tickMx - tickMn || 1;
-          const interval = (track.axisInterval && track.axisInterval > 0) ? track.axisInterval : spanT / 2;
-          const startT = Math.ceil(tickMn / interval - 1e-9) * interval;
-          for (let vv = startT; vv <= tickMx + 1e-9; vv += interval) {
-            const t = (vv - tickMn) / spanT;
-            if (t < -1e-9 || t > 1 + 1e-9) continue;
-            const rv = isInv
-              ? (ringStart + ringW * (1 - t))
-              : (ringStart + ringW * t);
-            if (rv < 0.5) continue;
-            const p0 = L.polar(cx, cy, rv, aStart);
-            const p1 = L.polar(cx, cy, rv, aEnd);
-            C.el('path', {
-              d: `M ${p0.x} ${p0.y} A ${rv} ${rv} 0 ${large} 1 ${p1.x} ${p1.y}`,
-              fill: 'none',
-              stroke: track.boxColor || '#bbbbbb',
-              'stroke-width': Number(track.boxWidth) || 0.5,
-              'stroke-dasharray': track.boxDashed ? '4 3' : ''
-            });
-          }
-        }
-      }
-      if (isBarLike && (track.refLines || []).length) {
-        let refMn, refMx;
-        if (track.type === 'stackedbar') {
-          const dom = stackDomain || barDomain(track, leaves, track.percentMode);
-          refMn = dom.mn; refMx = dom.mx;
-        } else {
-          const nums = leaves.map(x => parseFloat(datasetValue(track, x))).filter(Number.isFinite);
-          refMn = Number.isFinite(Number(track.axisMin)) ? Number(track.axisMin) : Math.min(0, ...nums);
-          refMx = Number.isFinite(Number(track.axisMax)) ? Number(track.axisMax) : Math.max(...nums);
-          if (refMn === refMx) refMx = refMn + 1;
-        }
-        if (refMx !== refMn) {
-          const sortedA = leaves.map(l => l.angle).filter(a => a != null).sort((a, b) => a - b);
-          if (sortedA.length) {
-            const aStart = sortedA[0] - halfAngle;
-            const aEnd = sortedA[sortedA.length - 1] + halfAngle;
-            const large = (aEnd - aStart) > 180 ? 1 : 0;
-            (track.refLines || []).forEach(rl => {
-              const rv = Number(rl.value);
-              if (!Number.isFinite(rv)) return;
-              const t = (rv - refMn) / (refMx - refMn);
-              if (t < 0 || t > 1) return;
-              const rr = isInv
-                ? (ringStart + ringW * (1 - t))
-                : (ringStart + ringW * t);
-              const p0 = L.polar(cx, cy, rr, aStart);
-              const p1 = L.polar(cx, cy, rr, aEnd);
-              C.el('path', {
-                d: `M ${p0.x} ${p0.y} A ${rr} ${rr} 0 ${large} 1 ${p1.x} ${p1.y}`,
-                fill: 'none',
-                stroke: rl.color || '#e74c3c',
-                'stroke-width': Number(rl.width) || 1,
-                'stroke-dasharray': rl.dashed ? '4 3' : ''
-              });
-            });
-          }
-        }
-      }
       if (track.type === 'colorstrip' && track.showText) {
+        const tsLocal = trackTextStyle(track);
+        const verticalText = track.textOrientation === 'vertical';
         const drawOneText = (angle0, angle1, textVal) => {
           const midAngle = (angle0 + angle1) / 2;
           const radialOff = Number(track.colorstripTextOffsetX) || 0;
@@ -1450,22 +1296,20 @@ function renderCustomTracks(radial) {
           const pR = L.polar(cx, cy, rMid + radialOff, midAngle);
           const pT = L.polar(0, 0, tangentOff, midAngle + 90);
           const p = { x: pR.x + pT.x, y: pR.y + pT.y };
-          const vertical = track.textOrientation === 'vertical';
           const arcLength = Math.max(2, (angle1 - angle0) * Math.PI / 180 * rMid);
-          const availLength = vertical ? Math.max(4, ringW - 4) : Math.max(4, arcLength - 4);
-          const fontSize = Number(track.textFontSize) || 10;
-          const text = global.TreeDrawNode.fitText
-            ? global.TreeDrawNode.fitText(String(textVal), availLength, fontSize)
+          const availLength = verticalText ? Math.max(4, ringW - 4) : Math.max(4, arcLength - 4);
+          const text = global.TreeDrawNode && global.TreeDrawNode.fitText
+            ? global.TreeDrawNode.fitText(String(textVal), availLength, tsLocal.fontSize)
             : String(textVal);
           if (!text) return;
           let rot;
-          if (vertical) { rot = midAngle; if (midAngle > 90 && midAngle < 270) rot += 180; }
+          if (verticalText) { rot = midAngle; if (midAngle > 90 && midAngle < 270) rot += 180; }
           else { rot = midAngle - 90; if (rot > 90) rot -= 180; if (rot < -90) rot += 180; }
           const style = TT.fromParts({
-            font: ff, size: fontSize, bold: track.textBold,
-            italic: track.textItalic, color: track.textColor || '#333333'
+            font: tsLocal.fontFamily || ff, size: tsLocal.fontSize,
+            bold: tsLocal.bold, italic: tsLocal.italic, color: tsLocal.color
           });
-          TT.draw(null, p.x, p.y, text, style, {
+          drawText(null, p.x, p.y, text, style, tsLocal, {
             "text-anchor": "middle", "dominant-baseline": "middle",
             "pointer-events": "none",
             transform: `rotate(${rot} ${p.x} ${p.y})`
@@ -1490,6 +1334,19 @@ function renderCustomTracks(radial) {
           });
         }
       }
+      if (isBarLike && barBoxAngles) {
+        const { aStart, aEnd } = barBoxAngles;
+        const large = (aEnd - aStart) > 180 ? 1 : 0;
+        if (track.showAxisNumbers) {
+          const dom = barDomain(track, leaves, track.percentMode);
+          const axV = track.type === 'bar' ? (Number(track.barAxisValue) || 0) : dom.mn;
+          const tAxis = (dom.mx - dom.mn) ? (axV - dom.mn) / (dom.mx - dom.mn) : 0;
+          const segAxis = isInv ? (ringStart + ringW * (1 - Math.max(0, Math.min(1, tAxis)))) : (ringStart + ringW * Math.max(0, Math.min(1, tAxis)));
+          const pb0 = L.polar(cx, cy, segAxis, aStart);
+          const pb1 = L.polar(cx, cy, segAxis, aEnd);
+          C.el('path', { d: `M ${pb0.x} ${pb0.y} A ${segAxis} ${segAxis} 0 ${large} 1 ${pb1.x} ${pb1.y}`, fill: 'none', stroke: '#333', 'stroke-width': 0.8 });
+        }
+      }
       if (tc.trackNameShow && track.name) {
         const nameFs = Math.max(6, Number(tc.trackNameFontSize) || 11);
         const midR = ringStart + ringW / 2;
@@ -1498,15 +1355,8 @@ function renderCustomTracks(radial) {
         let rot = axisAngle;
         while (rot > 90) rot -= 180;
         while (rot < -90) rot += 180;
-        const style = TT.fromParts({
-          font: ff, size: nameFs, bold: tc.trackNameBold,
-          italic: tc.trackNameItalic, color: "#3a4a4a"
-        });
-        TT.draw(null, p.x, p.y, track.name, style, {
-          "text-anchor": "middle", "dominant-baseline": "middle",
-          "data-track-title": track.id,
-          transform: `rotate(${rot} ${p.x} ${p.y})`
-        });
+        const style = TT.fromParts({ font: ff, size: nameFs, bold: tc.trackNameBold, italic: tc.trackNameItalic, color: "#3a4a4a" });
+        TT.draw(null, p.x, p.y, track.name, style, { "text-anchor": "middle", "dominant-baseline": "middle", "data-track-title": track.id, transform: `rotate(${rot} ${p.x} ${p.y})` });
       }
       const hitAngs = leaves.map(l => l.angle).filter(a => a != null);
       if (hitAngs.length) {
@@ -1520,16 +1370,15 @@ function renderCustomTracks(radial) {
         const p1i = L.polar(cx, cy, ringStart + ringW, aStartHit);
         C.el("path", {
           d: `M ${p0i.x} ${p0i.y} A ${ringStart} ${ringStart} 0 ${largeArc} 1 ${p0o.x} ${p0o.y} L ${p1o.x} ${p1o.y} A ${ringStart + ringW} ${ringStart + ringW} 0 ${largeArc} 0 ${p1i.x} ${p1i.y} Z`,
-          fill: "transparent", stroke: "none",
-          "pointer-events": "all",
-          "data-track-band": track.id, style: "cursor:grab"
+          fill: "transparent", stroke: "none", "pointer-events": "all", "data-track-band": track.id, style: "cursor:grab"
         });
       }
       placed.push({ track, ringW, ringStart });
-      rBase = isInv ? ringStart : (ringStart + ringW);   
+      rBase = isInv ? ringStart : (ringStart + ringW);
     });
-    const legendX = isInv ? (cx + rBase - 40 - 200) : (cx + rBase + 40);
-    let legendY = cy - 150;
+    const _rootR = L.getRadialInnerBase() + (285 * (st.scaleH || 1)) * tMaxUsed / maxD2;
+    const legendX = isInv ? (cx + _rootR + 40) : (cx + rBase + 40);
+    let legendY = isInv ? (cy - _rootR) : (cy - 150);
     placed.forEach(item => {
       if (!item.track.showLegend || item.track.type === 'text') return;
       if (item.track.legendX != null && item.track.legendY != null) {
@@ -1564,12 +1413,13 @@ C.registerSnapshot('customTracks', () => ({
 global.TreeTracks = {
   get tracks() { return customTracks; },
   get trackCommon() { return trackCommon; }, set trackCommon(v) { Object.assign(trackCommon, v); },
-  trackTypeLabel,
-  trackDefaultName, newTrackDefaults,
+  trackTypeLabel, trackDefaultName, newTrackDefaults,
   addCustomTrack, updateCustomTrack, removeCustomTrack, toggleCustomTrack,
   buildTrackData, buildMultiTrackData, refreshTrackData,
   getTrackColorMap, collectUniqueValues, renderCustomTracks,
-  computeTrackWidth, datasetValue, drawTrackSymbol, sampleTrackColor, evalBinaryLogic,
+  computeTrackWidth, datasetValue, getBarColumnValues, getBarColorMap,
+  drawTrackSymbol, sampleTrackColor, evalBinaryLogic,
+  trackTextStyle, trackBorderStyle, trackShapeStyle,
   _legendDrawn: false
 };
 })(window);

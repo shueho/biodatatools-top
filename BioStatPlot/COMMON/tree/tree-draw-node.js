@@ -4,6 +4,7 @@ const C = global.TreeCore;
 const T = global.TreeTraverse;
 const L = global.TreeLayout;
 const TT = global.TreeText;
+const SS = global.TreeStyle;
 
 function isInvert() { return C.isTrue(C.state.invert); }
 
@@ -28,6 +29,9 @@ function drawSymbol(shape, cx, cy, s, fill, strokeColor, strokeWidth, parent) {
     const tx = el("text", { x: cx, y: cy + s * 0.7, "font-size": s * 2, "text-anchor": "middle", fill });
     tx.textContent = "✔";
     return tx;
+  }
+  if (shape === "diamond2" || shape === "diamond") {
+    return el("polygon", { points: `${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`, ...attrs });
   }
   return el("circle", { cx, cy, r: s, ...attrs });
 }
@@ -76,9 +80,7 @@ function drawLeafLabel(n, radial) {
     else if (rot < -90) { rot += 180; anchor = "end"; }
     else anchor = "start";
     rotate = rot;
-    if (st.extendBranches) {
-      C.el("line", { x1: n.x, y1: n.y, x2: x, y2: y, ...global.TreeDrawBranch.gapLineAttrs() });
-    }
+    if (st.extendBranches) C.el("line", { x1: n.x, y1: n.y, x2: x, y2: y, ...global.TreeDrawBranch.gapLineAttrs() });
   } else if (!radial) {
     y = n.y + size * .34;
     if (isAligned) {
@@ -115,25 +117,18 @@ function drawLeafLabel(n, radial) {
     }
     const p = L.polar(470, 380, Math.max(4, rLabel), angle);
     x = p.x; y = p.y;
-const la = st.labelAnchorCirc || "auto";
-if (la === "left") anchor = "end";
-else if (la === "right") anchor = "start";
-else anchor = (angle > 180 && angle < 360) ? "end" : "start";
-rotate = angle - 90;
-if (anchor === "end") rotate += 180;
-if (inv) anchor = (anchor === "end") ? "start" : "end";   
+    const la = st.labelAnchorCirc || "auto";
+    if (la === "left") anchor = "end";
+    else if (la === "right") anchor = "start";
+    else anchor = (angle > 180 && angle < 360) ? "end" : "start";
+    rotate = angle - 90;
+    if (anchor === "end") rotate += 180;
+    if (inv) anchor = (anchor === "end") ? "start" : "end";
   }
 
-  const style = TT.fromParts({
-    font: st.fontFamily, size: size,
-    bold: st.bold || n.labelBold,
-    italic: st.italic || n.labelItalic,
-    color
-  });
+  const style = TT.fromParts({ font: st.fontFamily, size: size, bold: st.bold || n.labelBold, italic: st.italic || n.labelItalic, color });
   const label = TT.draw(null, x, y, text, style, {
-    "text-anchor": anchor,
-    class: "leaf-label",
-    "data-id": n.id,
+    "text-anchor": anchor, class: "leaf-label", "data-id": n.id,
     transform: radial ? `rotate(${rotate} ${x} ${y})` : undefined
   });
   if (n.styleRuns && n.styleRuns.length && label) {
@@ -168,6 +163,7 @@ if (inv) anchor = (anchor === "end") ? "start" : "end";
     C.getSvg().insertBefore(bg, label);
   }
 }
+
 let _nodeValueRangeCache = {};
 function getNodeLabelValue(n, item, raw) {
   if (!n || !item || !item.column) return null;
@@ -288,7 +284,7 @@ function drawNodeLabels(n, radial) {
   const symbolItems = valid.filter(v => v.kind === "symbol");
   const mergeText = cfg.mergeText !== false;
   const fillColorAs = cfg.fillColorAs || "text";
-  const bgFill = cfg.bgFill || "#eeeeee";
+  const bgFill = cfg.bgColor || cfg.bgFill || "#eeeeee";
   const bgBorderColor = cfg.bgBorderColor || "#cccccc";
   const bgBorderWidth = Number(cfg.bgBorderWidth) || 0;
   const textColorOnBg = cfg.textColorOnBg || "#222222";
@@ -333,31 +329,27 @@ function drawNodeLabels(n, radial) {
   }
   const group = C.el("g", {
     transform: `translate(${baseX} ${baseY})${rot ? " rotate(" + rot + ")" : ""}`,
-    class: "node-label-group",
-    "data-node-label-group": "1",
-    style: "cursor:move"
+    class: "node-label-group", "data-node-label-group": "1", style: "cursor:move"
   });
-  const textStyle = TT.fromParts({
-    font: st.fontFamily, size: fs, bold: cfg.bold, italic: cfg.italic, color: "#333333"
-  });
+  const textStyle = TT.fromParts({ font: st.fontFamily, size: fs, bold: cfg.bold, italic: cfg.italic, color: cfg.color || "#333333" });
   const baseYInGroup = radial ? radialShift : 0;
   const addSymbol = (v, cursorX) => {
     const size = mapSymbolSize(v.avg, v.item);
-    const sym = drawSymbol(v.item.shape || "circle", cursorX + size, baseYInGroup, size,
-      v.item.fillColor || "#E64B35", v.item.strokeColor, v.item.strokeWidth, group);
+    const sym = drawSymbol(v.item.shape || "circle", cursorX + size, baseYInGroup, size, v.item.fillColor || "#E64B35", v.item.strokeColor, v.item.strokeWidth, group);
     if (sym) sym.setAttribute("data-id", n.id);
     return size * 2 + 4;
   };
   const addText = (content, cursorX, withBg) => {
-    const txtFill = fillColorAs === "background" ? textColorOnBg : textStyle.color;
-    const tEl = TT.draw(group, cursorX, baseYInGroup, content, textStyle.clone({ color: txtFill }),
-      { "text-anchor": "start", "data-id": n.id });
+    const useBgTextColor = withBg && fillColorAs === "background";
+    const txtFill = useBgTextColor ? textColorOnBg : textStyle.color;
+    const tEl = TT.draw(group, cursorX, baseYInGroup, content, textStyle.clone({ color: txtFill }), { "text-anchor": "start", "data-id": n.id, opacity: (cfg.opacity != null ? cfg.opacity : 1) });
     if (withBg) {
       try {
         const bb = tEl.getBBox();
         const rect = C.el("rect", {
           x: bb.x - 3, y: bb.y - 1, width: bb.width + 6, height: bb.height + 2,
           fill: bgFill, rx: 2,
+          "fill-opacity": Number(cfg.bgOpacity != null ? cfg.bgOpacity : 1),
           stroke: bgBorderWidth > 0 ? bgBorderColor : "none",
           "stroke-width": bgBorderWidth, "pointer-events": "none"
         }, group);
@@ -366,11 +358,13 @@ function drawNodeLabels(n, radial) {
     }
     return tEl;
   };
+
+  const showBg = !!cfg.bgShow || fillColorAs === "background";
   if (mergeText && textItems.length) {
     let cursorX = -totalW / 2;
     symbolItems.forEach(v => { cursorX += addSymbol(v, cursorX); });
     const combined = textItems.map(v => v.text).join(sep);
-    if (combined) addText(combined, cursorX, fillColorAs === "background");
+    if (combined) addText(combined, cursorX, showBg);
   } else {
     let cursorX = -totalW / 2;
     let hasText = false;
@@ -379,7 +373,28 @@ function drawNodeLabels(n, radial) {
       else {
         let txt = v.text;
         if (hasText && sep) txt = sep + txt;
-        const tEl = addText(txt, cursorX, fillColorAs === "background");
+        const tEl = addText(txt, cursorX, showBg);
+        let w = txt.length * fs * 0.6;
+        try { w = tEl.getBBox().width; } catch (_) {}
+        cursorX += w;
+        hasText = true;
+      }
+    });
+  }
+  if (mergeText && textItems.length) {
+    let cursorX = -totalW / 2;
+    symbolItems.forEach(v => { cursorX += addSymbol(v, cursorX); });
+    const combined = textItems.map(v => v.text).join(sep);
+    const showBg = !!cfg.bgShow || fillColorAs === "background";
+  } else {
+    let cursorX = -totalW / 2;
+    let hasText = false;
+    valid.forEach(v => {
+      if (v.kind === "symbol") { cursorX += addSymbol(v, cursorX); hasText = false; }
+      else {
+        let txt = v.text;
+        if (hasText && sep) txt = sep + txt;
+    const showBg = !!cfg.bgShow || fillColorAs === "background";
         let w = txt.length * fs * 0.6;
         try { w = tEl.getBBox().width; } catch (_) {}
         cursorX += w;
@@ -418,13 +433,11 @@ function drawPieMarkerForNode(n, radial) {
   }
   const r = Math.max(2, Number(cfg.radius) || 9);
   const g = C.el('g', {
-    class: 'pie-marker', 'data-pie-marker-group': '1',
-    'data-id': n.id, style: 'cursor:move',
-    transform: `translate(${cx} ${cy})`
+    class: 'pie-marker', 'data-pie-marker-group': '1', 'data-id': n.id,
+    style: 'cursor:move', transform: `translate(${cx} ${cy})`
   });
   const pal = global.TreePalette.getCategoricalScheme(cfg.palette || 'tableau10');
-  const colors = cfg.columns.map((col, i) =>
-    (cfg.columnColors && cfg.columnColors[col]) || pal[i % pal.length]);
+  const colors = cfg.columns.map((col, i) => (cfg.columnColors && cfg.columnColors[col]) || pal[i % pal.length]);
   let a0 = -90;
   vals.forEach((v, i) => {
     if (v <= 0) return;
@@ -450,25 +463,37 @@ function drawLengthLabel(parent, child, radial) {
   const st = C.state;
   const cfg = st.lengthLabel || {};
   if (!cfg.show) return;
-
   const isRoot = (parent === null || parent === undefined);
   if (!isRoot) {
     const realKids = (child.children || []).filter(c => !c.deleted);
     if (realKids.length === 0) return;
   }
-  const fs = Math.max(6, Number(cfg.fontSize) || 9);
-  const offX = Number(cfg.offsetX) || 0;
-  const offY = Number(cfg.offsetY) || 0;
-  const offT = Number(cfg.offsetTangent) || 0;
-  const offR = Number(cfg.offsetRadial) || 0;
+  const ts = SS.textStyle(Object.assign({}, st.textStyles.trackText, {
+    fontFamily: cfg.fontFamily || '',
+    fontSize: cfg.fontSize || 9,
+    bold: cfg.bold, italic: cfg.italic,
+    color: cfg.color || '#000000',
+    opacity: cfg.opacity != null ? Number(cfg.opacity) : 1,
+    bgShow: !!cfg.bgShow,
+    bgColor: cfg.bgColor || cfg.bgFill || '#ffffff',
+    bgOpacity: cfg.bgOpacity != null ? Number(cfg.bgOpacity) : 1,
+    bgBorderColor: cfg.bgBorderColor || '#999999',
+    bgBorderWidth: cfg.bgBorderWidth != null ? Number(cfg.bgBorderWidth) : 0,
+    x: cfg.offsetX != null ? cfg.offsetX : 0,
+    y: cfg.offsetY != null ? cfg.offsetY : 0,
+    offsetTangent: cfg.offsetTangent || 0,
+    offsetRadial: cfg.offsetRadial || 0
+  }));
+  const fs = ts.fontSize;
+  const offX = ts.x || 0;
+  const offY = ts.y || 0;
+  const offT = ts.offsetTangent || 0;
+  const offR = ts.offsetRadial || 0;
   const decimals = Math.max(0, Math.min(6, Number(cfg.decimals) || 0));
   const root = C.getRoot();
   const totalDepth = Math.max(T.maxDepth(root, 0) || 1, 1e-9);
   const factor = Number(C.state.timeScaleFactor) || 1;
-  const rootAge = (cfg.timeRootAge != null && Number(cfg.timeRootAge) > 0)
-    ? Number(cfg.timeRootAge)
-    : totalDepth;
-
+  const rootAge = (cfg.timeRootAge != null && Number(cfg.timeRootAge) > 0) ? Number(cfg.timeRootAge) : totalDepth;
   function depthToTime(v) {
     const d = Math.max(0, totalDepth - v);
     return Math.max(0, d / totalDepth * rootAge * factor);
@@ -502,7 +527,6 @@ function drawLengthLabel(parent, child, radial) {
     }
     return null;
   }
-
   let value; let ci = null;
   if (cfg.asTime) {
     let cum = 0;
@@ -519,23 +543,19 @@ function drawLengthLabel(parent, child, radial) {
       if (raw) ci = raw;
     }
   }
-
   let text = Number(value).toFixed(decimals);
   if (ci && Number.isFinite(ci[0]) && Number.isFinite(ci[1])) {
     text = `${text} (${ci[0].toFixed(decimals)} - ${ci[1].toFixed(decimals)})`;
   }
   let x, y, anchor = "middle", rot = 0;
   let radialShift = 0;
-
   const unrooted = C.state.mode === 'unrooted';
   if (radial && !unrooted) {
     const angle = child.angle || 0;
     const nodeR = child.r || 0;
     const inwardOffset = Math.max(fs * 0.8, 5);
     const halfW = text.length * fs * 0.6 / 2;
-    const baseR = isRoot
-      ? Math.max(fs * 2.5, nodeR + fs * 2)
-      : Math.max(fs * 1.2, nodeR - inwardOffset - halfW);
+    const baseR = isRoot ? Math.max(fs * 2.5, nodeR + fs * 2) : Math.max(fs * 1.2, nodeR - inwardOffset - halfW);
     const finalR = baseR + offR;
     const p = L.polar(470, 380, finalR, angle);
     x = p.x; y = p.y;
@@ -584,29 +604,22 @@ function drawLengthLabel(parent, child, radial) {
   if (rot) transforms.push(`rotate(${rot} ${x} ${y})`);
   if (radialShift) transforms.push(`translate(0 ${radialShift})`);
   const transformStr = transforms.length ? transforms.join(" ") : undefined;
-  const style = TT.fromParts({
-    font: st.fontFamily, size: fs, bold: cfg.bold, italic: cfg.italic, color: "#000000"
-  });
+  const style = TT.fromParts({ font: ts.fontFamily || st.fontFamily, size: fs, bold: ts.bold, italic: ts.italic, color: ts.color });
   const textEl = TT.draw(null, x, y, text, style, {
-    "text-anchor": anchor,
-    "dominant-baseline": "middle",
-    "data-id": child.id,
-    "data-length-label": "1",
-    class: "length-label",
-    style: "cursor:move",
-    transform: transformStr
+    "text-anchor": anchor, "dominant-baseline": "middle",
+    "data-id": child.id, "data-length-label": "1", class: "length-label",
+    style: "cursor:move", transform: transformStr,
+    opacity: ts.opacity != null ? ts.opacity : 1
   });
-  if (cfg.bgShow && textEl) {
+  if (ts.bgShow && textEl) {
     try {
       const bb = textEl.getBBox();
       const rect = C.el("rect", {
         x: bb.x - 3, y: bb.y - 2, width: bb.width + 6, height: bb.height + 4,
-        fill: cfg.bgFill || "#ffffff",
-        stroke: (Number(cfg.bgBorderWidth) > 0) ? (cfg.bgBorderColor || "#999999") : "none",
-        "stroke-width": Number(cfg.bgBorderWidth) || 0,
-        "data-length-label": "1",
-        class: "length-label",
-        style: "cursor:move",
+        fill: ts.bgColor || "#ffffff", "fill-opacity": ts.bgOpacity,
+        stroke: (ts.bgBorderWidth > 0) ? (ts.bgBorderColor || "#999999") : "none",
+        "stroke-width": ts.bgBorderWidth || 0,
+        "data-length-label": "1", class: "length-label", style: "cursor:move",
         transform: transformStr
       });
       C.getSvg().insertBefore(rect, textEl);
@@ -626,7 +639,6 @@ function drawCollapsedTriangle(n, hiddenLeaves, radial) {
   const isInv = C.isTrue(st.invert);
   const isUnrooted = C.state.mode === 'unrooted';
   let tipPoint;
-
   if (isUnrooted) {
     const dx = (n.x || 0) - 470, dy = (n.y || 0) - 380;
     const d = Math.hypot(dx, dy) || 1;
@@ -638,8 +650,7 @@ function drawCollapsedTriangle(n, hiddenLeaves, radial) {
   }
   let points;
   if (isUnrooted) {
-    const sorted = [...hiddenLeaves].sort((a, b) =>
-      Math.atan2(a.y - 380, a.x - 470) - Math.atan2(b.y - 380, b.x - 470));
+    const sorted = [...hiddenLeaves].sort((a, b) => Math.atan2(a.y - 380, a.x - 470) - Math.atan2(b.y - 380, b.x - 470));
     const first = sorted[0], last = sorted[sorted.length - 1];
     points = `${tipPoint.x},${tipPoint.y} ${first.x},${first.y} ${last.x},${last.y}`;
   } else if (radial) {
@@ -660,9 +671,7 @@ function drawCollapsedTriangle(n, hiddenLeaves, radial) {
     const sorted = [...hiddenLeaves].sort((a, b) => (a.y || 0) - (b.y || 0));
     const first = sorted[0], last = sorted[sorted.length - 1];
     if (useExtended) {
-      const baseX = isInv
-        ? (C.alignedLabelX() + 10)
-        : (C.alignedLabelX() - 10);
+      const baseX = isInv ? (C.alignedLabelX() + 10) : (C.alignedLabelX() - 10);
       const sY = (n._slotStart != null) ? n._slotStart : (first.y || 0);
       const eY = (n._slotEnd != null) ? n._slotEnd : (last.y || 0);
       points = `${tipPoint.x},${tipPoint.y} ${baseX},${sY} ${baseX},${eY}`;
@@ -715,11 +724,7 @@ function drawNodesAndLabels(radial) {
       hotspot.setAttribute("class", "node-hotspot");
       hotspot.setAttribute("data-id", n.id);
     } else {
-      hotspot = C.el("circle", {
-        cx: sx, cy: sy, r: 7,
-        fill: "transparent", stroke: "transparent",
-        class: "node-hotspot", "data-id": n.id
-      });
+      hotspot = C.el("circle", { cx: sx, cy: sy, r: 7, fill: "transparent", stroke: "transparent", class: "node-hotspot", "data-id": n.id });
     }
     if (n.meta && n.meta.length) {
       const tip = n.meta.map(f => {
@@ -731,54 +736,33 @@ function drawNodesAndLabels(radial) {
     if (n.id === selId) {
       if (radial) {
         if (C.state.mode === 'unrooted') {
-          C.el("circle", {
-            cx: n.x, cy: n.y, r: 12,
-            fill: "none", stroke: "#ff4b4b", "stroke-width": 2.5,
-            "pointer-events": "none", class: "selection-arrow"
-          }).setAttribute("data-selected-for", n.id);
+          C.el("circle", { cx: n.x, cy: n.y, r: 12, fill: "none", stroke: "#ff4b4b", "stroke-width": 2.5, "pointer-events": "none", class: "selection-arrow" }).setAttribute("data-selected-for", n.id);
         } else {
           const angle = n.angle || 0;
           const off = 16, half = 6;
           const tip = L.polar(470, 380, (n.r || 0) + off, angle);
           const baseA = L.polar(470, 380, (n.r || 0) + off + 12, angle + half);
           const baseB = L.polar(470, 380, (n.r || 0) + off + 12, angle - half);
-          C.el("polygon", {
-            points: `${tip.x},${tip.y} ${baseA.x},${baseA.y} ${baseB.x},${baseB.y}`,
-            fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1.5,
-            "stroke-linejoin": "round", class: "selection-arrow", "pointer-events": "none"
-          }).setAttribute("data-selected-for", n.id);
+          C.el("polygon", { points: `${tip.x},${tip.y} ${baseA.x},${baseA.y} ${baseB.x},${baseB.y}`, fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1.5, "stroke-linejoin": "round", class: "selection-arrow", "pointer-events": "none" }).setAttribute("data-selected-for", n.id);
         }
       } else {
         const tipX = sx - 4, backX = tipX - 14, halfH = 8;
-        C.el("polygon", {
-          points: `${tipX},${sy} ${backX},${sy - halfH} ${backX},${sy + halfH}`,
-          fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1.5,
-          "stroke-linejoin": "round", class: "selection-arrow", "pointer-events": "none"
-        }).setAttribute("data-selected-for", n.id);
+        C.el("polygon", { points: `${tipX},${sy} ${backX},${sy - halfH} ${backX},${sy + halfH}`, fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1.5, "stroke-linejoin": "round", class: "selection-arrow", "pointer-events": "none" }).setAttribute("data-selected-for", n.id);
       }
     }
     if (n.id === branchSel && n.parent) {
       if (radial) {
         if (C.state.mode === 'unrooted') {
           const mx = (n.parent.x + n.x) / 2, my = (n.parent.y + n.y) / 2;
-          C.el("polygon", {
-            points: `${mx - 6},${my - 4} ${mx + 6},${my - 4} ${mx},${my + 6}`,
-            fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1, "pointer-events": "none"
-          });
+          C.el("polygon", { points: `${mx - 6},${my - 4} ${mx + 6},${my - 4} ${mx},${my + 6}`, fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1, "pointer-events": "none" });
         } else {
           const midR = ((n.r || 0) + (n.parent.r || 0)) / 2;
           const p = L.polar(470, 380, midR, n.angle || 0);
-          C.el("polygon", {
-            points: `${p.x - 6},${p.y - 4} ${p.x + 6},${p.y - 4} ${p.x},${p.y + 6}`,
-            fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1, "pointer-events": "none"
-          });
+          C.el("polygon", { points: `${p.x - 6},${p.y - 4} ${p.x + 6},${p.y - 4} ${p.x},${p.y + 6}`, fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1, "pointer-events": "none" });
         }
       } else {
         const mx = (n.parent.x + n.x) / 2;
-        C.el("polygon", {
-          points: `${mx - 6},${n.y - 4} ${mx + 6},${n.y - 4} ${mx},${n.y + 6}`,
-          fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1, "pointer-events": "none"
-        });
+        C.el("polygon", { points: `${mx - 6},${n.y - 4} ${mx + 6},${n.y - 4} ${mx},${n.y + 6}`, fill: "#ff4b4b", stroke: "#ffffff", "stroke-width": 1, "pointer-events": "none" });
       }
     }
     if (st.nodeIds && !T.isLeaf(n)) {
@@ -787,8 +771,7 @@ function drawNodesAndLabels(radial) {
     }
     if (st.showBootstrap && !T.isLeaf(n) && n.support) {
       const style = TT.fromParts({ font: st.fontFamily, size: 10, color: "#b5651d" });
-      TT.draw(null, n.x - 4, n.y - 5, formatBootstrapValue(n.support), style,
-        { "text-anchor": "end", "data-id": n.id });
+      TT.draw(null, n.x - 4, n.y - 5, formatBootstrapValue(n.support), style, { "text-anchor": "end", "data-id": n.id });
     }
     if (st.labels && T.isLeaf(n)) drawLeafLabel(n, radial);
     drawNodeLabels(n, radial);
@@ -830,7 +813,7 @@ function labelRightEdge() {
 function drawRangeLabels(radial) {
   const st = C.state;
   if (!radial && st.lineShape === 'slanted') return;
-  if (C.state.mode === 'unrooted') return;  
+  if (C.state.mode === 'unrooted') return;
   const cfg = st.rangeLabelConfig || {};
   if (!cfg.show || !cfg.field) return;
   const root = C.getRoot(); if (!root) return;

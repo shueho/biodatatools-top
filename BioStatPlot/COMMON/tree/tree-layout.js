@@ -419,12 +419,35 @@ function getRadialInnerBase() {
   base += extStart;
 
   if (C.isTrue(st.invert)) {
-    const defaultInner = maxR + 200;
     const customInner = Number(st.circularInvertInnerRadius);
-    const targetInner = (Number.isFinite(customInner) && customInner > 0)
-      ? customInner
-      : defaultInner;
-    base = Math.max(base, targetInner);
+    const userBoundary = (Number.isFinite(customInner) && customInner > 0) ? customInner : 0;
+    const tc = (global.TreeTracks && global.TreeTracks.trackCommon) || {};
+    const gap = Math.max(0, Number(tc.trackGap) || 0);
+
+    let maxLabelW = 0;
+    T.visibleLeaves(root).forEach(l => {
+      const w = T.labelOf(l).length * st.fontSize * (l.labelSizeFactor || 1) * 0.6;
+      if (w > maxLabelW) maxLabelW = w;
+    });
+
+    let tracksW = 0;
+    if (global.TreeTracks && Array.isArray(global.TreeTracks.tracks)) {
+      global.TreeTracks.tracks.forEach(t => {
+        const w = global.TreeTracks.computeTrackWidth(t, { radial: true });
+        tracksW += gap + Math.max(6, w);
+      });
+    }
+
+    let rangeW = 0;
+    if (global.TreeRanges && Array.isArray(global.TreeRanges.colorRanges)
+        && global.TreeRanges.colorRanges.length
+        && global.TreeRanges.rangeLabelTrackShow) {
+      rangeW = gap + (Number(global.TreeRanges.rangeLabelTrackWidth) || 60);
+    }
+
+    const pad = 36;
+    const innerMin = userBoundary > 0 ? userBoundary : (maxR + 200);
+    base = Math.max(base, innerMin + tracksW + rangeW + maxLabelW + pad);
   }
   return base;
 }
@@ -510,9 +533,19 @@ function layoutRadial() {
     : (Math.max(...visLeaves.map(l => l.r || 0)) + 12);
   C.setRadialLabelR(labelR);
   const maxT = Math.max(0, ...visLeaves.map(l => T.labelOf(l).length * st.fontSize * (l.labelSizeFactor || 1) * 0.6));
+  let tracksExtra = 0;
+  if (global.TreeTracks && Array.isArray(global.TreeTracks.tracks) && global.TreeTracks.tracks.length) {
+    const tc = global.TreeTracks.trackCommon || {};
+    const gap = Math.max(0, Number(tc.trackGap) || 0);
+    global.TreeTracks.tracks.forEach(t => {
+      const w = (global.TreeTracks.computeTrackWidth && global.TreeTracks.computeTrackWidth(t, { radial: true })) || 0;
+      tracksExtra += gap + Math.max(6, w);
+    });
+  }
+  const legendExtra = 320;
   const ext = isInvRadial
-    ? Math.max(380, R_total + 20, labelR + maxT + 14) + 20
-    : Math.max(380, labelR + maxT + 14, R_total + 20) + 20;
+    ? Math.max(380, R_total + 20, labelR + maxT + 14) + 20 + tracksExtra + legendExtra
+    : Math.max(380, labelR + maxT + 14, R_total + 20) + 20 + tracksExtra + legendExtra;
   C.setViewBox({ x: 470 - ext - 16, y: 380 - ext - 16, w: (ext + 16) * 2, h: (ext + 16) * 2 });
 }
 

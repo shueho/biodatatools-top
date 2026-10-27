@@ -4,6 +4,9 @@ const C = global.TreeCore;
 const T = global.TreeTraverse;
 const L = global.TreeLayout;
 const TT = global.TreeText;
+const SS = global.TreeStyle;
+const W = global.TreeCommonWidgets;
+const drawText = (p, x, y, t, s, ts, e) => W.drawTextWithBg(TT, p, x, y, t, s, ts, e);
 
 function fontFam() { return C.state.fontFamily || 'Times New Roman'; }
 
@@ -18,52 +21,34 @@ function drawLegend(customX, customY) {
   const lx = baseX + (st.legendOffsetX || 0);
   const ly = baseY + (st.legendOffsetY || 0);
   const scale = tc.legendScale || 1;
-  const fs = Math.max(6, Number(tc.legendFontSize) || 11) * scale;
+  const tsTitle = SS.textStyle(st.textStyles.legendTitle);
+  const tsItem = SS.textStyle(st.textStyles.legendText);
+  const fs = Math.max(6, Number(tsItem.fontSize) || 11) * scale;
   const pad = 10;
-  const titleFS = Math.max(6, Number(tc.legendTitleFontSize) || 12) * scale;
+  const titleFS = Math.max(6, Number(tsTitle.fontSize) || 12) * scale;
   const showTitle = tc.legendTitleShow !== false;
   const title = showTitle ? (st.legendTitle != null ? st.legendTitle : "Groups") : "";
   const maxPerRow = Math.max(0, Number(tc.legendMaxPerRow) || 0);
-  const g = C.el("g", {
-    class: "legend-box", "data-legend": "1", style: "cursor:move",
-    transform: `translate(${lx} ${ly})`
-  });
-  const titleStyle = TT.fromParts({
-    font: fontFam(), size: titleFS,
-    bold: tc.legendTitleBold, italic: tc.legendTitleItalic,
-    color: st.legendColor || "#222222"
-  });
-  const itemStyle = TT.fromParts({
-    font: fontFam(), size: fs,
-    bold: tc.legendBold, italic: tc.legendItalic,
-    color: st.legendColor || "#222222"
-  });
+  const g = C.el("g", { class: "legend-box", "data-legend": "1", style: "cursor:move", transform: `translate(${lx} ${ly})` });
+  const titleStyle = TT.fromParts({ font: tsTitle.fontFamily || fontFam(), size: titleFS, bold: tsTitle.bold, italic: tsTitle.italic, color: tsTitle.color || "#222222" });
+  const itemStyle = TT.fromParts({ font: tsItem.fontFamily || fontFam(), size: fs, bold: tsItem.bold, italic: tsItem.italic, color: tsItem.color || "#222222" });
   let xx = 0, yy = 0, rowItems = 0;
-  if (title) {
-    TT.draw(g, 0, titleFS, title, titleStyle, { "pointer-events": "none" });
-    yy = titleFS + 14;
-  }
+  if (title) { drawText(g, 0, titleFS, title, titleStyle, tsTitle, { "pointer-events": "none" }); yy = titleFS + 14; }
   const items = colorRanges.map((r, i) => ({ label: r.label || ("Range " + r.id), color: r.color }));
   let maxItemW = 0;
-  items.forEach(it => {
-    const w = fs + 8 + global.PlotCommon.measureText(it.label, fs);
-    if (w > maxItemW) maxItemW = w;
-  });
+  items.forEach(it => { const w = fs + 8 + global.PlotCommon.measureText(it.label, fs); if (w > maxItemW) maxItemW = w; });
   let maxX = 0;
   items.forEach(it => {
     const wItem = fs + 8 + global.PlotCommon.measureText(it.label, fs);
     if (maxPerRow > 0 && rowItems >= maxPerRow) { xx = 0; yy += fs + 6; rowItems = 0; }
     C.el("rect", { x: xx, y: yy, width: fs, height: fs, fill: it.color, rx: 2 }, g);
-    TT.draw(g, xx + fs + 4, yy + fs * 0.85, it.label, itemStyle);
+    drawText(g, xx + fs + 4, yy + fs * 0.85, it.label, itemStyle, tsItem);
     const stepW = (maxPerRow > 0) ? maxItemW : wItem;
     xx += stepW + 8; rowItems++;
     maxX = Math.max(maxX, xx);
   });
   yy += fs + pad;
-  C.el("rect", {
-    x: 0, y: 0, width: maxX + pad, height: yy,
-    fill: "transparent", "pointer-events": "all"
-  }, g).setAttribute("class", "legend-hit");
+  C.el("rect", { x: 0, y: 0, width: maxX + pad, height: yy, fill: "transparent", "pointer-events": "all" }, g).setAttribute("class", "legend-hit");
 }
 
 let colorRanges = [];
@@ -151,15 +136,23 @@ function rangePaint(range, key, radial, inner, outer, invert) {
   const defs = C.getSvg().querySelector("defs") || C.el("defs");
   const gradient = radial
     ? C.el("radialGradient", { id, gradientUnits: "userSpaceOnUse", cx: 470, cy: 380, r: outer }, defs)
-    : C.el("linearGradient", {
-        id, x1: invert ? "100%" : "0%", y1: "0%",
-        x2: invert ? "0%" : "100%", y2: "0%"
-      }, defs);
-  C.el("stop", {
-    offset: radial ? `${Math.min(99, inner / Math.max(1, outer) * 100)}%` : "0%",
-    "stop-color": range.color, "stop-opacity": 0.02
-  }, gradient);
-  C.el("stop", { offset: "100%", "stop-color": range.color, "stop-opacity": 1 }, gradient);
+    : C.el("linearGradient", { id, x1: invert ? "100%" : "0%", y1: "0%", x2: invert ? "0%" : "100%", y2: "0%" }, defs);
+  if (radial) {
+    const innerPct = Math.min(99, inner / Math.max(1, outer) * 100);
+    if (invert) {
+      C.el("stop", { offset: "0%", "stop-color": range.color, "stop-opacity": 0 }, gradient);
+      C.el("stop", { offset: `${innerPct}%`, "stop-color": range.color, "stop-opacity": 1 }, gradient);
+      C.el("stop", { offset: "100%", "stop-color": range.color, "stop-opacity": 0.02 }, gradient);
+    } else {
+      C.el("stop", { offset: `${innerPct}%`, "stop-color": range.color, "stop-opacity": 0.02 }, gradient);
+      C.el("stop", { offset: "100%", "stop-color": range.color, "stop-opacity": 1 }, gradient);
+    }
+  } else {
+    const innerOp = invert ? 1 : 0.02;
+    const outerOp = invert ? 0.02 : 1;
+    C.el("stop", { offset: "0%", "stop-color": range.color, "stop-opacity": innerOp }, gradient);
+    C.el("stop", { offset: "100%", "stop-color": range.color, "stop-opacity": outerOp }, gradient);
+  }
   return `url(#${id})`;
 }
 
@@ -254,16 +247,17 @@ function drawRectangularRanges() {
 }
 
 function drawColoredRanges(radial) {
-if (C.state.mode === 'unrooted') return;
-if (rangeCover === "off" || rangeCover === "none") return;
+  if (C.state.mode === 'unrooted') return;
+  if (rangeCover === "off" || rangeCover === "none") return;
   if (!radial) { drawRectangularRanges(); return; }
   const st = C.state;
+  const inv = C.isTrue(st.invert);
   const root = C.getRoot();
   const maxD = Math.max(T.maxDepth(root, 0), 0.01);
   const maxR = 285 * (st.scaleH || 1);
   const innerBase = L.getRadialInnerBase ? L.getRadialInnerBase() : 0;
   const extEnd = Math.max(0, Number(st.axisExtendEnd) || 0);
-const extEndPx = extEnd;
+  const extEndPx = extEnd;
   const vl = T.visibleLeaves(root);
   const gl = vl.map(l => l.angle).filter(a => a != null).sort((a, b) => a - b);
   const gStep = gl.length > 1 ? (gl[gl.length - 1] - gl[0]) / (gl.length - 1) : 6;
@@ -272,10 +266,10 @@ const extEndPx = extEnd;
     const lbl = C.getSvg().querySelector('.leaf-label[data-id="' + l.id + '"]');
     let w = T.labelOf(l).length * st.fontSize * (l.labelSizeFactor || 1) * 0.6;
     if (lbl) { try { w = lbl.getBBox().width; } catch (_) {} }
-    return C.getRadialLabelR() + w;
+    return inv ? (C.getRadialLabelR() - w) : (C.getRadialLabelR() + w);
   });
-  const gLabIn = C.getRadialLabelR() - 6;
-  const gLabOut = Math.max(...lout) + 10;
+  const gLabIn = inv ? (C.getRadialLabelR() + 6) : (C.getRadialLabelR() - 6);
+  const gLabOut = inv ? (Math.min(...lout) - 10) : (Math.max(...lout) + 10);
   colorRanges.forEach(rg => {
     const _ms = rangeMembers(rg.id);
     if (!_ms.length) return;
@@ -286,26 +280,32 @@ const extEndPx = extEnd;
       if (!angs.length) return;
       const pad = gStep / 2;
       const a0 = Math.min(...angs) - pad, a1 = Math.max(...angs) + pad;
-       const cx = 470, cy = 380;
+      const cx = 470, cy = 380;
       const ar = C.getAxisRange(maxD);
       const tMaxUsed = Math.max(maxD, ar.vHi);
-      const rOutMax = innerBase + maxR * tMaxUsed / maxD;
+      const rOutMax = inv ? innerBase : (innerBase + maxR * tMaxUsed / maxD);
       let rIn, rOut;
       if (rangeCover === "clade") {
-        rIn = Math.max(0, n.r || 0);
-        rOut = (C.state.rangeColorLabels ? (C.getRadialLabelR() - 2) : (gTipR + 2)) + extEndPx;
-      } else if (rangeCover === "full") { rIn = 0; rOut = Math.max(gLabOut, rOutMax) + extEndPx; }
-      else { rIn = gLabIn; rOut = Math.max(gLabOut, rOutMax) + extEndPx; }
-      if (C.isTrue(C.state.invert)) { const _tmp = rIn; rIn = rOut; rOut = _tmp; }
+        if (inv) {
+          rIn = (C.state.rangeColorLabels ? (C.getRadialLabelR() + 2) : innerBase);
+          rOut = Math.max(innerBase, n.r || 0);
+        } else {
+          rIn = Math.max(0, n.r || 0);
+          rOut = (C.state.rangeColorLabels ? (C.getRadialLabelR() - 2) : (gTipR + 2)) + extEndPx;
+        }
+      } else if (rangeCover === "full") {
+        if (inv) { rIn = gLabOut; rOut = innerBase + maxR * tMaxUsed / maxD; }
+        else { rIn = 0; rOut = Math.max(gLabOut, rOutMax) + extEndPx; }
+      } else {
+        if (inv) { rIn = gLabOut; rOut = innerBase; }
+        else { rIn = gLabIn; rOut = Math.max(gLabOut, rOutMax) + extEndPx; }
+      }
+      if (rIn > rOut) { const _t = rIn; rIn = rOut; rOut = _t; }
       const p0i = L.polar(cx, cy, rIn, a0), p0o = L.polar(cx, cy, rOut, a0);
       const p1o = L.polar(cx, cy, rOut, a1), p1i = L.polar(cx, cy, rIn, a1);
       const large = (a1 - a0) > 180 ? 1 : 0;
       const d = `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOut} ${rOut} 0 ${large} 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rIn} ${rIn} 0 ${large} 0 ${p0i.x} ${p0i.y} Z`;
-      const attrs = {
-        d, fill: rangePaint(rg, n.id, true, rIn, rOut),
-        opacity: st.rangeOpacity, "data-id": n.id,
-        class: "range-background clickable"
-      };
+      const attrs = { d, fill: rangePaint(rg, n.id, true, rIn, rOut, inv), opacity: st.rangeOpacity, "data-id": n.id, class: "range-background clickable" };
       if (rangeBorder > 0) { attrs.stroke = rangeBorderColor; attrs["stroke-width"] = rangeBorder; }
       C.getSvg().insertBefore(C.el("path", attrs), C.getSvg().firstChild);
     });
@@ -332,28 +332,18 @@ function drawRectangularRangeLabelTrack(xBase, leaves, isInv) {
   }
   const offset = Number(rangeLabelTrackOffset) || 0;
   const x0 = isInv ? xBase - offset - trackW : xBase + offset;
-  const ff = rangeLabelFont || st.fontFamily;
-  const textColor = rangeLabelColor || '#333333';
+  const ts = SS.textStyle(C.state.textStyles.rangeLabel);
+  const ff = ts.fontFamily || rangeLabelFont || st.fontFamily;
+  const textColor = ts.color || rangeLabelColor || '#333333';
   const vertical = rangeLabelTrackTextOrientation === 'vertical';
-  const textStyle = TT.fromParts({
-    font: ff, size: rangeLabelSize,
-    bold: rangeLabelBold, italic: rangeLabelItalic, color: textColor
-  });
+  const textStyle = TT.fromParts({ font: ff, size: ts.fontSize || rangeLabelSize, bold: ts.bold != null ? ts.bold : rangeLabelBold, italic: ts.italic != null ? ts.italic : rangeLabelItalic, color: textColor });
   segments.forEach(seg => {
     const range = rangeById(seg.id); if (!range) return;
-    C.el("rect", {
-      x: x0, y: seg.top, width: trackW,
-      height: Math.max(1, seg.bottom - seg.top),
-      fill: range.color, opacity: rangeLabelTrackOpacity,
-      "data-range": seg.id, class: "range-label-track"
-    });
+    C.el("rect", { x: x0, y: seg.top, width: trackW, height: Math.max(1, seg.bottom - seg.top), fill: range.color, opacity: rangeLabelTrackOpacity, "data-range": seg.id, class: "range-label-track" });
     if (rangeShowLabels && range.label) {
       const cx = x0 + trackW / 2 + (Number(rangeLabelTrackTextOffsetX) || 0);
       const cy = (seg.top + seg.bottom) / 2 + (Number(rangeLabelTrackTextOffsetY) || 0);
-      const extra = {
-        "text-anchor": "middle", "dominant-baseline": "middle",
-        "pointer-events": "none", class: "range-label-track-text"
-      };
+      const extra = { "text-anchor": "middle", "dominant-baseline": "middle", "pointer-events": "none", class: "range-label-track-text" };
       if (vertical) extra.transform = `rotate(-90 ${cx} ${cy})`;
       TT.draw(null, cx, cy, range.label, textStyle, extra);
     }
@@ -369,12 +359,9 @@ function drawRectangularRangeLabelTrack(xBase, leaves, isInv) {
     const ys = leaves.map(l => l.y);
     const titleY = Math.min(...ys) - rowH * 0.55 - lowestOffset - 4;
     const cx = x0 + trackW / 2;
-    const style = TT.fromParts({
-      font: ff, size: titleFs, bold: titleBold, italic: titleItalic, color: "#3a4a4a"
-    });
+    const style = TT.fromParts({ font: ff, size: titleFs, bold: titleBold, italic: titleItalic, color: "#3a4a4a" });
     TT.draw(null, cx, titleY, rangeLabelTrackTitle, style, {
-      "text-anchor": "middle", "dominant-baseline": "middle",
-      class: "range-label-track-title",
+      "text-anchor": "middle", "dominant-baseline": "middle", class: "range-label-track-title",
       transform: titleAngle ? `rotate(${titleAngle} ${cx} ${titleY})` : undefined
     });
   }
@@ -410,26 +397,21 @@ function drawRadialRangeLabelTrack(rBase, leaves) {
     });
     trackW = Math.ceil(maxTextW + 16);
   }
-const offset = Number(rangeLabelTrackOffset) || 0;
-const isInv = C.isTrue(st.invert);
-const rIn = isInv ? Math.max(4, rBase - offset) : (rBase + offset);
-const rOut = isInv ? Math.max(4, rIn - trackW) : (rIn + trackW);
-  const ff = rangeLabelFont || st.fontFamily;
-  const textColor = rangeLabelColor || '#333333';
+  const offset = Number(rangeLabelTrackOffset) || 0;
+  const isInv = C.isTrue(st.invert);
+  const rIn = isInv ? Math.max(4, rBase - offset) : (rBase + offset);
+  const rOut = isInv ? Math.max(4, rIn - trackW) : (rIn + trackW);
+  const ts = SS.textStyle(C.state.textStyles.rangeLabel);
+  const ff = ts.fontFamily || rangeLabelFont || st.fontFamily;
+  const textColor = ts.color || rangeLabelColor || '#333333';
   const vertical = rangeLabelTrackTextOrientation === 'vertical';
-  const textStyle = TT.fromParts({
-    font: ff, size: rangeLabelSize,
-    bold: rangeLabelBold, italic: rangeLabelItalic, color: textColor
-  });
+  const textStyle = TT.fromParts({ font: ff, size: ts.fontSize || rangeLabelSize, bold: ts.bold != null ? ts.bold : rangeLabelBold, italic: ts.italic != null ? ts.italic : rangeLabelItalic, color: textColor });
   groups.forEach(({ range, a0, a1 }) => {
     const p0i = L.polar(cx, cy, rIn, a0), p0o = L.polar(cx, cy, rOut, a0);
     const p1o = L.polar(cx, cy, rOut, a1), p1i = L.polar(cx, cy, rIn, a1);
     const large = (a1 - a0) > 180 ? 1 : 0;
     const d = `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOut} ${rOut} 0 ${large} 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rIn} ${rIn} 0 ${large} 0 ${p0i.x} ${p0i.y} Z`;
-    C.el("path", {
-      d, fill: range.color, opacity: rangeLabelTrackOpacity,
-      "data-range": range.id, class: "range-label-track"
-    });
+    C.el("path", { d, fill: range.color, opacity: rangeLabelTrackOpacity, "data-range": range.id, class: "range-label-track" });
     if (rangeShowLabels && range.label) {
       const mid = (a0 + a1) / 2;
       const midR = (rIn + rOut) / 2 + (Number(rangeLabelTrackTextOffsetX) || 0);
@@ -441,9 +423,8 @@ const rOut = isInv ? Math.max(4, rIn - trackW) : (rIn + trackW);
       if (vertical) { rot = mid; if (rot > 90 && rot < 270) rot -= 180; }
       else { rot = mid - 90; if (rot > 90) rot -= 180; if (rot < -90) rot += 180; }
       TT.draw(null, tx, ty, range.label, textStyle, {
-        "text-anchor": "middle", "dominant-baseline": "middle",
-        "pointer-events": "none", class: "range-label-track-text",
-        transform: `rotate(${rot} ${tx} ${ty})`
+        "text-anchor": "middle", "dominant-baseline": "middle", "pointer-events": "none",
+        class: "range-label-track-text", transform: `rotate(${rot} ${tx} ${ty})`
       });
     }
   });
@@ -456,18 +437,13 @@ const rOut = isInv ? Math.max(4, rIn - trackW) : (rIn + trackW);
     let rot = axisAngle;
     while (rot > 90) rot -= 180;
     while (rot < -90) rot += 180;
-    const style = TT.fromParts({
-      font: ff, size: nameFs,
-      bold: tc2.trackNameBold !== false, italic: tc2.trackNameItalic === true,
-      color: "#3a4a4a"
-    });
+    const style = TT.fromParts({ font: ff, size: nameFs, bold: tc2.trackNameBold !== false, italic: tc2.trackNameItalic === true, color: "#3a4a4a" });
     TT.draw(null, tp.x, tp.y, rangeLabelTrackTitle, style, {
-      "text-anchor": "middle", "dominant-baseline": "middle",
-      class: "range-label-track-title",
+      "text-anchor": "middle", "dominant-baseline": "middle", class: "range-label-track-title",
       transform: `rotate(${rot} ${tp.x} ${tp.y})`
     });
   }
-  return rOut + gap;
+  return isInv ? (rOut - gap) : (rOut + gap);
 }
 
 function escapeAttr(s) {
@@ -478,10 +454,7 @@ function renderRangesPanel() {
   const list = document.getElementById("rpList");
   if (!list) return;
   const I = global.TreeI18N;
-  if (!colorRanges.length) {
-    list.innerHTML = `<div class="info-box" style="margin:8px 0;padding:8px;">${I.t('rangesEmpty')}</div>`;
-    return;
-  }
+  if (!colorRanges.length) { list.innerHTML = `<div class="info-box" style="margin:8px 0;padding:8px;">${I.t('rangesEmpty')}</div>`; return; }
   const existing = list.querySelectorAll(".rp-row");
   if (existing.length !== colorRanges.length) {
     list.innerHTML = colorRanges.map(r =>
@@ -598,8 +571,7 @@ function applyLeafLabelColumn(colName) {
     const leafName = String(row.Leaf || "").trim();
     if (!leafName) return;
     const raw = row[colName] == null ? "" : String(row[colName]);
-    const val = raw.replace(/[\r\n\t\u00a0]/g, " ");
-    dataMap.set(leafName, val);
+    dataMap.set(leafName, raw.replace(/[\r\n\t\u00a0]/g, " "));
   });
   if (!dataMap.size) { alert(I.t('alertNoColumnData')); return; }
   let count = 0;
@@ -620,35 +592,22 @@ function resetLeafLabels() {
   });
   global.TreeRenderer.draw();
 }
-/**
- * - 数字1/2/3/4：切换当前样式（1不变、2斜体、3上标、4下标）。
- * - 非数字（含空格）：作为锚点，从pos起在text中找第一个匹配字符；
- *   锚点之前的字符应用当前样式，锚点本身不变，pos前进到锚点之后。
- *
- *
- * 例子：text="Zea mays subsp. mays"
- *   code="2 2 1"    → "Zea" 和 "mays" 斜体，" subsp. mays" 不变
- *   code="2 2 1 2"  → "Zea"、"mays"、"mays"（亚种加词）斜体，"subsp." 不变
- */
+
 function parseStyleCode(text, code) {
   if (!text || !code) return null;
   const runs = [];
-  let currentStyle = 1;   // 1=不变 2=斜体 3=上标 4=下标
-  let pos = 0;            
-  let segStart = 0;       
-
+  let currentStyle = 1;
+  let pos = 0;
+  let segStart = 0;
   function flushSegment(endPos) {
     if (endPos > segStart && currentStyle !== 1) {
       const style = {};
       if (currentStyle === 2) style.italic = true;
       else if (currentStyle === 3) style.sup = true;
       else if (currentStyle === 4) style.sub = true;
-      if (Object.keys(style).length) {
-        runs.push(Object.assign({ start: segStart, end: endPos }, style));
-      }
+      if (Object.keys(style).length) runs.push(Object.assign({ start: segStart, end: endPos }, style));
     }
   }
-
   for (let i = 0; i < code.length; i++) {
     const ch = code[i];
     if (ch >= '1' && ch <= '4') {
@@ -657,15 +616,8 @@ function parseStyleCode(text, code) {
       segStart = pos;
     } else {
       let matchIdx = -1;
-      for (let j = pos; j < text.length; j++) {
-        if (text[j] === ch) { matchIdx = j; break; }
-      }
-      if (matchIdx >= 0) {
-        flushSegment(matchIdx);
-        pos = matchIdx + 1;
-        segStart = pos;
-        currentStyle = 1;   
-      }
+      for (let j = pos; j < text.length; j++) { if (text[j] === ch) { matchIdx = j; break; } }
+      if (matchIdx >= 0) { flushSegment(matchIdx); pos = matchIdx + 1; segStart = pos; currentStyle = 1; }
     }
   }
   flushSegment(text.length);
@@ -678,7 +630,6 @@ function applyLeafLabelStyleColumn(colName) {
   const tree = C.getRoot(); if (!tree) return { count: 0 };
   const ld = global.TreeAppData && global.TreeAppData.leafData;
   if (!ld || !ld.rows || !ld.rows.length) { alert(I.t('alertNeedDataTable')); return { count: 0 }; }
-
   const nameToLeaf = new Map();
   T.allWalk(tree, n => {
     if (n.deleted) return;
@@ -688,7 +639,6 @@ function applyLeafLabelStyleColumn(colName) {
       if (k && !nameToLeaf.has(k)) nameToLeaf.set(k, n);
     }
   });
-
   const dataMap = new Map();
   ld.rows.forEach(row => {
     const leafName = String(row.Leaf || "").trim();
@@ -696,19 +646,15 @@ function applyLeafLabelStyleColumn(colName) {
     if (leafName) dataMap.set(leafName, val);
   });
   if (!dataMap.size) { alert(I.t('alertNoColumnData')); return { count: 0 }; }
-
   let count = 0;
   dataMap.forEach((styleCode, leafName) => {
     const leaf = nameToLeaf.get(leafName);
     if (!leaf) return;
     const text = T.labelOf(leaf);
     if (!text) return;
-    if (styleCode === "") {
-      leaf.styleRuns = null;
-      return;
-    }
+    if (styleCode === "") { leaf.styleRuns = null; return; }
     const runs = parseStyleCode(text, styleCode);
-    leaf.styleRuns = runs;   
+    leaf.styleRuns = runs;
     if (runs && runs.length) count++;
   });
   global.TreeRenderer.draw();
@@ -724,6 +670,7 @@ function resetLeafLabelStyles() {
   });
   global.TreeRenderer.draw();
 }
+
 C.registerSnapshot('ranges', () => ({
   colorRanges: JSON.parse(JSON.stringify(colorRanges)),
   rangeCover, rangeBorder, rangeBorderColor,
@@ -789,8 +736,7 @@ Object.defineProperties(global.TreeRanges, {
   rangeSeq: { get() { return rangeSeq; }, set(v) { rangeSeq = v; }, configurable: true }
 });
 Object.assign(global.TreeRanges, {
-  getRangeColorForNode,
-  rangeById, rangeMembers, clearAllColorRanges, rectangularRangeSegments, rangePaint,
+  getRangeColorForNode, rangeById, rangeMembers, clearAllColorRanges, rectangularRangeSegments, rangePaint,
   drawRectangularRanges, drawColoredRanges, renderRangesPanel, removeRange,
   drawRectangularRangeLabelTrack, drawRadialRangeLabelTrack,
   createRangeForSelected, applyOneGroup, lcaOfLeaves,
