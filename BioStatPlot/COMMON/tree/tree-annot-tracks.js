@@ -65,13 +65,19 @@ let trackCommon = {
   trackGap: 50, legendMaxPerRow: 0, legendScale: 1,
   trackNameShow: true, trackNameFontSize: 26, trackNameBold: true,
   trackNameItalic: false, trackNameAngle: -45,
-  autoShapeSize: true
+  autoShapeSize: true,
+  extendLineShow: false,
+  extendLineStyle: {
+    stroke: '#a0b8cc', strokeWidth: 1, opacity: 0.5,
+    lineStyle: 'dashed', dashSize: 4, gapSize: 4
+  }
 };
 const TRACK_TYPE_LABEL_KEYS = {
   colorstrip: 'trackTypeColorstrip', binary: 'trackTypeBinary', heatstrip: 'trackTypeHeatstrip',
   bar: 'trackTypeBar', text: 'trackTypeText', multisymbol: 'trackTypeMultisymbol',
   stackedbar: 'trackTypeStackedbar', pie: 'trackTypePie', groupedbar: 'trackTypeGroupedbar',
-  multiheatmap: 'trackTypeMultiheatmap', legend: 'trackTypeLegend'
+  multiheatmap: 'trackTypeMultiheatmap', legend: 'trackTypeLegend', connect: 'trackTypeConnect',
+  feature: 'trackTypeFeature'
 };
 
 function trackTypeLabel(type) { const k = TRACK_TYPE_LABEL_KEYS[type]; return k ? I.t(k) : type; }
@@ -97,6 +103,7 @@ function newTrackDefaults(type) {
     gradientReverse: false, gradientStops: null,
     legendTickInterval: null, legendTickDecimals: 2,
     legendTickCount: 3, legendTickBold: true,
+    legendBarLength: 0, legendBarWidth: 0,
     barColor: '#4DBBD5', barColorMode: 'uniform', barColorColumn: '',
     barAxisValue: 0,
     _barColorCache: null, _barColorMap: null,
@@ -114,6 +121,20 @@ function newTrackDefaults(type) {
     colLabelOffset: 6, colLabelOrientation: 'vertical',
     showLegend: true, legendTitle: '', legendOrientation: 'horizontal',
     legendX: null, legendY: null,
+    featureColumn: '', featureLengthColumn: '',
+    featureMin: null, featureMax: null,
+    featureTickInterval: null,
+    featureAlign: false,
+    featureBarHeight: 0.6,
+    featureShowLabel: false, featureLabelFontSize: 8, featureLabelColor: '#ffffff',
+    featureLineColor: '#888888', featureLineWidth: 1,
+    featureLineGap: 0,
+    connectHeaders: [], connectSourceColumn: '', connectTargetColumn: '', connectColorColumn: '',
+    connectOffset: 0, curveInset: null,
+    _connectRawRows: [],
+    lineWidth: 1, lineOpacity: 0.6, lineStyle: 'solid',
+    connectRadialOffset: 0, curveInset: null,
+    _connectColorCache: null,
     excludedValues: [],
     _colorCache: null, _shapeCache: null,
     legendItems: []
@@ -209,6 +230,30 @@ function buildMultiTrackData(columns) {
 }
 function refreshTrackData(t) {
   if (!t) return;
+  if (t.type === 'feature') {
+    const ld = getLeafData(); const data = {};
+    if (ld && ld.rows) {
+      ld.rows.forEach(r => {
+        const k = String(r.Leaf || '').trim(); if (!k) return;
+        const raw = t.featureColumn ? String(r[t.featureColumn] == null ? '' : r[t.featureColumn]) : '';
+        const lenNum = parseFloat(t.featureLengthColumn ? r[t.featureLengthColumn] : null);
+        data[k] = { len: Number.isFinite(lenNum) && lenNum > 0 ? lenNum : null, raw };
+      });
+    }
+    t.data = data;
+    t._colorCache = null;
+    return;
+  }
+  if (t.type === 'connect') {
+    t.data = (t._connectRawRows || []).map(row => {
+      const source = String(row[t.connectSourceColumn] || '').trim();
+      const target = String(row[t.connectTargetColumn] || '').trim();
+      const colorBy = t.connectColorColumn ? String(row[t.connectColorColumn] || '').trim() : '';
+      return { source, target, colorBy };
+    }).filter(p => p.source && p.target);
+    t._connectColorCache = null;
+    return;
+  }
   if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'multiheatmap') t.data = buildMultiTrackData(t.columns);
   else if (t.type === 'multisymbol') t.data = buildTrackData(t.column || t.shapeColumn);
   else t.data = buildTrackData(t.column);
@@ -218,6 +263,7 @@ function defaultLegendTitle(t) {
   if (!t) return '';
   if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar') return (t.columns && t.columns[0]) || '';
   if (t.type === 'multisymbol') return t.column || t.shapeColumn || '';
+  if (t.type === 'feature') return t.featureColumn || '';
   return t.column || '';
 }
 function addCustomTrack(cfg) {
@@ -235,7 +281,7 @@ function updateCustomTrack(id, patch) {
   const oldDefault = defaultLegendTitle(t);
   const titleWasDefault = !t.legendTitle || t.legendTitle === oldDefault;
   Object.assign(t, patch);
-  if (['column', 'columns', 'shapeColumn', 'colorColumn'].some(k => k in patch)) {
+  if (['column', 'columns', 'shapeColumn', 'colorColumn', 'featureColumn', 'featureLengthColumn'].some(k => k in patch)) {
     refreshTrackData(t);
     if (titleWasDefault) t.legendTitle = defaultLegendTitle(t);
   }
@@ -243,6 +289,7 @@ function updateCustomTrack(id, patch) {
   if (patch.palette || patch.customColors || patch.barColorColumn || patch.barColorMode || patch.barColor) t._barColorMap = null;
   if (['barColorMode','barColorColumn','barColor','palette','customColors'].some(k => k in patch)) t._barColorCache = null;
   if (patch.shapeStyle) t._shapeCache = null;
+  if (patch.palette || patch.customColors || patch.data || patch.connectColorColumn) t._connectColorCache = null;
 }
 function removeCustomTrack(id) { customTracks = customTracks.filter(x => x.id !== id); }
 function toggleCustomTrack(id) {
@@ -255,6 +302,14 @@ function collectUniqueValues(t) {
   const excluded = new Set((t.excludedValues || []).map(String));
   const leaves = T.visibleLeaves(C.getRoot());
   const add = v => { const s = String(v); if (excluded.has(s)) return; if (!seen.has(s)) { seen.add(s); out.push(s); } };
+  if (t.type === 'feature') {
+    leaves.forEach(l => {
+      const info = datasetValue(t, l);
+      if (!info) return;
+      parseFeatureString(info.raw).forEach(d => { if (d.name) add(d.name); });
+    });
+    return out;
+  }
   leaves.forEach(l => {
     const raw = datasetValue(t, l);
     if (raw == null || raw === '') return;
@@ -270,6 +325,21 @@ function getTrackColorMap(t) {
   const uniq = collectUniqueValues(t);
   uniq.forEach((v, i) => { cache[v] = (t.customColors && t.customColors[v]) || pal[i % pal.length]; });
   t._colorCache = cache;
+  return cache;
+}
+
+function getConnectColorMap(track) {
+  if (track._connectColorCache) return track._connectColorCache;
+  const pal = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
+  const uniq = [];
+  const seen = new Set();
+  (track.data || []).forEach(d => {
+    const v = String(d.colorBy == null ? '' : d.colorBy);
+    if (!seen.has(v)) { seen.add(v); uniq.push(v); }
+  });
+  const cache = {};
+  uniq.forEach((v, i) => { cache[v] = (track.customColors && track.customColors[v]) || pal[i % pal.length]; });
+  track._connectColorCache = cache;
   return cache;
 }
 function colorOf(track, value, colorMap, fallbackColor) {
@@ -315,6 +385,8 @@ function computeTrackWidth(track, opts) {
     case 'text': return 96;
     case 'multisymbol': return 22;
     case 'stackedbar': return 80;
+    case 'connect': return Math.max(40, Number(track.width) || 80);
+    case 'feature': return Math.max(60, Number(track.width) || 140);
     case 'pie': return 30;
     case 'groupedbar': return 100;
     case 'multiheatmap': {
@@ -329,6 +401,12 @@ function drawTrackSymbol(shape, cx, cy, s, fill, stroke, sw, parent, fillOpacity
   const attrs = { fill };
   if (fillOpacity != null && fillOpacity < 1) attrs["fill-opacity"] = fillOpacity;
   if (stroke && sw > 0) { attrs.stroke = stroke; attrs['stroke-width'] = sw; }
+  if (shape === 'line') {
+    const lineAttrs = { x1: cx - s, y1: cy, x2: cx + s, y2: cy, 'stroke-linecap': 'round' };
+    if (stroke && sw > 0) { lineAttrs.stroke = stroke; lineAttrs['stroke-width'] = sw; }
+    else { lineAttrs.stroke = fill; lineAttrs['stroke-width'] = 1.5; }
+    return C.el('line', lineAttrs, parent);
+  }
   if (shape === 'square') return C.el('rect', { x: cx - s, y: cy - s, width: s * 2, height: s * 2, ...attrs }, parent);
   if (shape === 'triangle') return C.el('polygon', { points: `${cx},${cy - s} ${cx + s},${cy + s} ${cx - s},${cy + s}`, ...attrs }, parent);
   if (shape === 'star') {
@@ -376,7 +454,39 @@ function evalBinaryLogic(track, v) {
     default: return false;
   }
 }
-
+function parseFeatureString(raw) {
+  if (raw == null || raw === '') return [];
+  const out = [];
+  String(raw).split('|').forEach(seg => {
+    const s = seg.trim();
+    if (!s) return;
+    const eq = s.indexOf('=');
+    let name = '', rangePart = s;
+    if (eq >= 0) { name = s.slice(0, eq).trim(); rangePart = s.slice(eq + 1).trim(); }
+    const m = rangePart.match(/^(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)$/);
+    if (!m) return;
+    let a = Number(m[1]), b = Number(m[2]);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return;
+    if (a > b) { const tmp = a; a = b; b = tmp; }
+    out.push({ start: a, end: b, name });
+  });
+  return out;
+}
+function computeFeatureDomain(track, leaves) {
+  let dataMax = 0;
+  leaves.forEach(l => {
+    const info = datasetValue(track, l);
+    if (!info) return;
+    parseFeatureString(info.raw).forEach(d => { if (d.end > dataMax) dataMax = d.end; });
+    if (info.len != null && info.len > dataMax) dataMax = info.len;
+  });
+  const userMin = Number(track.featureMin);
+  const userMax = Number(track.featureMax);
+  const axMin = Number.isFinite(userMin) ? userMin : 0;
+  let axMax = Number.isFinite(userMax) && userMax > axMin ? userMax : dataMax;
+  if (!(axMax > axMin)) axMax = axMin + 1;
+  return { axMin, axMax };
+}
 function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
   const colorMap = getTrackColorMap(track);
   const ff = fontFam();
@@ -531,11 +641,122 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
     drawGroupedBarAdvanced(track, x, w, leaves, rowOf, invert);
   } else if (track.type === 'multiheatmap') {
     drawMultiHeatmapRect(track, x, w, leaves, rowOf);
+  } else if (track.type === 'feature') {
+    drawFeatureTrackRect(track, x, w, leaves, rowOf, invert);
   }
 
   const _yTop = Math.min(...leaves.map(l => rowOf(l).top));
   const _yBot = Math.max(...leaves.map(l => rowOf(l).bottom));
   C.el("rect", { x, y: _yTop, width: Math.max(1, w), height: Math.max(1, _yBot - _yTop), fill: "transparent", "pointer-events": "all", "data-track-band": track.id, style: "cursor:grab" });
+}
+function drawOneConnectTrack(track, x, w, leaves, rowH, invert) {
+  const colorMap = getConnectColorMap(track);
+  const lineW = Number(track.lineWidth) || 1;
+  const lineOp = track.lineOpacity != null ? Number(track.lineOpacity) : 0.6;
+  const dash = track.lineStyle === 'dashed' ? '4 3' : '';
+
+  const nameToLeaf = new Map();
+  leaves.forEach(l => {
+    const key = String(l.name || '').trim();
+    if (!key) return;
+    if (!nameToLeaf.has(key)) nameToLeaf.set(key, l);
+  });
+
+  const offset = Number(track.connectOffset) || 0;
+  const xEnd = (invert ? (x - w) : (x + w)) + offset;
+  const xStart = x + offset;
+  const raw = track.curveInset;
+  const curveAmt = (raw != null && raw !== '' && Number.isFinite(Number(raw)))
+    ? Math.max(0, Math.min(1, Number(raw))) : 1;
+  const xCtrl = xStart + (xEnd - xStart) * curveAmt;
+  const hitW = Math.max(10, lineW + 8);
+
+  (track.data || []).forEach(d => {
+    if (!d.source || !d.target) return;
+    const src = nameToLeaf.get(d.source);
+    const tgt = nameToLeaf.get(d.target);
+    if (!src || !tgt) return;
+    const y1 = src.y, y2 = tgt.y;
+    if (!isFinite(y1) || !isFinite(y2)) return;
+    if (Math.abs(y1 - y2) < 0.5) return;
+    const color = colorMap[String(d.colorBy == null ? '' : d.colorBy)] || '#cccccc';
+    const dPath = (curveAmt < 0.01)
+      ? `M ${xStart} ${y1} L ${xStart} ${y2}`
+      : `M ${xStart} ${y1} C ${xCtrl} ${y1}, ${xCtrl} ${y2}, ${xStart} ${y2}`;
+    C.el('path', {
+      d: dPath, fill: 'none', stroke: color,
+      'stroke-width': lineW, opacity: lineOp,
+      'stroke-dasharray': dash, 'stroke-linecap': 'round',
+      'pointer-events': 'none'
+    });
+    C.el('path', {
+      d: dPath, fill: 'none', stroke: 'transparent',
+      'stroke-width': hitW, 'stroke-linecap': 'round',
+      'data-connect-line': track.id,
+      'pointer-events': 'stroke',
+      style: 'cursor:grab'
+    });
+  });
+}
+function drawOneConnectTrackRadial(track, rIn, rOut, leaves, invert) {
+  if (!invert) return;
+
+  const colorMap = getConnectColorMap(track);
+  const lineW = Number(track.lineWidth) || 1;
+  const lineOp = track.lineOpacity != null ? Number(track.lineOpacity) : 0.6;
+  const dash = track.lineStyle === 'dashed' ? '4 3' : '';
+
+  const nameToLeaf = new Map();
+  leaves.forEach(l => {
+    if (l.angle == null) return;
+    const key = String(l.name || '').trim();
+    if (!key) return;
+    if (!nameToLeaf.has(key)) nameToLeaf.set(key, l);
+  });
+
+  const cx = 470, cy = 380;
+  const offset = Number(track.connectOffset) || 0;
+  const raw = track.curveInset;
+  const curveAmt = (raw != null && raw !== '' && Number.isFinite(Number(raw)))
+    ? Math.max(0, Math.min(1, Number(raw))) : 0.55;
+  const rEnd = Math.max(0, rIn + offset);
+  const rCtrl = rEnd * (1 - curveAmt);
+  const hitW = Math.max(10, lineW + 8);
+
+  (track.data || []).forEach(d => {
+    if (!d.source || !d.target) return;
+    const src = nameToLeaf.get(d.source);
+    const tgt = nameToLeaf.get(d.target);
+    if (!src || !tgt) return;
+    const a1 = src.angle, a2 = tgt.angle;
+    if (!isFinite(a1) || !isFinite(a2)) return;
+
+    const p0 = L.polar(cx, cy, rEnd, a1);
+    const p3 = L.polar(cx, cy, rEnd, a2);
+    let dPath;
+    if (curveAmt < 0.01) {
+      dPath = `M ${p0.x} ${p0.y} L ${p3.x} ${p3.y}`;
+    } else {
+      const cp1 = L.polar(cx, cy, rCtrl, a1);
+      const cp2 = L.polar(cx, cy, rCtrl, a2);
+      dPath = `M ${p0.x} ${p0.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${p3.x} ${p3.y}`;
+    }
+    const color = colorMap[String(d.colorBy == null ? '' : d.colorBy)] || '#cccccc';
+
+    C.el('path', {
+      d: dPath, fill: 'none', stroke: color,
+      'stroke-width': lineW, opacity: lineOp,
+      'stroke-dasharray': dash, 'stroke-linecap': 'round',
+      'pointer-events': 'none'
+    });
+    C.el('path', {
+      d: dPath, fill: 'none', stroke: 'transparent',
+      'stroke-width': hitW, 'stroke-linecap': 'round',
+      'data-connect-line': track.id,
+      'pointer-events': 'stroke',
+      style: 'cursor:grab'
+    });
+  });
 }
 
 function barDomain(track, leaves, percent) {
@@ -805,7 +1026,98 @@ function drawMultiHeatmapRect(track, x, w, leaves, rowOf) {
     });
   }
 }
+function drawFeatureTrackRect(track, x, w, leaves, rowOf, invert) {
+  const colorMap = getTrackColorMap(track);
+  const ff = fontFam();
+  const ts = trackTextStyle(track);
+  const tfs = Math.max(6, Number(ts.fontSize) || 10);
 
+  const { axMin, axMax } = computeFeatureDomain(track, leaves);
+  const pos = v => invert
+    ? (x + w - (v - axMin) / (axMax - axMin) * w)
+    : (x + (v - axMin) / (axMax - axMin) * w);
+
+  const bh = Math.max(0.05, Math.min(0.98, Number(track.featureBarHeight) || 0.6));
+  const lineC = track.featureLineColor || '#888888';
+  const lineW = Math.max(0.2, Number(track.featureLineWidth) || 1);
+  const showLabel = !!track.featureShowLabel;
+  const lfs = Math.max(5, Number(track.featureLabelFontSize) || 8);
+  const labelColor = track.featureLabelColor || '#ffffff';
+  const alignRight = !!track.featureAlign;
+  const yTop = Math.min(...leaves.map(l => rowOf(l).top));
+  const yBot = Math.max(...leaves.map(l => rowOf(l).bottom));
+
+  if (track.showBox) {
+    const yAxis = yBot + 24 + tfs;
+    C.el('rect', {
+      x, y: yTop, width: w, height: yAxis - yTop, fill: 'none',
+      stroke: track.boxColor || '#bbbbbb', 'stroke-width': Number(track.boxWidth) || 0.5,
+      'stroke-dasharray': track.boxDashed ? '4 3' : ''
+    });
+  }
+
+  leaves.forEach(l => {
+    const info = datasetValue(track, l);
+    const doms = info ? parseFeatureString(info.raw) : [];
+    let rowMax = 0;
+    doms.forEach(d => { if (d.end > rowMax) rowMax = d.end; });
+    if (info && info.len != null && info.len > rowMax) rowMax = info.len;
+    const row = rowOf(l);
+    const cy = (row.top + row.bottom) / 2;
+    const rowH = row.bottom - row.top;
+    const barH = Math.max(2, rowH * bh);
+
+    const endValue = alignRight ? axMax : (rowMax > axMin ? rowMax : 0);
+    if (endValue > axMin) {
+      C.el('line', {
+        x1: pos(axMin), y1: cy, x2: pos(endValue), y2: cy,
+        stroke: lineC, 'stroke-width': lineW, 'stroke-linecap': 'round',
+        'pointer-events': 'none'
+      });
+    }
+
+    doms.forEach(d => {
+      const px1 = pos(d.start), px2 = pos(d.end);
+      const left = Math.min(px1, px2);
+      const width = Math.max(1, Math.abs(px2 - px1));
+      C.el('rect', { x: left, y: cy - barH / 2, width, height: barH,
+        fill: colorOf(track, d.name, colorMap), 'pointer-events': 'none' });
+      if (showLabel && d.name && width >= 10) {
+        const txt = global.TreeDrawNode && global.TreeDrawNode.fitText
+          ? global.TreeDrawNode.fitText(d.name, width - 2, lfs) : d.name;
+        if (txt) {
+          const st = TT.fromParts({ font: ff, size: lfs, color: labelColor });
+          TT.draw(null, left + width / 2, cy + lfs * 0.34, txt, st,
+            { 'text-anchor': 'middle', 'pointer-events': 'none' });
+        }
+      }
+    });
+  });
+
+  const yAxis = yBot + 6;
+  C.el('line', { x1: x, y1: yAxis, x2: x + w, y2: yAxis, stroke: '#333', 'stroke-width': 0.8 });
+
+  const intRaw = Number(track.featureTickInterval);
+  let ticks;
+  if (Number.isFinite(intRaw) && intRaw > 0) {
+    ticks = [];
+    for (let v = axMin; v <= axMax + 1e-9; v += intRaw) { ticks.push(v); if (ticks.length > 500) break; }
+  } else {
+    ticks = [axMin, (axMin + axMax) / 2, axMax];
+  }
+  const tickStyle = TT.fromParts({ font: ff, size: tfs, color: ts.color || '#333', bold: ts.bold });
+  const fmtTick = v => {
+    if (Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v));
+    const dec = Math.abs(axMax - axMin) < 10 ? 2 : 1;
+    return Number(v.toFixed(dec)).toString();
+  };
+  ticks.forEach(v => {
+    if (v < axMin - 1e-9 || v > axMax + 1e-9) return;
+    const px = pos(v);
+    C.el('line', { x1: px, y1: yAxis, x2: px, y2: yAxis + 3, stroke: '#555', 'stroke-width': 0.8 });
+    TT.draw(null, px, yAxis + tfs + 4, fmtTick(v), tickStyle, { 'text-anchor': 'middle' });
+  });
+}
 function legendTextStyles() {
   const tsTitle = SS.textStyle(C.state.textStyles.legendTitle);
   const tsItem = SS.textStyle(C.state.textStyles.legendText);
@@ -828,13 +1140,19 @@ function drawCustomLegend(track, x, y) {
   const itemStyle = TT.fromParts({ font: tsItem.fontFamily || ff, size: fs, bold: tsItem.bold, italic: tsItem.italic, color: tsItem.color });
   let xx = 0, yy = 0, rowItems = 0;
   if (title) { drawText(g, 0, titleFS, title, titleStyle, tsTitle); yy = titleFS + 14; }
+  const symWidthOf = it => (it.shape === 'line') ? fs * 2 : fs;
   let maxItemW = 0;
-  items.forEach(it => { const w = fs + 8 + global.PlotCommon.measureText(it.label || '', fs); if (w > maxItemW) maxItemW = w; });
   items.forEach(it => {
-    const wItem = fs + 8 + global.PlotCommon.measureText(it.label || '', fs);
+    const w = symWidthOf(it) + 8 + global.PlotCommon.measureText(it.label || '', fs);
+    if (w > maxItemW) maxItemW = w;
+  });
+  items.forEach(it => {
+    const symW = symWidthOf(it);
+    const wItem = symW + 8 + global.PlotCommon.measureText(it.label || '', fs);
     if (maxPerRow > 0 && rowItems >= maxPerRow) { xx = 0; yy += fs + 6; rowItems = 0; }
-    drawTrackSymbol(it.shape || 'square', xx + fs / 2, yy + fs / 2, fs * 0.45, it.fillColor || '#4DBBD5', it.strokeColor || '#333333', Number(it.strokeWidth) || 0, g);
-    drawText(g, xx + fs + 4, yy + fs * 0.85, it.label || '', itemStyle, tsItem);
+    const symS = it.shape === 'line' ? (symW / 2) : fs * 0.45;
+    drawTrackSymbol(it.shape || 'square', xx + symW / 2, yy + fs / 2, symS, it.fillColor || '#4DBBD5', it.strokeColor || '#333333', Number(it.strokeWidth) || 0, g);
+    drawText(g, xx + symW + 4, yy + fs * 0.85, it.label || '', itemStyle, tsItem);
     xx += (maxPerRow > 0 ? maxItemW : wItem) + 8;
     rowItems++;
   });
@@ -858,6 +1176,7 @@ function drawTrackLegend(track, x, y, colorMap) {
   const itemStyle = TT.fromParts({ font: tsItem.fontFamily || ff, size: fs, bold: tsItem.bold, italic: tsItem.italic, color: tsItem.color });
   let items = [];
   let drawAsSymbol = false;
+  let drawAsLine = false;
   if (track.type === 'bar') {
     if (track.barColorMode === 'column' && track.barColorColumn) {
       const _vals = getBarColumnValues(track);
@@ -867,10 +1186,19 @@ function drawTrackLegend(track, x, y, colorMap) {
   } else if (track.type === 'multisymbol') {
     drawAsSymbol = true;
     items = collectUniqueValues(track).map(v => ({ label: v, color: colorOf(track, v, colorMap), shape: (track.shapeMap && track.shapeMap[v]) || track.uniformShape || 'square' }));
-  } else if (track.type === 'colorstrip' || track.type === 'text') {
+  } else if (track.type === 'colorstrip' || track.type === 'text' || track.type === 'feature') {
     items = collectUniqueValues(track).map(v => ({ label: v, color: colorOf(track, v, colorMap) }));
   } else if (track.type === 'binary') {
     items = [{ label: 'True', color: track.binaryTrueColor }, { label: 'False', color: track.binaryFalseColor }];
+  } else if (track.type === 'connect') {
+    drawAsLine = true;
+    const cmap = getConnectColorMap(track);
+    const keys = Object.keys(cmap).filter(k => k !== '');
+    if (keys.length) {
+      items = keys.map(k => ({ label: k, color: cmap[k] }));
+    } else if (Object.keys(cmap).length) {
+      items = [{ label: '', color: cmap[''] || '#cccccc' }];
+    }
   } else if (track.type === 'stackedbar' || track.type === 'pie' || track.type === 'groupedbar') {
     const cols = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
     items = (track.columns || []).map((c, i) => ({ label: c, color: (track.columnColors && track.columnColors[c]) || cols[i % cols.length] }));
@@ -910,8 +1238,10 @@ function drawTrackLegend(track, x, y, colorMap) {
     const defs = C.getSvg().querySelector('defs') || C.el('defs');
     const grad = C.el('linearGradient', { id: gid, x1: '0%', y1: isVertical ? '100%' : '0%', x2: isVertical ? '0%' : '100%', y2: '0%' }, defs);
     stops.forEach((c, i) => C.el('stop', { offset: (i / (stops.length - 1) * 100) + '%', 'stop-color': c }, grad));
-    const barW = (isVertical ? 12 : 80) * scale;
-    const barH = (isVertical ? 80 : 12) * scale;
+    const barL = Number(track.legendBarLength) > 0 ? Number(track.legendBarLength) : 80;
+    const barT = Number(track.legendBarWidth) > 0 ? Number(track.legendBarWidth) : 12;
+    const barW = (isVertical ? barT : barL) * scale;
+    const barH = (isVertical ? barL : barT) * scale;
     const g = C.el('g', { class: 'track-legend legend-box', 'data-legend': '1', 'data-track-id': track.id, style: 'cursor:move', transform: `translate(${x} ${y})` });
     let cursorY = 0;
     if (title) { drawText(g, 0, titleFS, title, titleStyle, tsTitle); cursorY = titleFS + 14; }
@@ -930,18 +1260,28 @@ function drawTrackLegend(track, x, y, colorMap) {
   const g = C.el('g', { class: 'track-legend legend-box', 'data-legend': '1', 'data-track-id': track.id, style: 'cursor:move', transform: `translate(${x} ${y})` });
   let xx = 0, yy = 0, rowItems = 0;
   if (title) { drawText(g, 0, titleFS, title, titleStyle, tsTitle); yy = titleFS + 14; }
+  const symW = drawAsLine ? fs * 1.6 : fs;
   let maxItemW = 0;
-  items.forEach(it => { const w = fs + 8 + global.PlotCommon.measureText(it.label, fs); if (w > maxItemW) maxItemW = w; });
+  items.forEach(it => { const w = symW + 8 + global.PlotCommon.measureText(it.label, fs); if (w > maxItemW) maxItemW = w; });
   items.forEach(it => {
-    const wItem = fs + 8 + global.PlotCommon.measureText(it.label, fs);
+    const wItem = symW + 8 + global.PlotCommon.measureText(it.label, fs);
     if (maxPerRow > 0 && rowItems >= maxPerRow) { xx = 0; yy += fs + 6; rowItems = 0; }
-    if (drawAsSymbol) {
+    if (drawAsLine) {
+      const lw = Number(track.lineWidth) || 1;
+      const lop = track.lineOpacity != null ? Number(track.lineOpacity) : 0.6;
+      const ldash = track.lineStyle === 'dashed' ? '4 3' : '';
+      C.el('line', {
+        x1: xx, y1: yy + fs / 2, x2: xx + symW, y2: yy + fs / 2,
+        stroke: it.color, 'stroke-width': lw, opacity: lop,
+        'stroke-dasharray': ldash, 'stroke-linecap': 'round'
+      }, g);
+    } else if (drawAsSymbol) {
       const shapeStyle = trackShapeStyle(track);
       drawTrackSymbol(it.shape, xx + fs / 2, yy + fs / 2, fs * 0.45, it.color, shapeStyle.strokeColor, shapeStyle.strokeWidth, g, shapeStyle.fillOpacity);
     } else {
       C.el('rect', { x: xx, y: yy, width: fs, height: fs, fill: it.color, rx: 2 }, g);
     }
-    drawText(g, xx + fs + 4, yy + fs * 0.85, it.label, itemStyle, tsItem);
+    drawText(g, xx + symW + 4, yy + fs * 0.85, it.label, itemStyle, tsItem);
     xx += (maxPerRow > 0 ? maxItemW : wItem) + 8;
     rowItems++;
   });
@@ -988,6 +1328,7 @@ function renderCustomTracks(radial) {
     const titleStyle = TT.fromParts({ font: ff, size: nameFs, bold: tc.trackNameBold, italic: tc.trackNameItalic, color: "#3a4a4a" });
     customTracks.forEach(track => {
       if (track.type === 'legend') { placed.push({ track, x: xBase, w: 0 }); return; }
+      if (track.type === 'connect') return;
       const w = computeTrackWidth(track);
       let x;
       if (isInv) {
@@ -1007,6 +1348,55 @@ function renderCustomTracks(radial) {
       drawOneTrack(track, x, w, leaves, rowH, rowBounds, isInv);
       placed.push({ track, x, w });
     });
+    customTracks.forEach(track => {
+      if (track.type !== 'connect') return;
+      const w = computeTrackWidth(track);
+      let x;
+      if (isInv) {
+        x = xBase - gap - (Number(track.offset) || 0) - w;
+        xBase = x;
+      } else {
+        x = xBase + gap + (Number(track.offset) || 0);
+        xBase = x + w;
+      }
+      if (tc.trackNameShow && track.name) {
+        const cx = x + w / 2;
+        TT.draw(null, cx, titleY, track.name, titleStyle, {
+          "text-anchor": "middle", "dominant-baseline": "middle", "data-track-title": track.id,
+          transform: trackNameAngle ? `rotate(${trackNameAngle} ${cx} ${titleY})` : undefined
+        });
+      }
+
+      drawOneConnectTrack(track, x, w, leaves, rowH, isInv);
+      placed.push({ track, x, w });
+    });
+    if (tc.extendLineShow && customTracks.some(t => t.type !== 'legend')) {
+      const ls = SS.lineStyle(tc.extendLineStyle || {});
+      const lineAttrs = SS.lineAttrs(ls);
+      lineAttrs['pointer-events'] = 'none';
+      const svgEl = C.getSvg();
+      const guideG = C.el('g', { class: 'track-guide-lines', 'pointer-events': 'none' });
+      svgEl.insertBefore(guideG, svgEl.firstChild);
+      const labelBoxMap = new Map();
+      svgEl.querySelectorAll('.leaf-label').forEach(lbl => {
+        const id = lbl.getAttribute('data-id');
+        if (!id) return;
+        try { labelBoxMap.set(id, lbl.getBBox()); } catch (_) {}
+      });
+      const endX = xBase;
+      leaves.forEach(l => {
+        const b = labelBoxMap.get(l.id);
+        let startX;
+        if (b && isFinite(b.x) && isFinite(b.width)) {
+          startX = isInv ? (b.x - 4) : (b.x + b.width + 4);
+        } else {
+          startX = isInv ? (l.x - 30) : (l.x + 30);
+        }
+        C.el('line', Object.assign({}, lineAttrs, {
+          x1: startX, y1: l.y, x2: endX, y2: l.y
+        }), guideG);
+      });
+    }
     let autoLegendX;
     if (isInv) {
       const root = C.getRoot();
@@ -1050,6 +1440,7 @@ function renderCustomTracks(radial) {
     const placed = [];
     customTracks.forEach(track => {
       if (track.type === 'legend') { placed.push({ track, ringW: 0, ringStart: rBase }); return; }
+      if (track.type === 'connect') return;
       const ringW = Math.max(6, computeTrackWidth(track, { radial: true }));
       const colorMap = getTrackColorMap(track);
       const trackOffset = Number(track.offset) || 0;
@@ -1284,6 +1675,53 @@ function renderCustomTracks(radial) {
             const p1o = L.polar(cx, cy, r1, a1b), p1i = L.polar(cx, cy, r0, a1b);
             C.el("path", { d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${r1} ${r1} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${r0} ${r0} 0 0 0 ${p0i.x} ${p0i.y} Z`, fill });
           });
+        } else if (track.type === 'feature') {
+          const info = datasetValue(track, l);
+          if (!info) return;
+          const doms = parseFeatureString(info.raw);
+          let rowMax = 0;
+          doms.forEach(d => { if (d.end > rowMax) rowMax = d.end; });
+          if (info.len != null && info.len > rowMax) rowMax = info.len;
+
+          const dom = computeFeatureDomain(track, leaves);
+          const toR = v => isInv
+            ? (ringStart + ringW * (1 - (v - dom.axMin) / (dom.axMax - dom.axMin)))
+            : (ringStart + ringW * ((v - dom.axMin) / (dom.axMax - dom.axMin)));
+          const endValue = track.featureAlign ? dom.axMax : rowMax;
+
+          const lineC = track.featureLineColor || '#888888';
+          const lineW = Math.max(0.2, Number(track.featureLineWidth) || 1);
+          const lineGap = Math.max(0, Number(track.featureLineGap) || 0);
+          const bhRatio = Math.max(0.05, Math.min(0.98, Number(track.featureBarHeight) || 0.6));
+
+          const midR = ringStart + ringW / 2;
+          const arcLen = (2 * halfStep) * Math.PI / 180 * midR;
+          const domStrokeW = Math.max(0.5, arcLen * bhRatio);
+
+          if (endValue > dom.axMin) {
+            const r0 = isInv ? (toR(dom.axMin) - lineGap) : (toR(dom.axMin) + lineGap);
+            const r1 = toR(endValue);
+            const p0 = L.polar(cx, cy, Math.max(0, r0), l.angle);
+            const p1 = L.polar(cx, cy, Math.max(0, r1), l.angle);
+            C.el('line', {
+              x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
+              stroke: lineC, 'stroke-width': lineW, 'stroke-linecap': 'round',
+              'pointer-events': 'none'
+            });
+          }
+
+          doms.forEach(d => {
+            const rA = toR(d.start), rB = toR(d.end);
+            const p0 = L.polar(cx, cy, rA, l.angle);
+            const p1 = L.polar(cx, cy, rB, l.angle);
+            C.el('line', {
+              x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
+              stroke: colorOf(track, d.name, colorMap),
+              'stroke-width': domStrokeW,
+              'stroke-linecap': 'butt',
+              'pointer-events': 'none'
+            });
+          });
         }
       });
       if (track.type === 'colorstrip' && track.showText) {
@@ -1376,6 +1814,33 @@ function renderCustomTracks(radial) {
       placed.push({ track, ringW, ringStart });
       rBase = isInv ? ringStart : (ringStart + ringW);
     });
+    customTracks.forEach(track => {
+      if (track.type !== 'connect') return;
+      if (isInv) {
+        const baseR = rBase;
+        drawOneConnectTrackRadial(track, baseR, baseR, leaves, isInv);
+        placed.push({ track, ringW: 0, ringStart: baseR });
+      }
+    });
+    if (tc.extendLineShow && customTracks.some(t => t.type !== 'legend')) {
+      const ls = SS.lineStyle(tc.extendLineStyle || {});
+      const lineAttrs = SS.lineAttrs(ls);
+      lineAttrs['pointer-events'] = 'none';
+      const svgEl = C.getSvg();
+      const guideG = C.el('g', { class: 'track-guide-lines', 'pointer-events': 'none' });
+      svgEl.insertBefore(guideG, svgEl.firstChild);
+      const labelR = C.getRadialLabelR();
+      const endR = rBase;
+      leaves.forEach(l => {
+        if (l.angle == null) return;
+        const startR = isInv ? (labelR - 4) : (labelR + 4);
+        const p1 = L.polar(cx, cy, Math.max(0, startR), l.angle);
+        const p2 = L.polar(cx, cy, Math.max(0, endR), l.angle);
+        C.el('line', Object.assign({}, lineAttrs, {
+          x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y
+        }), guideG);
+      });
+    }
     const _rootR = L.getRadialInnerBase() + (285 * (st.scaleH || 1)) * tMaxUsed / maxD2;
     const legendX = isInv ? (cx + _rootR + 40) : (cx + rBase + 40);
     let legendY = isInv ? (cy - _rootR) : (cy - 150);

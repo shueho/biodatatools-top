@@ -182,6 +182,7 @@ function renderBasicPanel(container) {
       <input id="tickPrimaryCustom" type="text" value="${(st.tickPrimary.customTicks||[]).join(',')}" placeholder="0.1, 0.5, 1"></div>
     <div class="param-item"><label>${I.t('tickCustomColor')}</label><input id="customTickColor" type="color" value="${st.customTickColor||'#c0392b'}"></div>
     <div class="param-item"><label class="mini-check"><input id="customTickBold" type="checkbox" ${st.customTickBold?'checked':''}> ${I.t('tickCustomBold')}</label></div>
+    <div class="param-item"><label class="mini-check"><input id="customTickGridShow" type="checkbox" ${st.customTickGridShow !== false ? 'checked' : ''}> ${I.t('tickShowGrid')}</label></div>
   </div>
   <div class="sub-section-title" style="margin-top:8px;"><strong>${I.t('panelSecondaryAxis')}</strong></div>
   <div class="param-grid cols-4">

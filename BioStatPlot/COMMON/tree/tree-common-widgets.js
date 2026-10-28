@@ -76,6 +76,7 @@ function textStylePanel(host, style, opts) {
 function lineStylePanel(host, style, opts) {
   opts = opts || {};
   const l = global.TreeStyle.lineStyle(style || {});
+  const hideDash = !!opts.hideDash;
   host.innerHTML = `
     <div class="param-grid cols-4">
       <div class="param-item"><label>${esc(label('styleStrokeColor'))}</label>
@@ -84,6 +85,7 @@ function lineStylePanel(host, style, opts) {
         <input type="number" data-lw-sw value="${l.strokeWidth}" min="0.1" max="20" step="0.1"></div>
       <div class="param-item"><label>${esc(label('styleOpacity'))}</label>
         <input type="number" data-lw-opacity value="${l.opacity}" min="0" max="1" step="0.05"></div>
+      ${hideDash ? '' : `
       <div class="param-item"><label>${esc(label('styleLineStyle'))}</label>
         <select data-lw-style>
           <option value="solid" ${l.lineStyle === 'solid' ? 'selected' : ''}>${esc(label('styleLineSolid'))}</option>
@@ -93,15 +95,18 @@ function lineStylePanel(host, style, opts) {
         <input type="number" data-lw-dash value="${l.dashSize}" min="1" max="40" step="1"></div>
       <div class="param-item"><label>${esc(label('styleGapSize'))}</label>
         <input type="number" data-lw-gap value="${l.gapSize}" min="1" max="40" step="1"></div>
+      `}
     </div>
   `;
   const read = () => {
     l.stroke = host.querySelector('[data-lw-stroke]').value;
     l.strokeWidth = Number(host.querySelector('[data-lw-sw]').value) || l.strokeWidth;
     l.opacity = Math.max(0, Math.min(1, Number(host.querySelector('[data-lw-opacity]').value) || 0));
-    l.lineStyle = host.querySelector('[data-lw-style]').value;
-    l.dashSize = Number(host.querySelector('[data-lw-dash]').value) || 2;
-    l.gapSize = Number(host.querySelector('[data-lw-gap]').value) || 3;
+    if (!hideDash) {
+      l.lineStyle = host.querySelector('[data-lw-style]').value;
+      l.dashSize = Number(host.querySelector('[data-lw-dash]').value) || 2;
+      l.gapSize = Number(host.querySelector('[data-lw-gap]').value) || 3;
+    }
     if (opts.onChange) opts.onChange(l);
   };
   host.querySelectorAll('input,select').forEach(el => el.addEventListener('input', read));
@@ -112,6 +117,7 @@ function lineStylePanel(host, style, opts) {
 function shapeStylePanel(host, style, opts) {
   opts = opts || {};
   const s = global.TreeStyle.shapeStyle(style || {});
+  const hideFillColor = !!opts.hideFillColor;
   host.innerHTML = `
     <div class="param-grid cols-4">
       <div class="param-item"><label>${esc(label('styleShape'))}</label>
@@ -124,8 +130,10 @@ function shapeStylePanel(host, style, opts) {
         </select></div>
       <div class="param-item"><label>${esc(label('styleShapeSize'))}</label>
         <input type="number" data-sw-size value="${s.size}" min="1" max="60" step="0.5"></div>
+      ${hideFillColor ? '' : `
       <div class="param-item"><label>${esc(label('styleFillColor'))}</label>
         <input type="color" data-sw-fill value="${escA(s.fillColor)}"></div>
+      `}
       <div class="param-item"><label>${esc(label('styleFillOpacity'))}</label>
         <input type="number" data-sw-fillop value="${s.fillOpacity}" min="0" max="1" step="0.05"></div>
       <div class="param-item"><label>${esc(label('styleShapeStrokeColor'))}</label>
@@ -137,7 +145,9 @@ function shapeStylePanel(host, style, opts) {
   const read = () => {
     s.shape = host.querySelector('[data-sw-shape]').value;
     s.size = Number(host.querySelector('[data-sw-size]').value) || s.size;
-    s.fillColor = host.querySelector('[data-sw-fill]').value;
+    if (!hideFillColor) {
+      s.fillColor = host.querySelector('[data-sw-fill]').value;
+    }
     s.fillOpacity = Math.max(0, Math.min(1, Number(host.querySelector('[data-sw-fillop]').value) || 0));
     s.strokeColor = host.querySelector('[data-sw-stroke]').value;
     s.strokeWidth = Number(host.querySelector('[data-sw-sw]').value) || 0;
@@ -153,14 +163,19 @@ function palettePanel(host, opts) {
   const values = opts.values || [];
   const palette = opts.palette || 'tableau10';
   const colors = opts.colors || {};
+  const basePal = (global.TreePalette && global.TreePalette.getCategoricalScheme)
+    ? global.TreePalette.getCategoricalScheme(palette) : ['#cccccc'];
+  function effectiveColor(v, i) {
+    return colors[v] || basePal[i % basePal.length] || '#cccccc';
+  }
   let html = `<div class="param-item" style="grid-column: span 2;"><label>${esc(label('groupPaletteLabel'))}</label>
     <div class="palette-slot" data-cw-palette></div></div>`;
   if (values.length && !opts.noColorList) {
     html += `<div class="param-item" style="grid-column: 1/-1;"><label>${esc(label('trackCustomColors'))}</label>
       <div class="custom-color-list" style="display:flex;flex-wrap:wrap;gap:8px;">
-        ${values.map(v => `
+        ${values.map((v, i) => `
           <label style="display:flex;align-items:center;gap:4px;font-size:12px;">
-            <input type="color" data-cw-cval="${escA(v)}" value="${escA(colors[v] || '#cccccc')}"
+            <input type="color" data-cw-cval="${escA(v)}" value="${escA(effectiveColor(v, i))}"
               style="width:30px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;">
             <span>${esc(v)}</span>
             <button class="btn-del-color" data-cw-delcolor="${escA(v)}" type="button" title="${esc(label('btnDeleteTitle'))}">×</button>
@@ -168,16 +183,30 @@ function palettePanel(host, opts) {
       </div></div>`;
   }
   host.innerHTML = html;
+  const previewColors = values.length ? values.map((v, i) => effectiveColor(v, i)) : null;
   const slot = host.querySelector('[data-cw-palette]');
   if (slot && global.TreeUI) {
     global.TreeUI.renderGroupPaletteDropdown(slot, {
       selected: palette,
+      previewColors: previewColors,
       onSelect: name => { opts.onPalette && opts.onPalette(name); }
     });
   }
+  function refreshTriggerSwatches() {
+    if (!slot) return;
+    const trigger = slot.querySelector('.palette-preview-slot');
+    if (!trigger) return;
+    const cols = values.length ? values.map((v, i) => effectiveColor(v, i)) : basePal;
+    if (!cols.length) return;
+    trigger.innerHTML = `<div class="palette-swatches-mini">${cols.map(c => `<div style="background:${c}"></div>`).join('')}</div>`;
+  }
   host.querySelectorAll('[data-cw-cval]').forEach(el => {
     el.addEventListener('input', e => {
-      opts.onColor && opts.onColor(el.dataset.cwCval, e.target.value);
+      const v = el.dataset.cwCval;
+      const c = e.target.value;
+      colors[v] = c;
+      refreshTriggerSwatches();
+      opts.onColor && opts.onColor(v, c);
     });
   });
   host.querySelectorAll('[data-cw-delcolor]').forEach(el => {
@@ -187,6 +216,7 @@ function palettePanel(host, opts) {
     });
   });
 }
+
 function drawTextWithBg(TT, parent, x, y, text, style, ts, extraAttrs) {
   const mergedExtra = Object.assign({}, extraAttrs || {});
   if (ts && ts.opacity != null && mergedExtra.opacity === undefined) {

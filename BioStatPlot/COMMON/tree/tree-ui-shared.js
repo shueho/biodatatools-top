@@ -17,9 +17,14 @@ function renderGroupPaletteDropdown(container, opts) {
   ];
   const pal = global.TreePalette;
   let current = opts.selected || (global.TreeRanges && global.TreeRanges.ringPalette) || "tableau10";
-  function swatchesHtml(name) {
+  const customPreview = Array.isArray(opts.previewColors) && opts.previewColors.length ? opts.previewColors.slice() : null;
+  function swatchesHtml(name, useCustom) {
     let cols = [];
-    try { cols = pal.getCategoricalScheme(name) || []; } catch (_) {}
+    if (useCustom && customPreview) {
+      cols = customPreview;
+    } else {
+      try { cols = pal.getCategoricalScheme(name) || []; } catch (_) {}
+    }
     if (!cols.length) cols = ["#cccccc"];
     return `<div class="palette-swatches-mini">${cols.map(c => `<div style="background:${c}"></div>`).join('')}</div>`;
   }
@@ -27,7 +32,7 @@ function renderGroupPaletteDropdown(container, opts) {
   container.className = "palette-select-wrap";
   const trigger = document.createElement("div");
   trigger.className = "palette-select-trigger";
-  trigger.innerHTML = `<span class="palette-name">${current}</span><span class="palette-preview-slot">${swatchesHtml(current)}</span><span class="caret">▼</span>`;
+  trigger.innerHTML = `<span class="palette-name">${current}</span><span class="palette-preview-slot">${swatchesHtml(current, true)}</span><span class="caret">▼</span>`;
   const dropdown = document.createElement("div");
   dropdown.className = "palette-select-dropdown";
   groups.forEach(g => {
@@ -41,12 +46,12 @@ function renderGroupPaletteDropdown(container, opts) {
       opt.className = "palette-option" + (name === current ? " active" : "");
       opt.dataset.value = name;
       opt.dataset.group = g.key;
-      opt.innerHTML = `<span class="palette-name">${name}</span>${swatchesHtml(name)}<span class="palette-check">✓</span>`;
+      opt.innerHTML = `<span class="palette-name">${name}</span>${swatchesHtml(name, false)}<span class="palette-check">✓</span>`;
       opt.addEventListener("click", e => {
         e.stopPropagation();
         current = name;
         trigger.querySelector(".palette-name").textContent = name;
-        trigger.querySelector(".palette-preview-slot").innerHTML = swatchesHtml(name);
+        trigger.querySelector(".palette-preview-slot").innerHTML = swatchesHtml(name, false);
         dropdown.querySelectorAll(".palette-option").forEach(o => o.classList.toggle("active", o.dataset.value === name));
         if (opts.onSelect) opts.onSelect(name);
       });
@@ -68,6 +73,7 @@ function renderGroupPaletteDropdown(container, opts) {
 
 let drag = null, legendDrag = null, moveDrag = null, scaleDrag = null;
 let trackDrag = null, nodeLabelDrag = null, lengthLabelDrag = null, pieMarkerDrag = null;
+let connectDrag = null;
 let moveLineEl = null, moveRingEl = null;
 let suppressSvgClick = false;
 
@@ -199,6 +205,25 @@ function enableDrag(svg) {
       e.preventDefault(); e.stopPropagation();
       return;
     }
+    const connectEl = e.target.closest && e.target.closest("[data-connect-line]");
+    if (connectEl) {
+      const trackId = Number(connectEl.getAttribute("data-connect-line"));
+      const track = global.TreeTracks && global.TreeTracks.tracks.find(x => x.id === trackId);
+      if (track) {
+        const rect = svg.getBoundingClientRect();
+        connectDrag = {
+          track, trackId,
+          startX: e.clientX, startY: e.clientY,
+          offset0: Number(track.connectOffset) || 0,
+          unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
+          unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
+          isRadial: st.mode === "circular",
+          moved: false
+        };
+        e.preventDefault(); e.stopPropagation();
+        return;
+      }
+    }
     const trackEl = e.target.closest && e.target.closest("[data-track-band]");
     if (trackEl) {
       const trackId = Number(trackEl.getAttribute("data-track-band"));
@@ -322,6 +347,30 @@ function enableDrag(svg) {
       global.TreeRenderer.draw();
       return;
     }
+    if (connectDrag) {
+      const rawDx = e.clientX - connectDrag.startX;
+      const rawDy = e.clientY - connectDrag.startY;
+      if (!connectDrag.moved && Math.abs(rawDx) + Math.abs(rawDy) < 3) return;
+      if (!connectDrag.moved) {
+        connectDrag.moved = true;
+        suppressSvgClick = true;
+        try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+        svg.style.cursor = 'grabbing';
+      }
+      if (connectDrag.isRadial) {
+        const axisAngle = (Number(C.state.rotation) || 0) + (Number(C.state.axisRotation) || 0);
+        const rad = (axisAngle - 90) * Math.PI / 180;
+        const ux = Math.cos(rad), uy = Math.sin(rad);
+        const dxSvg = rawDx * connectDrag.unitX;
+        const dySvg = rawDy * connectDrag.unitY;
+        connectDrag.track.connectOffset = connectDrag.offset0 + (dxSvg * ux + dySvg * uy);
+      } else {
+        const dxSvg = rawDx * connectDrag.unitX;
+        connectDrag.track.connectOffset = connectDrag.offset0 + dxSvg;
+      }
+      global.TreeRenderer.draw();
+      return;
+    }
     if (trackDrag) {
       const rawDx = e.clientX - trackDrag.startX;
       const rawDy = e.clientY - trackDrag.startY;
@@ -370,6 +419,25 @@ function enableDrag(svg) {
   });
 
   const endDrag = e => {
+    if (connectDrag) {
+      try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+      const wasMoved = connectDrag.moved;
+      const tid = connectDrag.trackId;
+      connectDrag = null;
+      svg.style.cursor = '';
+      setTimeout(() => {
+        suppressSvgClick = false;
+        if (wasMoved) {
+          const inp = document.querySelector('input[data-tprop="connectOffset"][data-tid="' + tid + '"]');
+          if (inp) {
+            const tr = global.TreeTracks && global.TreeTracks.tracks.find(x => x.id === tid);
+            if (tr) inp.value = Math.round(Number(tr.connectOffset) || 0);
+          }
+          global.TreeRenderer.draw();
+        }
+      }, 0);
+      return;
+    }
     if (legendDrag) {
       if (legendRaf) { cancelAnimationFrame(legendRaf); legendRaf = null; }
       legendPending = null;
@@ -449,6 +517,7 @@ function enableDrag(svg) {
       }, 0);
       return;
     }
+
     if (trackDrag) {
       try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
       const wasMoved = trackDrag.moved;

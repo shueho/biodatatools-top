@@ -32,6 +32,8 @@ function refitViewBox() {
 function drawScaleBox(root) {
   const st = C.state;
   if (st.showScaleBox === false) return;
+  if (st.ignoreLength) return;
+  if (st.mode === 'rectangular' && st.lineShape === 'slanted') return;
   if (!root) return;
   const SS = global.TreeStyle;
   const maxD = T.maxDepth(root, 0) || 1;

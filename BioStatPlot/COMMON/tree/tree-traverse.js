@@ -75,6 +75,25 @@ function collectInnerLeaves(n) {
 }
 function hasRealChildren(n) { return !!(n && (n.children || []).some(c => !c.deleted)); }
 
+function duplicateLeafNames(root) {
+  if (!root) return [];
+  const counts = new Map();
+  (function rec(n) {
+    if (n.deleted) return;
+    const kids = (n.children || []).filter(c => !c.deleted);
+    if (!kids.length) {
+      const k = String(n.name || '').trim();
+      if (k) counts.set(k, (counts.get(k) || 0) + 1);
+      return;
+    }
+    kids.forEach(rec);
+  })(root);
+  const dups = [];
+  counts.forEach((c, k) => { if (c > 1) dups.push({ name: k, count: c }); });
+  dups.sort((a, b) => b.count - a.count);
+  return dups;
+}
+
 function suppressUnary(node, rt) {
   (node.children || []).slice().forEach(c => suppressUnary(c, rt));
   if (node !== rt && node.parent && (node.children || []).length === 1) {
@@ -210,8 +229,9 @@ function cropTreeToPathAndSubtree(root, target) {
 global.TreeTraverse = {
   walk, allWalk, visibleChildren, isLeaf, labelOf, visibleLeaves,
   maxDepth, nodeById, leavesUnder, leafRowBounds,
-  countInnerLeaves, collectInnerLeaves, hasRealChildren,
-  suppressUnary, rerootAt, moveNodeBeside
+  countInnerLeaves, collectInnerLeaves, hasRealChildren, duplicateLeafNames,
+  suppressUnary, rerootAt, moveNodeBeside,
+  duplicateLeafNames
 };
 global.TreeSerialize = { newickName, toNewick, toNexus, toPhyloXMLWithMeta, cropTreeToPathAndSubtree };
 })(window);

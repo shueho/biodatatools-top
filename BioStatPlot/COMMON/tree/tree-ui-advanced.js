@@ -134,9 +134,6 @@ function renderAdvancedPanel(container) {
             <option value="text" ${st.nodeLabelCommon.fillColorAs!=='background'?'selected':''}>${I.t('nodeLabelFillAsText')}</option>
             <option value="background" ${st.nodeLabelCommon.fillColorAs==='background'?'selected':''}>${I.t('nodeLabelFillAsBackground')}</option>
           </select></div>
-        <div class="param-item"><label>${I.t('nodeLabelBgFillLabel')}</label><input id="nodeLabelBgFill" type="color" value="${st.nodeLabelCommon.bgFill||'#eeeeee'}"></div>
-        <div class="param-item"><label>${I.t('nodeLabelBgBorderColorLabel')}</label><input id="nodeLabelBgBorderColor" type="color" value="${st.nodeLabelCommon.bgBorderColor||'#cccccc'}"></div>
-        <div class="param-item"><label>${I.t('nodeLabelBgBorderWidthLabel')}</label><input id="nodeLabelBgBorderWidth" type="number" value="${st.nodeLabelCommon.bgBorderWidth||0}" min="0" max="6" step="0.5"></div>
         <div class="param-item"><label>${I.t('nodeLabelTextColorOnBg')}</label><input id="nodeLabelTextColorOnBg" type="color" value="${st.nodeLabelCommon.textColorOnBg||'#222222'}"></div>
         <div class="param-item"><label>${I.t('nodeLabelSeparator')}</label><input id="nodeLabelSeparator" type="text" value="${escA(st.nodeLabelCommon.separator)}" style="white-space:pre;font-family:monospace"></div>
         <div class="param-item"><label class="mini-check"><input id="nodeLabelHideOnLeaves" type="checkbox" ${st.nodeLabelCommon.hideOnLeaves?'checked':''}> ${I.t('nodeLabelHideOnLeaves')}</label></div>
@@ -286,9 +283,6 @@ function renderAdvancedPanel(container) {
   container.querySelector('#lenLabelOffsetRadial')?.addEventListener('input', e => { st.lengthLabel.offsetRadial = Number(e.target.value) || 0; global.TreeRenderer.draw(); });
   container.querySelector('#nodeLabelMergeText')?.addEventListener('change', e => { st.nodeLabelCommon.mergeText = e.target.checked; global.TreeRenderer.draw(); });
   container.querySelector('#nodeLabelFillColorAs')?.addEventListener('change', e => { st.nodeLabelCommon.fillColorAs = e.target.value; global.TreeRenderer.draw(); });
-  container.querySelector('#nodeLabelBgFill')?.addEventListener('input', e => { st.nodeLabelCommon.bgFill = e.target.value; global.TreeRenderer.draw(); });
-  container.querySelector('#nodeLabelBgBorderColor')?.addEventListener('input', e => { st.nodeLabelCommon.bgBorderColor = e.target.value; global.TreeRenderer.draw(); });
-  container.querySelector('#nodeLabelBgBorderWidth')?.addEventListener('input', e => { st.nodeLabelCommon.bgBorderWidth = Number(e.target.value); global.TreeRenderer.draw(); });
   container.querySelector('#nodeLabelTextColorOnBg')?.addEventListener('input', e => { st.nodeLabelCommon.textColorOnBg = e.target.value; global.TreeRenderer.draw(); });
   container.querySelector('#nodeLabelSeparator')?.addEventListener('input', e => { st.nodeLabelCommon.separator = e.target.value; global.TreeRenderer.draw(); });
   container.querySelector('#nodeLabelHideOnLeaves')?.addEventListener('change', e => { st.nodeLabelCommon.hideOnLeaves = e.target.checked; global.TreeRenderer.draw(); });

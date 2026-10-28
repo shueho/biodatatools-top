@@ -127,10 +127,12 @@ function drawLeafLabel(n, radial) {
   }
 
   const style = TT.fromParts({ font: st.fontFamily, size: size, bold: st.bold || n.labelBold, italic: st.italic || n.labelItalic, color });
-  const label = TT.draw(null, x, y, text, style, {
+  const drawAttrs = {
     "text-anchor": anchor, class: "leaf-label", "data-id": n.id,
     transform: radial ? `rotate(${rotate} ${x} ${y})` : undefined
-  });
+  };
+  if (radial) drawAttrs["dominant-baseline"] = "central";
+  const label = TT.draw(null, x, y, text, style, drawAttrs);
   if (n.styleRuns && n.styleRuns.length && label) {
     label.textContent = "";
     richTspans(text, n.styleRuns).forEach(g => {
@@ -797,16 +799,25 @@ function formatBootstrapValue(raw, mode) {
 }
 
 function labelRightEdge() {
-  const leaves = T.visibleLeaves(C.getRoot());
   const st = C.state;
-  let r = 700;
-  leaves.forEach(l => {
-    const startX = st.labelPosition === "aligned" ? C.alignedLabelX() + 10 : l.x + 10;
-    r = Math.max(r, startX + T.labelOf(l).length * st.fontSize * 0.6);
-  });
+  const leaves = T.visibleLeaves(C.getRoot());
+  let r = -Infinity;
   C.getSvg().querySelectorAll(".leaf-label").forEach(label => {
-    try { const b = label.getBBox(); r = Math.max(r, b.x + b.width); } catch (_) {}
+    try {
+      const b = label.getBBox();
+      if (isFinite(b.x) && isFinite(b.width)) r = Math.max(r, b.x + b.width);
+    } catch (_) {}
   });
+  if (!isFinite(r)) {
+    r = C.alignedLabelX();
+    leaves.forEach(l => {
+      const startX = st.labelPosition === "aligned" ? C.alignedLabelX() + 10 : l.x + 10;
+      const w = (global.PlotCommon && PlotCommon.measureText)
+        ? PlotCommon.measureText(T.labelOf(l), st.fontSize)
+        : T.labelOf(l).length * st.fontSize * 0.6;
+      r = Math.max(r, startX + w);
+    });
+  }
   return r + 10;
 }
 

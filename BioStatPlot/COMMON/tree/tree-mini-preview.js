@@ -195,7 +195,28 @@
 `;
         document.head.appendChild(s);
     }
-
+function applyStrokeThreshold(svgEl) {
+    if (!svgEl) return;
+    let vbW = 940;
+    try { const b = svgEl.viewBox.baseVal; if (b && b.width) vbW = b.width; } catch (_) {}
+    const rect = bodyEl.getBoundingClientRect();
+    const scale = rect.width > 0 ? rect.width / vbW : 1;
+    const MIN_STROKE = Math.min(2, Math.max(0.6, 0.8 / Math.max(scale, 0.1)));
+    svgEl.querySelectorAll('line, path, polyline, rect, circle, ellipse').forEach(el => {
+        const sw = parseFloat(el.getAttribute('stroke-width') || '0');
+        if (sw > 0 && sw < MIN_STROKE) el.setAttribute('stroke-width', String(MIN_STROKE));
+    });
+    svgEl.querySelectorAll('rect').forEach(el => {
+        const w = parseFloat(el.getAttribute('width') || '0');
+        const h = parseFloat(el.getAttribute('height') || '0');
+        if (w > 0 && w < 0.6) el.setAttribute('width', '0.6');
+        if (h > 0 && h < 0.6) el.setAttribute('height', '0.6');
+    });
+    svgEl.querySelectorAll('circle').forEach(el => {
+        const r = parseFloat(el.getAttribute('r') || '0');
+        if (r > 0 && r < 0.4) el.setAttribute('r', '0.4');
+    });
+}
     function buildRoot() {
         const root = document.createElement('div');
         root.id = 'treeMiniPreview';
@@ -478,6 +499,7 @@
             svgEl.setAttribute('pointer-events', 'none');
             bodyEl.innerHTML = '';
             bodyEl.appendChild(document.importNode(svgEl, true));
+            applyStrokeThreshold(bodyEl.querySelector('svg'));
         } catch (e) {
             bodyEl.innerHTML = svgText;
             const svgEl = bodyEl.querySelector('svg');
@@ -494,6 +516,8 @@
                 svgEl.style.background = '#ffffff';
                 svgEl.style.pointerEvents = 'none';
                 svgEl.setAttribute('pointer-events', 'none');
+                applyStrokeThreshold(svgEl);
+
             }
         }
 

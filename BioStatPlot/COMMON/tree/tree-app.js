@@ -315,9 +315,22 @@ function loadTree(text) {
     const rootSuffix = C.state.hasRoot ? I.t('treeMsgHasRoot') : I.t('treeMsgNoRoot');
     let extraMsg = '';
     if (t._alternativeTrees > 1) {
-      extraMsg = '（该 NEXUS 含 ' + t._alternativeTrees + ' 棵树，已加载 "' + (t._chosenTreeName || 'tree1') + '"）';
+      extraMsg = I.t('treeMsgNexusAlternatives', {
+        n: t._alternativeTrees,
+        name: t._chosenTreeName || 'tree1'
+      });
     }
-    showTreeMsg((isTime ? I.t('treeMsgLoadedTime', { fmt: fmtLabel, n: leafCount }) + rootSuffix : I.t('treeMsgLoaded', { fmt: fmtLabel, n: leafCount }) + rootSuffix) + extraMsg, "success");
+    const dups = T.duplicateLeafNames(t);
+    let dupMsg = '';
+    if (dups.length) {
+      const preview = dups.slice(0, 5).map(d => d.name + '×' + d.count).join(', ');
+      const more = dups.length > 5 ? ' …' : '';
+      dupMsg = ' ' + I.t('treeMsgDuplicateLeaves', { n: dups.length, list: preview + more });
+    }
+    showTreeMsg((isTime
+      ? I.t('treeMsgLoadedTime', { fmt: fmtLabel, n: leafCount }) + rootSuffix
+      : I.t('treeMsgLoaded', { fmt: fmtLabel, n: leafCount }) + rootSuffix) + extraMsg + dupMsg,
+      dups.length ? "warn" : "success");
     drawTree();
   } catch (e) {
     console.error("[TreeApp] loadTree error:", e);
@@ -498,6 +511,7 @@ function bindAllControls() {
   });
   bindPath("customTickColor", "customTickColor");
   bindPath("customTickBold", "customTickBold");
+  bindPath("customTickGridShow", "customTickGridShow");
   bindPath("tickSecondaryInterval", "tickSecondary.interval", "num");
   bindPath("tickSecondaryShowLabels", "tickSecondary.showLabels", "bool");
   bindPath("tickSecondaryShowGrid", "tickSecondary.showGrid", "bool");
@@ -651,6 +665,7 @@ function syncControls() {
   set("tickPrimaryCustom", (st.tickPrimary.customTicks || []).join(","));
   set("customTickColor", st.customTickColor || "#c0392b");
   set("customTickBold", st.customTickBold);
+  set("customTickGridShow", st.customTickGridShow !== false);
   set("tickSecondaryInterval", st.tickSecondary.interval);
   set("tickSecondaryShowLabels", String(st.tickSecondary.showLabels));
   set("tickSecondaryShowGrid", String(st.tickSecondary.showGrid));

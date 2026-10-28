@@ -45,6 +45,7 @@ const ctx = {
     tickSecondary: { interval: 0, showLabels: false, showGrid: false, gridDashed: false, gridWidth: 1, gridColor: "#dddddd", customTicks: [] },
     tickLabelFontSize: 15, tickLabelBold: false, tickLabelItalic: false,
     customTickColor: "#c0392b", customTickBold: true,
+    customTickGridShow: true,
     timeScaleFactor: 1,
     showScaleBox: true, scaleBoxSize: 0, scaleBoxTitle: "Scale",
     scaleBoxOffsetX: 0, scaleBoxOffsetY: 0,

@@ -163,14 +163,26 @@ function drawRectangularRanges() {
   const isInv = C.isTrue(st.invert);
   const rowH = Math.max(14, st.fontSize * 1.05) * (st.scaleV || 1);
   const segments = rectangularRangeSegments(leaves, colorRanges, rowH);
-  let labelEdge = global.TreeDrawNode.labelRightEdge();
-  C.getSvg().querySelectorAll(".leaf-label").forEach(label => {
-    try {
-      const b = label.getBBox();
-      if (isInv) labelEdge = Math.min(labelEdge, b.x - 6);
-      else labelEdge = Math.max(labelEdge, b.x + b.width + 6);
-    } catch (_) {}
-  });
+  let labelEdge;
+  if (isInv) {
+    labelEdge = Infinity;
+    C.getSvg().querySelectorAll(".leaf-label").forEach(label => {
+      try {
+        const b = label.getBBox();
+        if (isFinite(b.x)) labelEdge = Math.min(labelEdge, b.x - 6);
+      } catch (_) {}
+    });
+    if (!isFinite(labelEdge)) labelEdge = global.TreeDrawNode.labelRightEdge();
+  } else {
+    labelEdge = -Infinity;
+    C.getSvg().querySelectorAll(".leaf-label").forEach(label => {
+      try {
+        const b = label.getBBox();
+        if (isFinite(b.x) && isFinite(b.width)) labelEdge = Math.max(labelEdge, b.x + b.width + 6);
+      } catch (_) {}
+    });
+    if (!isFinite(labelEdge)) labelEdge = global.TreeDrawNode.labelRightEdge();
+  }
   const root = C.getRoot();
   const maxD = Math.max(T.maxDepth(root, 0), 1);
   const treeW = 560 * (st.scaleH || 1);

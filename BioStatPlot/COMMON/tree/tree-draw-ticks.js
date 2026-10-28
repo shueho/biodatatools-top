@@ -47,6 +47,7 @@ function timeTickText(v, interval) {
 function drawRectTicks(root) {
   const st = C.state;
   if (st.lineShape === 'slanted') return;
+  if (st.ignoreLength) return;
   const isInv = isInvert();
   const tP = st.tickPrimary || {};
   const tS = st.tickSecondary || {};
@@ -179,7 +180,7 @@ function drawRectTicks(root) {
   if (Array.isArray(tP.customTicks)) {
     tP.customTicks.forEach(v => {
       if (!isFinite(v)) return;
-      drawOneTick(v, { fs: unifyFs, bold: st.customTickBold, italic: st.tickLabelItalic, color: st.customTickColor || "#c0392b", tickLen: 6, showLabel: true, showGrid: true, gridColor: st.customTickColor || "#c0392b", gridWidth: 1, gridDashed: false });
+      drawOneTick(v, { fs: unifyFs, bold: st.customTickBold, italic: st.tickLabelItalic, color: st.customTickColor || "#c0392b", tickLen: 6, showLabel: true, showGrid: st.customTickGridShow !== false, gridColor: st.customTickColor || "#c0392b", gridWidth: 1, gridDashed: false });
     });
   }
 }
@@ -189,6 +190,7 @@ function drawCircularTicks(root) {
   const tP = st.tickPrimary || {};
   const tS = st.tickSecondary || {};
   if (!st.axisShow) return;
+  if (st.ignoreLength) return;
   if (st.mode === 'unrooted') return;
   const maxD = T.maxDepth(root, 0) || 1;
   const innerBase = L.getRadialInnerBase ? L.getRadialInnerBase() : 0;
@@ -264,14 +266,27 @@ function drawCircularTicks(root) {
     if (!isFinite(r) || r < R_start - 0.5 || r > R_total + 0.5) return;
     const centerX = cx + r * ux, centerY = cy + r * uy;
 
-    const gridOn = opts.isSecondary ? tS.showGrid : tP.showGrid;
+    let gridOn, gridStroke, gridWidth, gridDash;
+    if (opts.isCustom) {
+      gridOn = st.customTickGridShow !== false;
+      gridStroke = st.customTickColor || "#c0392b";
+      gridWidth = 1;
+      gridDash = "";
+    } else if (opts.isSecondary) {
+      gridOn = tS.showGrid;
+      gridStroke = tS.gridColor || "#dddddd";
+      gridWidth = tS.gridWidth || 1;
+      gridDash = tS.gridDashed ? "4 3" : "";
+    } else {
+      gridOn = tP.showGrid;
+      gridStroke = tP.gridColor || "#dddddd";
+      gridWidth = tP.gridWidth || 1;
+      gridDash = tP.gridDashed ? "4 3" : "";
+    }
     if (gridOn && r > 0.5) {
       C.el("circle", {
-        cx, cy, r,
-        fill: "none",
-        stroke: (opts.isSecondary ? (tS.gridColor || "#dddddd") : (tP.gridColor || "#dddddd")),
-        "stroke-width": (opts.isSecondary ? (tS.gridWidth || 1) : (tP.gridWidth || 1)),
-        "stroke-dasharray": (opts.isSecondary ? (tS.gridDashed ? "4 3" : "") : (tP.gridDashed ? "4 3" : ""))
+        cx, cy, r, fill: "none",
+        stroke: gridStroke, "stroke-width": gridWidth, "stroke-dasharray": gridDash
       });
     }
 
@@ -325,7 +340,8 @@ function drawCircularTicks(root) {
       if (!isFinite(vv)) return;
       drawOneTickAt(vv, {
         fs: unifyFs, bold: st.customTickBold, italic: st.tickLabelItalic,
-        color: st.customTickColor || "#c0392b", tickSize: 7, showLabel: true
+        color: st.customTickColor || "#c0392b", tickSize: 7, showLabel: true,
+        isCustom: true
       });
     });
   }

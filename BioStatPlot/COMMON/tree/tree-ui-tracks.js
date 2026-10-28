@@ -28,6 +28,8 @@ function legendBlock(t, opts) {
           <div class="param-item"><label>${I.t('heatLegendTickInterval')}</label><input type="number" data-tprop="legendTickInterval" data-tid="${t.id}" value="${t.legendTickInterval != null ? t.legendTickInterval : ''}" min="0" step="any" placeholder="auto"></div>
           <div class="param-item"><label>${I.t('heatLegendTickDecimals')}</label><input type="number" data-tprop="legendTickDecimals" data-tid="${t.id}" value="${t.legendTickDecimals != null ? t.legendTickDecimals : 2}" min="0" max="6" step="1"></div>
           <div class="param-item"><label>${I.t('heatLegendTickCount')}</label><input type="number" data-tprop="legendTickCount" data-tid="${t.id}" value="${t.legendTickCount != null ? t.legendTickCount : 3}" min="2" max="11" step="1"></div>
+          <div class="param-item"><label>${I.t('legendBarLengthLabel')}</label><input type="number" data-tprop="legendBarLength" data-tid="${t.id}" value="${t.legendBarLength != null && t.legendBarLength > 0 ? t.legendBarLength : ''}" min="0" step="1" placeholder="80"></div>
+          <div class="param-item"><label>${I.t('legendBarWidthLabel')}</label><input type="number" data-tprop="legendBarWidth" data-tid="${t.id}" value="${t.legendBarWidth != null && t.legendBarWidth > 0 ? t.legendBarWidth : ''}" min="0" step="1" placeholder="12"></div>
         ` : ''}
       </div>
     </div>`;
@@ -71,7 +73,50 @@ function trackShapeStyleOf(t) {
     strokeColor: t.outlineColor || '#333333', strokeWidth: t.outlineWidth || 0
   };
 }
+function applyConnectData(track, text) {
+  if (!text || !text.trim()) return { ok: false };
+  const parsed = global.PlotCommon.parseTable(text);
+  if (!parsed.headers.length || !parsed.data.length) return { ok: false };
+  track.connectHeaders = parsed.headers.slice();
+  if (!track.connectSourceColumn || parsed.headers.indexOf(track.connectSourceColumn) < 0) {
+    track.connectSourceColumn = parsed.headers[0] || '';
+  }
+  if (!track.connectTargetColumn || parsed.headers.indexOf(track.connectTargetColumn) < 0) {
+    track.connectTargetColumn = parsed.headers[1] || parsed.headers[0] || '';
+  }
+  if (track.connectColorColumn && parsed.headers.indexOf(track.connectColorColumn) < 0) {
+    track.connectColorColumn = '';
+  }
+  track._connectRawRows = parsed.data;
+  global.TreeTracks.refreshTrackData(track);
+  return { ok: true, count: track.data.length };
+}
 
+function generateRandomConnectData(track) {
+  const C = global.TreeCore;
+  if (!C.getRoot()) return 0;
+  const leaves = global.TreeTraverse.visibleLeaves(C.getRoot());
+  const names = Array.from(new Set(leaves.map(l => String(l.name || '').trim()).filter(Boolean)));
+  if (names.length < 2) return 0;
+  const count = Math.min(20, Math.max(5, Math.floor(names.length / 2)));
+  const rows = [];
+  for (let i = 0; i < count; i++) {
+    const a = names[Math.floor(Math.random() * names.length)];
+    let b = names[Math.floor(Math.random() * names.length)];
+    let guard = 20;
+    while (b === a && guard-- > 0) b = names[Math.floor(Math.random() * names.length)];
+    if (b === a) continue;
+    const c = 'ABCD'[Math.floor(Math.random() * 4)];
+    rows.push({ source: a, target: b, group: c });
+  }
+  track.connectHeaders = ['source', 'target', 'group'];
+  track.connectSourceColumn = 'source';
+  track.connectTargetColumn = 'target';
+  track.connectColorColumn = 'group';
+  track._connectRawRows = rows;
+  global.TreeTracks.refreshTrackData(track);
+  return rows.length;
+}
 function refreshTrackList(container) {
   const box = container.querySelector('#trackList');
   if (!box) return;
@@ -89,7 +134,54 @@ function refreshTrackList(container) {
     const colOpts = (sel) => `<option value="">${I.t('colPlaceholder')}</option>` + cols.map(c => `<option value="${escA(c)}" ${c===sel?'selected':''}>${esc(c)}</option>`).join('');
     const typeLabel = TT.trackTypeLabel(t.type);
     let body = '';
-
+    if (t.type === 'feature') {
+      body = `
+        <div class="param-grid cols-4">
+          <div class="param-item"><label>${I.t('featureColumn')}</label>
+            <select data-tprop="featureColumn" data-tid="${t.id}">${colOpts(t.featureColumn)}</select></div>
+          <div class="param-item"><label>${I.t('featureLengthColumn')}</label>
+            <select data-tprop="featureLengthColumn" data-tid="${t.id}">${colOpts(t.featureLengthColumn)}</select></div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label>
+            <input type="text" data-tprop="name" data-tid="${t.id}" value="${escA(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label>
+            <input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('trackTrackLength')}</label>
+            <input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width||140}" min="40" max="500"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="featureAlign" data-tid="${t.id}" ${t.featureAlign?'checked':''}> ${I.t('featureAlign')}</label></div>
+        </div>
+        <div class="info-box" style="margin:6px 0;font-size:12px;line-height:1.65;">
+          ${I.t('featureHint')}
+          <span data-feature-hint="${t.id}"></span>
+        </div>
+        ${subTitle(I.t('featureAxisTitle'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label>${I.t('trackMinValue')}</label>
+            <input type="number" data-tprop="featureMin" data-tid="${t.id}" value="${t.featureMin!=null?t.featureMin:''}" placeholder="auto"></div>
+          <div class="param-item"><label>${I.t('trackMaxValue')}</label>
+            <input type="number" data-tprop="featureMax" data-tid="${t.id}" value="${t.featureMax!=null?t.featureMax:''}" placeholder="auto"></div>
+          <div class="param-item"><label>${I.t('trackAxisInterval')}</label>
+            <input type="number" data-tprop="featureTickInterval" data-tid="${t.id}" value="${t.featureTickInterval!=null?t.featureTickInterval:''}" placeholder="auto（3 刻度）"></div>
+        </div>
+        ${subTitle(I.t('featureBarTitle'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label>${I.t('featureBarHeight')}</label>
+            <input type="number" data-tprop="featureBarHeight" data-tid="${t.id}" value="${t.featureBarHeight!=null?t.featureBarHeight:0.6}" min="0.05" max="1" step="0.05"></div>
+          <div class="param-item"><label>${I.t('featureLineColor')}</label>
+            <input type="color" data-tprop="featureLineColor" data-tid="${t.id}" value="${t.featureLineColor||'#888888'}"></div>
+          <div class="param-item"><label>${I.t('featureLineWidth')}</label>
+            <input type="number" data-tprop="featureLineWidth" data-tid="${t.id}" value="${t.featureLineWidth||1}" min="0.2" max="6" step="0.1"></div>
+          <div class="param-item"><label>${I.t('featureLineGap')}</label>
+            <input type="number" data-tprop="featureLineGap" data-tid="${t.id}" value="${t.featureLineGap||0}" min="0" max="80" step="1"
+                   title="${I.t('featureLineGapHint')}"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="featureShowLabel" data-tid="${t.id}" ${t.featureShowLabel?'checked':''}> ${I.t('featureShowLabel')}</label></div>
+          <div class="param-item"><label>${I.t('featureLabelFontSize')}</label>
+            <input type="number" data-tprop="featureLabelFontSize" data-tid="${t.id}" value="${t.featureLabelFontSize||8}" min="5" max="20"></div>
+          <div class="param-item"><label>${I.t('featureLabelColor')}</label>
+            <input type="color" data-tprop="featureLabelColor" data-tid="${t.id}" value="${t.featureLabelColor||'#ffffff'}"></div>
+        </div>
+        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
+        ${legendBlock(t)}`;
+    }
     if (t.type === 'legend') {
       const items = t.legendItems || [];
       body = `
@@ -109,6 +201,7 @@ function refreshTrackList(container) {
                   <option value="circle" ${it.shape==='circle'?'selected':''}>${I.t('optShapeCircle')}</option>
                   <option value="star" ${it.shape==='star'?'selected':''}>${I.t('optShapeStar')}</option>
                   <option value="diamond2" ${it.shape==='diamond2'?'selected':''}>${I.t('optShapeDiamond')}</option>
+                  <option value="line" ${it.shape==='line'?'selected':''}>${I.t('optShapeLine')}</option>
                 </select></div>
               <div class="param-item"><label>${I.t('legendItemFill')}</label><input type="color" data-lgfield="fillColor" data-lgtid="${t.id}" data-lgidx="${i}" value="${it.fillColor||'#4DBBD5'}"></div>
               <div class="param-item"><label>${I.t('legendItemStroke')}</label><input type="color" data-lgfield="strokeColor" data-lgtid="${t.id}" data-lgidx="${i}" value="${it.strokeColor||'#333333'}"></div>
@@ -129,8 +222,8 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
           <div class="param-item"><label>${I.t('trackBlockOpacity')}</label><input type="number" data-tprop="fillOpacity" data-tid="${t.id}" value="${t.fillOpacity!=null?t.fillOpacity:1}" min="0" max="1" step="0.05"></div>
         </div>
-        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('styleBoxTrackBorder')}<div data-track-border-host></div></div>
-        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('styleBoxTrackText')}<div data-track-text-host></div></div>
+        ${subTitle(I.t('styleBoxTrackBorder'))}
+        <div data-track-border-host></div>
         ${subTitle(I.t('trackColorText'))}
         <div class="param-grid cols-4">
           <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showText" data-tid="${t.id}" ${t.showText ? 'checked' : ''}> ${I.t('trackShowText')}</label></div>
@@ -142,6 +235,7 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('colorstripTextOffsetX')}</label><input type="number" data-tprop="colorstripTextOffsetX" data-tid="${t.id}" value="${t.colorstripTextOffsetX || 0}" step="1"></div>
           <div class="param-item"><label>${I.t('colorstripTextOffsetY')}</label><input type="number" data-tprop="colorstripTextOffsetY" data-tid="${t.id}" value="${t.colorstripTextOffsetY || 0}" step="1"></div>
         </div>
+        <div data-track-text-host></div>
         <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
         ${legendBlock(t)}`;
     } else if (t.type === 'binary') {
@@ -167,7 +261,8 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackBinaryFalseColor')}</label><input type="color" data-tprop="binaryFalseColor" data-tid="${t.id}" value="${t.binaryFalseColor}"></div>
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
-        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('styleBoxTrackShape')}<div data-track-shape-host></div></div>
+        ${subTitle(I.t('styleBoxTrackShape'))}
+        <div data-track-shape-host></div>
         ${legendBlock(t)}`;
     } else if (t.type === 'heatstrip') {
       const useCustom = !!(t.gradientStops && t.gradientStops.length >= 2);
@@ -182,7 +277,8 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackStripWidth')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width||20}" min="4" max="80"></div>
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
-        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('styleBoxTrackBorder')}<div data-track-border-host></div></div>
+        ${subTitle(I.t('styleBoxTrackBorder'))}
+        <div data-track-border-host></div>
         ${subTitle(I.t('trackColorSettings'))}
         <div class="param-grid cols-4">
           <div class="param-item"><label>${I.t('trackMinValue')}</label><input type="number" data-tprop="gradientMin" data-tid="${t.id}" value="${t.gradientMin!=null?t.gradientMin:''}" placeholder="auto"></div>
@@ -272,12 +368,12 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escA(t.name)}"></div>
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
         </div>
-        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('styleBoxTrackShape')}<div data-track-shape-host></div></div>
+        ${subTitle(I.t('styleBoxTrackShape'))}
+        <div data-track-shape-host></div>
         ${vals.length ? `<div class="style-box" style="margin-top:8px;">${styleBoxTitle('trackShapeSettings')}<div data-track-shapemap-host></div></div>` : ''}
         <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
         ${legendBlock(t)}`;
     } else if (t.type === 'stackedbar' || t.type === 'pie') {
-      const colorVals = t.columns || [];
       body = `
         <div class="param-grid cols-4">
           <div class="param-item" style="grid-column: span 2;"><label>${I.t('trackMultiColData')}</label>
@@ -294,19 +390,6 @@ function refreshTrackList(container) {
             <div class="param-item"><label>${I.t('trackBarWidth')}</label><input type="number" data-tprop="barWidth" data-tid="${t.id}" value="${t.barWidth||0}" min="0" max="40" placeholder="0"></div>
           `:''}
         </div>
-        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
-        ${colorVals.length ? `<div class="style-box" style="margin-top:8px;">${styleBoxTitle('trackColumnColors')}
-          <div class="custom-color-list" style="display:flex;flex-wrap:wrap;gap:8px;">
-            ${colorVals.map((c, i) => {
-              const cols2 = global.TreePalette.getCategoricalScheme(t.palette||'tableau10');
-              const defColor = (t.columnColors && t.columnColors[c]) || cols2[i % cols2.length];
-              return `<label style="display:flex;align-items:center;gap:4px;font-size:12px;">
-                <input type="color" data-tcolcolor="${t.id}" data-cname="${escA(c)}" value="${escA(defColor)}" style="width:30px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;">
-                <span>${esc(c)}</span>
-                <button class="btn-del-color" data-tdelcolcolor="${t.id}" data-cname="${escA(c)}" type="button" title="delete">×</button>
-              </label>`;
-            }).join('')}
-          </div></div>` : ''}
         ${t.type==='stackedbar'?`
           ${subTitle(I.t('trackBox'))}
           <div class="param-grid cols-4">
@@ -323,9 +406,9 @@ function refreshTrackList(container) {
             <div class="param-item"><label>${I.t('trackAxisInterval')}</label><input type="number" data-tprop="axisInterval" data-tid="${t.id}" value="${t.axisInterval!=null?t.axisInterval:''}" placeholder="auto"></div>
           </div>
         `:''}
+        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
         ${legendBlock(t)}`;
     } else if (t.type === 'groupedbar') {
-      const colorVals = t.columns || [];
       body = `
         <div class="param-grid cols-4">
           <div class="param-item" style="grid-column: span 2;"><label>${I.t('trackMultiColData')}</label>
@@ -337,19 +420,6 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
           <div class="param-item"><label>${I.t('trackTrackLength')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width||100}" min="20" max="400"></div>
         </div>
-        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
-        ${colorVals.length ? `<div class="style-box" style="margin-top:8px;">${styleBoxTitle('trackColumnColors')}
-          <div class="custom-color-list" style="display:flex;flex-wrap:wrap;gap:8px;">
-            ${colorVals.map((c, i) => {
-              const cols2 = global.TreePalette.getCategoricalScheme(t.palette||'tableau10');
-              const defColor = (t.columnColors && t.columnColors[c]) || cols2[i % cols2.length];
-              return `<label style="display:flex;align-items:center;gap:4px;font-size:12px;">
-                <input type="color" data-tcolcolor="${t.id}" data-cname="${escA(c)}" value="${escA(defColor)}" style="width:30px;height:22px;padding:0;border:1px solid #ccc;border-radius:3px;cursor:pointer;">
-                <span>${esc(c)}</span>
-                <button class="btn-del-color" data-tdelcolcolor="${t.id}" data-cname="${escA(c)}" type="button" title="delete">×</button>
-              </label>`;
-            }).join('')}
-          </div></div>` : ''}
         ${subTitle(I.t('trackBarOutline'))}
         <div class="param-grid cols-4">
           <div class="param-item"><label>${I.t('trackBarOutlineColor')}</label><input type="color" data-tprop="barOutlineColor" data-tid="${t.id}" value="${t.barOutlineColor}"></div>
@@ -383,6 +453,69 @@ function refreshTrackList(container) {
               </div>
             </div>`).join('')}
         </div>
+        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
+        ${legendBlock(t)}`;
+    } else if (t.type === 'connect') {
+      const headers = t.connectHeaders || [];
+      const rawRows = t._connectRawRows || [];
+      const dataText = (function() {
+        if (!headers.length || !rawRows.length) return '';
+        const lines = [headers.join('\t')];
+        rawRows.forEach(row => {
+          lines.push(headers.map(h => String(row[h] == null ? '' : row[h])).join('\t'));
+        });
+        return lines.join('\n');
+      })();
+      const colorColOpts = headers
+        .map(h => `<option value="${escA(h)}" ${h===t.connectColorColumn?'selected':''}>${esc(h)}</option>`).join('');
+      body = `
+        <div class="param-grid cols-4">
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escA(t.name)}"></div>
+          <div class="param-item"><label>${I.t('connectSourceCol')}</label>
+            <select data-tprop="connectSourceColumn" data-tid="${t.id}">
+              <option value="">${I.t('colPlaceholder')}</option>
+              ${headers.map(h => `<option value="${escA(h)}" ${h===t.connectSourceColumn?'selected':''}>${esc(h)}</option>`).join('')}
+            </select></div>
+          <div class="param-item"><label>${I.t('connectTargetCol')}</label>
+            <select data-tprop="connectTargetColumn" data-tid="${t.id}">
+              <option value="">${I.t('colPlaceholder')}</option>
+              ${headers.map(h => `<option value="${escA(h)}" ${h===t.connectTargetColumn?'selected':''}>${esc(h)}</option>`).join('')}
+            </select></div>
+          <div class="param-item"><label>${I.t('connectColorCol')}</label>
+            <select data-tprop="connectColorColumn" data-tid="${t.id}">
+              <option value="" ${!t.connectColorColumn?'selected':''}>${I.t('connectColorUniform')}</option>
+              ${colorColOpts}
+            </select></div>
+          <div class="param-item"><label>${I.t('trackTrackLength')}</label><input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width||80}" min="10" max="400"></div>
+          <div class="param-item"><label>${I.t('trackLineWidth')}</label><input type="number" data-tprop="lineWidth" data-tid="${t.id}" value="${t.lineWidth||1}" min="0.1" max="10" step="0.1"></div>
+          <div class="param-item"><label>${I.t('trackLineOpacity')}</label><input type="number" data-tprop="lineOpacity" data-tid="${t.id}" value="${t.lineOpacity!=null?t.lineOpacity:0.6}" min="0" max="1" step="0.05"></div>
+          <div class="param-item"><label>${I.t('trackLineStyle')}</label>
+            <select data-tprop="lineStyle" data-tid="${t.id}">
+              <option value="solid" ${t.lineStyle!=='dashed'?'selected':''}>${I.t('styleLineSolid')}</option>
+              <option value="dashed" ${t.lineStyle==='dashed'?'selected':''}>${I.t('styleLineDashed')}</option>
+            </select></div>
+          <div class="param-item"><label>${I.t('connectOffsetLabel')}</label>
+            <input type="number" data-tprop="connectOffset" data-tid="${t.id}"
+                   value="${t.connectOffset||0}" step="1"
+                   title="${I.t('connectOffsetHint')}"></div>
+          <div class="param-item"><label>${I.t('connectCurveInsetLabel')}</label>
+            <input type="number" data-tprop="curveInset" data-tid="${t.id}"
+                   value="${t.curveInset != null ? t.curveInset : ''}"
+                   min="0" max="1" step="0.05" placeholder="auto"
+                   title="${I.t('connectCurveInsetHint')}"></div>
+        </div>
+        <div class="style-box" style="margin-top:8px;">
+          <div class="style-box-title">${I.t('connectDataTitle')}</div>
+          <textarea data-connect-textarea="${t.id}" rows="6" class="import-text" spellcheck="false" placeholder="${escA(I.t('connectDataPlaceholder'))}" style="width:100%;font-family:Consolas,monospace;font-size:12px;box-sizing:border-box;">${escA(dataText)}</textarea>
+          <div class="info-box" style="margin-top:6px;font-size:12px;line-height:1.6;">${I.t('connectHint')}</div>
+          <div class="btn-group" style="margin-top:6px;">
+            <button class="btn" data-connect-apply="${t.id}" type="button">${I.t('connectApplyBtn')}</button>
+            <button class="btn" data-connect-genrandom="${t.id}" type="button">${I.t('connectGenRandomBtn')}</button>
+            <button class="btn btn-outline" data-connect-upload="${t.id}" type="button">${I.t('connectUploadBtn')}</button>
+            <input type="file" data-connect-file="${t.id}" accept=".csv,.tsv,.txt" style="display:none;">
+          </div>
+        </div>
+        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
         ${legendBlock(t)}`;
     } else if (t.type === 'multiheatmap') {
       body = `
@@ -398,7 +531,8 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackHeatCellWidth')}</label><input type="number" data-tprop="cellWidth" data-tid="${t.id}" value="${t.cellWidth||20}" min="4" max="200"></div>
           <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showBorder" data-tid="${t.id}" ${t.showBorder!==false?'checked':''}> ${I.t('trackShowBorder')}</label></div>
         </div>
-        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('styleBoxTrackBorder')}<div data-track-border-host></div></div>
+        ${subTitle(I.t('styleBoxTrackBorder'))}
+        <div data-track-border-host></div>
         ${subTitle(I.t('multiheatmapColLabelsTitle'))}
         <div class="param-grid cols-4">
           <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showColLabels" data-tid="${t.id}" ${t.showColLabels!==false?'checked':''}> ${I.t('multiheatmapShowColLabels')}</label></div>
@@ -445,9 +579,19 @@ function refreshTrackList(container) {
       else v = el.value;
       const patch = { [prop]: v };
       if ((prop === 'column' || prop === 'shapeColumn') && v && !t.name) patch.name = v;
+      if (prop === 'connectColorColumn' || prop === 'connectSourceColumn' || prop === 'connectTargetColumn') {
+        t[prop] = v;
+        global.TreeTracks.refreshTrackData(t);
+        global.TreeRenderer.draw();
+        setTimeout(() => refreshTrackList(container), 0);
+        return;
+      }
       TT.updateCustomTrack(id, patch);
       global.TreeRenderer.draw();
-      if (prop === 'column' || prop === 'shapeColumn' || prop === 'colorColumn' || prop === 'textAutoWidth' || prop === 'barColorMode' || prop === 'barColorColumn' || prop === 'textOrientation' || prop === 'showText' || prop === 'legendOrientation') {
+      if (prop === 'column' || prop === 'shapeColumn' || prop === 'colorColumn'
+          || prop === 'featureColumn' || prop === 'featureLengthColumn'
+          || prop === 'textAutoWidth' || prop === 'barColorMode' || prop === 'barColorColumn'
+          || prop === 'textOrientation' || prop === 'showText' || prop === 'legendOrientation') {
         setTimeout(() => refreshTrackList(container), 0);
       }
     });
@@ -683,6 +827,7 @@ function refreshTrackList(container) {
       const borderHost = item.querySelector('[data-track-border-host]');
       if (borderHost) {
         W.lineStylePanel(borderHost, trackBorderStyleOf(t), {
+          hideDash: true,
           onChange: s => {
             t.borderColor = s.stroke; t.borderWidth = s.strokeWidth;
             t.showBorder = s.strokeWidth > 0;
@@ -704,50 +849,71 @@ function refreshTrackList(container) {
       const shapeHost = item.querySelector('[data-track-shape-host]');
       if (shapeHost) {
         W.shapeStylePanel(shapeHost, trackShapeStyleOf(t), {
+          hideFillColor: true,
           onChange: s => {
             t.shapeStyle = s;
             t.shape = s.shape;
             if (s.size > 0) { t.binarySize = s.size; t.symbolSize = s.size; }
             t.outlineColor = s.strokeColor;
             t.outlineWidth = s.strokeWidth;
-            t.fill1 = s.fillColor;
+            if (s.fillColor != null) t.fill1 = s.fillColor;
             global.TreeRenderer.draw();
           }
         });
       }
       const palHost = item.querySelector('[data-track-palette-host]');
       if (palHost) {
+        const isConnect = t.type === 'connect';
         const isColumnColored = t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar';
-        const vals = isColumnColored ? [] : TT.collectUniqueValues(t);
+        let vals;
+        if (isConnect) {
+          vals = Array.from(new Set((t.data || []).map(d => String(d.colorBy == null ? '' : d.colorBy))));
+        } else if (isColumnColored) {
+          vals = t.columns || [];
+        } else {
+          vals = TT.collectUniqueValues(t);
+        }
         W.palettePanel(palHost, {
           palette: t.palette || 'tableau10',
           values: vals,
-          colors: t.customColors || {},
-          noColorList: isColumnColored,
+          colors: isColumnColored ? (t.columnColors || {}) : (t.customColors || {}),
           onPalette: name => {
+            const pal = global.TreePalette.getCategoricalScheme(name);
             if (isColumnColored) {
               t.columnColors = {};
+              vals.forEach((v, i) => { t.columnColors[v] = pal[i % pal.length]; });
               TT.updateCustomTrack(id, { palette: name, columnColors: t.columnColors });
             } else {
-              const pal = global.TreePalette.getCategoricalScheme(name);
               t.customColors = {};
               vals.forEach((v, i) => { t.customColors[v] = pal[i % pal.length]; });
               TT.updateCustomTrack(id, { palette: name, customColors: t.customColors, _colorCache: null });
+              if (isConnect) t._connectColorCache = null;
             }
             global.TreeRenderer.draw();
             refreshTrackList(container);
           },
           onColor: (v, c) => {
-            t.customColors = t.customColors || {};
-            t.customColors[v] = c;
-            t._colorCache = null;
+            if (isColumnColored) {
+              t.columnColors = t.columnColors || {};
+              t.columnColors[v] = c;
+            } else {
+              t.customColors = t.customColors || {};
+              t.customColors[v] = c;
+              if (isConnect) t._connectColorCache = null;
+              else t._colorCache = null;
+            }
             global.TreeRenderer.draw();
           },
           onDeleteColor: v => {
-            t.excludedValues = t.excludedValues || [];
-            if (!t.excludedValues.includes(v)) t.excludedValues.push(v);
-            if (t.customColors) delete t.customColors[v];
-            t._colorCache = null;
+            if (isColumnColored) {
+              if (t.columnColors) delete t.columnColors[v];
+            } else {
+              t.excludedValues = t.excludedValues || [];
+              if (!t.excludedValues.includes(v)) t.excludedValues.push(v);
+              if (t.customColors) delete t.customColors[v];
+              if (isConnect) t._connectColorCache = null;
+              else t._colorCache = null;
+            }
             refreshTrackList(container);
             global.TreeRenderer.draw();
           }
@@ -858,6 +1024,52 @@ function refreshTrackList(container) {
       global.TreeRenderer.draw();
     });
   });
+  box.querySelectorAll('[data-connect-apply]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.connectApply);
+      const t = TT.tracks.find(x => x.id === id);
+      if (!t) return;
+      const ta = box.querySelector(`textarea[data-connect-textarea="${id}"]`);
+      if (!ta) return;
+      applyConnectData(t, ta.value);
+      global.TreeRenderer.draw();
+      refreshTrackList(container);
+    });
+  });
+  box.querySelectorAll('[data-connect-genrandom]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.connectGenrandom);
+      const t = TT.tracks.find(x => x.id === id);
+      if (!t) return;
+      generateRandomConnectData(t);
+      global.TreeRenderer.draw();
+      refreshTrackList(container);
+    });
+  });
+  box.querySelectorAll('[data-connect-upload]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.connectUpload);
+      const fileInput = box.querySelector(`input[type="file"][data-connect-file="${id}"]`);
+      if (fileInput) fileInput.click();
+    });
+  });
+  box.querySelectorAll('input[type="file"][data-connect-file]').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const id = Number(inp.dataset.connectFile);
+      const t = TT.tracks.find(x => x.id === id);
+      if (!t) return;
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        applyConnectData(t, ev.target.result);
+        global.TreeRenderer.draw();
+        refreshTrackList(container);
+      };
+      reader.readAsText(f);
+      e.target.value = '';
+    });
+  });
 }
 
 function bindTrackCommonControls(container) {
@@ -876,6 +1088,8 @@ function bindTrackCommonControls(container) {
     container.querySelector('#tcTrackNameAngle').value = tc.trackNameAngle;
     container.querySelector('#tcTrackGap').value = tc.trackGap;
     container.querySelector('#tcAutoShapeSize').checked = tc.autoShapeSize !== false;
+    const extChk = container.querySelector('#tcExtendLineShow');
+    if (extChk) extChk.checked = !!tc.extendLineShow;
   };
   sync();
 
@@ -899,7 +1113,10 @@ function bindTrackCommonControls(container) {
   bind('tcTrackNameAngle', 'trackNameAngle', 'num');
   bind('tcTrackGap', 'trackGap', 'num');
   bind('tcAutoShapeSize', 'autoShapeSize', 'bool');
-
+  bind('tcExtendLineShow', 'extendLineShow', 'bool');
+  W.lineStylePanel(container.querySelector('[data-track-extend-line-host]'), tc.extendLineStyle || {}, {
+    onChange: s => { tc.extendLineStyle = s; global.TreeRenderer.draw(); }
+  });
   W.textStylePanel(container.querySelector('[data-legend-title-host]'), C.state.textStyles.legendTitle, {
     onChange: s => { Object.assign(C.state.textStyles.legendTitle, s); global.TreeRenderer.draw(); }
   });
@@ -1021,6 +1238,13 @@ function renderDatasetsPanel(container) {
       <div class="param-grid cols-4">
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcAutoShapeSize" checked> ${I.t('trackAutoShapeSize')}</label></div>
       </div>
+      <div class="style-box" style="margin-top:8px;">
+        <div class="style-box-title">${I.t('trackExtendLineTitle')}</div>
+        <div class="param-grid cols-4">
+          <div class="param-item"><label class="mini-check"><input type="checkbox" id="tcExtendLineShow"> ${I.t('trackExtendLineShow')}</label></div>
+        </div>
+        <div data-track-extend-line-host></div>
+      </div>
     </div>
 
     <div class="param-panel" id="rangeBackgroundPanel">
@@ -1079,8 +1303,10 @@ function renderDatasetsPanel(container) {
       <div id="trackList" class="track-list"></div>
       <div class="param-grid cols-4" style="margin-top:12px;">
         <div class="param-item"><label>${I.t('customTrackType')}</label>
-          <select id="newTrackType">
+        <select id="newTrackType">
             <option value="legend">${I.t('optLegend')}</option>
+            <option value="feature">${I.t('optFeature')}</option>
+            <option value="connect">${I.t('optConnect')}</option>
             <option value="colorstrip">${I.t('optColorstrip')}</option>
             <option value="binary">${I.t('optBinary')}</option>
             <option value="multisymbol">${I.t('optSymbols')}</option>
