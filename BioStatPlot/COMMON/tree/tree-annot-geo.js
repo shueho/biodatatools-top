@@ -273,6 +273,7 @@ function drawGeoTimeTracks(radial) {
       const v1 = timeToDepth(e.start), v2 = timeToDepth(e.end);
       let px1 = tickPx(v1), px2 = tickPx(v2);
       if (!isFinite(px1) || !isFinite(px2)) return;
+      if ((px1 < axisLo && px2 < axisLo) || (px1 > axisHi && px2 > axisHi)) return;
       px1 = Math.max(axisLo, Math.min(axisHi, px1));
       px2 = Math.max(axisLo, Math.min(axisHi, px2));
       let left = Math.min(px1, px2), width = Math.abs(px2 - px1);
@@ -365,10 +366,10 @@ function drawGeoTimeTracksRadial(leaves) {
     track.entries.forEach(e => {
       const r1 = radiusOfTime(e.start);
       const r2 = radiusOfTime(e.end);
-      let a = Math.max(innerBase, Math.min(r1, r2));
+      let a = Math.max(0, Math.min(r1, r2));
       let b = Math.min(R_base, Math.max(r1, r2));
       if (b <= a + 1e-9) return;
-      if (b - a < 1.5) { const center = (a + b) / 2; a = Math.max(innerBase, center - 0.75); b = Math.min(R_base, center + 0.75); }
+      if (b - a < 1.5) { const center = (a + b) / 2; a = Math.max(0, center - 0.75); b = Math.min(R_base, center + 0.75); }
       C.el("circle", { cx, cy, r: (a + b) / 2, fill: "none", stroke: e.color, "stroke-width": b - a, opacity: op, "pointer-events": "none" }, fillBg);
     });
   });
