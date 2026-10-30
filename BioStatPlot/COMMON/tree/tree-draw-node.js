@@ -223,6 +223,10 @@ function formatLabelText(v, it) {
     return `[${a.toFixed(d)}, ${b.toFixed(d)}]`;
   }
   if (v == null || v === "") return "";
+  const prefix = (it.prefix != null) ? String(it.prefix) : "";
+  if (prefix) return prefix + String(v);
+  const rawStr = String(v).trim();
+  if (rawStr.charAt(0) === '+') return rawStr;
   let mult = 1;
   if (it.multiplier != null && it.multiplier !== "" && Number.isFinite(Number(it.multiplier))) {
     mult = Number(it.multiplier);

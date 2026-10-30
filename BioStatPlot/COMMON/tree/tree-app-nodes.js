@@ -142,7 +142,8 @@ function renderNodeTable() {
   const cell = v => escapeHtml(v == null ? "" : v);
   const editableCell = (id, kind, content, extraStyle) => {
     const st = extraStyle ? ` style="${extraStyle}"` : "";
-    return `<span class="editable-cell" data-id="${cell(id)}" data-edit="${kind}"${st}>${content}</span>`;
+    const shown = (content === '' || content == null) ? '&nbsp;' : content;
+    return `<span class="editable-cell" data-id="${cell(id)}" data-edit="${kind}"${st}>${shown}</span>`;
   };
   const selId = C.getSelectedId();
   const tbody = toShow.map(r => {
@@ -775,6 +776,10 @@ function addMetaColumn() {
   });
   global.TreeUI.refreshTreeView();
   renderNodeTable();
+  if (global.TreeUIAdvanced && global.TreeUIAdvanced.renderAdvancedPanel) {
+    const adv = document.getElementById("advancedStylePanel");
+    if (adv) global.TreeUIAdvanced.renderAdvancedPanel(adv);
+  }
   const st = document.getElementById("status");
   if (st) st.textContent = I.t('addMetaStatus', { field, n: count });
 }

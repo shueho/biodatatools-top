@@ -87,7 +87,7 @@ bubbleSizeTitle:'气泡尺寸',bubbleSizeMode:'尺寸模式',bubbleSizeAuto:'按
 bubbleMinSize:'最小尺寸',bubbleMaxSize:'最大尺寸',bubbleFixedSize:'统一尺寸（半径）',
 bubbleValuesTitle:'气泡数值',bubbleShowValues:'显示数值',bubbleValueFontSize:'数值字号',bubbleValueColor:'数值颜色',bubbleValueDecimals:'数值小数位',
 bubbleGridTitle:'列网格线',bubbleShowGrid:'显示列网格线',bubbleGridColor:'网格颜色',bubbleGridWidth:'网格粗细',bubbleGridDashed:'网格虚线',
-bubbleCellWidth:'每列宽度(px)',bubbleCellGap:'列间距(px)',bubbleLegendTicks:'大小图例梯度个数',bubbleValueBold:'数值加粗',
+bubbleCellWidth:'每列宽度(px)',bubbleCellGap:'列间距(px)',bubbleLegendTicks:'大小图例梯度个数',bubbleValueBold:'数值加粗',nodeLabelPrefix:'前缀',nodeLabelPrefixPh:'如 +，设置后按原样输出',
 },
 en: {
 treeMsgEmpty:'❌ Please paste or upload a tree first',treeMsgEmpty2:'❌ Input is empty',treeMsgXmlUnsupport:'❌ Unsupported XML format',treeMsgParseFail:'❌ Failed to parse tree',treeMsgTooFew:'❌ Too few leaves ({n})',treeMsgLoaded:'✅ {fmt} tree loaded: {n} leaves',treeMsgLoadedTime:'✅ {fmt} tree loaded: {n} leaves (time tree)',treeMsgFileLoaded:'✅ Loaded: {name}',treeMsgNoFile:'❌ Please select a file first',treeMsgD3Loading:'Loading d3...',treeMsgD3Fail:'❌ Failed to load d3',treeMsgNoTree:'❌ Please upload a tree first',treeMsgDrawOK:'✅ Drawn',treeMsgExportSvg:'✅ SVG exported',treeMsgExportPng:'✅ PNG exported',treeMsgExportPngErr:'❌ PNG export failed',treeMsgHasRoot:' (rooted)',treeMsgNoRoot:' (unrooted)',
@@ -174,7 +174,7 @@ bubbleSizeTitle:'Bubble size',bubbleSizeMode:'Size mode',bubbleSizeAuto:'Map by 
 bubbleMinSize:'Min size',bubbleMaxSize:'Max size',bubbleFixedSize:'Fixed radius',
 bubbleValuesTitle:'Bubble values',bubbleShowValues:'Show values',bubbleValueFontSize:'Value font size',bubbleValueColor:'Value color',bubbleValueDecimals:'Value decimals',
 bubbleGridTitle:'Column grid',bubbleShowGrid:'Show column grid',bubbleGridColor:'Grid color',bubbleGridWidth:'Grid width',bubbleGridDashed:'Grid dashed',
-bubbleCellWidth:'Column width (px)',bubbleCellGap:'Column gap (px)',bubbleLegendTicks:'Size legend ticks',bubbleValueBold:'Bold values',
+bubbleCellWidth:'Column width (px)',bubbleCellGap:'Column gap (px)',bubbleLegendTicks:'Size legend ticks',bubbleValueBold:'Bold values',nodeLabelPrefix:'Prefix',nodeLabelPrefixPh:'e.g. + ; when set, value is shown as-is',
 }
 };
 function lang() { return window.location.pathname.indexOf('/en/') >= 0 ? 'en' : 'zh'; }
