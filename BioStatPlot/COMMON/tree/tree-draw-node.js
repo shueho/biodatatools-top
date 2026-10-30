@@ -223,10 +223,16 @@ function formatLabelText(v, it) {
     return `[${a.toFixed(d)}, ${b.toFixed(d)}]`;
   }
   if (v == null || v === "") return "";
-  if (it.asPercent) {
+  let mult = 1;
+  if (it.multiplier != null && it.multiplier !== "" && Number.isFinite(Number(it.multiplier))) {
+    mult = Number(it.multiplier);
+  } else if (it.asPercent) {
+    mult = 100;
+  }
+  if (mult !== 1) {
     const num = parseFloat(v);
     if (!Number.isFinite(num)) return String(v);
-    return (num * 100).toFixed(d);
+    return (num * mult).toFixed(d);
   }
   if (!isNaN(parseFloat(v)) && Number.isFinite(Number(v))) return Number(v).toFixed(d);
   return String(v);
@@ -341,10 +347,37 @@ function drawNodeLabels(n, radial) {
     if (sym) sym.setAttribute("data-id", n.id);
     return size * 2 + 4;
   };
-  const addText = (content, cursorX, withBg) => {
+  const addText = (content, cursorX, withBg, colorOverride) => {
     const useBgTextColor = withBg && fillColorAs === "background";
-    const txtFill = useBgTextColor ? textColorOnBg : textStyle.color;
+    const txtFill = useBgTextColor ? textColorOnBg : (colorOverride || textStyle.color);
     const tEl = TT.draw(group, cursorX, baseYInGroup, content, textStyle.clone({ color: txtFill }), { "text-anchor": "start", "data-id": n.id, opacity: (cfg.opacity != null ? cfg.opacity : 1) });
+    if (withBg) {
+      try {
+        const bb = tEl.getBBox();
+        const rect = C.el("rect", {
+          x: bb.x - 3, y: bb.y - 1, width: bb.width + 6, height: bb.height + 2,
+          fill: bgFill, rx: 2,
+          "fill-opacity": Number(cfg.bgOpacity != null ? cfg.bgOpacity : 1),
+          stroke: bgBorderWidth > 0 ? bgBorderColor : "none",
+          "stroke-width": bgBorderWidth, "pointer-events": "none"
+        }, group);
+        group.insertBefore(rect, tEl);
+      } catch (_) {}
+    }
+    return tEl;
+  };
+
+  const addMultiColorText = (pieces, cursorX, withBg) => {
+    const useBgTextColor = withBg && fillColorAs === "background";
+    const firstColor = pieces.length ? pieces[0].color : textStyle.color;
+    const tEl = TT.draw(group, cursorX, baseYInGroup, "", textStyle.clone({ color: useBgTextColor ? textColorOnBg : firstColor }), {
+      "text-anchor": "start", "data-id": n.id, opacity: (cfg.opacity != null ? cfg.opacity : 1)
+    });
+    tEl.textContent = "";
+    pieces.forEach(p => {
+      const span = C.el("tspan", { fill: useBgTextColor ? textColorOnBg : p.color }, tEl);
+      span.textContent = p.text;
+    });
     if (withBg) {
       try {
         const bb = tEl.getBBox();
@@ -365,38 +398,31 @@ function drawNodeLabels(n, radial) {
   if (mergeText && textItems.length) {
     let cursorX = -totalW / 2;
     symbolItems.forEach(v => { cursorX += addSymbol(v, cursorX); });
-    const combined = textItems.map(v => v.text).join(sep);
-    if (combined) addText(combined, cursorX, showBg);
+    const colors = textItems.map(v => v.item.textColor || textStyle.color);
+    const uniform = colors.every(c => c === colors[0]);
+    if (uniform) {
+      const combined = textItems.map(v => v.text).join(sep);
+      if (combined) addText(combined, cursorX, showBg, colors[0]);
+    } else {
+      const pieces = [];
+      textItems.forEach((v, i) => {
+        if (i > 0 && sep) pieces.push({ text: sep, color: textStyle.color });      
+        pieces.push({ text: v.text, color: v.item.textColor || textStyle.color }); 
+      });
+      addMultiColorText(pieces, cursorX, showBg);
+    }
   } else {
     let cursorX = -totalW / 2;
     let hasText = false;
     valid.forEach(v => {
-      if (v.kind === "symbol") { cursorX += addSymbol(v, cursorX); hasText = false; }
-      else {
+      if (v.kind === "symbol") {
+        cursorX += addSymbol(v, cursorX);
+        hasText = false;
+      } else {
         let txt = v.text;
         if (hasText && sep) txt = sep + txt;
-        const tEl = addText(txt, cursorX, showBg);
-        let w = txt.length * fs * 0.6;
-        try { w = tEl.getBBox().width; } catch (_) {}
-        cursorX += w;
-        hasText = true;
-      }
-    });
-  }
-  if (mergeText && textItems.length) {
-    let cursorX = -totalW / 2;
-    symbolItems.forEach(v => { cursorX += addSymbol(v, cursorX); });
-    const combined = textItems.map(v => v.text).join(sep);
-    const showBg = !!cfg.bgShow || fillColorAs === "background";
-  } else {
-    let cursorX = -totalW / 2;
-    let hasText = false;
-    valid.forEach(v => {
-      if (v.kind === "symbol") { cursorX += addSymbol(v, cursorX); hasText = false; }
-      else {
-        let txt = v.text;
-        if (hasText && sep) txt = sep + txt;
-    const showBg = !!cfg.bgShow || fillColorAs === "background";
+        const color = v.item.textColor || textStyle.color;
+        const tEl = addText(txt, cursorX, showBg, color);
         let w = txt.length * fs * 0.6;
         try { w = tEl.getBBox().width; } catch (_) {}
         cursorX += w;

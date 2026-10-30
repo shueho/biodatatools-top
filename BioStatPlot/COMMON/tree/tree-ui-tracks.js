@@ -13,6 +13,7 @@ function styleBoxTitle(key) { return `<div class="style-box-title">${I.t(key)}</
 function legendBlock(t, opts) {
   opts = opts || {};
   const isHeatLike = !!opts.heatLike;
+  const isBubble = (t.type === 'bubble');
   return `
     <div class="style-box" style="margin-top:8px;">
       <div class="style-box-title">${I.t('legendPanelTitle')}</div>
@@ -30,6 +31,12 @@ function legendBlock(t, opts) {
           <div class="param-item"><label>${I.t('heatLegendTickCount')}</label><input type="number" data-tprop="legendTickCount" data-tid="${t.id}" value="${t.legendTickCount != null ? t.legendTickCount : 3}" min="2" max="11" step="1"></div>
           <div class="param-item"><label>${I.t('legendBarLengthLabel')}</label><input type="number" data-tprop="legendBarLength" data-tid="${t.id}" value="${t.legendBarLength != null && t.legendBarLength > 0 ? t.legendBarLength : ''}" min="0" step="1" placeholder="80"></div>
           <div class="param-item"><label>${I.t('legendBarWidthLabel')}</label><input type="number" data-tprop="legendBarWidth" data-tid="${t.id}" value="${t.legendBarWidth != null && t.legendBarWidth > 0 ? t.legendBarWidth : ''}" min="0" step="1" placeholder="12"></div>
+        ` : ''}
+        ${isBubble ? `
+          <div class="param-item"><label>${I.t('bubbleLegendTicks')}</label>
+            <input type="number" data-tprop="bubbleLegendTicks" data-tid="${t.id}"
+                   value="${t.bubbleLegendTicks != null ? t.bubbleLegendTicks : 3}"
+                   min="2" max="10" ${t.bubbleSizeMode === 'fixed' ? 'disabled' : ''}></div>
         ` : ''}
       </div>
     </div>`;
@@ -455,6 +462,64 @@ function refreshTrackList(container) {
         </div>
         <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
         ${legendBlock(t)}`;
+    } else if (t.type === 'bubble') {
+      const fixedMode = (t.bubbleSizeMode === 'fixed');
+      body = `
+        <div class="param-grid cols-4">
+          <div class="param-item" style="grid-column: span 2;"><label>${I.t('trackMultiColData')}</label>
+            <div class="multi-col-checks" style="max-height:120px;overflow:auto;border:1px solid #ddd;border-radius:4px;padding:6px;">
+              ${cols.map(c => `<label class="mini-check" style="display:block;padding:2px 0;"><input type="checkbox" data-tcol="${t.id}" data-cname="${escA(c)}" ${(t.columns||[]).includes(c)?'checked':''}> ${esc(c)}</label>`).join('')}
+            </div>
+          </div>
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label><input type="text" data-tprop="name" data-tid="${t.id}" value="${escA(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label><input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('bubbleCellWidth')}</label><input type="number" data-tprop="cellWidth" data-tid="${t.id}" value="${t.cellWidth||24}" min="4" max="200"></div>
+          <div class="param-item"><label>${I.t('bubbleCellGap')}</label><input type="number" data-tprop="cellGap" data-tid="${t.id}" value="${t.cellGap||0}" min="0" max="80"></div>
+        </div>
+        ${subTitle(I.t('styleBoxTrackShape'))}
+        <div data-track-shape-host></div>
+        ${subTitle(I.t('bubbleSizeTitle'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label>${I.t('bubbleSizeMode')}</label>
+            <select data-tprop="bubbleSizeMode" data-tid="${t.id}">
+              <option value="auto" ${!fixedMode?'selected':''}>${I.t('bubbleSizeAuto')}</option>
+              <option value="fixed" ${fixedMode?'selected':''}>${I.t('bubbleSizeFixed')}</option>
+            </select></div>
+          <div class="param-item" style="${fixedMode?'display:none;':''}"><label>${I.t('bubbleMinSize')}</label><input type="number" data-tprop="bubbleMinSize" data-tid="${t.id}" value="${t.bubbleMinSize||2}" min="1" max="60" step="0.5"></div>
+          <div class="param-item" style="${fixedMode?'display:none;':''}"><label>${I.t('bubbleMaxSize')}</label><input type="number" data-tprop="bubbleMaxSize" data-tid="${t.id}" value="${t.bubbleMaxSize||10}" min="1" max="60" step="0.5"></div>
+          <div class="param-item" style="${fixedMode?'':'display:none;'}"><label>${I.t('bubbleFixedSize')}</label><input type="number" data-tprop="bubbleFixedSize" data-tid="${t.id}" value="${t.bubbleFixedSize||5}" min="1" max="60" step="0.5"></div>
+          <div class="param-item"><label>${I.t('trackMinValue')}</label><input type="number" data-tprop="bubbleMin" data-tid="${t.id}" value="${t.bubbleMin!=null?t.bubbleMin:''}" placeholder="auto"></div>
+          <div class="param-item"><label>${I.t('trackMaxValue')}</label><input type="number" data-tprop="bubbleMax" data-tid="${t.id}" value="${t.bubbleMax!=null?t.bubbleMax:''}" placeholder="auto"></div>
+        </div>
+        ${subTitle(I.t('bubbleValuesTitle'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="bubbleShowValues" data-tid="${t.id}" ${t.bubbleShowValues?'checked':''}> ${I.t('bubbleShowValues')}</label></div>
+          <div class="param-item"><label>${I.t('bubbleValueFontSize')}</label><input type="number" data-tprop="bubbleValueFontSize" data-tid="${t.id}" value="${t.bubbleValueFontSize||9}" min="5" max="30"></div>
+          <div class="param-item"><label>${I.t('bubbleValueColor')}</label><input type="color" data-tprop="bubbleValueColor" data-tid="${t.id}" value="${t.bubbleValueColor||'#333333'}"></div>
+          <div class="param-item"><label>${I.t('bubbleValueDecimals')}</label><input type="number" data-tprop="bubbleValueDecimals" data-tid="${t.id}" value="${t.bubbleValueDecimals!=null?t.bubbleValueDecimals:2}" min="0" max="6"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="bubbleValueBold" data-tid="${t.id}" ${t.bubbleValueBold!==false?'checked':''}> ${I.t('bubbleValueBold')}</label></div>
+        </div>
+        ${subTitle(I.t('bubbleGridTitle'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="bubbleShowGrid" data-tid="${t.id}" ${t.bubbleShowGrid?'checked':''}> ${I.t('bubbleShowGrid')}</label></div>
+          <div class="param-item"><label>${I.t('bubbleGridColor')}</label><input type="color" data-tprop="bubbleGridColor" data-tid="${t.id}" value="${t.bubbleGridColor||'#dddddd'}"></div>
+          <div class="param-item"><label>${I.t('bubbleGridWidth')}</label><input type="number" data-tprop="bubbleGridWidth" data-tid="${t.id}" value="${t.bubbleGridWidth||1}" min="0.5" max="4" step="0.5"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="bubbleGridDashed" data-tid="${t.id}" ${t.bubbleGridDashed?'checked':''}> ${I.t('bubbleGridDashed')}</label></div>
+        </div>
+        ${subTitle(I.t('multiheatmapColLabelsTitle'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showColLabels" data-tid="${t.id}" ${t.showColLabels!==false?'checked':''}> ${I.t('multiheatmapShowColLabels')}</label></div>
+          <div class="param-item"><label>${I.t('multiheatmapColLabelFontSize')}</label><input type="number" data-tprop="colLabelFontSize" data-tid="${t.id}" value="${t.colLabelFontSize||10}" min="6" max="30"></div>
+          <div class="param-item"><label>${I.t('multiheatmapColLabelColor')}</label><input type="color" data-tprop="colLabelColor" data-tid="${t.id}" value="${t.colLabelColor||'#333333'}"></div>
+          <div class="param-item"><label>${I.t('multiheatmapColLabelOffset')}</label><input type="number" data-tprop="colLabelOffset" data-tid="${t.id}" value="${t.colLabelOffset||6}" step="1"></div>
+          <div class="param-item"><label>${I.t('multiheatmapColLabelOrientation')}</label>
+            <select data-tprop="colLabelOrientation" data-tid="${t.id}">
+              <option value="vertical" ${(t.colLabelOrientation||'vertical')==='vertical'?'selected':''}>${I.t('multiheatmapColLabelVertical')}</option>
+              <option value="horizontal" ${t.colLabelOrientation==='horizontal'?'selected':''}>${I.t('multiheatmapColLabelHorizontal')}</option>
+            </select></div>
+        </div>
+        <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
+        ${legendBlock(t)}`;
     } else if (t.type === 'connect') {
       const headers = t.connectHeaders || [];
       const rawRows = t._connectRawRows || [];
@@ -518,6 +583,8 @@ function refreshTrackList(container) {
         <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
         ${legendBlock(t)}`;
     } else if (t.type === 'multiheatmap') {
+      const useCustom = !!(t.gradientStops && t.gradientStops.length >= 2);
+      const stops = useCustom ? t.gradientStops : ['#ffffff', '#888888', '#000000'];
       body = `
         <div class="param-grid cols-4">
           <div class="param-item" style="grid-column: span 2;"><label>${I.t('trackMultiColData')}</label>
@@ -550,6 +617,12 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackMinValue')}</label><input type="number" data-tprop="gradientMin" data-tid="${t.id}" value="${t.gradientMin!=null?t.gradientMin:''}" placeholder="empty = data min"></div>
           <div class="param-item"><label>${I.t('trackMaxValue')}</label><input type="number" data-tprop="gradientMax" data-tid="${t.id}" value="${t.gradientMax!=null?t.gradientMax:''}" placeholder="empty = data max"></div>
           <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="gradientReverse" data-tid="${t.id}" ${t.gradientReverse?'checked':''}> ${I.t('trackReverse')}</label></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tcustom="${t.id}" ${useCustom?'checked':''}> ${I.t('trackCustomGradient')}</label></div>
+        </div>
+        <div class="param-grid cols-4" style="${useCustom?'':'display:none;'}" data-customgrad="${t.id}">
+          <div class="param-item"><label>${I.t('trackLeftColor')}</label><input type="color" data-tgrad="0" data-tid="${t.id}" value="${stops[0]||'#ffffff'}"></div>
+          <div class="param-item"><label>${I.t('trackMidColor')}</label><input type="color" data-tgrad="1" data-tid="${t.id}" value="${stops[1]||'#888888'}"></div>
+          <div class="param-item"><label>${I.t('trackRightColor')}</label><input type="color" data-tgrad="2" data-tid="${t.id}" value="${stops[2]||stops[1]||'#000000'}"></div>
         </div>
         ${legendBlock(t, { heatLike: true })}`;
     }
@@ -591,7 +664,8 @@ function refreshTrackList(container) {
       if (prop === 'column' || prop === 'shapeColumn' || prop === 'colorColumn'
           || prop === 'featureColumn' || prop === 'featureLengthColumn'
           || prop === 'textAutoWidth' || prop === 'barColorMode' || prop === 'barColorColumn'
-          || prop === 'textOrientation' || prop === 'showText' || prop === 'legendOrientation') {
+          || prop === 'textOrientation' || prop === 'showText' || prop === 'legendOrientation'
+          || prop === 'bubbleSizeMode') {
         setTimeout(() => refreshTrackList(container), 0);
       }
     });
@@ -864,7 +938,7 @@ function refreshTrackList(container) {
       const palHost = item.querySelector('[data-track-palette-host]');
       if (palHost) {
         const isConnect = t.type === 'connect';
-        const isColumnColored = t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar';
+        const isColumnColored = t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'bubble';
         let vals;
         if (isConnect) {
           vals = Array.from(new Set((t.data || []).map(d => String(d.colorBy == null ? '' : d.colorBy))));
@@ -1316,6 +1390,7 @@ function renderDatasetsPanel(container) {
             <option value="pie">${I.t('optPiechart')}</option>
             <option value="heatstrip">${I.t('optGradient')}</option>
             <option value="multiheatmap">${I.t('optMultiheatmap')}</option>
+            <option value="bubble">${I.t('optBubble')}</option>
             <option value="text">${I.t('optText')}</option>
           </select></div>
         <div class="param-item" style="align-self:end;">

@@ -137,6 +137,12 @@ function newTrackDefaults(type) {
     _connectColorCache: null,
     excludedValues: [],
     _colorCache: null, _shapeCache: null,
+    bubbleSizeMode: 'auto', bubbleMinSize: 2, bubbleMaxSize: 10, bubbleFixedSize: 5,
+    bubbleMin: null, bubbleMax: null,
+    bubbleShowValues: false, bubbleValueFontSize: 9, bubbleValueColor: '#333333', bubbleValueDecimals: 2,
+    bubbleShowGrid: false, bubbleGridColor: '#dddddd', bubbleGridWidth: 1, bubbleGridDashed: false,bubbleValueBold: true,
+    cellGap: 0,
+    bubbleLegendTicks: 3,
     legendItems: []
   };
 }
@@ -254,7 +260,7 @@ function refreshTrackData(t) {
     t._connectColorCache = null;
     return;
   }
-  if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'multiheatmap') t.data = buildMultiTrackData(t.columns);
+  if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'multiheatmap' || t.type === 'bubble') t.data = buildMultiTrackData(t.columns);
   else if (t.type === 'multisymbol') t.data = buildTrackData(t.column || t.shapeColumn);
   else t.data = buildTrackData(t.column);
   t._colorCache = null; t._shapeCache = null;
@@ -393,6 +399,12 @@ function computeTrackWidth(track, opts) {
       const cellW = Number(track.cellWidth) > 0 ? Number(track.cellWidth) : 20;
       const n = Math.max(1, (track.columns || []).length);
       return cellW * n;
+    }
+    case 'bubble': {
+      const n = Math.max(1, (track.columns || []).length);
+      const cw = Number(track.cellWidth) > 0 ? Number(track.cellWidth) : 24;
+      const cg = Math.max(0, Number(track.cellGap) || 0);
+      return cw * n + cg * (n - 1);
     }
     default: return 22;
   }
@@ -641,6 +653,8 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
     drawGroupedBarAdvanced(track, x, w, leaves, rowOf, invert);
   } else if (track.type === 'multiheatmap') {
     drawMultiHeatmapRect(track, x, w, leaves, rowOf);
+  } else if (track.type === 'bubble') {
+    drawBubbleTrackRect(track, x, w, leaves, rowOf);
   } else if (track.type === 'feature') {
     drawFeatureTrackRect(track, x, w, leaves, rowOf, invert);
   }
@@ -964,7 +978,104 @@ function drawGroupedBarAdvanced(track, x, w, leaves, rowOf, invert) {
     C.el('line', { x1: px, y1: yTop, x2: px, y2: yBottom, stroke: rl.color || '#e74c3c', 'stroke-width': Number(rl.width) || 1, 'stroke-dasharray': rl.dashed ? '4 3' : '' });
   });
 }
+function computeBubbleDomain(track, leaves) {
+  const allNums = [];
+  const arr = leaves || (C.getRoot() ? T.visibleLeaves(C.getRoot()) : []);
+  arr.forEach(l => {
+    const raw = datasetValue(track, l);
+    if (raw == null || raw === '') return;
+    String(raw).split(',').forEach(s => { const v = parseFloat(s); if (Number.isFinite(v)) allNums.push(v); });
+  });
+  let mn = (track.bubbleMin != null && Number.isFinite(Number(track.bubbleMin))) ? Number(track.bubbleMin) : (allNums.length ? Math.min(...allNums) : 0);
+  let mx = (track.bubbleMax != null && Number.isFinite(Number(track.bubbleMax))) ? Number(track.bubbleMax) : (allNums.length ? Math.max(...allNums) : 1);
+  if (mn === mx) mx = mn + 1;
+  return { min: mn, max: mx };
+}
+function drawBubbleTrackRect(track, x, w, leaves, rowOf) {
+  const cols = track.columns || [];
+  if (!cols.length) return;
+  const N = cols.length;
+  const gap = Math.max(0, Number(track.cellGap) || 0);
+  const cellW = Math.max(2, (w - gap * (N - 1)) / N);
+  const ff = C.state.fontFamily || 'Times New Roman';
 
+  const allNums = [];
+  leaves.forEach(l => {
+    const raw = datasetValue(track, l);
+    if (raw == null || raw === '') return;
+    String(raw).split(',').forEach(s => { const v = parseFloat(s); if (Number.isFinite(v)) allNums.push(v); });
+  });
+  let gMin = (track.bubbleMin != null && Number.isFinite(Number(track.bubbleMin))) ? Number(track.bubbleMin) : (allNums.length ? Math.min(...allNums) : 0);
+  let gMax = (track.bubbleMax != null && Number.isFinite(Number(track.bubbleMax))) ? Number(track.bubbleMax) : (allNums.length ? Math.max(...allNums) : 1);
+  if (gMin === gMax) gMax = gMin + 1;
+
+  const palette = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
+  const colorFor = (col, i) => (track.columnColors && track.columnColors[col]) || palette[i % palette.length];
+
+  const yTop = Math.min(...leaves.map(l => rowOf(l).top));
+  const yBot = Math.max(...leaves.map(l => rowOf(l).bottom));
+
+  if (track.bubbleShowGrid) {
+    const gC = track.bubbleGridColor || '#dddddd';
+    const gW = Math.max(0.5, Number(track.bubbleGridWidth) || 1);
+    const gD = track.bubbleGridDashed ? '4 3' : '';
+    for (let i = 0; i < N; i++) {
+      const cx = x + i * (cellW + gap) + cellW / 2;
+      C.el('line', { x1: cx, y1: yTop, x2: cx, y2: yBot, stroke: gC, 'stroke-width': gW, 'stroke-dasharray': gD, 'pointer-events': 'none' });
+    }
+  }
+
+  const shapeStyle = trackShapeStyle(track);
+  const shape = shapeStyle.shape || track.shape || 'circle';
+  const fixedMode = (track.bubbleSizeMode === 'fixed');
+  const fixedSize = Math.max(1, Number(track.bubbleFixedSize) || 5);
+  const minSize = Math.max(1, Number(track.bubbleMinSize) || 2);
+  const maxSize = Math.max(minSize, Number(track.bubbleMaxSize) || 10);
+  const showVals = !!track.bubbleShowValues;
+  const fs = Math.max(5, Number(track.bubbleValueFontSize) || 9);
+  const dec = Math.max(0, Math.min(6, Number(track.bubbleValueDecimals) || 2));
+  const vStyle = TT.fromParts({ font: ff, size: fs, color: track.bubbleValueColor || '#333333', bold: track.bubbleValueBold !== false });
+
+  leaves.forEach(l => {
+    const raw = datasetValue(track, l);
+    if (raw == null || raw === '') return;
+    const vals = String(raw).split(',').map(parseFloat);
+    const row = rowOf(l);
+    const cy = (row.top + row.bottom) / 2;
+    vals.forEach((v, i) => {
+      if (!Number.isFinite(v) || i >= N) return;
+      const cx = x + i * (cellW + gap) + cellW / 2;
+      let size;
+      if (fixedMode) size = fixedSize;
+      else {
+        const t = Math.max(0, Math.min(1, (v - gMin) / (gMax - gMin)));
+        size = minSize + t * (maxSize - minSize);
+      }
+      const fill = colorFor(cols[i], i);
+      drawTrackSymbol(shape, cx, cy, size, fill, shapeStyle.strokeColor, shapeStyle.strokeWidth, null, shapeStyle.fillOpacity);
+      if (showVals) {
+        TT.draw(null, cx, cy + fs * 0.34, Number(v).toFixed(dec), vStyle, { 'text-anchor': 'middle', 'pointer-events': 'none' });
+      }
+    });
+  });
+
+  if (track.showColLabels !== false && cols.length) {
+    const lfs = Math.max(6, Number(track.colLabelFontSize) || 10);
+    const offset = Number(track.colLabelOffset) || 6;
+    const color = track.colLabelColor || '#333333';
+    const vertical = (track.colLabelOrientation || 'vertical') === 'vertical';
+    const anchorY = yBot + offset;
+    const labelStyle = TT.fromParts({ font: ff, size: lfs, color });
+    cols.forEach((col, i) => {
+      const anchorX = x + i * (cellW + gap) + cellW / 2;
+      if (vertical) {
+        TT.draw(null, anchorX, anchorY, col, labelStyle, { 'text-anchor': 'end', 'dominant-baseline': 'middle', transform: `rotate(-90 ${anchorX} ${anchorY})` });
+      } else {
+        TT.draw(null, anchorX, anchorY, col, labelStyle, { 'text-anchor': 'middle', 'dominant-baseline': 'hanging' });
+      }
+    });
+  }
+}
 function drawMultiHeatmapRect(track, x, w, leaves, rowOf) {
   const cols = track.columns || [];
   if (!cols.length) return;
@@ -1202,6 +1313,15 @@ function drawTrackLegend(track, x, y, colorMap) {
   } else if (track.type === 'stackedbar' || track.type === 'pie' || track.type === 'groupedbar') {
     const cols = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
     items = (track.columns || []).map((c, i) => ({ label: c, color: (track.columnColors && track.columnColors[c]) || cols[i % cols.length] }));
+  } else if (track.type === 'bubble') {
+    drawAsSymbol = true;
+    const cols = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
+    const shape = (trackShapeStyle(track).shape) || 'circle';
+    items = (track.columns || []).map((c, i) => ({
+      label: c,
+      color: (track.columnColors && track.columnColors[c]) || cols[i % cols.length],
+      shape
+    }));
   } else if (track.type === 'heatstrip' || track.type === 'multiheatmap') {
     const nums = [];
     if (track.type === 'multiheatmap' && track.columns && track.columns.length) {
@@ -1260,7 +1380,8 @@ function drawTrackLegend(track, x, y, colorMap) {
   const g = C.el('g', { class: 'track-legend legend-box', 'data-legend': '1', 'data-track-id': track.id, style: 'cursor:move', transform: `translate(${x} ${y})` });
   let xx = 0, yy = 0, rowItems = 0;
   if (title) { drawText(g, 0, titleFS, title, titleStyle, tsTitle); yy = titleFS + 14; }
-  const symW = drawAsLine ? fs * 1.6 : fs;
+  const bubbleSymSize = track.type === 'bubble' ? Math.max(4, Math.max(6, Number(tsItem.fontSize) || 11) * 0.45) : 0;
+  const symW = drawAsLine ? fs * 1.6 : (track.type === 'bubble' ? bubbleSymSize * 2 : fs);
   let maxItemW = 0;
   items.forEach(it => { const w = symW + 8 + global.PlotCommon.measureText(it.label, fs); if (w > maxItemW) maxItemW = w; });
   items.forEach(it => {
@@ -1277,7 +1398,8 @@ function drawTrackLegend(track, x, y, colorMap) {
       }, g);
     } else if (drawAsSymbol) {
       const shapeStyle = trackShapeStyle(track);
-      drawTrackSymbol(it.shape, xx + fs / 2, yy + fs / 2, fs * 0.45, it.color, shapeStyle.strokeColor, shapeStyle.strokeWidth, g, shapeStyle.fillOpacity);
+      const sSize = track.type === 'bubble' ? bubbleSymSize : fs * 0.45;
+      drawTrackSymbol(it.shape, xx + symW / 2, yy + fs / 2, sSize, it.color, shapeStyle.strokeColor, shapeStyle.strokeWidth, g, shapeStyle.fillOpacity);
     } else {
       C.el('rect', { x: xx, y: yy, width: fs, height: fs, fill: it.color, rx: 2 }, g);
     }
@@ -1285,7 +1407,30 @@ function drawTrackLegend(track, x, y, colorMap) {
     xx += (maxPerRow > 0 ? maxItemW : wItem) + 8;
     rowItems++;
   });
-  return yy + fs + 8;
+  let extraHeight = 0;
+  if (track.type === 'bubble' && track.bubbleSizeMode !== 'fixed') {
+    const tickN = Math.max(2, Math.min(10, Number(track.bubbleLegendTicks) || 3));
+    const minS = Math.max(1, Number(track.bubbleMinSize) || 2);
+    const maxS = Math.max(minS, Number(track.bubbleMaxSize) || 10);
+    const domain = computeBubbleDomain(track);
+    const shapeStyle = trackShapeStyle(track);
+    const shape = shapeStyle.shape || 'circle';
+    const dec = Math.max(0, Math.min(6, Number(track.bubbleValueDecimals) || 2));
+    const gSize = C.el('g', { class: 'track-legend-size', transform: `translate(${x} ${y + yy + fs + 12})` });
+    const rowH = Math.max(maxS * 2 + 8, fs + 6);
+    const cx0 = maxS + 4;
+    const tx = cx0 + maxS + 8;
+    for (let i = 0; i < tickN; i++) {
+      const t = tickN === 1 ? 0 : i / (tickN - 1);
+      const val = domain.min + (domain.max - domain.min) * t;
+      const size = minS + (maxS - minS) * t;
+      const cy0 = i * rowH + maxS;
+      drawTrackSymbol(shape, cx0, cy0, size, '#bbbbbb', shapeStyle.strokeColor, shapeStyle.strokeWidth, gSize, shapeStyle.fillOpacity);
+      drawText(gSize, tx, cy0, Number(val).toFixed(dec), itemStyle, tsItem, { 'text-anchor': 'start', 'dominant-baseline': 'middle' });
+    }
+    extraHeight = tickN * rowH;
+  }
+  return yy + fs + 8 + extraHeight;
 }
 
 function renderCustomTracks(radial) {
@@ -1472,18 +1617,43 @@ function renderCustomTracks(radial) {
       }
       if (track.type === 'stackedbar') stackDomain = barDomain(track, leaves, track.percentMode);
       else if (track.type === 'groupedbar') stackDomain = barDomain(track, leaves, false);
-      else if (track.type === 'multiheatmap') {
+      else if (track.type === 'multiheatmap' || track.type === 'bubble') {
         const allNums = [];
         leaves.forEach(l => {
           const raw = datasetValue(track, l);
           if (raw == null || raw === '') return;
           String(raw).split(',').forEach(s => { const v = parseFloat(s); if (Number.isFinite(v)) allNums.push(v); });
         });
-        const gMinRaw = track.gradientMin, gMaxRaw = track.gradientMax;
+        const gMinRaw = track.type === 'bubble' ? track.bubbleMin : track.gradientMin;
+        const gMaxRaw = track.type === 'bubble' ? track.bubbleMax : track.gradientMax;
         let gMin = (gMinRaw != null && gMinRaw !== '' && Number.isFinite(Number(gMinRaw))) ? Number(gMinRaw) : (allNums.length ? Math.min(...allNums) : 0);
         let gMax = (gMaxRaw != null && gMaxRaw !== '' && Number.isFinite(Number(gMaxRaw))) ? Number(gMaxRaw) : (allNums.length ? Math.max(...allNums) : 1);
         if (gMin === gMax) gMax = gMin + 1;
         colRanges = { min: gMin, max: gMax };
+      }
+      if (track.type === 'bubble' && track.bubbleShowGrid) {
+        const N = (track.columns || []).length;
+        if (N) {
+          const ggap = Math.max(0, Number(track.cellGap) || 0);
+          const cellW = Math.max(2, (ringW - ggap * (N - 1)) / N);
+          const angles = leaves.map(l => l.angle).filter(a => a != null);
+          if (angles.length) {
+            const aStart = Math.min(...angles) - halfStep;
+            const aEnd = Math.max(...angles) + halfStep;
+            const large = (aEnd - aStart) > 180 ? 1 : 0;
+            const gC = track.bubbleGridColor || '#dddddd';
+            const gW = Math.max(0.5, Number(track.bubbleGridWidth) || 1);
+            const gD = track.bubbleGridDashed ? '4 3' : '';
+            for (let i = 0; i < N; i++) {
+              const subR = isInv
+                ? (ringStart + ringW - (i * (cellW + ggap) + cellW / 2))
+                : (ringStart + i * (cellW + ggap) + cellW / 2);
+              const p0 = L.polar(cx, cy, subR, aStart);
+              const p1 = L.polar(cx, cy, subR, aEnd);
+              C.el('path', { d: `M ${p0.x} ${p0.y} A ${subR} ${subR} 0 ${large} 1 ${p1.x} ${p1.y}`, fill: 'none', stroke: gC, 'stroke-width': gW, 'stroke-dasharray': gD, 'pointer-events': 'none' });
+            }
+          }
+        }
       }
       let barBoxAngles = null;
       if (isBarLike) {
@@ -1674,6 +1844,52 @@ function renderCustomTracks(radial) {
             const p0i = L.polar(cx, cy, r0, a0b), p0o = L.polar(cx, cy, r1, a0b);
             const p1o = L.polar(cx, cy, r1, a1b), p1i = L.polar(cx, cy, r0, a1b);
             C.el("path", { d: `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${r1} ${r1} 0 0 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${r0} ${r0} 0 0 0 ${p0i.x} ${p0i.y} Z`, fill });
+          });
+        } else if (track.type === 'bubble') {
+          if (v == null || v === '') return;
+          const vals = String(v).split(',').map(parseFloat);
+          const N = (track.columns || []).length;
+          if (!N) return;
+          const ggap = Math.max(0, Number(track.cellGap) || 0);
+          const cellW = Math.max(2, (ringW - ggap * (N - 1)) / N);
+          const fixedMode = (track.bubbleSizeMode === 'fixed');
+          const fixedSize = Math.max(1, Number(track.bubbleFixedSize) || 5);
+          const minSize = Math.max(1, Number(track.bubbleMinSize) || 2);
+          const maxSize = Math.max(minSize, Number(track.bubbleMaxSize) || 10);
+          const shapeStyle = trackShapeStyle(track);
+          const shape = shapeStyle.shape || track.shape || 'circle';
+          const showVals = !!track.bubbleShowValues;
+          const vfs = Math.max(5, Number(track.bubbleValueFontSize) || 9);
+          const vdec = Math.max(0, Math.min(6, Number(track.bubbleValueDecimals) || 2));
+          const vStyle = TT.fromParts({ font: ff, size: vfs, color: track.bubbleValueColor || '#333333', bold: track.bubbleValueBold !== false });
+          const palette = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
+          const colorFor = (col, i) => (track.columnColors && track.columnColors[col]) || palette[i % palette.length];
+          const arcLenMax = (2 * halfStep) * Math.PI / 180 * rMid;
+          vals.forEach((val, i) => {
+            if (!Number.isFinite(val) || i >= N) return;
+            const subR = isInv
+              ? (ringStart + ringW - (i * (cellW + ggap) + cellW / 2))
+              : (ringStart + i * (cellW + ggap) + cellW / 2);
+            let size;
+            if (fixedMode) size = fixedSize;
+            else if (colRanges) {
+              const t = Math.max(0, Math.min(1, (val - colRanges.min) / (colRanges.max - colRanges.min || 1)));
+              size = minSize + t * (maxSize - minSize);
+            } else size = minSize;
+            size = Math.min(size, Math.max(1, cellW * 0.45), Math.max(1, arcLenMax * 0.45));
+            const p = L.polar(cx, cy, subR, l.angle);
+            const fill = colorFor(track.columns[i], i);
+            const el = drawTrackSymbol(shape, p.x, p.y, size, fill, shapeStyle.strokeColor, shapeStyle.strokeWidth, null, shapeStyle.fillOpacity);
+            if (el) el.setAttribute("transform", `rotate(${(l.angle - 90)} ${p.x} ${p.y})`);
+            if (showVals) {
+              const pTxt = L.polar(cx, cy, subR, l.angle);
+              let rot = l.angle - 90;
+              if (l.angle > 180 && l.angle < 360) rot += 180;
+              TT.draw(null, pTxt.x, pTxt.y, Number(val).toFixed(vdec), vStyle, {
+                'text-anchor': 'middle', 'dominant-baseline': 'middle',
+                transform: `rotate(${rot} ${pTxt.x} ${pTxt.y})`, 'pointer-events': 'none'
+              });
+            }
           });
         } else if (track.type === 'feature') {
           const info = datasetValue(track, l);

@@ -38,7 +38,8 @@ function renderNodeLabelItem(item, index, nodeDataColumns) {
           <input type="number" data-prop="threshold" data-nlid="${item.id}" value="${item.threshold!=null?item.threshold:''}" step="any" ${item.thresholdLogic?'':'disabled'}></div>
         ${isText ? `
           <div class="param-item"><label>${I.t('nodeLabelDecimals')}</label><input type="number" data-prop="decimals" data-nlid="${item.id}" value="${item.decimals!=null?item.decimals:2}" min="0" max="6"></div>
-          <div class="param-item"><label class="mini-check"><input type="checkbox" data-prop="asPercent" data-nlid="${item.id}" ${item.asPercent?'checked':''}> ${I.t('nodeLabelAsPercent')}</label></div>
+          <div class="param-item"><label>${I.t('nodeLabelMultiplier')}</label><input type="number" data-prop="multiplier" data-nlid="${item.id}" value="${item.multiplier!=null?item.multiplier:1}" step="any" placeholder="1"></div>
+          <div class="param-item"><label>${I.t('nodeLabelTextColor')}</label><input type="color" data-prop="textColor" data-nlid="${item.id}" value="${item.textColor||'#333333'}"></div>
         ` : `
           <div class="param-item"><label>${I.t('nodeLabelShape')}</label>
             <select data-prop="shape" data-nlid="${item.id}">
@@ -324,7 +325,7 @@ function renderAdvancedPanel(container) {
   container.querySelector('#addNodeLabelBtn')?.addEventListener('click', () => {
     st.nodeLabels.push({
       id: nodeLabelSeq++, column: "", mode: "text",
-      decimals: 2, asPercent: false,
+      decimals: 2, multiplier: 1, textColor: "#333333",
       thresholdLogic: "", threshold: null,
       shape: "circle", strokeColor: "#000000", strokeWidth: 1,
       fillColor: "#E64B35", maxSize: 10, minSize: 2
