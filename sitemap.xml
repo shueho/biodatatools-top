@@ -176,6 +176,12 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.biodatatools.top/BioStatPlot/ch/t001.html</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
   <!-- ========== BioStatPlot 英文工具页面（/BioStatPlot/en/） ========== -->
   <url>
@@ -313,6 +319,12 @@
   <url>
     <loc>https://www.biodatatools.top/BioStatPlot/en/s001.html</loc>
     <lastmod>2026-10-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/BioStatPlot/en/t001.html</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
