@@ -76,6 +76,14 @@
 
                 ]
             },
+            {
+                zh: '结构示意图',
+                en: 'structural scheme',
+                tools: [
+                    { id: '023', zh: '结构域/基序示意图（无方向）', en: 'Structural Domain / Motif Diagram (No Direction)' },
+
+                ]
+            },
         ]
     },
 

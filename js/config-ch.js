@@ -270,6 +270,12 @@ const toolConfig = [
     toolDesc: "实现单列分类字符串（d__Bacteria;p__Proteobacteria;...）与多列等级表格（Domain、Kingdom、Phylum...）之间的互相转换。",
     link: "ch/038.Taxonomy_format_converter.html"
 },
+
+{
+    toolName: "Motif（MEME/MAST）结果解析器",
+    toolDesc: "解析MEME/MAST输出文件并导出信息表格，便于在本工具集的BioStatPlot模块绘制结构域/基序示意图或进化树。",
+    link: "ch/040.Motif_parser.html"
+},
         ]
     },
 

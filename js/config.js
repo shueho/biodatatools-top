@@ -266,6 +266,12 @@ const toolConfig = [
     toolDesc: "Convert between single-column taxonomy strings (d__Bacteria;p__Proteobacteria;...) and multi-column rank tables (Domain, Kingdom, Phylum...).",
     link: "en/038.Taxonomy_format_converter.html"
 },
+
+{
+    toolName: "Motif (MEME/MAST) Result Parser",
+    toolDesc: "Parse MEME/MAST output files and export information tables for drawing domain/motif diagrams or phylogenetic trees in the BioStatPlot module of this toolkit.",
+    link: "en/040.Motif_parser.html"
+},
         ]
     },
     {

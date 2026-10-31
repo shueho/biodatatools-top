@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MEME/MAST 结果解析器 - BioDataTools</title>
+    <title>Motif (MEME/MAST) Result Parser - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
@@ -13,60 +13,62 @@
 
     <div class="main" id="app">
         <div class="page-intro">
-            <h2>MEME/MAST 结果解析器</h2>
-            <p>解析 MEME / MAST 输出文件，预览 motif 信息，导出序列表或 motif 表。</p>
+            <h2>Motif (MEME/MAST) Result Parser</h2>
+            <p>Parse MEME/MAST output files and export information tables for drawing domain/motif diagrams or phylogenetic trees in the BioStatPlot module of this toolkit.</p>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第一步：导入结果文件</div>
+            <div class="step-title">Step 1: Import result file</div>
             <div class="mode-tabs">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload file</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste text</label>
             </div>
             <div class="file-input">
                 <input type="file" id="resultFile" accept=".txt,.xml,.meme,.mast">
             </div>
             <div class="text-input">
-                <textarea id="resultText" placeholder="粘贴 txt 或 xml 内容..." disabled></textarea>
+                <textarea id="resultText" placeholder="Paste txt or xml content..." disabled></textarea>
             </div>
             <div class="info-box">
-                <strong>文件来源：</strong><br>
-                ① 在线运行：访问 <a href="https://meme-suite.org/meme/tools/meme" target="_blank">MEME Suite</a> 运行 MEME（或 MAST），在结果页下载 <strong>“MEME text output”</strong> 或 <strong>“MEME XML output”</strong>（MAST 对应 <strong>MAST text output</strong> / <strong>MAST XML output</strong>）。<br>
-                ② 本地运行：命令行执行 <code>meme</code> 或 <code>mast</code>，输出目录里的 <code>meme.txt</code> / <code>meme.xml</code>（或 <code>mast.txt</code> / <code>mast.xml</code>）。<br>
-                将上述任一文件上传或粘贴到下方即可。当前解析 MEME txt/xml，MAST 格式兼容中。
+                <strong>Where to get the file:</strong><br>
+                ① Online: go to <a href="https://meme-suite.org/meme/tools/meme" target="_blank">MEME Suite</a>, run MEME (or MAST), and download <strong>"MEME text output"</strong> or <strong>"MEME XML output"</strong> from the result page (for MAST: <strong>"MAST text output"</strong> / <strong>"MAST XML output"</strong>).<br>
+                ② Local: run <code>meme</code> or <code>mast</code> from the command line, then use <code>meme.txt</code> / <code>meme.xml</code> (or <code>mast.txt</code> / <code>mast.xml</code>) from the output directory.<br>
+                Upload or paste any of the above files. All four formats (MEME/MAST, txt/xml) are supported. The exported table can be used for the <a href="../BioStatPlot/en/t001.html" target="_blank">domain/motif track</a> in the phylogenetic tree plotter.
             </div>
             <div class="param-group" style="margin-top:15px;">
-                <button class="btn" id="importFileBtn">导入并解析</button>
-                <button class="btn" id="loadTxtBtn">示例：TXT格式</button>
-                <button class="btn" id="loadXmlBtn">示例：XML格式</button>
+                <button class="btn" id="importFileBtn">Import &amp; Parse</button>
+                <button class="btn" id="loadMemeTxtBtn">Example: meme.txt</button>
+                <button class="btn" id="loadMemeXmlBtn">Example: meme.xml</button>
+                <button class="btn" id="loadMastTxtBtn">Example: mast.txt</button>
+                <button class="btn" id="loadMastXmlBtn">Example: mast.xml</button>
             </div>
             <div id="msgTip" class="tip-text"></div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第二步：Motif 信息预览</div>
+            <div class="step-title">Step 2: Motif information preview</div>
             <div id="motifBox">
-                <p style="color:#999; text-align:center; padding:30px 0;">解析后，motif 的编号、序列及同级信息将展示在此处</p>
+                <p style="color:#999; text-align:center; padding:30px 0;">After parsing, motif IDs, consensus sequences and related information will be shown here.</p>
             </div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第三步：选择输出样式并导出</div>
+            <div class="step-title">Step 3: Choose output style and export</div>
             <div class="param-group">
-                <label>输出样式：</label>
+                <label>Output style:</label>
                 <select id="outputStyle">
-                    <option value="seq-id">序列表（Domains 显示 Motif 编号）</option>
-                    <option value="seq-seq">序列表（Domains 显示 Motif 序列）</option>
-                    <option value="motif">Motif 信息表</option>
+                    <option value="seq-id">Sequence table (Domains show motif IDs)</option>
+                    <option value="seq-seq">Sequence table (Domains show motif sequences)</option>
+                    <option value="motif">Motif information table</option>
                 </select>
             </div>
             <div class="result-toolbar">
-                <button class="btn" id="copyBtn" disabled>复制结果（制表符分隔）</button>
-                <button class="btn" id="downloadBtn" disabled>导出 CSV 文件</button>
+                <button class="btn" id="copyBtn" disabled>Copy result</button>
+                <button class="btn" id="downloadBtn" disabled>Export table</button>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div id="outputBox">
-                <p style="color:#999; text-align:center; padding:30px 0;">解析后，按所选输出样式展示预览表格</p>
+                <p style="color:#999; text-align:center; padding:30px 0;">After parsing, the preview table for the selected output style will be shown here.</p>
             </div>
         </div>
     </div>
@@ -74,11 +76,11 @@
     <div id="common-footer"></div>
 
     <script>
-        window.headerConfig = { author: '作者：地上飞猪' };
+        window.headerConfig = { author: 'Author: Di Shang Fei Zhu (Hao Xue)' };
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
-    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
     <script src="../COMMON/donate-widget.js"></script>
     <script src="../COMMON/example_loader.js"></script>
 
@@ -87,7 +89,6 @@
         let parsedMotifs = [];
         let tsvOutput = '';
         let pendingContent = '';
-        let pendingFileName = '';
 
         const msgTip = document.getElementById('msgTip');
         const motifBox = document.getElementById('motifBox');
@@ -112,7 +113,6 @@
         function switchInput() {
             const mode = document.querySelector('input[name="inputMode"]:checked').value;
             pendingContent = '';
-            pendingFileName = '';
             if (mode === 'file') {
                 resultFile.disabled = false;
                 resultText.disabled = true;
@@ -128,16 +128,21 @@
         function detectFormat(content) {
             const t = (content || '').trim();
             if (!t) return 'unknown';
-            if (/^<\?xml/i.test(t) || /^<MEME\b/i.test(t) || /^<meme\b/i.test(t)) return 'xml';
-            if (/Motif discovery tool/i.test(t) || /\bMOTIF\s+\S+\s+MEME-\d+/i.test(t)) return 'txt';
+            if (/^<\?xml/i.test(t) || /^</.test(t)) {
+                if (/<MEME\b/i.test(t) || /^<meme\b/i.test(t)) return 'meme-xml';
+                if (/<mast\b/i.test(t) || /^<mast\b/i.test(t)) return 'mast-xml';
+                return 'unknown';
+            }
+            if (/Motif discovery tool/i.test(t) || /\bMOTIF\s+\S+\s+MEME-\d+/i.test(t)) return 'meme-txt';
+            if (/Motif Alignment and Search Tool/i.test(t) || /SECTION I: HIGH-SCORING SEQUENCES/i.test(t)) return 'mast-txt';
             return 'unknown';
         }
 
-        function parseXmlContent(content) {
+        function parseMemeXmlContent(content) {
             const parser = new DOMParser();
             const doc = parser.parseFromString(content, 'text/xml');
-            if (doc.querySelector('parsererror')) throw new Error('XML 解析失败，请检查文件完整性');
-            if (!doc.querySelector('MEME, meme')) throw new Error('不是有效的结果 XML 文件');
+            if (doc.querySelector('parsererror')) throw new Error('XML parsing failed. Please check file integrity.');
+            if (!doc.querySelector('MEME, meme')) throw new Error('Not a valid MEME XML file.');
 
             const sequences = {};
             doc.querySelectorAll('training_set > sequence').forEach(function (el) {
@@ -156,7 +161,6 @@
                 const id = el.getAttribute('id');
                 const info = {
                     id: id,
-                    key: id,
                     alt: el.getAttribute('alt'),
                     consensus: el.getAttribute('name'),
                     width: parseInt(el.getAttribute('width'), 10),
@@ -180,7 +184,6 @@
                     const pos = parseInt(siteEl.getAttribute('position'), 10);
                     sequences[seqId].sites.push({
                         motifId: motifId,
-                        motifKey: mi.key,
                         motifName: mi.consensus,
                         motifAlt: mi.alt,
                         width: mi.width,
@@ -196,8 +199,8 @@
             });
 
             motifs.sort(function (a, b) {
-                const na = parseInt(String(a.key).replace(/\D/g, ''), 10) || 0;
-                const nb = parseInt(String(b.key).replace(/\D/g, ''), 10) || 0;
+                const na = parseInt(String(a.id).replace(/\D/g, ''), 10) || 0;
+                const nb = parseInt(String(b.id).replace(/\D/g, ''), 10) || 0;
                 return na - nb;
             });
 
@@ -207,7 +210,7 @@
             };
         }
 
-        function parseTextContent(content) {
+        function parseMemeTxtContent(content) {
             const sequences = {};
 
             const trainMatch = content.match(/TRAINING SET\s*\n\*+\n([\s\S]*?)(?=\n\*{20,})/);
@@ -235,7 +238,7 @@
             }
 
             const motifs = [];
-            const seenKey = {};
+            const seenAlt = {};
 
             const motifRe = /MOTIF\s+(\S+)\s+(MEME-\d+)\s+width\s*=\s*(\d+)\s+sites\s*=\s*(\d+)\s+llr\s*=\s*(\d+)\s+E-value\s*=\s*(\S+)[\s\S]*?sites sorted by position p-value[\s\S]*?\n-+\n([\s\S]*?)(?=\n-{40,}|\n\*{20,}|$)/g;
             let mm;
@@ -248,14 +251,10 @@
                 const eValue = mm[6];
                 const sitesBlock = mm[7];
 
-                const numMatch = motifAlt.match(/(\d+)/);
-                const motifKey = numMatch ? 'motif_' + numMatch[1] : motifAlt;
-
-                if (!seenKey[motifKey]) {
-                    seenKey[motifKey] = true;
+                if (!seenAlt[motifAlt]) {
+                    seenAlt[motifAlt] = true;
                     motifs.push({
-                        id: motifKey,
-                        key: motifKey,
+                        id: motifAlt,
                         alt: motifAlt,
                         consensus: consensus,
                         width: width,
@@ -281,8 +280,7 @@
                         sequences[seqName] = { id: seqName, name: seqName, length: 0, sites: [] };
                     }
                     sequences[seqName].sites.push({
-                        motifId: motifKey,
-                        motifKey: motifKey,
+                        motifId: motifAlt,
                         motifName: consensus,
                         motifAlt: motifAlt,
                         width: width,
@@ -299,8 +297,8 @@
             });
 
             motifs.sort(function (a, b) {
-                const na = parseInt(String(a.key).replace(/\D/g, ''), 10) || 0;
-                const nb = parseInt(String(b.key).replace(/\D/g, ''), 10) || 0;
+                const na = parseInt(String(a.alt).replace(/\D/g, ''), 10) || 0;
+                const nb = parseInt(String(b.alt).replace(/\D/g, ''), 10) || 0;
                 return na - nb;
             });
 
@@ -310,36 +308,242 @@
             };
         }
 
+        function extractTableAfter(content, keywords) {
+            const lines = content.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                if (keywords.every(function (kw) { return lines[i].indexOf(kw) >= 0; })) {
+                    let j = i + 1;
+                    if (j < lines.length && /^[-\s]+$/.test(lines[j].trim())) j++;
+                    const result = [];
+                    for (; j < lines.length; j++) {
+                        if (!lines[j].trim()) break;
+                        if (/^\*{20,}/.test(lines[j].trim())) break;
+                        result.push(lines[j]);
+                    }
+                    return result;
+                }
+            }
+            return [];
+        }
+
+        function parseMastDiagram(diagram, widthMap) {
+            const sites = [];
+            const str = (diagram || '').trim();
+            if (!str) return sites;
+            let i = 0;
+            let pos = 1;
+            const prefixMatch = str.match(/^(\d+)-/);
+            if (prefixMatch) {
+                pos += parseInt(prefixMatch[1], 10);
+                i = prefixMatch[0].length;
+            }
+            while (i < str.length) {
+                const m = str.substring(i).match(/^\[(\d+)\]/);
+                if (!m) break;
+                const motifNum = parseInt(m[1], 10);
+                const width = widthMap[motifNum] || 0;
+                sites.push({
+                    motifNum: motifNum,
+                    start: pos,
+                    end: pos + width - 1
+                });
+                pos += width;
+                i += m[0].length;
+                const gap = str.substring(i).match(/^-(\d+)(-|$)/);
+                if (gap) {
+                    pos += parseInt(gap[1], 10);
+                    i += gap[0].length;
+                }
+            }
+            return sites;
+        }
+
+        function parseMastTxtContent(content) {
+            const motifs = [];
+            const widthMap = {};
+            const altMap = {};
+            const consensusMap = {};
+
+            const motifLines = extractTableAfter(content, ['MOTIF ID', 'ALT ID', 'WIDTH']);
+            motifLines.forEach(function (line) {
+                const m = line.match(/^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+/);
+                if (!m) return;
+                const num = parseInt(m[1], 10);
+                const consensus = m[2];
+                const alt = m[3];
+                const width = parseInt(m[4], 10);
+                widthMap[num] = width;
+                altMap[num] = alt;
+                consensusMap[num] = consensus;
+                motifs.push({
+                    id: alt,
+                    alt: alt,
+                    consensus: consensus,
+                    width: width,
+                    sites: 0,
+                    eValue: '',
+                    llr: '',
+                    pValue: '',
+                    num: num
+                });
+            });
+
+            const seqInfo = {};
+            const sectionILines = extractTableAfter(content, ['SEQUENCE NAME', 'DESCRIPTION', 'E-VALUE', 'LENGTH']);
+            sectionILines.forEach(function (line) {
+                const m = line.match(/^(.*?)\s+(\S+)\s+(\d+)\s*$/);
+                if (!m) return;
+                const nameDesc = m[1].trim();
+                const eValue = m[2];
+                const length = parseInt(m[3], 10);
+                const name = nameDesc.split(/\s+/)[0];
+                if (name) seqInfo[name] = { length: length, eValue: eValue };
+            });
+
+            const sequences = [];
+            const sectionIILines = extractTableAfter(content, ['SEQUENCE NAME', 'MOTIF DIAGRAM']);
+            sectionIILines.forEach(function (line) {
+                const m = line.match(/^(.*?)\s+(\S+)\s+(\S+)\s*$/);
+                if (!m) return;
+                const nameDesc = m[1].trim();
+                const eValue = m[2];
+                const diagram = m[3].trim();
+                const name = nameDesc.split(/\s+/)[0];
+                if (!name) return;
+
+                const info = seqInfo[name] || { length: 0, eValue: '' };
+                const siteList = parseMastDiagram(diagram, widthMap);
+
+                const sites = siteList.map(function (s) {
+                    const alt = altMap[s.motifNum] || ('MEME-' + s.motifNum);
+                    return {
+                        motifId: alt,
+                        motifName: consensusMap[s.motifNum] || '',
+                        motifAlt: alt,
+                        width: widthMap[s.motifNum] || 0,
+                        start: s.start,
+                        end: s.end,
+                        pvalue: ''
+                    };
+                });
+                sites.sort(function (a, b) { return a.start - b.start; });
+
+                sequences.push({
+                    id: name,
+                    name: name,
+                    length: info.length,
+                    eValue: eValue || info.eValue,
+                    sites: sites
+                });
+            });
+
+            sequences.forEach(function (seq) {
+                seq.sites.forEach(function (site) {
+                    motifs.forEach(function (m) {
+                        if (m.alt === site.motifAlt) m.sites++;
+                    });
+                });
+            });
+
+            motifs.sort(function (a, b) { return a.num - b.num; });
+            return { sequences: sequences, motifs: motifs };
+        }
+
+        function parseMastXmlContent(content) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(content, 'text/xml');
+            if (doc.querySelector('parsererror')) throw new Error('XML parsing failed.');
+            if (!doc.querySelector('mast')) throw new Error('Not a valid MAST XML file.');
+
+            const motifs = [];
+            const motifByIdx = {};
+            doc.querySelectorAll('motifs > motif').forEach(function (el, idx) {
+                const alt = el.getAttribute('alt') || '';
+                const info = {
+                    id: alt || el.getAttribute('id'),
+                    alt: alt,
+                    consensus: el.getAttribute('id'),
+                    width: parseInt(el.getAttribute('length'), 10),
+                    sites: parseInt(el.getAttribute('nsites'), 10),
+                    eValue: el.getAttribute('evalue'),
+                    llr: '',
+                    pValue: '',
+                    idx: idx
+                };
+                motifByIdx[idx] = info;
+                motifs.push(info);
+            });
+
+            const sequences = [];
+            doc.querySelectorAll('sequences > sequence').forEach(function (seqEl) {
+                const name = seqEl.getAttribute('name');
+                const length = parseInt(seqEl.getAttribute('length'), 10);
+                const scoreEl = seqEl.querySelector('score');
+                const eValue = scoreEl ? scoreEl.getAttribute('evalue') : '';
+
+                const sites = [];
+                seqEl.querySelectorAll('hit').forEach(function (hitEl) {
+                    const idx = parseInt(hitEl.getAttribute('idx'), 10);
+                    const mi = motifByIdx[idx];
+                    if (!mi) return;
+                    const pos = parseInt(hitEl.getAttribute('pos'), 10);
+                    sites.push({
+                        motifId: mi.id,
+                        motifName: mi.consensus,
+                        motifAlt: mi.alt,
+                        width: mi.width,
+                        start: pos,
+                        end: pos + mi.width - 1,
+                        pvalue: hitEl.getAttribute('pvalue')
+                    });
+                });
+                sites.sort(function (a, b) { return a.start - b.start; });
+
+                sequences.push({
+                    id: name,
+                    name: name,
+                    length: length,
+                    eValue: eValue,
+                    sites: sites
+                });
+            });
+
+            motifs.sort(function (a, b) { return a.idx - b.idx; });
+            return { sequences: sequences, motifs: motifs };
+        }
+
         function parseContent(content) {
             const fmt = detectFormat(content);
-            if (fmt === 'xml') return parseXmlContent(content);
-            if (fmt === 'txt') return parseTextContent(content);
-            throw new Error('无法识别的内容格式（支持 xml / txt）');
+            if (fmt === 'meme-xml') return parseMemeXmlContent(content);
+            if (fmt === 'meme-txt') return parseMemeTxtContent(content);
+            if (fmt === 'mast-xml') return parseMastXmlContent(content);
+            if (fmt === 'mast-txt') return parseMastTxtContent(content);
+            throw new Error('Unrecognized content format (supports MEME/MAST xml and txt).');
         }
 
         function buildSitesString(seq, useId) {
             if (!seq.sites || seq.sites.length === 0) return '-';
             return seq.sites.map(function (s) {
-                const label = useId ? s.motifKey : s.motifName;
+                const label = useId ? s.motifId : s.motifName;
                 return label + '=' + s.start + '-' + s.end;
             }).join('|');
         }
 
         function renderMotifPreview() {
             if (!parsedMotifs.length) {
-                motifBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">暂无 motif 数据</p>';
+                motifBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">No motif data.</p>';
                 return;
             }
             let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>'
-                + '<th>Motif 编号</th><th>Motif 序列（Consensus）</th><th>宽度</th>'
-                + '<th>位点数</th><th>E-value</th><th>LLR</th>'
+                + '<th>Motif ID</th><th>Motif sequence (Consensus)</th><th>width</th>'
+                + '<th>sites</th><th>E-value</th><th>LLR</th>'
                 + '</tr></thead><tbody>';
             parsedMotifs.forEach(function (m) {
                 html += '<tr>'
-                    + '<td>' + escapeHtml(m.key || m.id) + '</td>'
-                    + '<td style="text-align:left; word-break:break-all; font-family:Consolas,monospace;">' + escapeHtml(m.consensus) + '</td>'
-                    + '<td>' + m.width + '</td>'
-                    + '<td>' + m.sites + '</td>'
+                    + '<td>' + escapeHtml(m.id) + '</td>'
+                    + '<td style="text-align:left; word-break:break-all; font-family:Consolas,monospace;">' + escapeHtml(m.consensus || '') + '</td>'
+                    + '<td>' + (m.width != null ? m.width : '') + '</td>'
+                    + '<td>' + (m.sites != null ? m.sites : '') + '</td>'
                     + '<td>' + escapeHtml(m.eValue || '-') + '</td>'
                     + '<td>' + escapeHtml(m.llr || '-') + '</td>'
                     + '</tr>';
@@ -353,12 +557,12 @@
             if (style === 'motif') {
                 const rows = [['Motif_ID', 'Consensus', 'Width', 'Sites', 'E_value', 'LLR']];
                 parsedMotifs.forEach(function (m) {
-                    rows.push([m.key || m.id, m.consensus, m.width, m.sites, m.eValue || '', m.llr || '']);
+                    rows.push([m.id, m.consensus || '', m.width != null ? m.width : '', m.sites != null ? m.sites : '', m.eValue || '', m.llr || '']);
                 });
                 return rows;
             }
             const useId = style === 'seq-id';
-            const rows = [['Lable', 'Length', 'Domains']];
+            const rows = [['ID', 'Length', 'Domains']];
             parsedSequences.forEach(function (s) {
                 rows.push([s.name, s.length, buildSitesString(s, useId)]);
             });
@@ -409,7 +613,7 @@
         function renderOutput() {
             if (!parsedSequences.length && !parsedMotifs.length) {
                 tsvOutput = '';
-                outputBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">解析后，按所选输出样式展示预览表格</p>';
+                outputBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">After parsing, the preview table for the selected output style will be shown here.</p>';
                 return;
             }
             const rows = getOutputRows();
@@ -425,29 +629,29 @@
 
         function processContent(content) {
             if (!content || !content.trim()) {
-                showMsg('❌ 内容为空，请先选择文件或粘贴文本', 'error');
+                showMsg('❌ Content is empty. Please select a file or paste text first.', 'error');
                 return;
             }
             let result;
             try {
                 result = parseContent(content);
             } catch (err) {
-                showMsg('❌ 解析失败：' + err.message, 'error');
+                showMsg('❌ Parsing failed: ' + err.message, 'error');
                 return;
             }
             parsedSequences = result.sequences || [];
             parsedMotifs = result.motifs || [];
 
             if (!parsedSequences.length && !parsedMotifs.length) {
-                showMsg('⚠️ 未解析到任何 motif 或序列', 'warn');
+                showMsg('⚠️ No motif or sequence was parsed.', 'warn');
                 return;
             }
 
             renderMotifPreview();
             renderOutput();
             updateToolbarState();
-            showMsg('✅ 解析成功：' + parsedMotifs.length + ' 个 motif，' + parsedSequences.length + ' 条序列', 'success');
-            window.showToast && window.showToast('✅ 已解析 ' + parsedMotifs.length + ' 个 motif');
+            showMsg('✅ Parsed successfully: ' + parsedMotifs.length + ' motif(s), ' + parsedSequences.length + ' sequence(s).', 'success');
+            window.showToast && window.showToast('✅ Parsed ' + parsedMotifs.length + ' motif(s)');
         }
 
         function handleFileLoad(file) {
@@ -455,14 +659,12 @@
             const reader = new FileReader();
             reader.onload = function (e) {
                 pendingContent = e.target.result;
-                pendingFileName = file.name;
-                showMsg('✅ 已加载：' + file.name + '，请点击「导入并解析」', 'success');
-                window.showToast && window.showToast('✅ 已加载 ' + file.name);
+                showMsg('✅ Loaded: ' + file.name + '. Click "Import & Parse".', 'success');
+                window.showToast && window.showToast('✅ Loaded ' + file.name);
             };
             reader.onerror = function () {
                 pendingContent = '';
-                pendingFileName = '';
-                showMsg('❌ 文件读取失败', 'error');
+                showMsg('❌ Failed to read the file.', 'error');
             };
             reader.readAsText(file);
         }
@@ -474,18 +676,17 @@
                 switchInput();
             }
             const oldText = btn.textContent;
-            btn.textContent = '加载中...';
+            btn.textContent = 'Loading...';
             btn.disabled = true;
-            showMsg('正在加载示例 ' + filename + ' ...', 'warn');
+            showMsg('Loading example ' + filename + ' ...', 'warn');
 
             window.loadExampleFile(filename).then(function (text) {
                 resultText.value = text;
                 pendingContent = text;
-                pendingFileName = filename;
-                showMsg('✅ 已加载示例：' + filename + '，请点击「导入并解析」', 'success');
-                window.showToast && window.showToast('✅ 已加载 ' + filename);
+                showMsg('✅ Example loaded: ' + filename + '. Click "Import & Parse".', 'success');
+                window.showToast && window.showToast('✅ Loaded ' + filename);
             }).catch(function (err) {
-                showMsg('❌ 示例加载失败：' + (err && err.message ? err.message : filename), 'error');
+                showMsg('❌ Failed to load example: ' + (err && err.message ? err.message : filename), 'error');
             }).finally(function () {
                 btn.textContent = oldText;
                 btn.disabled = false;
@@ -498,13 +699,13 @@
             if (mode === 'file') {
                 content = pendingContent;
                 if (!content) {
-                    showMsg('❌ 请先在文件输入框中选择文件', 'error');
+                    showMsg('❌ Please select a file in the file input first.', 'error');
                     return;
                 }
             } else {
                 content = resultText.value;
                 if (!content || !content.trim()) {
-                    showMsg('❌ 请先粘贴内容', 'error');
+                    showMsg('❌ Please paste content first.', 'error');
                     return;
                 }
             }
@@ -515,11 +716,17 @@
             handleFileLoad(resultFile.files[0]);
         });
 
-        document.getElementById('loadTxtBtn').addEventListener('click', function () {
+        document.getElementById('loadMemeTxtBtn').addEventListener('click', function () {
             loadExampleIntoPage('meme.txt', this);
         });
-        document.getElementById('loadXmlBtn').addEventListener('click', function () {
+        document.getElementById('loadMemeXmlBtn').addEventListener('click', function () {
             loadExampleIntoPage('meme.xml', this);
+        });
+        document.getElementById('loadMastTxtBtn').addEventListener('click', function () {
+            loadExampleIntoPage('mast.txt', this);
+        });
+        document.getElementById('loadMastXmlBtn').addEventListener('click', function () {
+            loadExampleIntoPage('mast.xml', this);
         });
 
         outputStyle.addEventListener('change', function () {
@@ -529,15 +736,15 @@
 
         copyBtn.addEventListener('click', function () {
             if (!tsvOutput) {
-                window.showToast && window.showToast('❌ 暂无可复制内容');
+                window.showToast && window.showToast('❌ Nothing to copy.');
                 return;
             }
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(tsvOutput).then(function () {
-                    toolbarTip.innerHTML = '<span class="success">✅ 已复制（制表符分隔）</span>';
-                    window.showToast && window.showToast('✅ 结果已复制');
+                    toolbarTip.innerHTML = '<span class="success">✅ Result copied.</span>';
+                    window.showToast && window.showToast('✅ Result copied');
                 }).catch(function () {
-                    toolbarTip.innerHTML = '<span class="error">❌ 复制失败</span>';
+                    toolbarTip.innerHTML = '<span class="error">❌ Copy failed.</span>';
                 });
             } else {
                 const ta = document.createElement('textarea');
@@ -546,9 +753,9 @@
                 ta.select();
                 try {
                     document.execCommand('copy');
-                    toolbarTip.innerHTML = '<span class="success">✅ 已复制（制表符分隔）</span>';
+                    toolbarTip.innerHTML = '<span class="success">✅ Result copied.</span>';
                 } catch (e) {
-                    toolbarTip.innerHTML = '<span class="error">❌ 复制失败</span>';
+                    toolbarTip.innerHTML = '<span class="error">❌ Copy failed.</span>';
                 }
                 document.body.removeChild(ta);
             }
@@ -571,7 +778,7 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            window.showToast && window.showToast('✅ 已导出 CSV');
+            window.showToast && window.showToast('✅ Table exported');
         });
 
         switchInput();
