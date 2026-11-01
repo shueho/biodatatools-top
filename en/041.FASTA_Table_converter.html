@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FASTA/Table Format Converter - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>FASTA/Table Format Converter</h2>
+            <p>Automatically detects whether the input is FASTA or Table format, and converts between them with one click.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Data</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="dataFile" accept=".fasta,.fa,.fna,.fas,.txt,.tsv,.csv,.tab" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="dataText" placeholder="Paste FASTA or table content (if the first line starts with >, it will be treated as FASTA)" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> If the input starts with "&gt;", it is treated as FASTA; otherwise it is treated as a table. The table supports tab, comma, semicolon, or space as delimiters.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="convertBtn">Import Sequences</button>
+                <button class="btn" id="exampleFastaBtn">Load FASTA Example</button>
+                <button class="btn" id="exampleTableBtn">Load Table Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Conversion Settings</div>
+
+            <div class="mode-tabs">
+                <label><input type="radio" name="direction" value="f2t" checked> FASTA → Table</label>
+                <label><input type="radio" name="direction" value="t2f"> Table → FASTA</label>
+            </div>
+
+            <div id="f2tPanel">
+                <div class="param-group">
+                    <label>Output table delimiter:
+                        <select id="outTableDelim" style="padding:6px 8px;">
+                            <option value="tab" selected>Tab</option>
+                            <option value="comma">Comma (,)</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+
+            <div id="t2fPanel" style="display:none;">
+                <div class="param-group">
+                    <label>Input table delimiter:
+                        <select id="inDelim" style="padding:6px 8px;">
+                            <option value="auto" selected>Auto-detect</option>
+                            <option value="tab">Tab</option>
+                            <option value="comma">Comma</option>
+                            <option value="semicolon">Semicolon</option>
+                            <option value="space">Space</option>
+                        </select>
+                    </label>
+                    <label><input type="checkbox" id="hasHeader"> First row is header</label>
+                    <label>Line wrap width:
+                        <input type="number" id="wrapWidth" value="60" min="0" max="200" style="width:70px;">
+                        <span style="font-size:0.85rem; color:#888;">(0 = no wrapping)</span>
+                    </label>
+                    <label><input type="checkbox" id="upperSeq" checked> Uppercase sequences</label>
+                </div>
+                <div class="param-group" id="colMapWrap" style="margin-top:6px;">
+                    <span class="tip-text" style="margin:0;">Please import table data first</span>
+                </div>
+            </div>
+
+            <div style="margin-top:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <button class="btn" id="runBtn" disabled>Run Conversion</button>
+                <span id="paramMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Conversion Result</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>Copy Result</button>
+                <button class="btn" id="downloadResultBtn" disabled>Download File</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    Result preview <span id="resultStats" style="font-weight:400; color:#6c757d; font-size:0.85rem;"></span>
+                </div>
+                <div class="table-container" id="tableResultWrap" style="display:none;">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+                <div class="result-item" id="fastaResultWrap"
+                     style="display:none; max-height:420px; overflow-y:auto; white-space:pre-wrap; font-family:Consolas,monospace; font-size:13px;"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">Results will be displayed here after conversion.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {
+            //author: 'Author: Di Shang Fei Zhu (Hao Xue)',
+        };
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const dataFile = document.getElementById('dataFile');
+            const dataText = document.getElementById('dataText');
+            const convertBtn = document.getElementById('convertBtn');
+            const exampleFastaBtn = document.getElementById('exampleFastaBtn');
+            const exampleTableBtn = document.getElementById('exampleTableBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const directionRadios = document.querySelectorAll('input[name="direction"]');
+            const f2tPanel = document.getElementById('f2tPanel');
+            const t2fPanel = document.getElementById('t2fPanel');
+
+            const outTableDelim = document.getElementById('outTableDelim');
+
+            const inDelim = document.getElementById('inDelim');
+            const hasHeader = document.getElementById('hasHeader');
+            const wrapWidth = document.getElementById('wrapWidth');
+            const upperSeq = document.getElementById('upperSeq');
+            const colMapWrap = document.getElementById('colMapWrap');
+
+            const runBtn = document.getElementById('runBtn');
+            const paramMsg = document.getElementById('paramMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const tableResultWrap = document.getElementById('tableResultWrap');
+            const fastaResultWrap = document.getElementById('fastaResultWrap');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const resultStats = document.getElementById('resultStats');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const downloadResultBtn = document.getElementById('downloadResultBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let parsedFasta = null;      // [{name, seq}]
+            let parsedTable = null;      // {delim, rows, maxCols}
+            let currentResultText = '';
+            let currentResultType = '';  // 'table' | 'fasta'
+            let idColSelect = null, seqColSelect = null;
+
+            const EXAMPLE_FASTA =
+                '>seq1 Example sequence one\n' +
+                'ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC\n' +
+                '>seq2 Example sequence two\n' +
+                'ATGAAACCCGGGTTTAAACCCGGGTTTAAACCCGGGTTTAAACCCGGGTTTAAACCC\n' +
+                '>seq3 Example sequence three\n' +
+                'ATGCCCGGGAAATTTCCCGGGAAATTTCCCGGGAAATTTCCCGGGAAATTTCCCGGG';
+
+            const EXAMPLE_TABLE =
+                'ID\tSequence\tLength\n' +
+                'seq1 Example sequence one\tATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC\t60\n' +
+                'seq2 Example sequence two\tATGAAACCCGGGTTTAAACCCGGGTTTAAACCCGGGTTTAAACCCGGGTTTAAACCC\t60\n' +
+                'seq3 Example sequence three\tATGCCCGGGAAATTTCCCGGGAAATTTCCCGGGAAATTTCCCGGGAAATTTCCCGGG\t60';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') {
+                        el.innerHTML = '';
+                    }
+                }, 6000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str).replace(/[&<>"]/g, function (m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function detectFormat(text) {
+                const lines = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+                if (lines.length === 0) return 'empty';
+                return lines[0].trim().charAt(0) === '>' ? 'fasta' : 'table';
+            }
+
+            function detectDelimiter(text) {
+                const lines = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+                if (lines.length === 0) return '\t';
+                const first = lines[0];
+                if (first.indexOf('\t') >= 0) return '\t';
+                if (first.indexOf(',') >= 0) return ',';
+                if (first.indexOf(';') >= 0) return ';';
+                if (first.indexOf(' ') >= 0) return ' ';
+                return '\t';
+            }
+
+            function getForcedDelim() {
+                const v = inDelim.value;
+                if (v === 'tab') return '\t';
+                if (v === 'comma') return ',';
+                if (v === 'semicolon') return ';';
+                if (v === 'space') return ' ';
+                return null;
+            }
+
+            function parseFastaText(text) {
+                const lines = text.split(/\r?\n/);
+                const records = [];
+                let cur = null;
+                for (let i = 0; i < lines.length; i++) {
+                    const t = lines[i].trim();
+                    if (!t) continue;
+                    if (t.charAt(0) === '>') {
+                        if (cur) records.push(cur);
+                        cur = { name: t.slice(1).trim(), seq: '' };
+                    } else if (cur) {
+                        cur.seq += t.replace(/\s+/g, '');
+                    }
+                }
+                if (cur) records.push(cur);
+                return records;
+            }
+
+            function parseTableText(text, forcedDelim) {
+                const delim = forcedDelim || detectDelimiter(text);
+                const lines = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+                if (lines.length === 0) return null;
+                const rows = lines.map(function (line) {
+                    if (delim === ' ') return line.trim().split(/\s+/);
+                    return line.split(delim).map(function (c) { return c.trim(); });
+                });
+                let maxCols = 0;
+                rows.forEach(function (r) { if (r.length > maxCols) maxCols = r.length; });
+                rows.forEach(function (r) { while (r.length < maxCols) r.push(''); });
+                return { delim: delim, rows: rows, maxCols: maxCols };
+            }
+
+            function looksLikeHeader(rows) {
+                if (!rows || rows.length === 0) return false;
+                const first = rows[0];
+                const keyWords = ['id', 'name', 'seq', 'sequence', 'desc', 'description',
+                    'length', 'len', 'accession', 'acc', 'taxon', 'species', 'strain',
+                    'seqid', 'sequenceid', 'identifier', 'bases', 'nucleotides'];
+                let hit = 0;
+                first.forEach(function (c) {
+                    const n = String(c || '').toLowerCase().replace(/[\s_\-\.]+/g, '');
+                    if (keyWords.indexOf(n) >= 0) hit++;
+                });
+                return hit > 0;
+            }
+
+            function autoMatchColumn(row, keywords) {
+                if (!row || row.length === 0) return -1;
+                const norm = row.map(function (h) {
+                    return String(h || '').toLowerCase().replace(/[\s_\-\.]+/g, '');
+                });
+                for (let k = 0; k < keywords.length; k++) {
+                    for (let i = 0; i < norm.length; i++) {
+                        if (norm[i] === keywords[k]) return i;
+                    }
+                }
+                for (let k = 0; k < keywords.length; k++) {
+                    for (let i = 0; i < norm.length; i++) {
+                        if (norm[i] && norm[i].indexOf(keywords[k]) >= 0) return i;
+                    }
+                }
+                return -1;
+            }
+
+            function getDirection() {
+                for (let i = 0; i < directionRadios.length; i++) {
+                    if (directionRadios[i].checked) return directionRadios[i].value;
+                }
+                return 'f2t';
+            }
+
+            function setDirection(val) {
+                directionRadios.forEach(function (r) { r.checked = (r.value === val); });
+            }
+
+            function onDirectionChange() {
+                const dir = getDirection();
+                f2tPanel.style.display = (dir === 'f2t') ? 'block' : 'none';
+                t2fPanel.style.display = (dir === 't2f') ? 'block' : 'none';
+            }
+
+            function makeColSelect(options, value) {
+                const sel = document.createElement('select');
+                sel.style.padding = '4px 8px';
+                options.forEach(function (opt) {
+                    const o = document.createElement('option');
+                    o.value = opt[0];
+                    o.textContent = opt[1];
+                    sel.appendChild(o);
+                });
+                sel.value = value;
+                sel.addEventListener('change', function () { doConvert(); });
+                return sel;
+            }
+
+            function wrapLabel(labelText, el) {
+                const label = document.createElement('label');
+                label.style.display = 'inline-flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '5px';
+                label.style.fontWeight = '400';
+                label.textContent = labelText;
+                label.appendChild(el);
+                return label;
+            }
+
+            function rebuildColumnSelects() {
+                colMapWrap.innerHTML = '';
+                idColSelect = seqColSelect = null;
+
+                if (!parsedTable) {
+                    colMapWrap.innerHTML = '<span class="tip-text" style="margin:0;">Please import table data first</span>';
+                    return;
+                }
+
+                const withHeader = hasHeader.checked;
+                const nCols = parsedTable.maxCols;
+                const rows = parsedTable.rows;
+                const headers = [];
+                for (let i = 0; i < nCols; i++) {
+                    headers.push(withHeader ? (rows[0][i] || ('Col' + (i + 1))) : ('Col' + (i + 1)));
+                }
+
+                let idIdx = -1, seqIdx = -1;
+                if (withHeader) {
+                    const nameRow = rows[0];
+                    idIdx = autoMatchColumn(nameRow, ['id', 'seqid', 'sequenceid', 'identifier', 'accession', 'acc', 'name']);
+                    seqIdx = autoMatchColumn(nameRow, ['sequence', 'seq', 'bases', 'dna', 'nucleotides', 'sequences']);
+                }
+                if (idIdx < 0) idIdx = (nCols >= 2) ? 0 : -1;
+                if (seqIdx < 0) seqIdx = (nCols >= 2) ? 1 : 0;
+
+                /* Ensure the name column and the sequence column are different */
+                if (idIdx >= 0 && seqIdx === idIdx) {
+                    seqIdx = -1;
+                    for (let i = 0; i < nCols; i++) {
+                        if (i !== idIdx) { seqIdx = i; break; }
+                    }
+                    if (seqIdx < 0) seqIdx = idIdx;
+                }
+
+                const colOptions = headers.map(function (h, i) {
+                    return [i, 'Col ' + (i + 1) + ': ' + h];
+                });
+
+                idColSelect = makeColSelect([[-1, '(auto-generated)']].concat(colOptions), idIdx);
+                seqColSelect = makeColSelect(colOptions, seqIdx);
+
+                colMapWrap.appendChild(wrapLabel('Sequence name column: ', idColSelect));
+                colMapWrap.appendChild(wrapLabel('Sequence column: ', seqColSelect));
+            }
+
+            function buildTableResult() {
+                const delim = (outTableDelim.value === 'comma') ? ',' : '\t';
+                const header = ['ID', 'Sequence', 'Length'];
+
+                const rows = parsedFasta.map(function (r) {
+                    return [r.name, r.seq, String(r.seq.length)];
+                });
+
+                return { type: 'table', header: header, rows: rows, delim: delim };
+            }
+
+            function buildFastaResult() {
+                if (!parsedTable || !seqColSelect || !idColSelect) return null;
+
+                const withHeader = hasHeader.checked;
+                const idIdx = parseInt(idColSelect.value, 10);
+                const seqIdx = parseInt(seqColSelect.value, 10);
+
+                if (isNaN(seqIdx) || seqIdx < 0) return null;
+
+                const rows = withHeader ? parsedTable.rows.slice(1) : parsedTable.rows.slice();
+                const wrap = Math.max(0, parseInt(wrapWidth.value, 10) || 0);
+                const upper = upperSeq.checked;
+
+                let out = '';
+                let count = 0;
+                let autoIdx = 0;
+                const badChars = {};
+
+                for (let r = 0; r < rows.length; r++) {
+                    const row = rows[r];
+                    const rawSeq = (row[seqIdx] !== undefined) ? String(row[seqIdx]) : '';
+                    const seq = rawSeq.replace(/\s+/g, '');
+                    if (!seq) continue;
+
+                    let name = '';
+                    if (idIdx >= 0 && row[idIdx] !== undefined) name = String(row[idIdx]).trim();
+                    if (!name) { autoIdx++; name = 'seq' + autoIdx; }
+
+                    for (let c = 0; c < seq.length; c++) {
+                        const ch = seq.charAt(c);
+                        if (!/[A-Za-z\-\.\*\?]/.test(ch)) badChars[ch] = true;
+                    }
+
+                    const outSeq = upper ? seq.toUpperCase() : seq;
+
+                    out += '>' + name + '\n';
+                    if (wrap > 0) {
+                        for (let i = 0; i < outSeq.length; i += wrap) {
+                            out += outSeq.slice(i, i + wrap) + '\n';
+                        }
+                    } else {
+                        out += outSeq + '\n';
+                    }
+                    count++;
+                }
+
+                const badList = Object.keys(badChars);
+                if (badList.length > 0) {
+                    showMsg(paramMsg, '⚠️ Sequences contain non-standard characters: ' + badList.slice(0, 10).join(' '), 'warn');
+                }
+
+                return { type: 'fasta', text: out, count: count };
+            }
+
+            function renderResult(res) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                if (res.type === 'table') {
+                    tableResultWrap.style.display = 'block';
+                    fastaResultWrap.style.display = 'none';
+
+                    let thead = '<tr>';
+                    res.header.forEach(function (h) { thead += '<th>' + escapeHtml(h) + '</th>'; });
+                    thead += '</tr>';
+                    resultHead.innerHTML = thead;
+
+                    const maxShow = Math.min(res.rows.length, 500);
+                    let tbody = '';
+                    for (let i = 0; i < maxShow; i++) {
+                        tbody += '<tr>';
+                        for (let j = 0; j < res.rows[i].length; j++) {
+                            const s = (res.rows[i][j] === undefined || res.rows[i][j] === null)
+                                ? '' : String(res.rows[i][j]);
+                            const disp = s.length > 80 ? s.slice(0, 80) + '…' : s;
+                            tbody += '<td title="' + escapeHtml(s) + '">' + escapeHtml(disp) + '</td>';
+                        }
+                        tbody += '</tr>';
+                    }
+                    resultBody.innerHTML = tbody;
+
+                    const delimName = (res.delim === '\t') ? 'Tab' : 'Comma';
+                    resultStats.textContent = '(' + res.rows.length + ' rows × ' +
+                        res.header.length + ' columns, ' + delimName + '-separated)';
+
+                    const lines = [res.header.join(res.delim)];
+                    res.rows.forEach(function (row) { lines.push(row.join(res.delim)); });
+                    currentResultText = lines.join('\n');
+                    currentResultType = 'table';
+
+                } else {
+                    tableResultWrap.style.display = 'none';
+                    fastaResultWrap.style.display = 'block';
+
+                    const text = res.text || '';
+                    const preview = text.length > 5000
+                        ? text.slice(0, 5000) + '\n... (preview truncated, copy or download for the full content)'
+                        : text;
+                    fastaResultWrap.textContent = preview;
+
+                    resultStats.textContent = '(' + res.count + ' sequences, ' + text.length + ' characters)';
+                    currentResultText = text;
+                    currentResultType = 'fasta';
+                }
+
+                copyResultBtn.disabled = false;
+                downloadResultBtn.disabled = false;
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                tableResultWrap.style.display = 'none';
+                fastaResultWrap.style.display = 'none';
+                resultHead.innerHTML = '';
+                resultBody.innerHTML = '';
+                fastaResultWrap.textContent = '';
+                resultStats.textContent = '';
+                currentResultText = '';
+                currentResultType = '';
+                copyResultBtn.disabled = true;
+                downloadResultBtn.disabled = true;
+                resultMsg.innerHTML = '';
+            }
+
+            function doConvert() {
+                const dir = getDirection();
+
+                if (dir === 'f2t') {
+                    if (!parsedFasta || parsedFasta.length === 0) {
+                        showMsg(paramMsg, '⚠️ No FASTA data available', 'warn');
+                        return;
+                    }
+                    const res = buildTableResult();
+                    renderResult(res);
+                    showMsg(paramMsg, '✅ Table generated: ' + res.rows.length + ' rows × ' +
+                        res.header.length + ' columns', 'success');
+                } else {
+                    if (!parsedTable) {
+                        showMsg(paramMsg, '⚠️ No table data available', 'warn');
+                        return;
+                    }
+                    const res = buildFastaResult();
+                    if (!res || res.count === 0) {
+                        showMsg(paramMsg, '⚠️ No valid sequences generated, please check the column mapping', 'warn');
+                        return;
+                    }
+                    renderResult(res);
+                    showMsg(paramMsg, '✅ FASTA generated: ' + res.count + ' sequences', 'success');
+                }
+            }
+
+            function reConvertIfPossible() {
+                if (getDirection() === 'f2t' && parsedFasta) {
+                    doConvert();
+                } else if (getDirection() === 't2f' && parsedTable) {
+                    doConvert();
+                }
+            }
+
+            function onImport() {
+                const text = dataText.value.trim();
+                if (!text) {
+                    showMsg(msgTip, '❌ Please select a file or paste data', 'error');
+                    return;
+                }
+
+                const fmt = detectFormat(text);
+
+                if (fmt === 'fasta') {
+                    parsedFasta = parseFastaText(text);
+                    parsedTable = null;
+                    idColSelect = seqColSelect = null;
+                    colMapWrap.innerHTML = '<span class="tip-text" style="margin:0;">Please import table data first</span>';
+
+                    if (parsedFasta.length === 0) {
+                        showMsg(msgTip, '❌ No valid FASTA sequences found', 'error');
+                        return;
+                    }
+                    setDirection('f2t');
+                    onDirectionChange();
+                    showMsg(msgTip, '✅ Detected FASTA format, ' + parsedFasta.length + ' sequences', 'success');
+                    toast('Detected FASTA, ' + parsedFasta.length + ' sequences');
+
+                } else {
+                    parsedFasta = null;
+                    parsedTable = parseTableText(text, getForcedDelim());
+                    if (!parsedTable || parsedTable.rows.length === 0) {
+                        showMsg(msgTip, '❌ Failed to parse table, please check the delimiter', 'error');
+                        return;
+                    }
+                    hasHeader.checked = looksLikeHeader(parsedTable.rows);
+                    setDirection('t2f');
+                    onDirectionChange();
+                    rebuildColumnSelects();
+                    showMsg(msgTip, '✅ Detected table format, ' + parsedTable.rows.length +
+                        ' rows × ' + parsedTable.maxCols + ' columns', 'success');
+                    toast('Detected table, ' + parsedTable.rows.length + ' rows');
+                }
+
+                runBtn.disabled = false;
+                doConvert();
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '✅ Result copied', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(resultMsg, '❌ Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function copyResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '❌ Nothing to copy', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResultText).then(function () {
+                        showMsg(resultMsg, '✅ Result copied', 'success');
+                        toast('Copied');
+                    }).catch(function () {
+                        fallbackCopy(currentResultText);
+                    });
+                } else {
+                    fallbackCopy(currentResultText);
+                }
+            }
+
+            function downloadResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '❌ Nothing to download', 'error');
+                    return;
+                }
+
+                let content, filename, mime;
+                if (currentResultType === 'table') {
+                    const isComma = (outTableDelim.value === 'comma');
+                    content = '\uFEFF' + currentResultText;
+                    filename = isComma ? 'converted_table.csv' : 'converted_table.tsv';
+                    mime = isComma
+                        ? 'text/csv;charset=utf-8'
+                        : 'text/tab-separated-values;charset=utf-8';
+                } else {
+                    content = currentResultText;
+                    filename = 'converted_sequences.fasta';
+                    mime = 'text/plain;charset=utf-8';
+                }
+
+                const blob = new Blob([content], { type: mime });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showMsg(resultMsg, '✅ Downloaded ' + filename, 'success');
+                toast('Downloaded');
+            }
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    dataFile.disabled = false;
+                    dataText.disabled = true;
+                    dataText.value = '';
+                } else {
+                    dataFile.disabled = true;
+                    dataFile.value = '';
+                    dataText.disabled = false;
+                }
+                parsedFasta = null;
+                parsedTable = null;
+                idColSelect = seqColSelect = null;
+                colMapWrap.innerHTML = '<span class="tip-text" style="margin:0;">Please import table data first</span>';
+                runBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+                paramMsg.innerHTML = '';
+            };
+
+            dataFile.addEventListener('change', function (e) {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    dataText.value = ev.target.result;
+                    onImport();
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            dataText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    onImport();
+                }
+            });
+
+            convertBtn.addEventListener('click', function () {
+                onImport();
+            });
+
+            exampleFastaBtn.addEventListener('click', function () {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInput();
+                dataText.value = EXAMPLE_FASTA;
+                onImport();
+            });
+
+            exampleTableBtn.addEventListener('click', function () {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInput();
+                dataText.value = EXAMPLE_TABLE;
+                onImport();
+            });
+
+            directionRadios.forEach(function (r) {
+                r.addEventListener('change', function () {
+                    onDirectionChange();
+                    reConvertIfPossible();
+                });
+            });
+
+            hasHeader.addEventListener('change', function () {
+                if (!parsedTable) return;
+                rebuildColumnSelects();
+                doConvert();
+            });
+
+            inDelim.addEventListener('change', function () {
+                const text = dataText.value.trim();
+                if (!text) return;
+                if (detectFormat(text) !== 'table') return;
+                parsedTable = parseTableText(text, getForcedDelim());
+                if (!parsedTable) return;
+                hasHeader.checked = looksLikeHeader(parsedTable.rows);
+                rebuildColumnSelects();
+                doConvert();
+            });
+
+            [outTableDelim, upperSeq, wrapWidth].forEach(function (el) {
+                el.addEventListener('change', reConvertIfPossible);
+            });
+
+            runBtn.addEventListener('click', function () {
+                doConvert();
+            });
+
+            copyResultBtn.addEventListener('click', copyResult);
+            downloadResultBtn.addEventListener('click', downloadResult);
+
+            window.switchInput();
+            onDirectionChange();
+            runBtn.disabled = true;
+            copyResultBtn.disabled = true;
+            downloadResultBtn.disabled = true;
+
+        })();
+    </script>
+</body>
+</html>

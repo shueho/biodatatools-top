@@ -75,6 +75,12 @@ const toolConfig = [
     link: "en/034.Variant_site_extractor.html"
 },
 
+{
+    toolName: "FASTA/Table Format Converter",
+    toolDesc: "Automatically detects whether the input is FASTA or Table format, and converts between them with one click.",
+    link: "en/041.FASTA_Table_converter.html"
+},
+
         ]
     },
     {

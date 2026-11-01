@@ -142,14 +142,36 @@
         return rows;
     }
 
-    function collectDomainNames(rows) {
-        const seen = new Set(); const out = [];
-        rows.forEach(r => r.domains.forEach(d => {
-            const k = d.name || T.unnamed;
-            if (!seen.has(k)) { seen.add(k); out.push(k); }
-        }));
-        return out;
-    }
+function collectDomainNames(rows) {
+    const firstPos = new Map();
+    const seen = new Set();
+    const out = [];
+    rows.forEach(r => r.domains.forEach(d => {
+        const k = d.name || T.unnamed;
+        if (!seen.has(k)) {
+            seen.add(k);
+            out.push(k);
+            firstPos.set(k, d.start);
+        } else if (d.start < firstPos.get(k)) {
+            firstPos.set(k, d.start);
+        }
+    }));
+    const numOf = (name) => {
+        const m = String(name).match(/\d+/);
+        return m ? parseInt(m[0], 10) : null;
+    };
+    out.sort((a, b) => {
+        const na = numOf(a), nb = numOf(b);
+        if (na != null && nb != null) {
+            if (na !== nb) return na - nb;
+            return String(a).localeCompare(String(b), undefined, { numeric: true });
+        }
+        if (na != null) return -1;
+        if (nb != null) return 1;
+        return (firstPos.get(a) || 0) - (firstPos.get(b) || 0);
+    });
+    return out;
+}
 
     function refreshColorPanel(app) {
         const container = app.$('colorAssignContainer');

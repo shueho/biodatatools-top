@@ -76,6 +76,12 @@ const toolConfig = [
     link: "ch/034.Variant_site_extractor.html"
 },
 
+{
+    toolName: "FASTA/Table格式相互转换",
+    toolDesc: "自动识别输入是FASTA还是表格（Table）格式，一键完成两者之间的互相转换。",
+    link: "ch/041.FASTA_Table_converter.html"
+},
+
         ]
     },
     {
