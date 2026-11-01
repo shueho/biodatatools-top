@@ -275,8 +275,14 @@ const toolConfig = [
 
 {
     toolName: "Motif (MEME/MAST) Result Parser",
-    toolDesc: "Parse MEME/MAST output files and export information tables for drawing domain/motif diagrams or phylogenetic trees in the BioStatPlot module of this toolkit.",
+    toolDesc: "Parse MEME/MAST output files and export information tables for drawing domain/motif diagrams or phylogenetic trees in the BioStatPlot module.",
     link: "en/040.Motif_parser.html"
+},
+
+{
+    toolName: "Domain/Motif Position Info Merger",
+    toolDesc: "Merge multiple annotation records of the same ID into one row, generating expressions (e.g. SP=1-25|TM=120-155|Kinase=200-420) that can be used for plotting with this toolkit.",
+    link: "en/042.Domain_annotation_merger.html"
 },
         ]
     },

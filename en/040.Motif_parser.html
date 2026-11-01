@@ -14,61 +14,60 @@
     <div class="main" id="app">
         <div class="page-intro">
             <h2>Motif (MEME/MAST) Result Parser</h2>
-            <p>Parse MEME/MAST output files and export information tables for drawing domain/motif diagrams or phylogenetic trees in the BioStatPlot module of this toolkit.</p>
+            <p>Parse MEME/MAST output files and export information tables for drawing domain/motif diagrams or phylogenetic trees in the BioStatPlot module.</p>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 1: Import result file</div>
+            <div class="step-title">Step 1: Import Result File</div>
             <div class="mode-tabs">
-                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload file</label>
-                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste text</label>
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
             </div>
             <div class="file-input">
-                <input type="file" id="resultFile" accept=".txt,.xml,.meme,.mast">
+                <input type="file" id="resultFile" accept=".xml,.meme,.mast">
             </div>
             <div class="text-input">
-                <textarea id="resultText" placeholder="Paste txt or xml content..." disabled></textarea>
+                <textarea id="resultText" placeholder="Paste XML content..." disabled></textarea>
             </div>
             <div class="info-box">
-                <strong>Where to get the file:</strong><br>
-                ① Online: go to <a href="https://meme-suite.org/meme/tools/meme" target="_blank">MEME Suite</a>, run MEME (or MAST), and download <strong>"MEME text output"</strong> or <strong>"MEME XML output"</strong> from the result page (for MAST: <strong>"MAST text output"</strong> / <strong>"MAST XML output"</strong>).<br>
-                ② Local: run <code>meme</code> or <code>mast</code> from the command line, then use <code>meme.txt</code> / <code>meme.xml</code> (or <code>mast.txt</code> / <code>mast.xml</code>) from the output directory.<br>
-                Upload or paste any of the above files. All four formats (MEME/MAST, txt/xml) are supported. The exported table can be used for the <a href="../BioStatPlot/en/t001.html" target="_blank">domain/motif track</a> in the phylogenetic tree plotter.
+                <strong>File sources:</strong><br>
+                ① Online: visit <a href="https://meme-suite.org/meme/tools/meme" target="_blank">MEME Suite</a> to run MEME (or MAST), then download <strong>“MEME XML output”</strong> (for MAST: <strong>“MAST XML output”</strong>) from the result page.<br>
+                ② Local: run <code>meme</code> or <code>mast</code> from the command line and use <code>meme.xml</code> (or <code>mast.xml</code>) from the output directory.<br>
+                Upload or paste either file above. The exported results can be used to draw the <a href="../BioStatPlot/en/t001.html" target="_blank">domain/motif track</a> in a phylogenetic tree.
             </div>
             <div class="param-group" style="margin-top:15px;">
-                <button class="btn" id="importFileBtn">Import &amp; Parse</button>
-                <button class="btn" id="loadMemeTxtBtn">Example: meme.txt</button>
+                <button class="btn" id="importFileBtn">Import and Parse</button>
                 <button class="btn" id="loadMemeXmlBtn">Example: meme.xml</button>
-                <button class="btn" id="loadMastTxtBtn">Example: mast.txt</button>
                 <button class="btn" id="loadMastXmlBtn">Example: mast.xml</button>
             </div>
             <div id="msgTip" class="tip-text"></div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 2: Motif information preview</div>
+            <div class="step-title">Step 2: Motif Information Preview</div>
             <div id="motifBox">
-                <p style="color:#999; text-align:center; padding:30px 0;">After parsing, motif IDs, consensus sequences and related information will be shown here.</p>
+                <p style="color:#999; text-align:center; padding:30px 0;">After parsing, motif IDs, sequences, and related information will be displayed here.</p>
             </div>
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 3: Choose output style and export</div>
+            <div class="step-title">Step 3: Select Output Style and Export</div>
             <div class="param-group">
                 <label>Output style:</label>
                 <select id="outputStyle">
-                    <option value="seq-id">Sequence table (Domains show motif IDs)</option>
-                    <option value="seq-seq">Sequence table (Domains show motif sequences)</option>
+                    <option value="seq-id">Sequence table (Domains show Motif IDs)</option>
+                    <option value="seq-seq">Sequence table (Domains show Motif sequences)</option>
+                    <option value="sites">Site information long table</option>
                     <option value="motif">Motif information table</option>
                 </select>
             </div>
             <div class="result-toolbar">
-                <button class="btn" id="copyBtn" disabled>Copy result</button>
-                <button class="btn" id="downloadBtn" disabled>Export table</button>
+                <button class="btn" id="copyBtn" disabled>Copy Result</button>
+                <button class="btn" id="downloadBtn" disabled>Export Table</button>
                 <span id="toolbarTip" class="tip-text"></span>
             </div>
             <div id="outputBox">
-                <p style="color:#999; text-align:center; padding:30px 0;">After parsing, the preview table for the selected output style will be shown here.</p>
+                <p style="color:#999; text-align:center; padding:30px 0;">After parsing, the preview table will be displayed according to the selected output style.</p>
             </div>
         </div>
     </div>
@@ -76,7 +75,7 @@
     <div id="common-footer"></div>
 
     <script>
-        window.headerConfig = { author: 'Author: Di Shang Fei Zhu (Hao Xue)' };
+        window.headerConfig = { };
     </script>
     <script src="../COMMON/utils.js"></script>
     <script src="../COMMON/header.js"></script>
@@ -125,6 +124,14 @@
             showMsg('');
         }
 
+        function normalizeStrand(v) {
+            if (v === null || v === undefined) return 'none';
+            const s = String(v).trim().toLowerCase();
+            if (s === '+' || s === 'plus' || s === 'forward' || s === 'f' || s === 'n' || s === '1') return 'plus';
+            if (s === '-' || s === 'minus' || s === 'reverse' || s === 'r' || s === 'y' || s === '-1') return 'minus';
+            return 'none';
+        }
+
         function detectFormat(content) {
             const t = (content || '').trim();
             if (!t) return 'unknown';
@@ -133,8 +140,6 @@
                 if (/<mast\b/i.test(t) || /^<mast\b/i.test(t)) return 'mast-xml';
                 return 'unknown';
             }
-            if (/Motif discovery tool/i.test(t) || /\bMOTIF\s+\S+\s+MEME-\d+/i.test(t)) return 'meme-txt';
-            if (/Motif Alignment and Search Tool/i.test(t) || /SECTION I: HIGH-SCORING SEQUENCES/i.test(t)) return 'mast-txt';
             return 'unknown';
         }
 
@@ -189,7 +194,8 @@
                         width: mi.width,
                         start: pos + 1,
                         end: pos + mi.width,
-                        pvalue: siteEl.getAttribute('pvalue')
+                        pvalue: siteEl.getAttribute('pvalue'),
+                        strand: normalizeStrand(siteEl.getAttribute('strand'))
                     });
                 });
             });
@@ -208,245 +214,6 @@
                 sequences: Object.keys(sequences).map(function (k) { return sequences[k]; }),
                 motifs: motifs
             };
-        }
-
-        function parseMemeTxtContent(content) {
-            const sequences = {};
-
-            const trainMatch = content.match(/TRAINING SET\s*\n\*+\n([\s\S]*?)(?=\n\*{20,})/);
-            if (trainMatch) {
-                const lines = trainMatch[1].split('\n');
-                let headerSeen = false;
-                lines.forEach(function (line) {
-                    if (line.indexOf('Sequence name') >= 0 && line.indexOf('Length') >= 0) {
-                        headerSeen = true;
-                        return;
-                    }
-                    if (!headerSeen) return;
-                    if (/^-+\s+-+/.test(line)) return;
-                    if (!line.trim()) { headerSeen = false; return; }
-                    const re = /(\S+)\s+([\d.]+)\s+(\d+)/g;
-                    let m;
-                    while ((m = re.exec(line)) !== null) {
-                        const name = m[1];
-                        const length = parseInt(m[3], 10);
-                        if (!sequences[name]) {
-                            sequences[name] = { id: name, name: name, length: length, sites: [] };
-                        }
-                    }
-                });
-            }
-
-            const motifs = [];
-            const seenAlt = {};
-
-            const motifRe = /MOTIF\s+(\S+)\s+(MEME-\d+)\s+width\s*=\s*(\d+)\s+sites\s*=\s*(\d+)\s+llr\s*=\s*(\d+)\s+E-value\s*=\s*(\S+)[\s\S]*?sites sorted by position p-value[\s\S]*?\n-+\n([\s\S]*?)(?=\n-{40,}|\n\*{20,}|$)/g;
-            let mm;
-            while ((mm = motifRe.exec(content)) !== null) {
-                const consensus = mm[1];
-                const motifAlt = mm[2];
-                const width = parseInt(mm[3], 10);
-                const sitesCount = parseInt(mm[4], 10);
-                const llr = mm[5];
-                const eValue = mm[6];
-                const sitesBlock = mm[7];
-
-                if (!seenAlt[motifAlt]) {
-                    seenAlt[motifAlt] = true;
-                    motifs.push({
-                        id: motifAlt,
-                        alt: motifAlt,
-                        consensus: consensus,
-                        width: width,
-                        sites: sitesCount,
-                        eValue: eValue,
-                        llr: llr,
-                        pValue: ''
-                    });
-                }
-
-                sitesBlock.split('\n').forEach(function (line) {
-                    if (!line.trim()) return;
-                    if (line.indexOf('Sequence name') >= 0) return;
-                    if (/^-+\s+-+/.test(line)) return;
-                    const m = line.match(/^(\S+)\s+(\d+)\s+([\d.eE+-]+)\s+(.*)$/);
-                    if (!m) return;
-                    const seqName = m[1];
-                    const start = parseInt(m[2], 10);
-                    const pvalue = m[3];
-                    const parts = m[4].trim().split(/\s+/);
-                    const siteSeq = parts.length >= 3 ? parts[1] : (parts[1] || parts[0] || '');
-                    if (!sequences[seqName]) {
-                        sequences[seqName] = { id: seqName, name: seqName, length: 0, sites: [] };
-                    }
-                    sequences[seqName].sites.push({
-                        motifId: motifAlt,
-                        motifName: consensus,
-                        motifAlt: motifAlt,
-                        width: width,
-                        start: start,
-                        end: start + width - 1,
-                        pvalue: pvalue,
-                        seq: siteSeq
-                    });
-                });
-            }
-
-            Object.keys(sequences).forEach(function (k) {
-                sequences[k].sites.sort(function (a, b) { return a.start - b.start; });
-            });
-
-            motifs.sort(function (a, b) {
-                const na = parseInt(String(a.alt).replace(/\D/g, ''), 10) || 0;
-                const nb = parseInt(String(b.alt).replace(/\D/g, ''), 10) || 0;
-                return na - nb;
-            });
-
-            return {
-                sequences: Object.keys(sequences).map(function (k) { return sequences[k]; }),
-                motifs: motifs
-            };
-        }
-
-        function extractTableAfter(content, keywords) {
-            const lines = content.split('\n');
-            for (let i = 0; i < lines.length; i++) {
-                if (keywords.every(function (kw) { return lines[i].indexOf(kw) >= 0; })) {
-                    let j = i + 1;
-                    if (j < lines.length && /^[-\s]+$/.test(lines[j].trim())) j++;
-                    const result = [];
-                    for (; j < lines.length; j++) {
-                        if (!lines[j].trim()) break;
-                        if (/^\*{20,}/.test(lines[j].trim())) break;
-                        result.push(lines[j]);
-                    }
-                    return result;
-                }
-            }
-            return [];
-        }
-
-        function parseMastDiagram(diagram, widthMap) {
-            const sites = [];
-            const str = (diagram || '').trim();
-            if (!str) return sites;
-            let i = 0;
-            let pos = 1;
-            const prefixMatch = str.match(/^(\d+)-/);
-            if (prefixMatch) {
-                pos += parseInt(prefixMatch[1], 10);
-                i = prefixMatch[0].length;
-            }
-            while (i < str.length) {
-                const m = str.substring(i).match(/^\[(\d+)\]/);
-                if (!m) break;
-                const motifNum = parseInt(m[1], 10);
-                const width = widthMap[motifNum] || 0;
-                sites.push({
-                    motifNum: motifNum,
-                    start: pos,
-                    end: pos + width - 1
-                });
-                pos += width;
-                i += m[0].length;
-                const gap = str.substring(i).match(/^-(\d+)(-|$)/);
-                if (gap) {
-                    pos += parseInt(gap[1], 10);
-                    i += gap[0].length;
-                }
-            }
-            return sites;
-        }
-
-        function parseMastTxtContent(content) {
-            const motifs = [];
-            const widthMap = {};
-            const altMap = {};
-            const consensusMap = {};
-
-            const motifLines = extractTableAfter(content, ['MOTIF ID', 'ALT ID', 'WIDTH']);
-            motifLines.forEach(function (line) {
-                const m = line.match(/^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+/);
-                if (!m) return;
-                const num = parseInt(m[1], 10);
-                const consensus = m[2];
-                const alt = m[3];
-                const width = parseInt(m[4], 10);
-                widthMap[num] = width;
-                altMap[num] = alt;
-                consensusMap[num] = consensus;
-                motifs.push({
-                    id: alt,
-                    alt: alt,
-                    consensus: consensus,
-                    width: width,
-                    sites: 0,
-                    eValue: '',
-                    llr: '',
-                    pValue: '',
-                    num: num
-                });
-            });
-
-            const seqInfo = {};
-            const sectionILines = extractTableAfter(content, ['SEQUENCE NAME', 'DESCRIPTION', 'E-VALUE', 'LENGTH']);
-            sectionILines.forEach(function (line) {
-                const m = line.match(/^(.*?)\s+(\S+)\s+(\d+)\s*$/);
-                if (!m) return;
-                const nameDesc = m[1].trim();
-                const eValue = m[2];
-                const length = parseInt(m[3], 10);
-                const name = nameDesc.split(/\s+/)[0];
-                if (name) seqInfo[name] = { length: length, eValue: eValue };
-            });
-
-            const sequences = [];
-            const sectionIILines = extractTableAfter(content, ['SEQUENCE NAME', 'MOTIF DIAGRAM']);
-            sectionIILines.forEach(function (line) {
-                const m = line.match(/^(.*?)\s+(\S+)\s+(\S+)\s*$/);
-                if (!m) return;
-                const nameDesc = m[1].trim();
-                const eValue = m[2];
-                const diagram = m[3].trim();
-                const name = nameDesc.split(/\s+/)[0];
-                if (!name) return;
-
-                const info = seqInfo[name] || { length: 0, eValue: '' };
-                const siteList = parseMastDiagram(diagram, widthMap);
-
-                const sites = siteList.map(function (s) {
-                    const alt = altMap[s.motifNum] || ('MEME-' + s.motifNum);
-                    return {
-                        motifId: alt,
-                        motifName: consensusMap[s.motifNum] || '',
-                        motifAlt: alt,
-                        width: widthMap[s.motifNum] || 0,
-                        start: s.start,
-                        end: s.end,
-                        pvalue: ''
-                    };
-                });
-                sites.sort(function (a, b) { return a.start - b.start; });
-
-                sequences.push({
-                    id: name,
-                    name: name,
-                    length: info.length,
-                    eValue: eValue || info.eValue,
-                    sites: sites
-                });
-            });
-
-            sequences.forEach(function (seq) {
-                seq.sites.forEach(function (site) {
-                    motifs.forEach(function (m) {
-                        if (m.alt === site.motifAlt) m.sites++;
-                    });
-                });
-            });
-
-            motifs.sort(function (a, b) { return a.num - b.num; });
-            return { sequences: sequences, motifs: motifs };
         }
 
         function parseMastXmlContent(content) {
@@ -494,7 +261,8 @@
                         width: mi.width,
                         start: pos,
                         end: pos + mi.width - 1,
-                        pvalue: hitEl.getAttribute('pvalue')
+                        pvalue: hitEl.getAttribute('pvalue'),
+                        strand: normalizeStrand(hitEl.getAttribute('rc'))
                     });
                 });
                 sites.sort(function (a, b) { return a.start - b.start; });
@@ -515,27 +283,28 @@
         function parseContent(content) {
             const fmt = detectFormat(content);
             if (fmt === 'meme-xml') return parseMemeXmlContent(content);
-            if (fmt === 'meme-txt') return parseMemeTxtContent(content);
             if (fmt === 'mast-xml') return parseMastXmlContent(content);
-            if (fmt === 'mast-txt') return parseMastTxtContent(content);
-            throw new Error('Unrecognized content format (supports MEME/MAST xml and txt).');
+            throw new Error('Unrecognized content format (only MEME/MAST XML is supported).');
         }
 
         function buildSitesString(seq, useId) {
             if (!seq.sites || seq.sites.length === 0) return '-';
             return seq.sites.map(function (s) {
                 const label = useId ? s.motifId : s.motifName;
-                return label + '=' + s.start + '-' + s.end;
+                const lo = Math.min(s.start, s.end);
+                const hi = Math.max(s.start, s.end);
+                const coords = (s.strand === 'minus') ? (hi + '-' + lo) : (lo + '-' + hi);
+                return label + '=' + coords;
             }).join('|');
         }
 
         function renderMotifPreview() {
             if (!parsedMotifs.length) {
-                motifBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">No motif data.</p>';
+                motifBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">No motif data available.</p>';
                 return;
             }
             let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>'
-                + '<th>Motif ID</th><th>Motif sequence (Consensus)</th><th>width</th>'
+                + '<th>Motif ID</th><th>Motif Sequence (Consensus)</th><th>width</th>'
                 + '<th>sites</th><th>E-value</th><th>LLR</th>'
                 + '</tr></thead><tbody>';
             parsedMotifs.forEach(function (m) {
@@ -554,6 +323,7 @@
 
         function getOutputRows() {
             const style = outputStyle.value;
+
             if (style === 'motif') {
                 const rows = [['Motif_ID', 'Consensus', 'Width', 'Sites', 'E_value', 'LLR']];
                 parsedMotifs.forEach(function (m) {
@@ -561,6 +331,19 @@
                 });
                 return rows;
             }
+
+            if (style === 'sites') {
+                const rows = [['Gene', 'Motif', 'Start', 'End', 'Strand']];
+                parsedSequences.forEach(function (s) {
+                    (s.sites || []).forEach(function (site) {
+                        const lo = Math.min(site.start, site.end);
+                        const hi = Math.max(site.start, site.end);
+                        rows.push([s.name, site.motifId, lo, hi, site.strand || 'none']);
+                    });
+                });
+                return rows;
+            }
+
             const useId = style === 'seq-id';
             const rows = [['ID', 'Length', 'Domains']];
             parsedSequences.forEach(function (s) {
@@ -613,7 +396,7 @@
         function renderOutput() {
             if (!parsedSequences.length && !parsedMotifs.length) {
                 tsvOutput = '';
-                outputBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">After parsing, the preview table for the selected output style will be shown here.</p>';
+                outputBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">After parsing, the preview table will be displayed according to the selected output style.</p>';
                 return;
             }
             const rows = getOutputRows();
@@ -636,22 +419,22 @@
             try {
                 result = parseContent(content);
             } catch (err) {
-                showMsg('❌ Parsing failed: ' + err.message, 'error');
+                showMsg('❌ Parse failed: ' + err.message, 'error');
                 return;
             }
             parsedSequences = result.sequences || [];
             parsedMotifs = result.motifs || [];
 
             if (!parsedSequences.length && !parsedMotifs.length) {
-                showMsg('⚠️ No motif or sequence was parsed.', 'warn');
+                showMsg('⚠️ No motifs or sequences parsed.', 'warn');
                 return;
             }
 
             renderMotifPreview();
             renderOutput();
             updateToolbarState();
-            showMsg('✅ Parsed successfully: ' + parsedMotifs.length + ' motif(s), ' + parsedSequences.length + ' sequence(s).', 'success');
-            window.showToast && window.showToast('✅ Parsed ' + parsedMotifs.length + ' motif(s)');
+            showMsg('✅ Parsed successfully: ' + parsedMotifs.length + ' motifs, ' + parsedSequences.length + ' sequences', 'success');
+            window.showToast && window.showToast('✅ Parsed ' + parsedMotifs.length + ' motifs');
         }
 
         function handleFileLoad(file) {
@@ -659,12 +442,12 @@
             const reader = new FileReader();
             reader.onload = function (e) {
                 pendingContent = e.target.result;
-                showMsg('✅ Loaded: ' + file.name + '. Click "Import & Parse".', 'success');
+                showMsg('✅ Loaded: ' + file.name + ', please click "Import and Parse".', 'success');
                 window.showToast && window.showToast('✅ Loaded ' + file.name);
             };
             reader.onerror = function () {
                 pendingContent = '';
-                showMsg('❌ Failed to read the file.', 'error');
+                showMsg('❌ File read failed.', 'error');
             };
             reader.readAsText(file);
         }
@@ -683,10 +466,10 @@
             window.loadExampleFile(filename).then(function (text) {
                 resultText.value = text;
                 pendingContent = text;
-                showMsg('✅ Example loaded: ' + filename + '. Click "Import & Parse".', 'success');
+                showMsg('✅ Example loaded: ' + filename + ', please click "Import and Parse".', 'success');
                 window.showToast && window.showToast('✅ Loaded ' + filename);
             }).catch(function (err) {
-                showMsg('❌ Failed to load example: ' + (err && err.message ? err.message : filename), 'error');
+                showMsg('❌ Example loading failed: ' + (err && err.message ? err.message : filename), 'error');
             }).finally(function () {
                 btn.textContent = oldText;
                 btn.disabled = false;
@@ -699,7 +482,7 @@
             if (mode === 'file') {
                 content = pendingContent;
                 if (!content) {
-                    showMsg('❌ Please select a file in the file input first.', 'error');
+                    showMsg('❌ Please select a file first.', 'error');
                     return;
                 }
             } else {
@@ -716,14 +499,8 @@
             handleFileLoad(resultFile.files[0]);
         });
 
-        document.getElementById('loadMemeTxtBtn').addEventListener('click', function () {
-            loadExampleIntoPage('meme.txt', this);
-        });
         document.getElementById('loadMemeXmlBtn').addEventListener('click', function () {
             loadExampleIntoPage('meme.xml', this);
-        });
-        document.getElementById('loadMastTxtBtn').addEventListener('click', function () {
-            loadExampleIntoPage('mast.txt', this);
         });
         document.getElementById('loadMastXmlBtn').addEventListener('click', function () {
             loadExampleIntoPage('mast.xml', this);
@@ -736,13 +513,13 @@
 
         copyBtn.addEventListener('click', function () {
             if (!tsvOutput) {
-                window.showToast && window.showToast('❌ Nothing to copy.');
+                window.showToast && window.showToast('❌ No content to copy.');
                 return;
             }
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(tsvOutput).then(function () {
                     toolbarTip.innerHTML = '<span class="success">✅ Result copied.</span>';
-                    window.showToast && window.showToast('✅ Result copied');
+                    window.showToast && window.showToast('✅ Result copied.');
                 }).catch(function () {
                     toolbarTip.innerHTML = '<span class="error">❌ Copy failed.</span>';
                 });
@@ -766,9 +543,10 @@
             const rows = getOutputRows();
             const csv = '\ufeff' + rowsToCsv(rows);
             const style = outputStyle.value;
-            const filename = style === 'motif'
-                ? 'motif_info.csv'
-                : (style === 'seq-seq' ? 'sequence_domains_by_seq.csv' : 'sequence_domains_by_id.csv');
+            let filename = 'sequence_domains_by_id.csv';
+            if (style === 'motif') filename = 'motif_info.csv';
+            else if (style === 'seq-seq') filename = 'sequence_domains_by_seq.csv';
+            else if (style === 'sites') filename = 'motif_sites.csv';
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -778,7 +556,7 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            window.showToast && window.showToast('✅ Table exported');
+            window.showToast && window.showToast('✅ Table exported.');
         });
 
         switchInput();

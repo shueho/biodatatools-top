@@ -282,6 +282,12 @@ const toolConfig = [
     toolDesc: "解析MEME/MAST输出文件并导出信息表格，便于在本工具集的BioStatPlot模块绘制结构域/基序示意图或进化树。",
     link: "ch/040.Motif_parser.html"
 },
+
+{
+    toolName: "结构域/基序位置信息合并工具",
+    toolDesc: "将长表格中同一ID的多条注释记录合并为一行，生成可用于本工具集绘图的表达式（如 SP=1-25|TM=120-155|Kinase=200-420）。",
+    link: "ch/042.Domain_annotation_merger.html"
+},
         ]
     },
 

@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>结构域/基序位置信息合并工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>结构域/基序位置信息合并工具</h2>
+            <p>将长表格中同一ID的多条注释记录合并为一行，生成可用于本工具集绘图的表达式（如 <code>SP=1-25|TM=120-155|Kinase=200-420</code>）。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入表格</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="dataFile" accept=".csv,.tsv,.txt,.tab" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="dataText" placeholder="粘贴表格数据（第一行为列名，支持制表符/逗号/分号/空格分隔）" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 每一行是一条注释记录（如一个域、外显子、UTR、基序等），同一ID（如基因）可有多行注释信息。首行为表头时会自动识别。
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="importBtn">导入表格</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="previewArea" style="display:none; margin-top:14px;">
+                <div style="font-weight:500; margin-bottom:6px;">数据预览（前100行）</div>
+                <div class="table-container" id="previewTableWrap">
+                    <table id="previewTable">
+                        <thead id="previewHead"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：选择数据列</div>
+            <div class="param-group" id="colMapWrap">
+                <span class="tip-text">请先导入表格数据</span>
+            </div>
+            <div id="strandSettings" style="display:none; margin-top:12px; border-top:1px solid #e8edf2; padding-top:12px;">
+                <div style="font-weight:500; color:#1f4068; margin-bottom:8px;">链方向字符设置（逗号分隔）</div>
+                <div class="param-group">
+                    <label>正链字符：<input type="text" id="posCharsInput" value="+,plus" style="width:130px;"></label>
+                    <label>负链字符：<input type="text" id="negCharsInput" value="-,minus" style="width:130px;"></label>
+                    <label>未知字符：<input type="text" id="unkCharsInput" value="none" style="width:130px;"></label>
+                </div>
+                <div class="info-box">
+                    正链输出 <code>start-end</code>，负链输出 <code>end-start</code>（大数在前），未知视为正链。
+                </div>
+            </div>
+            <div style="margin-top:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <button class="btn" id="genBtn" disabled>生成结果</button>
+                <span id="paramMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：生成结果</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyResultBtn" disabled>复制结果</button>
+                <button class="btn" id="downloadResultBtn" disabled>下载表格</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    结果预览 <span id="resultStats" style="font-weight:400; color:#6c757d; font-size:0.85rem;"></span>
+                </div>
+                <div class="table-container" style="max-height:500px;">
+                    <table id="resultTable">
+                        <thead id="resultHead"></thead>
+                        <tbody id="resultBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">生成结果后，将显示在此处。</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const dataFile = document.getElementById('dataFile');
+            const dataText = document.getElementById('dataText');
+            const importBtn = document.getElementById('importBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const previewArea = document.getElementById('previewArea');
+            const previewHead = document.getElementById('previewHead');
+            const previewBody = document.getElementById('previewBody');
+
+            const colMapWrap = document.getElementById('colMapWrap');
+            const strandSettings = document.getElementById('strandSettings');
+            const posCharsInput = document.getElementById('posCharsInput');
+            const negCharsInput = document.getElementById('negCharsInput');
+            const unkCharsInput = document.getElementById('unkCharsInput');
+
+            const genBtn = document.getElementById('genBtn');
+            const paramMsg = document.getElementById('paramMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultHead = document.getElementById('resultHead');
+            const resultBody = document.getElementById('resultBody');
+            const resultStats = document.getElementById('resultStats');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const downloadResultBtn = document.getElementById('downloadResultBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            let tableHeader = [];
+            let tableRows = [];
+            let hasHeaderValue = false;
+            let currentResultText = '';
+
+            let idColSelect, nameColSelect, startColSelect, endColSelect, lenColSelect, strandColSelect;
+
+            const EXAMPLE_DATA =
+                'ID\tType\tStart\tEnd\tStrand\tLength\n' +
+                'Protein_1\tSP\t1\t25\t+\t520\n' +
+                'Protein_1\tTM\t120\t155\t+\t520\n' +
+                'Protein_1\tKinase\t200\t420\t+\t520\n' +
+                'Protein_2\tSP\t1\t22\t+\t480\n' +
+                'Protein_2\tTM\t90\t120\t+\t480\n' +
+                'Protein_2\tSH2\t180\t260\t-\t480\n' +
+                'Protein_2\tKinase\t280\t450\t-\t480\n' +
+                'AT1G01010\tfive_prime_UTR\t1\t90\t+\t1450\n' +
+                'AT1G01010\tCDS\t120\t360\t+\t1450\n' +
+                'AT1G01010\tCDS\t500\t760\t+\t1450\n' +
+                'AT1G01010\tCDS\t900\t1150\t+\t1450\n' +
+                'AT1G01010\tthree_prime_UTR\t1180\t1270\t+\t1450\n' +
+                'AT1G01020\tfive_prime_UTR\t1\t85\t-\t1580\n' +
+                'AT1G01020\tCDS\t110\t350\t-\t1580\n' +
+                'AT1G01020\tCDS\t490\t745\t-\t1580\n' +
+                'AT1G01020\tCDS\t880\t1240\t-\t1580\n' +
+                'AT1G01020\tthree_prime_UTR\t1270\t1360\t-\t1580\n' +
+                'AT1G01030\tfive_prime_UTR\t1\t90\t+\t1620\n' +
+                'AT1G01030\tCDS\t120\t360\t+\t1620\n' +
+                'AT1G01030\tCDS\t500\t760\t+\t1620\n' +
+                'AT1G01030\tCDS\t900\t1330\t+\t1620\n' +
+                'AT1G01030\tthree_prime_UTR\t1360\t1450\t+\t1620';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 6000);
+            }
+            function toast(msg) { if (window.showToast) window.showToast(msg); }
+            function escapeHtml(s) {
+                if (s === null || s === undefined) return '';
+                return String(s).replace(/[&<>"]/g, function (m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+            function normalize(s) {
+                return String(s || '').toLowerCase().replace(/[\s_\-\.]+/g, '');
+            }
+
+            function detectDelimiter(text) {
+                const lines = text.split(/\r?\n/).filter(function (l) { return l.trim(); });
+                if (lines.length === 0) return '\t';
+                const f = lines[0];
+                if (f.indexOf('\t') >= 0) return '\t';
+                if (f.indexOf(',') >= 0) return ',';
+                if (f.indexOf(';') >= 0) return ';';
+                if (f.indexOf(' ') >= 0) return ' ';
+                return '\t';
+            }
+
+            function parseTable(text) {
+                const delim = detectDelimiter(text);
+                const lines = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+                if (lines.length === 0) return null;
+                const rows = lines.map(function (line) {
+                    if (delim === ' ') return line.trim().split(/\s+/);
+                    return line.split(delim).map(function (c) { return c.trim(); });
+                });
+                let maxCols = 0;
+                rows.forEach(function (r) { if (r.length > maxCols) maxCols = r.length; });
+                rows.forEach(function (r) { while (r.length < maxCols) r.push(''); });
+                return { delim: delim, rows: rows, maxCols: maxCols };
+            }
+
+            function looksLikeHeader(rows) {
+                if (!rows || rows.length === 0) return false;
+                const first = rows[0];
+                const kw = ['id', 'protein', 'gene', 'name', 'type', 'start', 'end',
+                    'strand', 'length', 'len', 'seqid', 'sequence', 'domain', 'feature'];
+                let hit = 0;
+                first.forEach(function (c) {
+                    const n = normalize(c);
+                    if (kw.indexOf(n) >= 0) hit++;
+                });
+                return hit >= 2;
+            }
+
+            function autoMatch(headerRow, keywords) {
+                if (!headerRow || headerRow.length === 0) return -1;
+                const norm = headerRow.map(function (h) { return normalize(h); });
+                for (let k = 0; k < keywords.length; k++) {
+                    for (let i = 0; i < norm.length; i++) {
+                        if (norm[i] === keywords[k]) return i;
+                    }
+                }
+                for (let k = 0; k < keywords.length; k++) {
+                    for (let i = 0; i < norm.length; i++) {
+                        if (norm[i] && norm[i].indexOf(keywords[k]) >= 0) return i;
+                    }
+                }
+                return -1;
+            }
+
+            function makeSelect(options, value, onChange) {
+                const sel = document.createElement('select');
+                sel.style.padding = '4px 8px';
+                options.forEach(function (o) {
+                    const op = document.createElement('option');
+                    op.value = o[0];
+                    op.textContent = o[1];
+                    sel.appendChild(op);
+                });
+                sel.value = value;
+                if (onChange) sel.addEventListener('change', onChange);
+                return sel;
+            }
+
+            function wrapLabel(txt, el) {
+                const lb = document.createElement('label');
+                lb.style.display = 'inline-flex';
+                lb.style.alignItems = 'center';
+                lb.style.gap = '5px';
+                lb.style.fontWeight = '400';
+                lb.textContent = txt;
+                lb.appendChild(el);
+                return lb;
+            }
+
+            function renderPreview() {
+                if (!tableHeader.length) { previewArea.style.display = 'none'; return; }
+                previewArea.style.display = 'block';
+                let thead = '<tr>';
+                tableHeader.forEach(function (h) { thead += '<th>' + escapeHtml(h) + '</th>'; });
+                thead += '</tr>';
+                previewHead.innerHTML = thead;
+                const maxShow = Math.min(tableRows.length, 100);
+                let tbody = '';
+                for (let i = 0; i < maxShow; i++) {
+                    tbody += '<tr>';
+                    for (let j = 0; j < tableHeader.length; j++) {
+                        tbody += '<td>' + escapeHtml(tableRows[i][j]) + '</td>';
+                    }
+                    tbody += '</tr>';
+                }
+                previewBody.innerHTML = tbody;
+            }
+
+            function rebuildColumnSelects() {
+                colMapWrap.innerHTML = '';
+                idColSelect = nameColSelect = startColSelect = endColSelect = lenColSelect = strandColSelect = null;
+
+                if (!tableHeader.length) {
+                    colMapWrap.innerHTML = '<span class="tip-text">请先导入表格数据</span>';
+                    strandSettings.style.display = 'none';
+                    return;
+                }
+
+                const headers = hasHeaderValue
+                    ? tableHeader
+                    : tableHeader.map(function (_, i) { return '第' + (i + 1) + '列'; });
+
+                const hr = hasHeaderValue ? tableHeader : [];
+                let idIdx = autoMatch(hr, ['protein', 'gene', 'seqid', 'sequenceid', 'id', 'accession', 'acc', 'name']);
+                let nameIdx = autoMatch(hr, ['name', 'type', 'domain', 'feature', 'annotation', 'region', 'motif', 'element']);
+                let startIdx = autoMatch(hr, ['start', 'begin', 'from', 'position', 'pos']);
+                let endIdx = autoMatch(hr, ['end', 'stop', 'to', 'finish']);
+                let lenIdx = autoMatch(hr, ['length', 'len', 'size', 'totallength']);
+                let strandIdx = autoMatch(hr, ['strand', 'direction', 'orientation']);
+
+                if (idIdx >= 0 && nameIdx === idIdx) nameIdx = -1;
+                if (startIdx >= 0 && endIdx === startIdx) endIdx = -1;
+                if (lenIdx >= 0 && (lenIdx === idIdx || lenIdx === nameIdx || lenIdx === startIdx || lenIdx === endIdx)) lenIdx = -1;
+                if (strandIdx >= 0 && (strandIdx === idIdx || strandIdx === nameIdx || strandIdx === startIdx || strandIdx === endIdx || strandIdx === lenIdx)) strandIdx = -1;
+
+                if (idIdx < 0) idIdx = 0;
+                if (nameIdx < 0) nameIdx = (headers.length > 1) ? 1 : 0;
+                if (startIdx < 0) startIdx = (headers.length > 2) ? 2 : 0;
+                if (endIdx < 0) endIdx = (headers.length > 3) ? 3 : 0;
+
+                const colOptions = headers.map(function (h, i) {
+                    return [i, '第' + (i + 1) + '列：' + h];
+                });
+
+                idColSelect = makeSelect(colOptions, idIdx, onColChange);
+                nameColSelect = makeSelect(colOptions, nameIdx, onColChange);
+                startColSelect = makeSelect(colOptions, startIdx, onColChange);
+                endColSelect = makeSelect(colOptions, endIdx, onColChange);
+                lenColSelect = makeSelect([[-1, '（不使用）']].concat(colOptions), lenIdx, onColChange);
+                strandColSelect = makeSelect([[-1, '（不使用）']].concat(colOptions), strandIdx, onColChange);
+
+                colMapWrap.appendChild(wrapLabel('分组ID列：', idColSelect));
+                colMapWrap.appendChild(wrapLabel('名称/类型列：', nameColSelect));
+                colMapWrap.appendChild(wrapLabel('起始列：', startColSelect));
+                colMapWrap.appendChild(wrapLabel('终止列：', endColSelect));
+                colMapWrap.appendChild(wrapLabel('长度列（可选）：', lenColSelect));
+                colMapWrap.appendChild(wrapLabel('链方向列（可选）：', strandColSelect));
+
+                onColChange();
+            }
+
+            function onColChange() {
+                if (!strandColSelect) return;
+                const v = parseInt(strandColSelect.value, 10);
+                strandSettings.style.display = (v >= 0) ? 'block' : 'none';
+            }
+
+            function onImport() {
+                const text = dataText.value.trim();
+                if (!text) { showMsg(msgTip, '❌ 请选择文件或粘贴数据', 'error'); return; }
+
+                const parsed = parseTable(text);
+                if (!parsed || parsed.rows.length === 0) {
+                    showMsg(msgTip, '❌ 表格解析失败', 'error');
+                    return;
+                }
+
+                hasHeaderValue = looksLikeHeader(parsed.rows);
+                let headers, rows;
+                if (hasHeaderValue) {
+                    headers = parsed.rows[0].slice();
+                    rows = parsed.rows.slice(1);
+                } else {
+                    headers = [];
+                    for (let i = 0; i < parsed.maxCols; i++) headers.push('列' + (i + 1));
+                    rows = parsed.rows.slice();
+                }
+
+                tableHeader = headers;
+                tableRows = rows;
+
+                renderPreview();
+                rebuildColumnSelects();
+                clearResults();
+                genBtn.disabled = false;
+
+                showMsg(msgTip, '✅ 已导入 ' + rows.length + ' 行 × ' + headers.length + ' 列' +
+                    (hasHeaderValue ? '（含表头）' : '（无表头）'), 'success');
+                toast('已导入 ' + rows.length + ' 行');
+            }
+
+            function buildResult() {
+                if (!tableHeader.length) return null;
+
+                const idIdx = parseInt(idColSelect.value, 10);
+                const nameIdx = parseInt(nameColSelect.value, 10);
+                const startIdx = parseInt(startColSelect.value, 10);
+                const endIdx = parseInt(endColSelect.value, 10);
+                const lenIdx = parseInt(lenColSelect.value, 10);
+                const strandIdx = parseInt(strandColSelect.value, 10);
+
+                if (idIdx < 0 || nameIdx < 0 || startIdx < 0 || endIdx < 0) return null;
+                if (startIdx === endIdx) return null;
+
+                const useLen = lenIdx >= 0;
+                const useStrand = strandIdx >= 0;
+
+                const negSet = new Set((negCharsInput.value || '').split(',')
+                    .map(function (s) { return s.trim().toLowerCase(); })
+                    .filter(function (s) { return s; }));
+
+                const order = [];
+                const groups = new Map();
+                const conflicts = new Set();
+                let badCount = 0;
+
+                for (let r = 0; r < tableRows.length; r++) {
+                    const row = tableRows[r];
+                    const id = String(row[idIdx] || '').trim();
+                    if (!id) continue;
+
+                    const name = String(row[nameIdx] || '').trim();
+                    const sVal = parseFloat(row[startIdx]);
+                    const eVal = parseFloat(row[endIdx]);
+                    if (isNaN(sVal) || isNaN(eVal)) { badCount++; continue; }
+
+                    let isNeg = false;
+                    if (useStrand) {
+                        const sv = String(row[strandIdx] || '').trim().toLowerCase();
+                        if (negSet.has(sv)) isNeg = true;
+                    }
+
+                    let len = null;
+                    if (useLen) {
+                        const lv = parseFloat(row[lenIdx]);
+                        if (!isNaN(lv)) len = lv;
+                    }
+
+                    const lo = Math.min(sVal, eVal);
+                    const hi = Math.max(sVal, eVal);
+                    const expr = isNeg
+                        ? (name + '=' + hi + '-' + lo)
+                        : (name + '=' + lo + '-' + hi);
+
+                    if (!groups.has(id)) {
+                        groups.set(id, { id: id, length: len, domains: [expr] });
+                        order.push(id);
+                    } else {
+                        const g = groups.get(id);
+                        if (useLen && len !== null && g.length !== null && g.length !== len) {
+                            conflicts.add(id);
+                        }
+                        if (g.length === null && len !== null) g.length = len;
+                        g.domains.push(expr);
+                    }
+                }
+
+                const idHeader = hasHeaderValue ? (tableHeader[idIdx] || 'ID') : 'ID';
+                const outHeader = [idHeader];
+                if (useLen) outHeader.push('Length');
+                outHeader.push('Domains');
+
+                const outRows = order.map(function (id) {
+                    const g = groups.get(id);
+                    const row = [g.id];
+                    if (useLen) row.push(g.length !== null ? String(g.length) : '');
+                    row.push(g.domains.join('|'));
+                    return row;
+                });
+
+                return {
+                    header: outHeader,
+                    rows: outRows,
+                    conflicts: Array.from(conflicts),
+                    useLen: useLen,
+                    badCount: badCount
+                };
+            }
+
+            function renderResult(res) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                let thead = '<tr>';
+                res.header.forEach(function (h) { thead += '<th>' + escapeHtml(h) + '</th>'; });
+                thead += '</tr>';
+                resultHead.innerHTML = thead;
+
+                const maxShow = Math.min(res.rows.length, 1000);
+                let tbody = '';
+                for (let i = 0; i < maxShow; i++) {
+                    tbody += '<tr>';
+                    for (let j = 0; j < res.rows[i].length; j++) {
+                        const s = String(res.rows[i][j] || '');
+                        const disp = s.length > 150 ? s.slice(0, 150) + '…' : s;
+                        tbody += '<td title="' + escapeHtml(s) + '">' + escapeHtml(disp) + '</td>';
+                    }
+                    tbody += '</tr>';
+                }
+                resultBody.innerHTML = tbody;
+
+                resultStats.textContent = '（' + res.rows.length + ' 行 × ' + res.header.length + ' 列）';
+
+                const lines = [res.header.join('\t')];
+                res.rows.forEach(function (row) { lines.push(row.join('\t')); });
+                currentResultText = lines.join('\n');
+
+                copyResultBtn.disabled = false;
+                downloadResultBtn.disabled = false;
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultHead.innerHTML = '';
+                resultBody.innerHTML = '';
+                resultStats.textContent = '';
+                currentResultText = '';
+                copyResultBtn.disabled = true;
+                downloadResultBtn.disabled = true;
+                resultMsg.innerHTML = '';
+            }
+
+            function doGenerate() {
+                if (!tableHeader.length) {
+                    showMsg(paramMsg, '⚠️ 请先导入表格', 'warn');
+                    return;
+                }
+                const sIdx = parseInt(startColSelect.value, 10);
+                const eIdx = parseInt(endColSelect.value, 10);
+                if (sIdx >= 0 && sIdx === eIdx) {
+                    showMsg(paramMsg, '⚠️ 起始列和终止列不能相同', 'error');
+                    return;
+                }
+                const res = buildResult();
+                if (!res || res.rows.length === 0) {
+                    showMsg(paramMsg, '⚠️ 未生成有效结果，请检查列映射', 'warn');
+                    return;
+                }
+                renderResult(res);
+
+                let extra = '';
+                if (res.conflicts.length > 0) {
+                    extra = ' ⚠️ 以下ID的长度不一致：' + res.conflicts.slice(0, 5).join(', ') +
+                        (res.conflicts.length > 5 ? ' 等共 ' + res.conflicts.length + ' 个' : '');
+                }
+                if (res.badCount > 0) {
+                    extra += '（跳过 ' + res.badCount + ' 行无效坐标）';
+                }
+                showMsg(paramMsg, '✅ 已生成结果：' + res.rows.length + ' 行' + extra,
+                    res.conflicts.length > 0 ? 'warn' : 'success');
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '✅ 已复制结果', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(resultMsg, '❌ 复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+            function copyResult() {
+                if (!currentResultText) { showMsg(resultMsg, '❌ 无内容可复制', 'error'); return; }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResultText).then(function () {
+                        showMsg(resultMsg, '✅ 已复制结果', 'success'); toast('已复制');
+                    }).catch(function () { fallbackCopy(currentResultText); });
+                } else {
+                    fallbackCopy(currentResultText);
+                }
+            }
+            function downloadResult() {
+                if (!currentResultText) { showMsg(resultMsg, '❌ 无内容可下载', 'error'); return; }
+                const blob = new Blob(['\uFEFF' + currentResultText], { type: 'text/tab-separated-values;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'domain_annotations.tsv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '✅ 已下载 domain_annotations.tsv', 'success');
+                toast('已下载');
+            }
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    dataFile.disabled = false;
+                    dataText.disabled = true;
+                    dataText.value = '';
+                } else {
+                    dataFile.disabled = true;
+                    dataFile.value = '';
+                    dataText.disabled = false;
+                }
+                tableHeader = [];
+                tableRows = [];
+                hasHeaderValue = false;
+                colMapWrap.innerHTML = '<span class="tip-text">请先导入表格数据</span>';
+                strandSettings.style.display = 'none';
+                previewArea.style.display = 'none';
+                genBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+                paramMsg.innerHTML = '';
+            };
+
+            dataFile.addEventListener('change', function (e) {
+                const f = e.target.files && e.target.files[0];
+                if (!f) return;
+                const r = new FileReader();
+                r.onload = function (ev) {
+                    dataText.value = ev.target.result;
+                    onImport();
+                };
+                r.readAsText(f);
+                this.value = '';
+            });
+
+            dataText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    onImport();
+                }
+            });
+
+            importBtn.addEventListener('click', onImport);
+
+            exampleBtn.addEventListener('click', function () {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInput();
+                dataText.value = EXAMPLE_DATA;
+                onImport();
+            });
+
+            genBtn.addEventListener('click', doGenerate);
+            copyResultBtn.addEventListener('click', copyResult);
+            downloadResultBtn.addEventListener('click', downloadResult);
+
+            window.switchInput();
+            genBtn.disabled = true;
+            copyResultBtn.disabled = true;
+            downloadResultBtn.disabled = true;
+
+        })();
+    </script>
+</body>
+</html>
