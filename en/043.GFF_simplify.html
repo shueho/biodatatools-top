@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GFF/GTF Simplification Tool - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>GFF/GTF Simplification Tool</h2>
+            <p>Extract only the specified fields from the attribute column of a GFF/GTF file to reduce file size.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import GFF/GTF File</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="gffFile" accept=".gff,.gff3,.gtf,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="gffText" placeholder="Paste GFF/GTF content here" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> Data lines are tab-separated, and column 9 is the attribute column (e.g. <code>ID=xxx;Parent=yyy;Name=...</code>). Lines starting with <code>#</code> can be kept or dropped in Step 2, and their original position is preserved in the output.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">Import &amp; Parse</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="progressWrap" class="result-item" style="display:none;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="progressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="progressStage">Preparing...</span>
+                    <span id="progressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Select Attributes &amp; Handle Missing Values</div>
+
+            <div class="filter-box" style="margin-bottom:12px; gap:20px;">
+                <span style="font-weight:500;">Missing attribute handling:</span>
+                <label><input type="radio" name="missingMode" value="skip" checked> Skip missing attributes</label>
+                <label><input type="radio" name="missingMode" value="fill"> Fill with default value</label>
+                <label>Default value: <input type="text" id="defaultVal" value="None" style="width:100px;" disabled></label>
+            </div>
+
+            <div class="filter-box" style="margin-bottom:12px; gap:20px;">
+                <span style="font-weight:500;">Comment lines:</span>
+                <label><input type="checkbox" id="keepHeader" checked> Output <code>#</code> comment lines</label>
+            </div>
+
+            <div class="info-box">
+                <strong>Note:</strong> ID, Parent and gene are selected by default. Other attributes are listed automatically based on the fields actually found in the file, and can be freely checked.<br>
+                If <em>Skip missing attributes</em> is chosen, only the attributes that actually exist in each record are written to the output; missing ones are simply omitted.
+            </div>
+
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="selectAllBtn">Select All</button>
+                <button class="btn btn-sm" id="selectNoneBtn">Clear All</button>
+                <button class="btn btn-sm" id="selectDefaultBtn">Restore Default</button>
+                <span id="attrCount" class="tip-text" style="margin:0;">0 attributes</span>
+            </div>
+            <div id="attrGrid" class="result-item"
+                 style="display:flex; flex-wrap:wrap; gap:8px 20px; max-height:280px; overflow-y:auto; padding:12px;">
+                <span class="empty-hint">Please import a GFF/GTF file first</span>
+            </div>
+            <div style="margin-top:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <button class="btn" id="runBtn" disabled>Run Simplification</button>
+                <span id="runMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+
+            <div id="simplifyProgressWrap" class="result-item" style="display:none; margin-top:10px;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="simplifyProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="simplifyProgressStage">Preparing...</span>
+                    <span id="simplifyProgressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Simplification Result</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyBtn" disabled>Copy Result</button>
+                <button class="btn" id="downloadBtn" disabled>Download GFF</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    Preview <span id="resultStats" style="font-weight:400; color:#6c757d; font-size:0.85rem;"></span>
+                </div>
+                <div class="result-item" id="resultBox"
+                     style="max-height:500px; overflow:auto; white-space:pre-wrap; word-break:break-all; font-family:Consolas,monospace; font-size:13px; line-height:1.7;"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">The result will be displayed here after simplification.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const gffFile = document.getElementById('gffFile');
+            const gffText = document.getElementById('gffText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const attrGrid = document.getElementById('attrGrid');
+            const attrCount = document.getElementById('attrCount');
+            const selectAllBtn = document.getElementById('selectAllBtn');
+            const selectNoneBtn = document.getElementById('selectNoneBtn');
+            const selectDefaultBtn = document.getElementById('selectDefaultBtn');
+            const defaultValInput = document.getElementById('defaultVal');
+            const keepHeader = document.getElementById('keepHeader');
+            const runBtn = document.getElementById('runBtn');
+            const runMsg = document.getElementById('runMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultBox = document.getElementById('resultBox');
+            const resultStats = document.getElementById('resultStats');
+            const copyBtn = document.getElementById('copyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            const DEFAULT_KEYS = ['ID', 'Parent', 'gene'];
+
+            const EXAMPLE = [
+                '##gff-version 3',
+                '#!gff-spec-version 1.21',
+                '#!processor NCBI annotwriter',
+                '#!genome-build B73 RefGen_v4',
+                '##sequence-region NC_024459.2 1 307041717',
+                '##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=4577',
+                'NC_024459.2\tRefSeq\tregion\t1\t307041717\t.\t+\t.\tID=NC_024459.2:1..307041717;Dbxref=taxon:4577;Name=1;chromosome=1;country=USA;cultivar=B73;gbkey=Src;genome=chromosome;mol_type=genomic DNA;tissue-type=seedling',
+                'NC_024459.2\tGnomon\tgene\t44256\t49832\t.\t+\t.\tID=gene-LOC103644366;Dbxref=GeneID:103644366;Name=LOC103644366;gbkey=Gene;gene=LOC103644366;gene_biotype=protein_coding',
+                'NC_024459.2\tGnomon\tmRNA\t44256\t49832\t.\t+\t.\tID=rna-XM_020544715.2;Parent=gene-LOC103644366;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;Name=XM_020544715.2;gbkey=mRNA;gene=LOC103644366;model_evidence=Supporting evidence includes similarity to: 2 mRNAs%2C 6 ESTs%2C 1 Protein%2C 11 long SRA reads%2C and 100%25 coverage of the annotated genomic feature by RNAseq alignments%2C including 204 samples with support for all annotated introns;product=uncharacterized LOC103644366%2C transcript variant X1;transcript_id=XM_020544715.2',
+                'NC_024459.2\tGnomon\texon\t44256\t44947\t.\t+\t.\tID=exon-XM_020544715.2-1;Parent=rna-XM_020544715.2;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;gbkey=mRNA;gene=LOC103644366;product=uncharacterized LOC103644366%2C transcript variant X1;transcript_id=XM_020544715.2',
+                'NC_024459.2\tGnomon\texon\t45666\t45803\t.\t+\t.\tID=exon-XM_020544715.2-2;Parent=rna-XM_020544715.2;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;gbkey=mRNA;gene=LOC103644366;product=uncharacterized LOC103644366%2C transcript variant X1;transcript_id=XM_020544715.2',
+                'NC_024459.2\tGnomon\tCDS\t44258\t44947\t.\t+\t0\tID=cds-XP_020400304.1;Parent=rna-XM_020544715.2;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;Name=XP_020400304.1;gbkey=CDS;gene=LOC103644366;protein_id=XP_020400304.1'
+            ].join('\n');
+
+            let parsedData = null;
+            let currentFileName = '';
+            let currentResultText = '';
+            let isProcessing = false;
+
+            function makeProgressController(wrapId, barId, stageId, pctId) {
+                const wrap = document.getElementById(wrapId);
+                const bar = document.getElementById(barId);
+                const stageEl = document.getElementById(stageId);
+                const pctEl = document.getElementById(pctId);
+                const ctl = {
+                    show: function (stage) {
+                        wrap.style.display = 'block';
+                        ctl.set(0, stage);
+                    },
+                    set: function (pct, stage) {
+                        pct = Math.max(0, Math.min(100, Math.round(pct)));
+                        bar.style.width = pct + '%';
+                        pctEl.textContent = pct + '%';
+                        if (stage) stageEl.textContent = stage;
+                    },
+                    hide: function () {
+                        wrap.style.display = 'none';
+                    }
+                };
+                return ctl;
+            }
+
+            const importProgress = makeProgressController(
+                'progressWrap', 'progressBar', 'progressStage', 'progressPct');
+            const simplifyProgress = makeProgressController(
+                'simplifyProgressWrap', 'simplifyProgressBar',
+                'simplifyProgressStage', 'simplifyProgressPct');
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 6000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseAttributes(str) {
+                const attrs = {};
+                if (!str) return attrs;
+                const parts = str.split(';');
+                for (let i = 0; i < parts.length; i++) {
+                    const t = parts[i].trim();
+                    if (!t) continue;
+                    const eq = t.indexOf('=');
+                    if (eq > 0) {
+                        const k = t.slice(0, eq).trim();
+                        const v = t.slice(eq + 1).trim();
+                        if (k && !(k in attrs)) attrs[k] = v;
+                    } else {
+                        const m = t.match(/^(\S+)\s+(.*)$/);
+                        if (m) {
+                            const k = m[1];
+                            let v = m[2].trim();
+                            if (v.length >= 2 && v.charAt(0) === '"' && v.charAt(v.length - 1) === '"') {
+                                v = v.slice(1, -1);
+                            }
+                            if (k && !(k in attrs)) attrs[k] = v;
+                        }
+                    }
+                }
+                return attrs;
+            }
+
+            function parseGFFAsync(text, onProgress, onDone) {
+                const items = [];
+                const attrOrder = [];
+                const attrSet = new Set();
+                let headerCount = 0;
+                let recordCount = 0;
+                let badCount = 0;
+
+                const totalLen = text.length;
+                let pos = 0;
+
+                function step() {
+                    const start = performance.now();
+                    let linesInChunk = 0;
+
+                    while (pos < totalLen) {
+                        let next = text.indexOf('\n', pos);
+                        if (next === -1) next = totalLen;
+                        let line = text.slice(pos, next);
+                        if (line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+                        pos = next + 1;
+                        linesInChunk++;
+
+                        if (!line.trim()) continue;
+
+                        if (line.charAt(0) === '#') {
+                            items.push({ kind: 'header', text: line });
+                            headerCount++;
+                            continue;
+                        }
+
+                        const cols = line.split('\t');
+                        if (cols.length < 9) { badCount++; continue; }
+
+                        const attrs = parseAttributes(cols.slice(8).join('\t'));
+                        for (const k in attrs) {
+                            if (!attrSet.has(k)) { attrSet.add(k); attrOrder.push(k); }
+                        }
+                        items.push({ kind: 'record', cols: cols.slice(0, 8), attrs: attrs });
+                        recordCount++;
+
+                        if (linesInChunk % 2000 === 0 && performance.now() - start > 16) {
+                            break;
+                        }
+                    }
+
+                    const pct = totalLen === 0 ? 100 : Math.round(pos / totalLen * 100);
+                    onProgress(pct);
+
+                    if (pos < totalLen) {
+                        setTimeout(step, 0);
+                    } else {
+                        onDone({
+                            items: items,
+                            attrOrder: attrOrder,
+                            attrSet: attrSet,
+                            headerCount: headerCount,
+                            recordCount: recordCount,
+                            badCount: badCount
+                        });
+                    }
+                }
+
+                step();
+            }
+
+            function renderAttrGrid(parsed) {
+                attrGrid.innerHTML = '';
+
+                const allKeys = [];
+                function addKey(k) {
+                    if (allKeys.indexOf(k) === -1) allKeys.push(k);
+                }
+                DEFAULT_KEYS.forEach(addKey);
+                parsed.attrOrder.forEach(addKey);
+
+                if (allKeys.length === 0) {
+                    attrGrid.innerHTML = '<span class="empty-hint">No attribute fields were parsed from column 9.</span>';
+                    updateAttrCount();
+                    return;
+                }
+
+                allKeys.forEach(function (k) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = k;
+                    cb.className = 'attr-cb';
+                    cb.checked = DEFAULT_KEYS.indexOf(k) >= 0;
+                    cb.addEventListener('change', updateAttrCount);
+
+                    const span = document.createElement('span');
+                    span.textContent = k;
+                    if (DEFAULT_KEYS.indexOf(k) >= 0) span.style.fontWeight = '600';
+
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    attrGrid.appendChild(label);
+                });
+
+                updateAttrCount();
+            }
+
+            function updateAttrCount() {
+                const boxes = attrGrid.querySelectorAll('input.attr-cb');
+                const total = boxes.length;
+                let sel = 0;
+                boxes.forEach(function (b) { if (b.checked) sel++; });
+                attrCount.textContent = 'Selected ' + sel + ' / ' + total + ' attributes';
+                runBtn.disabled = isProcessing || !(parsedData && sel > 0);
+            }
+
+            function setCheckedByKeys(keys) {
+                const boxes = attrGrid.querySelectorAll('input.attr-cb');
+                boxes.forEach(function (b) {
+                    b.checked = keys.indexOf(b.value) >= 0;
+                });
+                updateAttrCount();
+            }
+
+            function finishLoading(parsed, filename) {
+                if (parsed.recordCount === 0) {
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ No valid GFF data rows were parsed (column 9 missing or malformed).', 'error');
+                    return;
+                }
+
+                parsedData = parsed;
+                currentFileName = filename || '';
+
+                renderAttrGrid(parsed);
+                clearResults();
+
+                let info = '✅ Parsed ' + parsed.recordCount + ' data rows and ' +
+                    parsed.headerCount + ' comment lines, with ' + parsed.attrSet.size + ' distinct attributes.';
+                if (parsed.badCount > 0) {
+                    info += ' (Skipped ' + parsed.badCount + ' malformed rows.)';
+                }
+                showMsg(msgTip, info, 'success');
+                toast('Parsed ' + parsed.recordCount + ' data rows');
+
+                importProgress.set(100, 'Parsing complete');
+                setTimeout(function () { importProgress.hide(); }, 600);
+            }
+
+            function loadDataFromText(text, filename) {
+                if (!text || !text.trim()) {
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ The content is empty. Please choose a file or paste GFF/GTF content.', 'error');
+                    return;
+                }
+                isProcessing = true;
+                runBtn.disabled = true;
+                importProgress.show('Parsing data...');
+
+                parseGFFAsync(
+                    text,
+                    function (pct) {
+                        importProgress.set(pct, 'Parsing data: ' + pct + '%');
+                    },
+                    function (parsed) {
+                        isProcessing = false;
+                        finishLoading(parsed, filename);
+                        updateAttrCount();
+                    }
+                );
+            }
+
+            function loadFromFile() {
+                const file = gffFile.files && gffFile.files[0];
+                if (!file) {
+                    showMsg(msgTip, '❌ Please select a file.', 'error');
+                    return;
+                }
+                if (isProcessing) return;
+                isProcessing = true;
+                runBtn.disabled = true;
+                importProgress.show('Reading file...');
+
+                const reader = new FileReader();
+
+                reader.onprogress = function (e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round(e.loaded / e.total * 100);
+                        importProgress.set(pct, 'Reading file: ' + pct + '%');
+                    }
+                };
+
+                reader.onload = function (e) {
+                    importProgress.set(100, 'File read complete');
+                    isProcessing = false;
+                    setTimeout(function () {
+                        loadDataFromText(e.target.result, file.name);
+                    }, 80);
+                };
+
+                reader.onerror = function () {
+                    isProcessing = false;
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ Failed to read the file.', 'error');
+                };
+
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                if (isProcessing) return;
+                const text = gffText.value;
+                if (!text.trim()) {
+                    showMsg(msgTip, '❌ Please paste GFF/GTF content.', 'error');
+                    return;
+                }
+                loadDataFromText(text, '');
+            }
+
+            function loadExample() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                gffText.value = EXAMPLE;
+                loadDataFromText(EXAMPLE, '');
+            }
+
+            function getSelectedKeys() {
+                const boxes = attrGrid.querySelectorAll('input.attr-cb:checked');
+                const keys = [];
+                boxes.forEach(function (b) { keys.push(b.value); });
+                return keys;
+            }
+
+            function getMissingMode() {
+                return document.querySelector('input[name="missingMode"]:checked').value;
+            }
+
+            function doSimplify() {
+                if (isProcessing) return;
+                if (!parsedData) {
+                    showMsg(runMsg, '❌ Please import a GFF/GTF file first.', 'error');
+                    return;
+                }
+
+                const keys = getSelectedKeys();
+                if (keys.length === 0) {
+                    showMsg(runMsg, '❌ Please select at least one attribute to keep.', 'error');
+                    return;
+                }
+
+                const mode = getMissingMode();
+                const defVal = defaultValInput.value || 'None';
+                const withHeader = keepHeader.checked;
+
+                const items = parsedData.items;
+                const total = items.length;
+
+                const outLines = [];
+                let filledCount = 0;
+                let recordOutCount = 0;
+                let idx = 0;
+
+                isProcessing = true;
+                runBtn.disabled = true;
+                runMsg.innerHTML = '';
+                simplifyProgress.show('Simplifying data...');
+
+                function step() {
+                    const start = performance.now();
+                    let n = 0;
+
+                    while (idx < total) {
+                        const item = items[idx++];
+                        n++;
+
+                        if (item.kind === 'header') {
+                            if (withHeader) outLines.push(item.text);
+                            continue;
+                        }
+
+                        const rec = item;
+                        const parts = [];
+
+                        if (mode === 'skip') {
+                            for (let j = 0; j < keys.length; j++) {
+                                const k = keys[j];
+                                const v = rec.attrs[k];
+                                if (v === undefined || v === null || v === '') continue;
+                                parts.push(k + '=' + v);
+                            }
+                        } else {
+                            for (let j = 0; j < keys.length; j++) {
+                                const k = keys[j];
+                                let v = rec.attrs[k];
+                                if (v === undefined || v === null || v === '') {
+                                    v = defVal;
+                                    filledCount++;
+                                }
+                                parts.push(k + '=' + v);
+                            }
+                        }
+
+                        outLines.push(rec.cols.join('\t') + '\t' + parts.join(';'));
+                        recordOutCount++;
+
+                        if (n % 2000 === 0 && performance.now() - start > 16) break;
+                    }
+
+                    const pct = total === 0 ? 100 : Math.round(idx / total * 100);
+                    simplifyProgress.set(pct, 'Simplifying data: ' + pct + '%');
+
+                    if (idx < total) {
+                        setTimeout(step, 0);
+                    } else {
+                        simplifyProgress.set(100, 'Simplification complete');
+                        setTimeout(function () { simplifyProgress.hide(); }, 600);
+                        isProcessing = false;
+                        finishSimplify(outLines, keys,
+                            withHeader ? parsedData.headerCount : 0,
+                            recordOutCount, filledCount, mode);
+                    }
+                }
+
+                step();
+            }
+
+            function finishSimplify(outLines, keys, headerCount, recordOutCount,
+                                   filledCount, mode) {
+                if (recordOutCount === 0) {
+                    showMsg(runMsg, '⚠️ No data rows to output.', 'warn');
+                    toast('Empty result');
+                    updateAttrCount();
+                    return;
+                }
+
+                currentResultText = outLines.join('\n') + '\n';
+                renderResult(outLines, keys, headerCount, recordOutCount);
+
+                let detail = '✅ Simplification complete: kept ' + keys.length +
+                    ' attributes and output ' + recordOutCount + ' data rows';
+                if (headerCount > 0) detail += ' and ' + headerCount + ' comment lines';
+                if (mode === 'fill') {
+                    detail += ' (filled ' + filledCount + ' missing values)';
+                }
+                showMsg(runMsg, detail + '.', 'success');
+                toast('Simplification complete');
+                updateAttrCount();
+            }
+
+            function renderResult(outLines, keys, headerCount, dataCount) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                const maxShow = 1000;
+                let preview = outLines.slice(0, maxShow).join('\n');
+                if (outLines.length > maxShow) {
+                    preview += '\n... (Preview truncated. Copy or download to get the full content.)';
+                }
+                resultBox.textContent = preview;
+
+                resultStats.textContent = '(' + dataCount + ' data rows' +
+                    (headerCount > 0 ? ' + ' + headerCount + ' comment lines' : '') +
+                    '; retained attributes: ' + keys.join(', ') + ')';
+
+                copyBtn.disabled = false;
+                downloadBtn.disabled = false;
+                resultMsg.innerHTML = '';
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultBox.textContent = '';
+                resultStats.textContent = '';
+                copyBtn.disabled = true;
+                downloadBtn.disabled = true;
+                resultMsg.innerHTML = '';
+                currentResultText = '';
+            }
+
+            function copyResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '❌ No result to copy.', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(currentResultText).then(function () {
+                        showMsg(resultMsg, '✅ Result copied.', 'success');
+                        toast('Copied');
+                    }).catch(function () {
+                        fallbackCopy(currentResultText);
+                    });
+                } else {
+                    fallbackCopy(currentResultText);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '✅ Result copied.', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(resultMsg, '❌ Copy failed. Please copy manually.', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '❌ No result to download.', 'error');
+                    return;
+                }
+                let filename = 'simplified.gff';
+                if (currentFileName) {
+                    filename = 'simp_' + currentFileName.replace(/\.(gff3?|gtf|txt)$/i, '') + '.gff';
+                }
+                const blob = new Blob([currentResultText], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '✅ Downloaded ' + filename, 'success');
+                toast('Downloaded');
+            }
+
+            function onMissingModeChange() {
+                defaultValInput.disabled = (getMissingMode() !== 'fill');
+            }
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    gffFile.disabled = false;
+                    gffText.disabled = true;
+                    gffText.value = '';
+                } else {
+                    gffFile.disabled = true;
+                    gffFile.value = '';
+                    gffText.disabled = false;
+                }
+
+                parsedData = null;
+                currentFileName = '';
+                attrGrid.innerHTML = '<span class="empty-hint">Please import a GFF/GTF file first</span>';
+                attrCount.textContent = '0 attributes';
+                runBtn.disabled = true;
+                msgTip.innerHTML = '';
+                runMsg.innerHTML = '';
+                importProgress.hide();
+                simplifyProgress.hide();
+                clearResults();
+            };
+
+            gffFile.addEventListener('change', function (e) {
+                if (!e.target.files || e.target.files.length === 0) return;
+                loadFromFile();
+            });
+
+            gffText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!gffFile.files || gffFile.files.length === 0) {
+                        if (gffText.value.trim()) { loadFromText(); return; }
+                        showMsg(msgTip, '❌ Please choose a file or paste data.', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            selectAllBtn.addEventListener('click', function () {
+                const boxes = attrGrid.querySelectorAll('input.attr-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = true; });
+                updateAttrCount();
+            });
+
+            selectNoneBtn.addEventListener('click', function () {
+                const boxes = attrGrid.querySelectorAll('input.attr-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = false; });
+                updateAttrCount();
+            });
+
+            selectDefaultBtn.addEventListener('click', function () {
+                const boxes = attrGrid.querySelectorAll('input.attr-cb');
+                if (boxes.length === 0) return;
+                setCheckedByKeys(DEFAULT_KEYS);
+            });
+
+            document.querySelectorAll('input[name="missingMode"]').forEach(function (r) {
+                r.addEventListener('change', onMissingModeChange);
+            });
+
+            runBtn.addEventListener('click', doSimplify);
+            copyBtn.addEventListener('click', copyResult);
+            downloadBtn.addEventListener('click', downloadResult);
+
+            switchInput();
+            onMissingModeChange();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+            runBtn.disabled = true;
+            copyBtn.disabled = true;
+            downloadBtn.disabled = true;
+        })();
+    </script>
+</body>
+</html>

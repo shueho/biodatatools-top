@@ -82,6 +82,24 @@ const toolConfig = [
     link: "ch/041.FASTA_Table_converter.html"
 },
 
+{
+    toolName: "GFF/GTF文件简化工具",
+    toolDesc: "提取GFF/GTF文件属性列中指定的字段，去除不需要的信息，减小文件体积。",
+    link: "ch/043.GFF_simplify.html"
+},
+
+
+{
+    toolName: "基因密度计算工具",
+    toolDesc: "基于GFF注释文件，使用滑动窗口法统计并计算基因密度。",
+    link: "ch/044.GFF_gene_density.html"
+},
+
+{
+    toolName: "GFF文件筛选工具",
+    toolDesc: "按染色体和特征类型筛选GFF文件，仅保留指定染色体上指定类型的记录，导出精简后的GFF文件。",
+    link: "ch/045.GFF_filter.html"
+},
         ]
     },
     {

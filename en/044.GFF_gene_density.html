@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gene Density Calculator - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>Gene Density Calculator</h2>
+            <p>Compute gene density from a GFF annotation file using a sliding-window approach.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import GFF File</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="gffFile" accept=".gff,.gff3,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="gffText" placeholder="Paste GFF3 content here (column 9 in key=value format)" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> This tool supports GFF3 only. If your file is in GTF format, or column 9 is too verbose and parses slowly, please use the <a href="043.GFF_simplify.html" target="_blank">GFF/GTF Simplification Tool</a> to simplify or convert it first.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">Import &amp; Parse</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="progressWrap" class="result-item" style="display:none;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="progressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="progressStage">Preparing...</span>
+                    <span id="progressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Parameters</div>
+
+            <div class="filter-box" style="gap:20px; margin-bottom:12px;">
+                <label>Top-level feature:
+                    <select id="topLevelSelect" style="padding:4px 8px; min-width:120px;">
+                        <option value="gene" selected>gene</option>
+                    </select>
+                </label>
+                <label>Window size (bp):
+                    <input type="number" id="winSize" value="100000" min="1" step="1" style="width:110px;">
+                </label>
+                <label>Step size (bp):
+                    <input type="number" id="stepSize" placeholder="defaults to window size" min="1" step="1" style="width:140px;">
+                </label>
+                <label>Strand filter:
+                    <select id="strandMode" style="padding:4px 8px;">
+                        <option value="all" selected>All</option>
+                        <option value="plus">Plus (+)</option>
+                        <option value="minus">Minus (-)</option>
+                    </select>
+                </label>
+                <label>Counting rule:
+                    <select id="countMode" style="padding:4px 8px;">
+                        <option value="mid" selected>By midpoint</option>
+                        <option value="anchorMid">By mean anchor midpoint</option>
+                        <option value="start">By start position</option>
+                        <option value="end">By end position</option>
+                        <option value="complete">Fully inside window</option>
+                    </select>
+                </label>
+                <label>Chromosome feature:
+                    <select id="chromFeatureSelect" style="padding:4px 8px; min-width:160px;">
+                        <option value="" selected>None (infer max end)</option>
+                    </select>
+                </label>
+                <label><input type="checkbox" id="outputZero"> Include zero-count windows</label>
+            </div>
+<div class="info-box">
+    <strong>Method:</strong> selected features (e.g. CDS) are used as anchors and traced upward through <code>Parent</code> to the top-level feature (default <code>gene</code>). Multiple anchors that map to the same top-level feature are de-duplicated by ID and counted only once.<br>
+    <strong>Top-level feature:</strong> typically <code>gene</code>; can also be used to count transcript density.<br>
+    <strong>Window interval:</strong> half-open <code>(start, end]</code>; e.g. <code>(100000, 200000]</code> covers positions 100001–200000.<br>
+    <strong>Positioning rules:</strong><br>
+    &nbsp;&nbsp;· <em>By midpoint</em>: <code>pos = floor((start + end) / 2)</code>, same for plus and minus strands;<br>
+    &nbsp;&nbsp;· <em>Mean anchor midpoint</em>: take the midpoint of every selected anchor belonging to the gene and use their average as the gene position;<br>
+    &nbsp;&nbsp;· <em>By start</em>: <code>start</code> on plus strand, <code>end</code> on minus strand;<br>
+    &nbsp;&nbsp;· <em>By end</em>: <code>end</code> on plus strand, <code>start</code> on minus strand;<br>
+    &nbsp;&nbsp;· <em>Fully inside window</em>: both start and end must fall inside the window; partial genes will not be counted.<br>
+    <strong>Chromosome length:</strong> if a chromosome feature is specified, its maximum end is used; otherwise the maximum end over all features on that chromosome is used.
+</div>
+
+            <div style="margin:12px 0 8px; font-weight:500; color:#1f4068;">
+                Feature types <span id="featureCount" class="tip-text" style="margin-left:8px; font-weight:400;">0</span>
+            </div>
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="selectAllFeatureBtn">Select All</button>
+                <button class="btn btn-sm" id="selectNoneFeatureBtn">Clear All</button>
+                <button class="btn btn-sm" id="selectDefaultFeatureBtn">Restore Default (CDS)</button>
+            </div>
+            <div id="featureGrid" class="result-item"
+                 style="display:flex; flex-wrap:wrap; gap:8px 20px; max-height:240px; overflow-y:auto; padding:12px;">
+                <span class="empty-hint">Please import a GFF file first</span>
+            </div>
+
+            <div style="margin-top:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <button class="btn" id="runBtn" disabled>Compute Gene Density</button>
+                <span id="runMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+
+            <div id="calcProgressWrap" class="result-item" style="display:none; margin-top:10px;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="calcProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="calcProgressStage">Preparing...</span>
+                    <span id="calcProgressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Results</div>
+
+            <div style="font-weight:500; color:#1f4068; margin-bottom:6px;">Chromosome Lengths</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyChromBtn" disabled>Copy</button>
+                <button class="btn" id="exportChromBtn" disabled>Export Table</button>
+                <span id="chromMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="chromArea" style="display:none;">
+                <div class="table-container" style="max-height:320px;">
+                    <table id="chromTable">
+                        <thead id="chromHead"></thead>
+                        <tbody id="chromBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="emptyChrom" class="empty-tip">Chromosome lengths will appear here after computation.</div>
+
+            <div style="font-weight:500; color:#1f4068; margin:20px 0 6px;">Sliding-Window Gene Density</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyDensityBtn" disabled>Copy</button>
+                <button class="btn" id="exportDensityBtn" disabled>Export Table</button>
+                <span id="densityMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="densityArea" style="display:none;">
+                <div class="table-container" style="max-height:520px;">
+                    <table id="densityTable">
+                        <thead id="densityHead"></thead>
+                        <tbody id="densityBody"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:6px; font-size:0.85rem; color:#6c757d;">
+                    <span id="densityStats"></span>
+                </div>
+            </div>
+            <div id="emptyDensity" class="empty-tip">Sliding-window gene density will appear here after computation.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const gffFile = document.getElementById('gffFile');
+            const gffText = document.getElementById('gffText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const progressWrap = document.getElementById('progressWrap');
+            const progressBar = document.getElementById('progressBar');
+            const progressStage = document.getElementById('progressStage');
+            const progressPct = document.getElementById('progressPct');
+
+            const topLevelSelect = document.getElementById('topLevelSelect');
+            const winSizeInput = document.getElementById('winSize');
+            const stepSizeInput = document.getElementById('stepSize');
+            const strandModeSelect = document.getElementById('strandMode');
+            const countModeSelect = document.getElementById('countMode');
+            const chromFeatureSelect = document.getElementById('chromFeatureSelect');
+            const outputZero = document.getElementById('outputZero');
+
+            const featureGrid = document.getElementById('featureGrid');
+            const featureCount = document.getElementById('featureCount');
+            const selectAllFeatureBtn = document.getElementById('selectAllFeatureBtn');
+            const selectNoneFeatureBtn = document.getElementById('selectNoneFeatureBtn');
+            const selectDefaultFeatureBtn = document.getElementById('selectDefaultFeatureBtn');
+            const runBtn = document.getElementById('runBtn');
+            const runMsg = document.getElementById('runMsg');
+
+            const calcProgressWrap = document.getElementById('calcProgressWrap');
+            const calcProgressBar = document.getElementById('calcProgressBar');
+            const calcProgressStage = document.getElementById('calcProgressStage');
+            const calcProgressPct = document.getElementById('calcProgressPct');
+
+            const chromArea = document.getElementById('chromArea');
+            const emptyChrom = document.getElementById('emptyChrom');
+            const chromHeadEl = document.getElementById('chromHead');
+            const chromBodyEl = document.getElementById('chromBody');
+            const copyChromBtn = document.getElementById('copyChromBtn');
+            const exportChromBtn = document.getElementById('exportChromBtn');
+            const chromMsg = document.getElementById('chromMsg');
+
+            const densityArea = document.getElementById('densityArea');
+            const emptyDensity = document.getElementById('emptyDensity');
+            const densityHeadEl = document.getElementById('densityHead');
+            const densityBodyEl = document.getElementById('densityBody');
+            const copyDensityBtn = document.getElementById('copyDensityBtn');
+            const exportDensityBtn = document.getElementById('exportDensityBtn');
+            const densityMsg = document.getElementById('densityMsg');
+            const densityStats = document.getElementById('densityStats');
+
+            const DEFAULT_TOP_LEVEL = 'gene';
+            const DEFAULT_ANCHOR = 'CDS';
+
+            const EXAMPLE = [
+                '##gff-version 3',
+                '#!gff-spec-version 1.21',
+                '#!processor NCBI annotwriter',
+                '##sequence-region NC_024459.2 1 3000000',
+                'NC_024459.2\tRefSeq\tregion\t1\t3000000\t.\t+\t.\tID=NC_024459.2:1..3000000',
+                'NC_024459.2\tGnomon\tgene\t10000\t50000\t.\t+\t.\tID=gene-A;gene=LOCA',
+                'NC_024459.2\tGnomon\tmRNA\t10000\t50000\t.\t+\t.\tID=rna-A1;Parent=gene-A',
+                'NC_024459.2\tGnomon\tmRNA\t10000\t50000\t.\t+\t.\tID=rna-A2;Parent=gene-A',
+                'NC_024459.2\tGnomon\tCDS\t12000\t20000\t.\t+\t0\tID=cds-A1;Parent=rna-A1',
+                'NC_024459.2\tGnomon\tCDS\t30000\t48000\t.\t+\t0\tID=cds-A2;Parent=rna-A2',
+                'NC_024459.2\tGnomon\tgene\t80000\t120000\t.\t+\t.\tID=gene-B;gene=LOCB',
+                'NC_024459.2\tGnomon\tmRNA\t80000\t120000\t.\t+\t.\tID=rna-B1;Parent=gene-B',
+                'NC_024459.2\tGnomon\tCDS\t80000\t120000\t.\t+\t0\tID=cds-B1;Parent=rna-B1',
+                'NC_024459.2\tGnomon\tgene\t150000\t200000\t.\t-\t.\tID=gene-C;gene=LOCC',
+                'NC_024459.2\tGnomon\tmRNA\t150000\t200000\t.\t-\t.\tID=rna-C1;Parent=gene-C',
+                'NC_024459.2\tGnomon\tCDS\t150000\t200000\t.\t-\t0\tID=cds-C1;Parent=rna-C1',
+                'NC_024459.2\tGnomon\tgene\t220000\t260000\t.\t+\t.\tID=gene-D;gene=LOCD',
+                'NC_024459.2\tGnomon\tmRNA\t220000\t260000\t.\t+\t.\tID=rna-D1;Parent=gene-D',
+                'NC_024459.2\tGnomon\tCDS\t220000\t260000\t.\t+\t0\tID=cds-D1;Parent=rna-D1',
+                'NC_024459.2\tGnomon\tgene\t450000\t500000\t.\t+\t.\tID=gene-E;gene=LOCE',
+                'NC_024459.2\tGnomon\tmRNA\t450000\t500000\t.\t+\t.\tID=rna-E1;Parent=gene-E',
+                'NC_024459.2\tGnomon\tCDS\t450000\t500000\t.\t+\t0\tID=cds-E1;Parent=rna-E1',
+                'NC_024459.2\tGnomon\tgene\t550000\t600000\t.\t+\t.\tID=gene-F;gene=LOCF',
+                'NC_024459.2\tGnomon\tmRNA\t550000\t600000\t.\t+\t.\tID=rna-F1;Parent=gene-F',
+                'NC_024459.2\tGnomon\tCDS\t550000\t600000\t.\t+\t0\tID=cds-F1;Parent=rna-F1',
+                'NC_024459.2\tGnomon\tgene\t700000\t750000\t.\t-\t.\tID=gene-G;gene=LOCG',
+                'NC_024459.2\tGnomon\tmRNA\t700000\t750000\t.\t-\t.\tID=rna-G1;Parent=gene-G',
+                'NC_024459.2\tGnomon\tCDS\t700000\t750000\t.\t-\t0\tID=cds-G1;Parent=rna-G1',
+                'NC_024459.2\tGnomon\tgene\t1000000\t1100000\t.\t+\t.\tID=gene-H;gene=LOCH',
+                'NC_024459.2\tGnomon\tmRNA\t1000000\t1060000\t.\t+\t.\tID=rna-H1;Parent=gene-H',
+                'NC_024459.2\tGnomon\tmRNA\t1000000\t1080000\t.\t+\t.\tID=rna-H2;Parent=gene-H',
+                'NC_024459.2\tGnomon\tmRNA\t1040000\t1100000\t.\t+\t.\tID=rna-H3;Parent=gene-H',
+                'NC_024459.2\tGnomon\tCDS\t1000000\t1060000\t.\t+\t0\tID=cds-H1;Parent=rna-H1',
+                'NC_024459.2\tGnomon\tCDS\t1000000\t1080000\t.\t+\t0\tID=cds-H2;Parent=rna-H2',
+                'NC_024459.2\tGnomon\tCDS\t1040000\t1100000\t.\t+\t0\tID=cds-H3;Parent=rna-H3',
+                'NC_024459.2\tGnomon\tgene\t1500000\t1580000\t.\t-\t.\tID=gene-K;gene=LOCK',
+                'NC_024459.2\tGnomon\tmRNA\t1500000\t1560000\t.\t-\t.\tID=rna-K1;Parent=gene-K',
+                'NC_024459.2\tGnomon\tmRNA\t1520000\t1580000\t.\t-\t.\tID=rna-K2;Parent=gene-K',
+                'NC_024459.2\tGnomon\tCDS\t1500000\t1560000\t.\t-\t0\tID=cds-K1;Parent=rna-K1',
+                'NC_024459.2\tGnomon\tCDS\t1520000\t1580000\t.\t-\t0\tID=cds-K2;Parent=rna-K2',
+                'NC_024459.2\tGnomon\tgene\t2200000\t2250000\t.\t+\t.\tID=gene-M;gene=LOCM',
+                'NC_024459.2\tGnomon\tmRNA\t2200000\t2250000\t.\t+\t.\tID=rna-M1;Parent=gene-M',
+                'NC_024459.2\tGnomon\tCDS\t2200000\t2250000\t.\t+\t0\tID=cds-M1;Parent=rna-M1'
+            ].join('\n');
+
+            let parsedData = null;
+            let currentFileName = '';
+            let isProcessing = false;
+            let currentChromText = '';
+            let currentDensityText = '';
+
+            function makeProgressController(wrap, bar, stageEl, pctEl) {
+                return {
+                    show: function (stage) {
+                        wrap.style.display = 'block';
+                        this.set(0, stage);
+                    },
+                    set: function (pct, stage) {
+                        pct = Math.max(0, Math.min(100, Math.round(pct)));
+                        bar.style.width = pct + '%';
+                        pctEl.textContent = pct + '%';
+                        if (stage) stageEl.textContent = stage;
+                    },
+                    hide: function () {
+                        wrap.style.display = 'none';
+                    }
+                };
+            }
+
+            const importProgress = makeProgressController(
+                progressWrap, progressBar, progressStage, progressPct);
+            const calcProgress = makeProgressController(
+                calcProgressWrap, calcProgressBar, calcProgressStage, calcProgressPct);
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 8000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(s) {
+                if (s === null || s === undefined) return '';
+                return String(s).replace(/[&<>"]/g, function (m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            function extractKeyAttrs(str) {
+                const result = { ID: '', Parent: '' };
+                if (!str) return result;
+                const parts = str.split(';');
+                for (let i = 0; i < parts.length; i++) {
+                    const t = parts[i];
+                    const eq = t.indexOf('=');
+                    if (eq <= 0) continue;
+                    const k = t.slice(0, eq).trim();
+                    if (k === 'ID') {
+                        result.ID = t.slice(eq + 1).trim();
+                    } else if (k === 'Parent') {
+                        result.Parent = t.slice(eq + 1).trim();
+                    }
+                    if (result.ID && result.Parent) break;
+                }
+                return result;
+            }
+
+            function parseGFFAsync(text, onProgress, onDone) {
+                const chromosomes = new Map();
+                const featureSet = new Set();
+                const typesWithId = new Set();
+                const typesWithParent = new Set();
+                const idIndex = new Map();
+                let dataLines = 0;
+                let badLines = 0;
+
+                let pos = 0;
+                const totalLen = text.length;
+
+                function step() {
+                    const start = performance.now();
+                    let linesInChunk = 0;
+
+                    while (pos < totalLen) {
+                        let next = text.indexOf('\n', pos);
+                        if (next === -1) next = totalLen;
+                        let line = text.slice(pos, next);
+                        if (line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+                        pos = next + 1;
+                        linesInChunk++;
+
+                        if (!line.trim()) continue;
+                        if (line.charAt(0) === '#') continue;
+
+                        const cols = line.split('\t');
+                        if (cols.length < 9) { badLines++; continue; }
+
+                        const chromId = cols[0].trim();
+                        const type = cols[2].trim();
+                        const startPos = parseInt(cols[3], 10);
+                        const endPos = parseInt(cols[4], 10);
+                        const strand = cols[6].trim();
+
+                        if (!chromId || !type || isNaN(startPos) || isNaN(endPos)) {
+                            badLines++;
+                            continue;
+                        }
+
+                        const attrs = extractKeyAttrs(cols.slice(8).join('\t'));
+
+                        let chrom = chromosomes.get(chromId);
+                        if (!chrom) {
+                            chrom = { features: [], maxEnd: 0 };
+                            chromosomes.set(chromId, chrom);
+                        }
+
+                        const feature = {
+                            chrom: chromId,
+                            type: type,
+                            start: startPos,
+                            end: endPos,
+                            strand: strand,
+                            id: attrs.ID,
+                            parent: attrs.Parent
+                        };
+
+                        chrom.features.push(feature);
+                        if (endPos > chrom.maxEnd) chrom.maxEnd = endPos;
+                        featureSet.add(type);
+
+                        if (attrs.ID) typesWithId.add(type);
+                        if (attrs.Parent) typesWithParent.add(type);
+
+                        if (attrs.ID && !idIndex.has(attrs.ID)) {
+                            idIndex.set(attrs.ID, feature);
+                        }
+
+                        dataLines++;
+
+                        if (linesInChunk % 2000 === 0 && performance.now() - start > 16) break;
+                    }
+
+                    onProgress(Math.round(pos / totalLen * 100));
+
+                    if (pos < totalLen) {
+                        setTimeout(step, 0);
+                    } else {
+                        onDone({
+                            chromosomes: chromosomes,
+                            featureTypes: Array.from(featureSet).sort(),
+                            typesWithId: Array.from(typesWithId).sort(),
+                            typesWithParent: Array.from(typesWithParent).sort(),
+                            idIndex: idIndex,
+                            dataLines: dataLines,
+                            badLines: badLines
+                        });
+                    }
+                }
+
+                step();
+            }
+
+            function traceToTopLevel(feature, idIndex, topLevelType) {
+                if (!topLevelType) return null;
+                let cur = feature;
+                const visited = new Set();
+                let depth = 0;
+                while (depth++ < 200) {
+                    if (cur.type === topLevelType) return cur;
+                    const p = cur.parent;
+                    if (!p) return null;
+                    const pFirst = p.split(',')[0].trim();
+                    if (!pFirst || visited.has(pFirst)) return null;
+                    visited.add(pFirst);
+                    const next = idIndex.get(pFirst);
+                    if (!next) return null;
+                    cur = next;
+                }
+                return null;
+            }
+
+            function renderTopLevelSelect(parsed) {
+                topLevelSelect.innerHTML = '';
+                if (!parsed || !parsed.typesWithId || parsed.typesWithId.length === 0) {
+                    topLevelSelect.innerHTML = '<option value="">No types with ID</option>';
+                    return;
+                }
+                parsed.typesWithId.forEach(function (type) {
+                    const opt = document.createElement('option');
+                    opt.value = type;
+                    opt.textContent = type;
+                    topLevelSelect.appendChild(opt);
+                });
+                if (parsed.typesWithId.indexOf(DEFAULT_TOP_LEVEL) >= 0) {
+                    topLevelSelect.value = DEFAULT_TOP_LEVEL;
+                } else {
+                    topLevelSelect.value = parsed.typesWithId[0];
+                }
+            }
+
+            function renderFeatureGrid(parsed) {
+                featureGrid.innerHTML = '';
+                if (!parsed) {
+                    featureGrid.innerHTML = '<span class="empty-hint">Please import a GFF file first</span>';
+                    updateFeatureCount();
+                    return;
+                }
+                const topLevel = topLevelSelect.value;
+                const candidates = (parsed.typesWithParent || []).filter(function (t) {
+                    return t !== topLevel;
+                });
+
+                if (candidates.length === 0) {
+                    featureGrid.innerHTML = '<span class="empty-hint">No traceable feature types (must contain a Parent attribute)</span>';
+                    updateFeatureCount();
+                    return;
+                }
+
+                const defaultChecked = candidates.indexOf(DEFAULT_ANCHOR) >= 0
+                    ? [DEFAULT_ANCHOR]
+                    : [candidates[0]];
+
+                candidates.forEach(function (type) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = type;
+                    cb.className = 'feature-cb';
+                    cb.checked = defaultChecked.indexOf(type) >= 0;
+                    cb.addEventListener('change', updateFeatureCount);
+
+                    const span = document.createElement('span');
+                    span.textContent = type;
+
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    featureGrid.appendChild(label);
+                });
+
+                updateFeatureCount();
+            }
+
+            function updateFeatureCount() {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb');
+                let sel = 0;
+                boxes.forEach(function (b) { if (b.checked) sel++; });
+                featureCount.textContent = 'Selected ' + sel + ' / ' + boxes.length + ' types';
+                runBtn.disabled = isProcessing || !(parsedData && sel > 0 && topLevelSelect.value);
+            }
+
+            function getSelectedTypes() {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb:checked');
+                const arr = [];
+                boxes.forEach(function (b) { arr.push(b.value); });
+                return arr;
+            }
+
+            function setCheckedTypes(keys) {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb');
+                boxes.forEach(function (b) { b.checked = keys.indexOf(b.value) >= 0; });
+                updateFeatureCount();
+            }
+
+            function renderChromFeatureSelect(parsed) {
+                chromFeatureSelect.innerHTML = '<option value="">None (infer max end)</option>';
+                if (!parsed || !parsed.featureTypes) return;
+                parsed.featureTypes.forEach(function (type) {
+                    const opt = document.createElement('option');
+                    opt.value = type;
+                    opt.textContent = type;
+                    chromFeatureSelect.appendChild(opt);
+                });
+                chromFeatureSelect.value = '';
+            }
+
+            function finishLoading(parsed, filename) {
+                if (parsed.dataLines === 0) {
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ No valid GFF data lines were parsed (column 9 must contain attributes and at least one data line is required).', 'error');
+                    return;
+                }
+
+                parsedData = parsed;
+                currentFileName = filename || '';
+
+                renderTopLevelSelect(parsed);
+                renderFeatureGrid(parsed);
+                renderChromFeatureSelect(parsed);
+                clearResults();
+
+                let info = '✅ Parsed ' + parsed.chromosomes.size + ' chromosomes, ' +
+                    parsed.dataLines + ' records, ' + parsed.featureTypes.length + ' feature types';
+                if (parsed.typesWithId.length > 0) {
+                    info += '; ' + parsed.typesWithId.length + ' types with ID';
+                }
+                if (parsed.badLines > 0) {
+                    info += ' (skipped ' + parsed.badLines + ' malformed lines)';
+                }
+                showMsg(msgTip, info, 'success');
+                toast('Parsed ' + parsed.dataLines + ' records');
+
+                importProgress.set(100, 'Parse complete');
+                setTimeout(function () { importProgress.hide(); }, 500);
+            }
+
+            function loadDataFromText(text, filename) {
+                if (!text || !text.trim()) {
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ Content is empty. Please choose a file or paste GFF content.', 'error');
+                    return;
+                }
+                isProcessing = true;
+                runBtn.disabled = true;
+                importProgress.show('Parsing data...');
+
+                parseGFFAsync(
+                    text,
+                    function (pct) { importProgress.set(pct, 'Parsing data: ' + pct + '%'); },
+                    function (parsed) {
+                        isProcessing = false;
+                        finishLoading(parsed, filename);
+                    }
+                );
+            }
+
+            function loadFromFile() {
+                const file = gffFile.files && gffFile.files[0];
+                if (!file) {
+                    showMsg(msgTip, '❌ Please select a file.', 'error');
+                    return;
+                }
+                if (isProcessing) return;
+                isProcessing = true;
+                runBtn.disabled = true;
+                importProgress.show('Reading file...');
+
+                const reader = new FileReader();
+                reader.onprogress = function (e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round(e.loaded / e.total * 100);
+                        importProgress.set(pct, 'Reading file: ' + pct + '%');
+                    }
+                };
+                reader.onload = function (e) {
+                    importProgress.set(100, 'File read complete');
+                    isProcessing = false;
+                    setTimeout(function () { loadDataFromText(e.target.result, file.name); }, 60);
+                };
+                reader.onerror = function () {
+                    isProcessing = false;
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ Failed to read file.', 'error');
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                if (isProcessing) return;
+                const text = gffText.value;
+                if (!text.trim()) {
+                    showMsg(msgTip, '❌ Please paste GFF content.', 'error');
+                    return;
+                }
+                loadDataFromText(text, '');
+            }
+
+            function loadExample() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                gffText.value = EXAMPLE;
+                loadDataFromText(EXAMPLE, '');
+            }
+
+            function precheckTrace(selectedTypes, topLevelType, onProgress, onDone) {
+                const selSet = new Set(selectedTypes);
+                const anchorToRoot = new Map();
+                const failures = new Map();
+                let totalAnchors = 0;
+                let scanned = 0;
+
+                parsedData.chromosomes.forEach(function (chromData) {
+                    for (let k = 0; k < chromData.features.length; k++) {
+                        if (selSet.has(chromData.features[k].type)) totalAnchors++;
+                    }
+                });
+
+                const chromList = Array.from(parsedData.chromosomes.keys());
+                let chromIdx = 0;
+
+                function processNextChrom() {
+                    if (chromIdx >= chromList.length) {
+                        onDone({
+                            totalAnchors: totalAnchors,
+                            failures: Array.from(failures.values()),
+                            anchorToRoot: anchorToRoot
+                        });
+                        return;
+                    }
+
+                    const chromData = parsedData.chromosomes.get(chromList[chromIdx++]);
+
+                    for (let k = 0; k < chromData.features.length; k++) {
+                        const f = chromData.features[k];
+                        if (!selSet.has(f.type)) continue;
+
+                        scanned++;
+                        const root = traceToTopLevel(f, parsedData.idIndex, topLevelType);
+                        if (root) {
+                            anchorToRoot.set(f, root);
+                        } else {
+                            if (!failures.has(f.type)) {
+                                failures.set(f.type, {
+                                    anchorType: f.type,
+                                    count: 0,
+                                    sampleAnchorId: f.id || '(no ID)'
+                                });
+                            }
+                            failures.get(f.type).count++;
+                        }
+                    }
+
+                    const pct = totalAnchors === 0 ? 100 : Math.round(scanned / totalAnchors * 100);
+                    onProgress(pct);
+                    setTimeout(processNextChrom, 0);
+                }
+
+                processNextChrom();
+            }
+
+            function collectTopLevelsForChrom(chromId, chromData, selectedTypes,
+                                              strandMode, chromFeatureType, anchorToRoot) {
+                const selSet = new Set(selectedTypes);
+                const topMap = new Map();
+
+                for (let k = 0; k < chromData.features.length; k++) {
+                    const f = chromData.features[k];
+                    if (!selSet.has(f.type)) continue;
+                    if (chromFeatureType && f.type === chromFeatureType) continue;
+                    if (strandMode === 'plus' && f.strand !== '+') continue;
+                    if (strandMode === 'minus' && f.strand !== '-') continue;
+
+                    const root = anchorToRoot.get(f);
+                    if (!root) continue;
+                    if (root.chrom !== chromId) continue;
+
+                    const key = root.id
+                        ? ('ID:' + root.id)
+                        : ('POS:' + root.start + '-' + root.end + ':' + root.strand);
+
+                    if (!topMap.has(key)) {
+                        topMap.set(key, {
+                            start1: root.start,
+                            end1: root.end,
+                            strand: root.strand,
+                            anchorMidSum: 0,
+                            anchorMidCount: 0
+                        });
+                    }
+
+                    const entry = topMap.get(key);
+                    const anchorMid = Math.floor((f.start + f.end) / 2);
+                    entry.anchorMidSum += anchorMid;
+                    entry.anchorMidCount++;
+                }
+
+                const arr = [];
+                topMap.forEach(function (v) {
+                    v.avgAnchorMid = v.anchorMidCount > 0
+                        ? (v.anchorMidSum / v.anchorMidCount)
+                        : Math.floor((v.start1 + v.end1) / 2);
+                    arr.push(v);
+                });
+                arr.sort(function (a, b) { return a.start1 - b.start1; });
+                return arr;
+            }
+
+            function isCountedInWindow(g, ws, we, countMode) {
+                if (countMode === 'complete') {
+                    return g.start1 > ws && g.end1 <= we;
+                }
+                const isMinus = (g.strand === '-');
+                let pos;
+                if (countMode === 'anchorMid') {
+                    pos = g.avgAnchorMid;
+                } else if (countMode === 'mid') {
+                    pos = Math.floor((g.start1 + g.end1) / 2);
+                } else if (countMode === 'start') {
+                    pos = isMinus ? g.end1 : g.start1;
+                } else {
+                    pos = isMinus ? g.start1 : g.end1;
+                }
+                return pos > ws && pos <= we;
+            }
+
+            function computeGeneDensity() {
+                if (isProcessing) return;
+                if (!parsedData) {
+                    showMsg(runMsg, '❌ Please import a GFF file first.', 'error');
+                    return;
+                }
+
+                const topLevelType = topLevelSelect.value;
+                if (!topLevelType) {
+                    showMsg(runMsg, '❌ Please select a top-level feature first.', 'error');
+                    return;
+                }
+
+                const winSize = parseInt(winSizeInput.value, 10);
+                if (isNaN(winSize) || winSize < 1) {
+                    showMsg(runMsg, '❌ Invalid window size.', 'error');
+                    return;
+                }
+                let stepSize = parseInt(stepSizeInput.value, 10);
+                if (isNaN(stepSize) || stepSize < 1) stepSize = winSize;
+
+                const strandMode = strandModeSelect.value;
+                const countMode = countModeSelect.value;
+                const chromFeatureType = chromFeatureSelect.value;
+                const keepZero = outputZero.checked;
+
+                const selectedTypes = getSelectedTypes();
+                if (selectedTypes.length === 0) {
+                    showMsg(runMsg, '❌ Please select at least one feature type.', 'error');
+                    return;
+                }
+
+                isProcessing = true;
+                runBtn.disabled = true;
+                runMsg.innerHTML = '';
+                calcProgress.show('Pre-checking trace...');
+
+                precheckTrace(
+                    selectedTypes, topLevelType,
+                    function (pct) {
+                        calcProgress.set(pct, 'Pre-checking trace: ' + pct + '%');
+                    },
+                    function (result) {
+                        if (result.totalAnchors === 0) {
+                            calcProgress.hide();
+                            isProcessing = false;
+                            updateFeatureCount();
+                            showMsg(runMsg, '❌ The selected feature types have no anchors in the file.', 'error');
+                            toast('Pre-check failed');
+                            return;
+                        }
+                        if (result.failures.length > 0) {
+                            calcProgress.hide();
+                            isProcessing = false;
+                            updateFeatureCount();
+                            buildFailureMessage(result.failures, topLevelType);
+                            toast('Pre-check failed');
+                            return;
+                        }
+                        calcProgress.set(0, 'Computing...');
+                        runCompute(selectedTypes, topLevelType, result.anchorToRoot,
+                            winSize, stepSize, strandMode, countMode, chromFeatureType, keepZero);
+                    }
+                );
+            }
+
+            function buildFailureMessage(failures, topLevelType) {
+                const lines = [];
+                lines.push('❌ <strong>Pre-check failed: the following selected feature types cannot be traced to the top-level feature (<code>' +
+                    escapeHtml(topLevelType) + '</code>)</strong>');
+                failures.forEach(function (f) {
+                    lines.push(
+                        '&nbsp;&nbsp;· <code>' + escapeHtml(f.anchorType) + '</code>' +
+                        ' — ' + f.count + ' anchor(s) could not be traced' +
+                        ' (example ID: <code>' + escapeHtml(f.sampleAnchorId) + '</code>)'
+                    );
+                });
+                lines.push('<br>Please check that the GFF file contains complete <code>' +
+                    escapeHtml(topLevelType) + '</code> records with a continuous <code>Parent</code> chain, ' +
+                    'or switch to another top-level feature / feature type.');
+                runMsg.innerHTML = '<span class="error">' + lines.join('<br>') + '</span>';
+            }
+
+            function runCompute(selectedTypes, topLevelType, anchorToRoot,
+                                winSize, stepSize, strandMode, countMode,
+                                chromFeatureType, keepZero) {
+                const chromList = Array.from(parsedData.chromosomes.keys()).sort();
+                const chromRows = [];
+                const densityRows = [];
+                let doneChrom = 0;
+                const totalChrom = chromList.length;
+
+                function processNextChrom() {
+                    if (doneChrom >= totalChrom) {
+                        calcProgress.set(100, 'Computation complete');
+                        setTimeout(function () { calcProgress.hide(); }, 500);
+                        isProcessing = false;
+                        runBtn.disabled = false;
+                        renderResults(chromRows, densityRows, winSize, stepSize,
+                            countMode, topLevelType);
+                        return;
+                    }
+
+                    const chromId = chromList[doneChrom];
+                    const chromData = parsedData.chromosomes.get(chromId);
+
+                    let chromLen;
+                    if (chromFeatureType) {
+                        let maxRegion = 0;
+                        for (let k = 0; k < chromData.features.length; k++) {
+                            const f = chromData.features[k];
+                            if (f.type === chromFeatureType && f.end > maxRegion) maxRegion = f.end;
+                        }
+                        chromLen = maxRegion > 0 ? maxRegion : chromData.maxEnd;
+                    } else {
+                        chromLen = chromData.maxEnd;
+                    }
+
+                    if (chromLen <= 0) {
+                        doneChrom++;
+                        setTimeout(processNextChrom, 0);
+                        return;
+                    }
+
+                    chromRows.push({ chromId: chromId, length: chromLen });
+
+                    const tops = collectTopLevelsForChrom(
+                        chromId, chromData, selectedTypes, strandMode,
+                        chromFeatureType, anchorToRoot
+                    );
+
+                    for (let ws = 0; ws < chromLen; ws += stepSize) {
+                        let we = ws + winSize;
+                        if (we >= chromLen) we = chromLen;
+
+                        let count = 0;
+                        for (let k = 0; k < tops.length; k++) {
+                            const g = tops[k];
+                            if (g.start1 > we) break;
+                            if (isCountedInWindow(g, ws, we, countMode)) count++;
+                        }
+
+                        if (count > 0 || keepZero) {
+                            densityRows.push({
+                                chromId: chromId, start: ws, end: we, count: count
+                            });
+                        }
+
+                        if (we >= chromLen) break;
+                    }
+
+                    doneChrom++;
+                    calcProgress.set(Math.round(doneChrom / totalChrom * 100),
+                        'Computing (' + doneChrom + '/' + totalChrom + ')');
+                    setTimeout(processNextChrom, 0);
+                }
+
+                processNextChrom();
+            }
+
+            function renderResults(chromRows, densityRows, winSize, stepSize, countMode, topLevelType) {
+                chromHeadEl.innerHTML = '<tr><th>Chromosome</th><th>Length</th></tr>';
+                let tbody = '';
+                chromRows.forEach(function (r) {
+                    tbody += '<tr><td style="text-align:left;">' + escapeHtml(r.chromId) +
+                        '</td><td>' + r.length + '</td></tr>';
+                });
+                chromBodyEl.innerHTML = tbody;
+                chromArea.style.display = 'block';
+                emptyChrom.style.display = 'none';
+                copyChromBtn.disabled = false;
+                exportChromBtn.disabled = false;
+                chromMsg.innerHTML = '<span class="success">' + chromRows.length + ' chromosome(s)</span>';
+
+                const chromLines = ['Chromosome\tLength'];
+                chromRows.forEach(function (r) { chromLines.push(r.chromId + '\t' + r.length); });
+                currentChromText = chromLines.join('\n') + '\n';
+
+                densityHeadEl.innerHTML = '<tr><th>Chromosome</th><th>Start</th><th>End</th><th>Count</th></tr>';
+                const maxShow = 2000;
+                let dTbody = '';
+                const showCount = Math.min(densityRows.length, maxShow);
+                for (let i = 0; i < showCount; i++) {
+                    const r = densityRows[i];
+                    dTbody += '<tr><td style="text-align:left;">' + escapeHtml(r.chromId) +
+                        '</td><td>' + r.start + '</td><td>' + r.end +
+                        '</td><td>' + r.count + '</td></tr>';
+                }
+                if (densityRows.length > maxShow) {
+                    dTbody += '<tr><td colspan="4" style="color:#999;text-align:center;">... showing first ' +
+                        maxShow + ' rows only; copy or export for the full data</td></tr>';
+                }
+                densityBodyEl.innerHTML = dTbody;
+                densityArea.style.display = 'block';
+                emptyDensity.style.display = 'none';
+                copyDensityBtn.disabled = densityRows.length === 0;
+                exportDensityBtn.disabled = densityRows.length === 0;
+
+                const modeLabels = {
+                    mid: 'by midpoint',
+                    anchorMid: 'by mean anchor midpoint',
+                    start: 'by start position',
+                    end: 'by end position',
+                    complete: 'fully inside window'
+                };
+                densityStats.textContent = densityRows.length + ' windows (window=' +
+                    winSize + ' bp, step=' + stepSize + ' bp, top-level=' + topLevelType +
+                    ', counting rule: ' + (modeLabels[countMode] || countMode) +
+                    ', half-open (start, end])';
+
+                const dLines = ['Chromosome\tStart\tEnd\tCount'];
+                densityRows.forEach(function (r) {
+                    dLines.push(r.chromId + '\t' + r.start + '\t' + r.end + '\t' + r.count);
+                });
+                currentDensityText = dLines.join('\n') + '\n';
+
+                densityMsg.innerHTML = '<span class="success">' + densityRows.length + ' window(s)</span>';
+                showMsg(runMsg, '✅ Gene density computation complete', 'success');
+                toast('Gene density computation complete');
+            }
+
+            function clearResults() {
+                chromArea.style.display = 'none';
+                emptyChrom.style.display = 'block';
+                chromHeadEl.innerHTML = '';
+                chromBodyEl.innerHTML = '';
+                copyChromBtn.disabled = true;
+                exportChromBtn.disabled = true;
+                chromMsg.innerHTML = '';
+
+                densityArea.style.display = 'none';
+                emptyDensity.style.display = 'block';
+                densityHeadEl.innerHTML = '';
+                densityBodyEl.innerHTML = '';
+                copyDensityBtn.disabled = true;
+                exportDensityBtn.disabled = true;
+                densityMsg.innerHTML = '';
+                densityStats.textContent = '';
+
+                currentChromText = '';
+                currentDensityText = '';
+            }
+
+            function copyText(text, msgEl) {
+                if (!text) { showMsg(msgEl, '❌ Nothing to copy', 'error'); return; }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(msgEl, '✅ Copied', 'success');
+                        toast('Copied');
+                    }).catch(function () { fallbackCopy(text, msgEl); });
+                } else {
+                    fallbackCopy(text, msgEl);
+                }
+            }
+
+            function fallbackCopy(text, msgEl) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(msgEl, '✅ Copied', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(msgEl, '❌ Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadText(text, defaultName) {
+                if (!text) { showMsg(runMsg, '❌ Nothing to export', 'error'); return; }
+                let prefix = '';
+                if (currentFileName) {
+                    prefix = currentFileName.replace(/\.(gff3?|gtf|txt)$/i, '') + '_';
+                }
+                const blob = new Blob([text], { type: 'text/tab-separated-values;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = prefix + defaultName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                toast('Exported');
+            }
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    gffFile.disabled = false;
+                    gffText.disabled = true;
+                    gffText.value = '';
+                } else {
+                    gffFile.disabled = true;
+                    gffFile.value = '';
+                    gffText.disabled = false;
+                }
+
+                parsedData = null;
+                currentFileName = '';
+                topLevelSelect.innerHTML = '<option value="gene" selected>gene</option>';
+                featureGrid.innerHTML = '<span class="empty-hint">Please import a GFF file first</span>';
+                featureCount.textContent = '0';
+                chromFeatureSelect.innerHTML = '<option value="">None (infer max end)</option>';
+                runBtn.disabled = true;
+                msgTip.innerHTML = '';
+                runMsg.innerHTML = '';
+                importProgress.hide();
+                calcProgress.hide();
+                clearResults();
+            };
+
+            gffFile.addEventListener('change', function (e) {
+                if (!e.target.files || e.target.files.length === 0) return;
+                loadFromFile();
+            });
+
+            gffText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!gffFile.files || gffFile.files.length === 0) {
+                        if (gffText.value.trim()) { loadFromText(); return; }
+                        showMsg(msgTip, '❌ Please choose a file or paste data.', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            topLevelSelect.addEventListener('change', function () {
+                if (!parsedData) return;
+                renderFeatureGrid(parsedData);
+                clearResults();
+                runMsg.innerHTML = '';
+            });
+
+            selectAllFeatureBtn.addEventListener('click', function () {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = true; });
+                updateFeatureCount();
+            });
+
+            selectNoneFeatureBtn.addEventListener('click', function () {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = false; });
+                updateFeatureCount();
+            });
+
+            selectDefaultFeatureBtn.addEventListener('click', function () {
+                if (!parsedData) return;
+                const topLevel = topLevelSelect.value;
+                const candidates = parsedData.typesWithParent.filter(function (t) {
+                    return t !== topLevel;
+                });
+                if (candidates.length === 0) return;
+                const keys = candidates.indexOf(DEFAULT_ANCHOR) >= 0
+                    ? [DEFAULT_ANCHOR]
+                    : [candidates[0]];
+                setCheckedTypes(keys);
+            });
+
+            runBtn.addEventListener('click', computeGeneDensity);
+
+            copyChromBtn.addEventListener('click', function () {
+                copyText(currentChromText, chromMsg);
+            });
+            exportChromBtn.addEventListener('click', function () {
+                downloadText(currentChromText, 'chrom_lengths.tsv');
+            });
+            copyDensityBtn.addEventListener('click', function () {
+                copyText(currentDensityText, densityMsg);
+            });
+            exportDensityBtn.addEventListener('click', function () {
+                downloadText(currentDensityText, 'window_gene_counts.tsv');
+            });
+
+            switchInput();
+            emptyChrom.style.display = 'block';
+            emptyDensity.style.display = 'block';
+            chromArea.style.display = 'none';
+            densityArea.style.display = 'none';
+            runBtn.disabled = true;
+            copyChromBtn.disabled = true;
+            exportChromBtn.disabled = true;
+            copyDensityBtn.disabled = true;
+            exportDensityBtn.disabled = true;
+        })();
+    </script>
+</body>
+</html>

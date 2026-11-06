@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GFF文件筛选工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>GFF文件筛选工具</h2>
+            <p>按染色体和特征类型筛选GFF文件，仅保留指定染色体上指定类型的记录，导出精简后的GFF文件。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入GFF文件</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="gffFile" accept=".gff,.gff3,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="gffText" placeholder="粘贴GFF3格式内容" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 本工具仅支持GFF3格式。如您的文件为GTF格式、或第9列字段冗余过大导致解析缓慢，请先使用
+                <a href="043.GFF_simplify.html" target="_blank">GFF/GTF文件简化工具</a>
+                进行简化/转换后再导入。
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">导入并解析</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="progressWrap" class="result-item" style="display:none;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="progressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="progressStage">准备中...</span>
+                    <span id="progressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：选择染色体与特征</div>
+
+            <div class="filter-box" style="margin-bottom:12px; gap:12px;">
+                <label><input type="checkbox" id="keepHeader" checked> 保留 <code>#</code> 开头的注释行</label>
+            </div>
+
+            <div style="margin:12px 0 8px; font-weight:500; color:#1f4068;">
+                染色体 <span id="chromCount" class="tip-text" style="margin-left:8px; font-weight:400;">0 条</span>
+            </div>
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="selectAllChromBtn">全选</button>
+                <button class="btn btn-sm" id="selectNoneChromBtn">取消全选</button>
+            </div>
+            <div id="chromGrid" class="result-item"
+                 style="display:flex; flex-wrap:wrap; gap:8px 20px; max-height:200px; overflow-y:auto; padding:12px;">
+                <span class="empty-hint">请先导入GFF文件</span>
+            </div>
+
+            <div style="margin:16px 0 8px; font-weight:500; color:#1f4068;">
+                特征类型 <span id="featureCount" class="tip-text" style="margin-left:8px; font-weight:400;">0 种</span>
+            </div>
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="selectAllFeatureBtn">全选</button>
+                <button class="btn btn-sm" id="selectNoneFeatureBtn">取消全选</button>
+            </div>
+            <div id="featureGrid" class="result-item"
+                 style="display:flex; flex-wrap:wrap; gap:8px 20px; max-height:240px; overflow-y:auto; padding:12px;">
+                <span class="empty-hint">请先导入GFF文件</span>
+            </div>
+
+            <div style="margin-top:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <button class="btn" id="runBtn" disabled>执行筛选</button>
+                <span id="runMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+
+            <div id="filterProgressWrap" class="result-item" style="display:none; margin-top:10px;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="filterProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="filterProgressStage">准备中...</span>
+                    <span id="filterProgressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：筛选结果</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyBtn" disabled>复制结果</button>
+                <button class="btn" id="downloadBtn" disabled>导出GFF文件</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    结果预览 <span id="resultStats" style="font-weight:400; color:#6c757d; font-size:0.85rem;"></span>
+                </div>
+                <div class="result-item" id="resultBox"
+                     style="max-height:500px; overflow:auto; white-space:pre-wrap; word-break:break-all; font-family:Consolas,monospace; font-size:13px; line-height:1.7;"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">执行筛选后，结果将在此处显示</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const gffFile = document.getElementById('gffFile');
+            const gffText = document.getElementById('gffText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const progressWrap = document.getElementById('progressWrap');
+            const progressBar = document.getElementById('progressBar');
+            const progressStage = document.getElementById('progressStage');
+            const progressPct = document.getElementById('progressPct');
+
+            const keepHeader = document.getElementById('keepHeader');
+
+            const chromGrid = document.getElementById('chromGrid');
+            const chromCount = document.getElementById('chromCount');
+            const selectAllChromBtn = document.getElementById('selectAllChromBtn');
+            const selectNoneChromBtn = document.getElementById('selectNoneChromBtn');
+
+            const featureGrid = document.getElementById('featureGrid');
+            const featureCount = document.getElementById('featureCount');
+            const selectAllFeatureBtn = document.getElementById('selectAllFeatureBtn');
+            const selectNoneFeatureBtn = document.getElementById('selectNoneFeatureBtn');
+
+            const runBtn = document.getElementById('runBtn');
+            const runMsg = document.getElementById('runMsg');
+
+            const filterProgressWrap = document.getElementById('filterProgressWrap');
+            const filterProgressBar = document.getElementById('filterProgressBar');
+            const filterProgressStage = document.getElementById('filterProgressStage');
+            const filterProgressPct = document.getElementById('filterProgressPct');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultBox = document.getElementById('resultBox');
+            const resultStats = document.getElementById('resultStats');
+            const copyBtn = document.getElementById('copyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            const EXAMPLE = [
+                '##gff-version 3',
+                '#!gff-spec-version 1.21',
+                '#!processor NCBI annotwriter',
+                '##sequence-region NC_024459.2 1 3000000',
+                'NC_024459.2\tRefSeq\tregion\t1\t3000000\t.\t+\t.\tID=NC_024459.2:1..3000000',
+                'NC_024459.2\tGnomon\tgene\t10000\t50000\t.\t+\t.\tID=gene-A;gene=LOCA',
+                'NC_024459.2\tGnomon\tmRNA\t10000\t50000\t.\t+\t.\tID=rna-A1;Parent=gene-A',
+                'NC_024459.2\tGnomon\tCDS\t12000\t20000\t.\t+\t0\tID=cds-A1;Parent=rna-A1',
+                'NC_024459.2\tGnomon\tCDS\t30000\t48000\t.\t+\t0\tID=cds-A2;Parent=rna-A1',
+                'NC_024459.2\tGnomon\texon\t12000\t20000\t.\t+\t.\tID=exon-A1-1;Parent=rna-A1',
+                'NC_024459.2\tGnomon\texon\t30000\t48000\t.\t+\t.\tID=exon-A1-2;Parent=rna-A1',
+                'NC_024459.2\tGnomon\tgene\t80000\t120000\t.\t+\t.\tID=gene-B;gene=LOCB',
+                'NC_024459.2\tGnomon\tmRNA\t80000\t120000\t.\t+\t.\tID=rna-B1;Parent=gene-B',
+                'NC_024459.2\tGnomon\tCDS\t80000\t120000\t.\t+\t0\tID=cds-B1;Parent=rna-B1',
+                'NC_024459.2\tGnomon\tgene\t150000\t200000\t.\t-\t.\tID=gene-C;gene=LOCC',
+                'NC_024459.2\tGnomon\tmRNA\t150000\t200000\t.\t-\t.\tID=rna-C1;Parent=gene-C',
+                'NC_024459.2\tGnomon\tCDS\t150000\t200000\t.\t-\t0\tID=cds-C1;Parent=rna-C1',
+                'NC_024459.2\tGnomon\tgene\t220000\t260000\t.\t+\t.\tID=gene-D;gene=LOCD',
+                'NC_024459.2\tGnomon\tmRNA\t220000\t260000\t.\t+\t.\tID=rna-D1;Parent=gene-D',
+                'NC_024459.2\tGnomon\tCDS\t220000\t260000\t.\t+\t0\tID=cds-D1;Parent=rna-D1',
+                '###',
+                'NC_024541.2\tRefSeq\tregion\t1\t2000000\t.\t+\t.\tID=NC_024541.2:1..2000000',
+                'NC_024541.2\tGnomon\tgene\t5000\t40000\t.\t+\t.\tID=gene-X;gene=LOCX',
+                'NC_024541.2\tGnomon\tmRNA\t5000\t40000\t.\t+\t.\tID=rna-X1;Parent=gene-X',
+                'NC_024541.2\tGnomon\tCDS\t5000\t40000\t.\t+\t0\tID=cds-X1;Parent=rna-X1',
+                'NC_024541.2\tGnomon\tgene\t300000\t350000\t.\t-\t.\tID=gene-Y;gene=LOCY',
+                'NC_024541.2\tGnomon\tmRNA\t300000\t350000\t.\t-\t.\tID=rna-Y1;Parent=gene-Y',
+                'NC_024541.2\tGnomon\tCDS\t300000\t350000\t.\t-\t0\tID=cds-Y1;Parent=rna-Y1'
+            ].join('\n');
+
+            let parsedData = null;
+            let currentFileName = '';
+            let isProcessing = false;
+            let currentResultText = '';
+
+            function makeProgressController(wrap, bar, stageEl, pctEl) {
+                return {
+                    show: function (stage) {
+                        wrap.style.display = 'block';
+                        this.set(0, stage);
+                    },
+                    set: function (pct, stage) {
+                        pct = Math.max(0, Math.min(100, Math.round(pct)));
+                        bar.style.width = pct + '%';
+                        pctEl.textContent = pct + '%';
+                        if (stage) stageEl.textContent = stage;
+                    },
+                    hide: function () {
+                        wrap.style.display = 'none';
+                    }
+                };
+            }
+
+            const importProgress = makeProgressController(
+                progressWrap, progressBar, progressStage, progressPct);
+            const filterProgress = makeProgressController(
+                filterProgressWrap, filterProgressBar, filterProgressStage, filterProgressPct);
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 8000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseGFFAsync(text, onProgress, onDone) {
+                const items = [];
+                const chromSet = new Set();
+                const featureSet = new Set();
+                let headerCount = 0;
+                let recordCount = 0;
+                let badLines = 0;
+
+                let pos = 0;
+                const totalLen = text.length;
+
+                function step() {
+                    const start = performance.now();
+                    let linesInChunk = 0;
+
+                    while (pos < totalLen) {
+                        let next = text.indexOf('\n', pos);
+                        if (next === -1) next = totalLen;
+                        let line = text.slice(pos, next);
+                        if (line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+                        pos = next + 1;
+                        linesInChunk++;
+
+                        if (!line.trim()) continue;
+
+                        if (line.charAt(0) === '#') {
+                            items.push({ kind: 'header', raw: line });
+                            headerCount++;
+                            continue;
+                        }
+
+                        const cols = line.split('\t');
+                        if (cols.length < 9) { badLines++; continue; }
+
+                        const chromId = cols[0].trim();
+                        const type = cols[2].trim();
+
+                        if (!chromId || !type) { badLines++; continue; }
+
+                        chromSet.add(chromId);
+                        featureSet.add(type);
+                        items.push({ kind: 'record', chrom: chromId, type: type, raw: line });
+                        recordCount++;
+
+                        if (linesInChunk % 2000 === 0 && performance.now() - start > 16) break;
+                    }
+
+                    onProgress(Math.round(pos / totalLen * 100));
+
+                    if (pos < totalLen) {
+                        setTimeout(step, 0);
+                    } else {
+                        onDone({
+                            items: items,
+                            chromosomes: Array.from(chromSet).sort(),
+                            featureTypes: Array.from(featureSet).sort(),
+                            headerCount: headerCount,
+                            recordCount: recordCount,
+                            badLines: badLines
+                        });
+                    }
+                }
+
+                step();
+            }
+
+            function renderChromGrid(parsed) {
+                chromGrid.innerHTML = '';
+                if (!parsed || parsed.chromosomes.length === 0) {
+                    chromGrid.innerHTML = '<span class="empty-hint">未解析到任何染色体</span>';
+                    updateCounts();
+                    return;
+                }
+                parsed.chromosomes.forEach(function (chrom) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = chrom;
+                    cb.className = 'chrom-cb';
+                    cb.checked = true;
+                    cb.addEventListener('change', updateCounts);
+
+                    const span = document.createElement('span');
+                    span.textContent = chrom;
+
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    chromGrid.appendChild(label);
+                });
+                updateCounts();
+            }
+
+            function renderFeatureGrid(parsed) {
+                featureGrid.innerHTML = '';
+                if (!parsed || parsed.featureTypes.length === 0) {
+                    featureGrid.innerHTML = '<span class="empty-hint">未解析到任何特征类型</span>';
+                    updateCounts();
+                    return;
+                }
+                parsed.featureTypes.forEach(function (type) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = type;
+                    cb.className = 'feature-cb';
+                    cb.checked = true;
+                    cb.addEventListener('change', updateCounts);
+
+                    const span = document.createElement('span');
+                    span.textContent = type;
+
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    featureGrid.appendChild(label);
+                });
+                updateCounts();
+            }
+
+            function updateCounts() {
+                const chromBoxes = chromGrid.querySelectorAll('input.chrom-cb');
+                const featureBoxes = featureGrid.querySelectorAll('input.feature-cb');
+
+                let chromSel = 0;
+                chromBoxes.forEach(function (b) { if (b.checked) chromSel++; });
+                let featSel = 0;
+                featureBoxes.forEach(function (b) { if (b.checked) featSel++; });
+
+                chromCount.textContent = '已选 ' + chromSel + ' / 共 ' + chromBoxes.length + ' 条';
+                featureCount.textContent = '已选 ' + featSel + ' / 共 ' + featureBoxes.length + ' 种';
+
+                runBtn.disabled = isProcessing || !(parsedData && chromSel > 0 && featSel > 0);
+            }
+
+            function getSelectedChroms() {
+                const boxes = chromGrid.querySelectorAll('input.chrom-cb:checked');
+                const arr = [];
+                boxes.forEach(function (b) { arr.push(b.value); });
+                return arr;
+            }
+
+            function getSelectedFeatures() {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb:checked');
+                const arr = [];
+                boxes.forEach(function (b) { arr.push(b.value); });
+                return arr;
+            }
+
+            function finishLoading(parsed, filename) {
+                if (parsed.recordCount === 0) {
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ 未解析到有效GFF数据行（需至少有1条数据行）。', 'error');
+                    return;
+                }
+
+                parsedData = parsed;
+                currentFileName = filename || '';
+
+                renderChromGrid(parsed);
+                renderFeatureGrid(parsed);
+                clearResults();
+
+                let info = '✅ 已解析 ' + parsed.chromosomes.length + ' 条染色体、' +
+                    parsed.recordCount + ' 行记录，' + parsed.featureTypes.length + ' 种特征类型';
+                if (parsed.headerCount > 0) {
+                    info += '，' + parsed.headerCount + ' 条注释行';
+                }
+                if (parsed.badLines > 0) {
+                    info += '（跳过 ' + parsed.badLines + ' 行异常）';
+                }
+                showMsg(msgTip, info, 'success');
+                toast('已解析 ' + parsed.recordCount + ' 行记录');
+
+                importProgress.set(100, '解析完成');
+                setTimeout(function () { importProgress.hide(); }, 500);
+            }
+
+            function loadDataFromText(text, filename) {
+                if (!text || !text.trim()) {
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ 内容为空，请选择文件或粘贴GFF内容。', 'error');
+                    return;
+                }
+                isProcessing = true;
+                runBtn.disabled = true;
+                importProgress.show('解析数据...');
+
+                parseGFFAsync(
+                    text,
+                    function (pct) { importProgress.set(pct, '解析数据: ' + pct + '%'); },
+                    function (parsed) {
+                        isProcessing = false;
+                        finishLoading(parsed, filename);
+                    }
+                );
+            }
+
+            function loadFromFile() {
+                const file = gffFile.files && gffFile.files[0];
+                if (!file) {
+                    showMsg(msgTip, '❌ 请选择文件。', 'error');
+                    return;
+                }
+                if (isProcessing) return;
+                isProcessing = true;
+                runBtn.disabled = true;
+                importProgress.show('读取文件...');
+
+                const reader = new FileReader();
+                reader.onprogress = function (e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round(e.loaded / e.total * 100);
+                        importProgress.set(pct, '读取文件: ' + pct + '%');
+                    }
+                };
+                reader.onload = function (e) {
+                    importProgress.set(100, '文件读取完成');
+                    isProcessing = false;
+                    setTimeout(function () { loadDataFromText(e.target.result, file.name); }, 60);
+                };
+                reader.onerror = function () {
+                    isProcessing = false;
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ 文件读取失败。', 'error');
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                if (isProcessing) return;
+                const text = gffText.value;
+                if (!text.trim()) {
+                    showMsg(msgTip, '❌ 请粘贴GFF内容。', 'error');
+                    return;
+                }
+                loadDataFromText(text, '');
+            }
+
+            function loadExample() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                gffText.value = EXAMPLE;
+                loadDataFromText(EXAMPLE, '');
+            }
+
+            function runFilter() {
+                if (isProcessing) return;
+                if (!parsedData) {
+                    showMsg(runMsg, '❌ 请先导入GFF文件。', 'error');
+                    return;
+                }
+
+                const selChroms = new Set(getSelectedChroms());
+                const selFeatures = new Set(getSelectedFeatures());
+
+                if (selChroms.size === 0) {
+                    showMsg(runMsg, '❌ 请至少选择一条染色体。', 'error');
+                    return;
+                }
+                if (selFeatures.size === 0) {
+                    showMsg(runMsg, '❌ 请至少选择一种特征类型。', 'error');
+                    return;
+                }
+
+                const withHeader = keepHeader.checked;
+                const items = parsedData.items;
+                const total = items.length;
+
+                const outLines = [];
+                let keptRecords = 0;
+                let keptHeaders = 0;
+                let idx = 0;
+
+                isProcessing = true;
+                runBtn.disabled = true;
+                runMsg.innerHTML = '';
+                filterProgress.show('筛选中...');
+
+                function step() {
+                    const start = performance.now();
+                    let n = 0;
+
+                    while (idx < total) {
+                        const item = items[idx++];
+                        n++;
+
+                        if (item.kind === 'header') {
+                            if (withHeader) {
+                                outLines.push(item.raw);
+                                keptHeaders++;
+                            }
+                            continue;
+                        }
+
+                        if (selChroms.has(item.chrom) && selFeatures.has(item.type)) {
+                            outLines.push(item.raw);
+                            keptRecords++;
+                        }
+
+                        if (n % 2000 === 0 && performance.now() - start > 16) break;
+                    }
+
+                    const pct = total === 0 ? 100 : Math.round(idx / total * 100);
+                    filterProgress.set(pct, '筛选中: ' + pct + '%');
+
+                    if (idx < total) {
+                        setTimeout(step, 0);
+                    } else {
+                        filterProgress.set(100, '筛选完成');
+                        setTimeout(function () { filterProgress.hide(); }, 500);
+                        isProcessing = false;
+                        updateCounts();
+                        finishFilter(outLines, keptRecords, parsedData.recordCount,
+                            keptHeaders);
+                    }
+                }
+
+                step();
+            }
+
+            function finishFilter(outLines, keptRecords, totalRecords, keptHeaders) {
+                if (keptRecords === 0) {
+                    clearResults();
+                    showMsg(runMsg, '⚠️ 按当前条件筛选后没有任何记录被保留。', 'warn');
+                    toast('结果为空');
+                    return;
+                }
+
+                currentResultText = outLines.join('\n') + '\n';
+                renderResult(outLines, keptRecords, totalRecords, keptHeaders);
+
+                let detail = '✅ 筛选完成：保留 ' + keptRecords + ' / ' + totalRecords + ' 行记录';
+                if (keptHeaders > 0) detail += '，含 ' + keptHeaders + ' 条注释行（保持原位置）';
+                showMsg(runMsg, detail, 'success');
+                toast('筛选完成');
+            }
+
+            function renderResult(outLines, keptRecords, totalRecords, keptHeaders) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                const maxShow = 1000;
+                let preview = outLines.slice(0, maxShow).join('\n');
+                if (outLines.length > maxShow) {
+                    preview += '\n...（预览已截断，复制或导出可获取完整内容）';
+                }
+                resultBox.textContent = preview;
+
+                resultStats.textContent = '（保留 ' + keptRecords + ' / ' + totalRecords + ' 行记录' +
+                    (keptHeaders > 0 ? '，含 ' + keptHeaders + ' 条注释行' : '') + '）';
+
+                copyBtn.disabled = false;
+                downloadBtn.disabled = false;
+                resultMsg.innerHTML = '';
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultBox.textContent = '';
+                resultStats.textContent = '';
+                copyBtn.disabled = true;
+                downloadBtn.disabled = true;
+                resultMsg.innerHTML = '';
+                currentResultText = '';
+            }
+
+            function copyText(text, msgEl) {
+                if (!text) { showMsg(msgEl, '❌ 无内容可复制', 'error'); return; }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(msgEl, '✅ 已复制', 'success');
+                        toast('已复制');
+                    }).catch(function () { fallbackCopy(text, msgEl); });
+                } else {
+                    fallbackCopy(text, msgEl);
+                }
+            }
+
+            function fallbackCopy(text, msgEl) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(msgEl, '✅ 已复制', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(msgEl, '❌ 复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '❌ 无结果可导出', 'error');
+                    return;
+                }
+                let filename = 'filtered.gff';
+                if (currentFileName) {
+                    filename = 'filtered_' + currentFileName.replace(/\.(gff3?|gtf|txt)$/i, '') + '.gff';
+                }
+                const blob = new Blob([currentResultText], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '✅ 已导出 ' + filename, 'success');
+                toast('已导出');
+            }
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    gffFile.disabled = false;
+                    gffText.disabled = true;
+                    gffText.value = '';
+                } else {
+                    gffFile.disabled = true;
+                    gffFile.value = '';
+                    gffText.disabled = false;
+                }
+
+                parsedData = null;
+                currentFileName = '';
+                chromGrid.innerHTML = '<span class="empty-hint">请先导入GFF文件</span>';
+                featureGrid.innerHTML = '<span class="empty-hint">请先导入GFF文件</span>';
+                chromCount.textContent = '0 条';
+                featureCount.textContent = '0 种';
+                runBtn.disabled = true;
+                msgTip.innerHTML = '';
+                runMsg.innerHTML = '';
+                importProgress.hide();
+                filterProgress.hide();
+                clearResults();
+            };
+
+            gffFile.addEventListener('change', function (e) {
+                if (!e.target.files || e.target.files.length === 0) return;
+                loadFromFile();
+            });
+
+            gffText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!gffFile.files || gffFile.files.length === 0) {
+                        if (gffText.value.trim()) { loadFromText(); return; }
+                        showMsg(msgTip, '❌ 请选择文件或粘贴数据。', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            selectAllChromBtn.addEventListener('click', function () {
+                const boxes = chromGrid.querySelectorAll('input.chrom-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = true; });
+                updateCounts();
+            });
+
+            selectNoneChromBtn.addEventListener('click', function () {
+                const boxes = chromGrid.querySelectorAll('input.chrom-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = false; });
+                updateCounts();
+            });
+
+            selectAllFeatureBtn.addEventListener('click', function () {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = true; });
+                updateCounts();
+            });
+
+            selectNoneFeatureBtn.addEventListener('click', function () {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = false; });
+                updateCounts();
+            });
+
+            runBtn.addEventListener('click', runFilter);
+            copyBtn.addEventListener('click', function () { copyText(currentResultText, resultMsg); });
+            downloadBtn.addEventListener('click', downloadResult);
+
+            switchInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+            runBtn.disabled = true;
+            copyBtn.disabled = true;
+            downloadBtn.disabled = true;
+        })();
+    </script>
+</body>
+</html>

@@ -81,6 +81,23 @@ const toolConfig = [
     link: "en/041.FASTA_Table_converter.html"
 },
 
+{
+    toolName: "GFF/GTF Simplification Tool",
+    toolDesc: "Extract only the specified fields from the attribute column of a GFF/GTF file to reduce file size.",
+    link: "en/043.GFF_simplify.html"
+},
+
+{
+    toolName: "Gene Density Calculator",
+    toolDesc: "Compute gene density from a GFF annotation file using a sliding-window approach.",
+    link: "en/044.GFF_gene_density.html"
+},
+
+{
+    toolName: "GFF Filter Tool",
+    toolDesc: "Filter a GFF file by chromosome and feature type; keep only the records you need and export a trimmed GFF file.",
+    link: "en/045.GFF_filter.html"
+},
         ]
     },
     {

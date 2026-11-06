@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GFF Filter Tool - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>GFF Filter Tool</h2>
+            <p>Filter a GFF file by chromosome and feature type; keep only the records you need and export a trimmed GFF file.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import GFF File</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="gffFile" accept=".gff,.gff3,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="gffText" placeholder="Paste GFF3 content here" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> This tool supports GFF3 only. If your file is in GTF format, or column 9 is too verbose and parses slowly, please use
+                <a href="043.GFF_simplify.html" target="_blank">GFF/GTF Simplification Tool</a>
+                to simplify or convert it first.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">Import &amp; Parse</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="progressWrap" class="result-item" style="display:none;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="progressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="progressStage">Preparing...</span>
+                    <span id="progressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Select Chromosomes and Features</div>
+
+            <div class="filter-box" style="margin-bottom:12px; gap:12px;">
+                <label><input type="checkbox" id="keepHeader" checked> Keep <code>#</code> comment lines</label>
+            </div>
+
+            <div style="margin:12px 0 8px; font-weight:500; color:#1f4068;">
+                Chromosomes <span id="chromCount" class="tip-text" style="margin-left:8px; font-weight:400;">0</span>
+            </div>
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="selectAllChromBtn">Select All</button>
+                <button class="btn btn-sm" id="selectNoneChromBtn">Clear All</button>
+            </div>
+            <div id="chromGrid" class="result-item"
+                 style="display:flex; flex-wrap:wrap; gap:8px 20px; max-height:200px; overflow-y:auto; padding:12px;">
+                <span class="empty-hint">Please import a GFF file first</span>
+            </div>
+
+            <div style="margin:16px 0 8px; font-weight:500; color:#1f4068;">
+                Feature types <span id="featureCount" class="tip-text" style="margin-left:8px; font-weight:400;">0</span>
+            </div>
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="selectAllFeatureBtn">Select All</button>
+                <button class="btn btn-sm" id="selectNoneFeatureBtn">Clear All</button>
+            </div>
+            <div id="featureGrid" class="result-item"
+                 style="display:flex; flex-wrap:wrap; gap:8px 20px; max-height:240px; overflow-y:auto; padding:12px;">
+                <span class="empty-hint">Please import a GFF file first</span>
+            </div>
+
+            <div style="margin-top:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <button class="btn" id="runBtn" disabled>Run Filter</button>
+                <span id="runMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+
+            <div id="filterProgressWrap" class="result-item" style="display:none; margin-top:10px;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="filterProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="filterProgressStage">Preparing...</span>
+                    <span id="filterProgressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Filtered Result</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyBtn" disabled>Copy Result</button>
+                <button class="btn" id="downloadBtn" disabled>Export GFF</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px; font-weight:500; color:#1f4068;">
+                    Preview <span id="resultStats" style="font-weight:400; color:#6c757d; font-size:0.85rem;"></span>
+                </div>
+                <div class="result-item" id="resultBox"
+                     style="max-height:500px; overflow:auto; white-space:pre-wrap; word-break:break-all; font-family:Consolas,monospace; font-size:13px; line-height:1.7;"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">The filtered result will appear here.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const gffFile = document.getElementById('gffFile');
+            const gffText = document.getElementById('gffText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const progressWrap = document.getElementById('progressWrap');
+            const progressBar = document.getElementById('progressBar');
+            const progressStage = document.getElementById('progressStage');
+            const progressPct = document.getElementById('progressPct');
+
+            const keepHeader = document.getElementById('keepHeader');
+
+            const chromGrid = document.getElementById('chromGrid');
+            const chromCount = document.getElementById('chromCount');
+            const selectAllChromBtn = document.getElementById('selectAllChromBtn');
+            const selectNoneChromBtn = document.getElementById('selectNoneChromBtn');
+
+            const featureGrid = document.getElementById('featureGrid');
+            const featureCount = document.getElementById('featureCount');
+            const selectAllFeatureBtn = document.getElementById('selectAllFeatureBtn');
+            const selectNoneFeatureBtn = document.getElementById('selectNoneFeatureBtn');
+
+            const runBtn = document.getElementById('runBtn');
+            const runMsg = document.getElementById('runMsg');
+
+            const filterProgressWrap = document.getElementById('filterProgressWrap');
+            const filterProgressBar = document.getElementById('filterProgressBar');
+            const filterProgressStage = document.getElementById('filterProgressStage');
+            const filterProgressPct = document.getElementById('filterProgressPct');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultBox = document.getElementById('resultBox');
+            const resultStats = document.getElementById('resultStats');
+            const copyBtn = document.getElementById('copyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            const EXAMPLE = [
+                '##gff-version 3',
+                '#!gff-spec-version 1.21',
+                '#!processor NCBI annotwriter',
+                '##sequence-region NC_024459.2 1 3000000',
+                'NC_024459.2\tRefSeq\tregion\t1\t3000000\t.\t+\t.\tID=NC_024459.2:1..3000000',
+                'NC_024459.2\tGnomon\tgene\t10000\t50000\t.\t+\t.\tID=gene-A;gene=LOCA',
+                'NC_024459.2\tGnomon\tmRNA\t10000\t50000\t.\t+\t.\tID=rna-A1;Parent=gene-A',
+                'NC_024459.2\tGnomon\tCDS\t12000\t20000\t.\t+\t0\tID=cds-A1;Parent=rna-A1',
+                'NC_024459.2\tGnomon\tCDS\t30000\t48000\t.\t+\t0\tID=cds-A2;Parent=rna-A1',
+                'NC_024459.2\tGnomon\texon\t12000\t20000\t.\t+\t.\tID=exon-A1-1;Parent=rna-A1',
+                'NC_024459.2\tGnomon\texon\t30000\t48000\t.\t+\t.\tID=exon-A1-2;Parent=rna-A1',
+                'NC_024459.2\tGnomon\tgene\t80000\t120000\t.\t+\t.\tID=gene-B;gene=LOCB',
+                'NC_024459.2\tGnomon\tmRNA\t80000\t120000\t.\t+\t.\tID=rna-B1;Parent=gene-B',
+                'NC_024459.2\tGnomon\tCDS\t80000\t120000\t.\t+\t0\tID=cds-B1;Parent=rna-B1',
+                'NC_024459.2\tGnomon\tgene\t150000\t200000\t.\t-\t.\tID=gene-C;gene=LOCC',
+                'NC_024459.2\tGnomon\tmRNA\t150000\t200000\t.\t-\t.\tID=rna-C1;Parent=gene-C',
+                'NC_024459.2\tGnomon\tCDS\t150000\t200000\t.\t-\t0\tID=cds-C1;Parent=rna-C1',
+                'NC_024459.2\tGnomon\tgene\t220000\t260000\t.\t+\t.\tID=gene-D;gene=LOCD',
+                'NC_024459.2\tGnomon\tmRNA\t220000\t260000\t.\t+\t.\tID=rna-D1;Parent=gene-D',
+                'NC_024459.2\tGnomon\tCDS\t220000\t260000\t.\t+\t0\tID=cds-D1;Parent=rna-D1',
+                '###',
+                'NC_024541.2\tRefSeq\tregion\t1\t2000000\t.\t+\t.\tID=NC_024541.2:1..2000000',
+                'NC_024541.2\tGnomon\tgene\t5000\t40000\t.\t+\t.\tID=gene-X;gene=LOCX',
+                'NC_024541.2\tGnomon\tmRNA\t5000\t40000\t.\t+\t.\tID=rna-X1;Parent=gene-X',
+                'NC_024541.2\tGnomon\tCDS\t5000\t40000\t.\t+\t0\tID=cds-X1;Parent=rna-X1',
+                'NC_024541.2\tGnomon\tgene\t300000\t350000\t.\t-\t.\tID=gene-Y;gene=LOCY',
+                'NC_024541.2\tGnomon\tmRNA\t300000\t350000\t.\t-\t.\tID=rna-Y1;Parent=gene-Y',
+                'NC_024541.2\tGnomon\tCDS\t300000\t350000\t.\t-\t0\tID=cds-Y1;Parent=rna-Y1'
+            ].join('\n');
+
+            let parsedData = null;
+            let currentFileName = '';
+            let isProcessing = false;
+            let currentResultText = '';
+
+            function makeProgressController(wrap, bar, stageEl, pctEl) {
+                return {
+                    show: function (stage) {
+                        wrap.style.display = 'block';
+                        this.set(0, stage);
+                    },
+                    set: function (pct, stage) {
+                        pct = Math.max(0, Math.min(100, Math.round(pct)));
+                        bar.style.width = pct + '%';
+                        pctEl.textContent = pct + '%';
+                        if (stage) stageEl.textContent = stage;
+                    },
+                    hide: function () {
+                        wrap.style.display = 'none';
+                    }
+                };
+            }
+
+            const importProgress = makeProgressController(
+                progressWrap, progressBar, progressStage, progressPct);
+            const filterProgress = makeProgressController(
+                filterProgressWrap, filterProgressBar, filterProgressStage, filterProgressPct);
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 8000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseGFFAsync(text, onProgress, onDone) {
+                const items = [];
+                const chromSet = new Set();
+                const featureSet = new Set();
+                let headerCount = 0;
+                let recordCount = 0;
+                let badLines = 0;
+
+                let pos = 0;
+                const totalLen = text.length;
+
+                function step() {
+                    const start = performance.now();
+                    let linesInChunk = 0;
+
+                    while (pos < totalLen) {
+                        let next = text.indexOf('\n', pos);
+                        if (next === -1) next = totalLen;
+                        let line = text.slice(pos, next);
+                        if (line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+                        pos = next + 1;
+                        linesInChunk++;
+
+                        if (!line.trim()) continue;
+
+                        if (line.charAt(0) === '#') {
+                            items.push({ kind: 'header', raw: line });
+                            headerCount++;
+                            continue;
+                        }
+
+                        const cols = line.split('\t');
+                        if (cols.length < 9) { badLines++; continue; }
+
+                        const chromId = cols[0].trim();
+                        const type = cols[2].trim();
+
+                        if (!chromId || !type) { badLines++; continue; }
+
+                        chromSet.add(chromId);
+                        featureSet.add(type);
+                        items.push({ kind: 'record', chrom: chromId, type: type, raw: line });
+                        recordCount++;
+
+                        if (linesInChunk % 2000 === 0 && performance.now() - start > 16) break;
+                    }
+
+                    onProgress(Math.round(pos / totalLen * 100));
+
+                    if (pos < totalLen) {
+                        setTimeout(step, 0);
+                    } else {
+                        onDone({
+                            items: items,
+                            chromosomes: Array.from(chromSet).sort(),
+                            featureTypes: Array.from(featureSet).sort(),
+                            headerCount: headerCount,
+                            recordCount: recordCount,
+                            badLines: badLines
+                        });
+                    }
+                }
+
+                step();
+            }
+
+            function renderChromGrid(parsed) {
+                chromGrid.innerHTML = '';
+                if (!parsed || parsed.chromosomes.length === 0) {
+                    chromGrid.innerHTML = '<span class="empty-hint">No chromosomes were parsed</span>';
+                    updateCounts();
+                    return;
+                }
+                parsed.chromosomes.forEach(function (chrom) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = chrom;
+                    cb.className = 'chrom-cb';
+                    cb.checked = true;
+                    cb.addEventListener('change', updateCounts);
+
+                    const span = document.createElement('span');
+                    span.textContent = chrom;
+
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    chromGrid.appendChild(label);
+                });
+                updateCounts();
+            }
+
+            function renderFeatureGrid(parsed) {
+                featureGrid.innerHTML = '';
+                if (!parsed || parsed.featureTypes.length === 0) {
+                    featureGrid.innerHTML = '<span class="empty-hint">No feature types were parsed</span>';
+                    updateCounts();
+                    return;
+                }
+                parsed.featureTypes.forEach(function (type) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = type;
+                    cb.className = 'feature-cb';
+                    cb.checked = true;
+                    cb.addEventListener('change', updateCounts);
+
+                    const span = document.createElement('span');
+                    span.textContent = type;
+
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    featureGrid.appendChild(label);
+                });
+                updateCounts();
+            }
+
+            function updateCounts() {
+                const chromBoxes = chromGrid.querySelectorAll('input.chrom-cb');
+                const featureBoxes = featureGrid.querySelectorAll('input.feature-cb');
+
+                let chromSel = 0;
+                chromBoxes.forEach(function (b) { if (b.checked) chromSel++; });
+                let featSel = 0;
+                featureBoxes.forEach(function (b) { if (b.checked) featSel++; });
+
+                chromCount.textContent = 'Selected ' + chromSel + ' / ' + chromBoxes.length;
+                featureCount.textContent = 'Selected ' + featSel + ' / ' + featureBoxes.length;
+
+                runBtn.disabled = isProcessing || !(parsedData && chromSel > 0 && featSel > 0);
+            }
+
+            function getSelectedChroms() {
+                const boxes = chromGrid.querySelectorAll('input.chrom-cb:checked');
+                const arr = [];
+                boxes.forEach(function (b) { arr.push(b.value); });
+                return arr;
+            }
+
+            function getSelectedFeatures() {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb:checked');
+                const arr = [];
+                boxes.forEach(function (b) { arr.push(b.value); });
+                return arr;
+            }
+
+            function finishLoading(parsed, filename) {
+                if (parsed.recordCount === 0) {
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ No valid GFF data lines were parsed (at least one data line is required).', 'error');
+                    return;
+                }
+
+                parsedData = parsed;
+                currentFileName = filename || '';
+
+                renderChromGrid(parsed);
+                renderFeatureGrid(parsed);
+                clearResults();
+
+                let info = '✅ Parsed ' + parsed.chromosomes.length + ' chromosomes, ' +
+                    parsed.recordCount + ' records, ' + parsed.featureTypes.length + ' feature types';
+                if (parsed.headerCount > 0) {
+                    info += ', ' + parsed.headerCount + ' comment lines';
+                }
+                if (parsed.badLines > 0) {
+                    info += ' (skipped ' + parsed.badLines + ' malformed lines)';
+                }
+                showMsg(msgTip, info, 'success');
+                toast('Parsed ' + parsed.recordCount + ' records');
+
+                importProgress.set(100, 'Parse complete');
+                setTimeout(function () { importProgress.hide(); }, 500);
+            }
+
+            function loadDataFromText(text, filename) {
+                if (!text || !text.trim()) {
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ Content is empty. Please choose a file or paste GFF content.', 'error');
+                    return;
+                }
+                isProcessing = true;
+                runBtn.disabled = true;
+                importProgress.show('Parsing data...');
+
+                parseGFFAsync(
+                    text,
+                    function (pct) { importProgress.set(pct, 'Parsing data: ' + pct + '%'); },
+                    function (parsed) {
+                        isProcessing = false;
+                        finishLoading(parsed, filename);
+                    }
+                );
+            }
+
+            function loadFromFile() {
+                const file = gffFile.files && gffFile.files[0];
+                if (!file) {
+                    showMsg(msgTip, '❌ Please select a file.', 'error');
+                    return;
+                }
+                if (isProcessing) return;
+                isProcessing = true;
+                runBtn.disabled = true;
+                importProgress.show('Reading file...');
+
+                const reader = new FileReader();
+                reader.onprogress = function (e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round(e.loaded / e.total * 100);
+                        importProgress.set(pct, 'Reading file: ' + pct + '%');
+                    }
+                };
+                reader.onload = function (e) {
+                    importProgress.set(100, 'File read complete');
+                    isProcessing = false;
+                    setTimeout(function () { loadDataFromText(e.target.result, file.name); }, 60);
+                };
+                reader.onerror = function () {
+                    isProcessing = false;
+                    importProgress.hide();
+                    showMsg(msgTip, '❌ Failed to read file.', 'error');
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                if (isProcessing) return;
+                const text = gffText.value;
+                if (!text.trim()) {
+                    showMsg(msgTip, '❌ Please paste GFF content.', 'error');
+                    return;
+                }
+                loadDataFromText(text, '');
+            }
+
+            function loadExample() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                gffText.value = EXAMPLE;
+                loadDataFromText(EXAMPLE, '');
+            }
+
+            function runFilter() {
+                if (isProcessing) return;
+                if (!parsedData) {
+                    showMsg(runMsg, '❌ Please import a GFF file first.', 'error');
+                    return;
+                }
+
+                const selChroms = new Set(getSelectedChroms());
+                const selFeatures = new Set(getSelectedFeatures());
+
+                if (selChroms.size === 0) {
+                    showMsg(runMsg, '❌ Please select at least one chromosome.', 'error');
+                    return;
+                }
+                if (selFeatures.size === 0) {
+                    showMsg(runMsg, '❌ Please select at least one feature type.', 'error');
+                    return;
+                }
+
+                const withHeader = keepHeader.checked;
+                const items = parsedData.items;
+                const total = items.length;
+
+                const outLines = [];
+                let keptRecords = 0;
+                let keptHeaders = 0;
+                let idx = 0;
+
+                isProcessing = true;
+                runBtn.disabled = true;
+                runMsg.innerHTML = '';
+                filterProgress.show('Filtering...');
+
+                function step() {
+                    const start = performance.now();
+                    let n = 0;
+
+                    while (idx < total) {
+                        const item = items[idx++];
+                        n++;
+
+                        if (item.kind === 'header') {
+                            if (withHeader) {
+                                outLines.push(item.raw);
+                                keptHeaders++;
+                            }
+                            continue;
+                        }
+
+                        if (selChroms.has(item.chrom) && selFeatures.has(item.type)) {
+                            outLines.push(item.raw);
+                            keptRecords++;
+                        }
+
+                        if (n % 2000 === 0 && performance.now() - start > 16) break;
+                    }
+
+                    const pct = total === 0 ? 100 : Math.round(idx / total * 100);
+                    filterProgress.set(pct, 'Filtering: ' + pct + '%');
+
+                    if (idx < total) {
+                        setTimeout(step, 0);
+                    } else {
+                        filterProgress.set(100, 'Filter complete');
+                        setTimeout(function () { filterProgress.hide(); }, 500);
+                        isProcessing = false;
+                        updateCounts();
+                        finishFilter(outLines, keptRecords, parsedData.recordCount,
+                            keptHeaders);
+                    }
+                }
+
+                step();
+            }
+
+            function finishFilter(outLines, keptRecords, totalRecords, keptHeaders) {
+                if (keptRecords === 0) {
+                    clearResults();
+                    showMsg(runMsg, '⚠️ No records were kept with the current selection.', 'warn');
+                    toast('Empty result');
+                    return;
+                }
+
+                currentResultText = outLines.join('\n') + '\n';
+                renderResult(outLines, keptRecords, totalRecords, keptHeaders);
+
+                let detail = '✅ Filter complete: kept ' + keptRecords + ' / ' + totalRecords + ' records';
+                if (keptHeaders > 0) detail += ', including ' + keptHeaders + ' comment lines (in original position)';
+                showMsg(runMsg, detail, 'success');
+                toast('Filter complete');
+            }
+
+            function renderResult(outLines, keptRecords, totalRecords, keptHeaders) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                const maxShow = 1000;
+                let preview = outLines.slice(0, maxShow).join('\n');
+                if (outLines.length > maxShow) {
+                    preview += '\n... (preview truncated; copy or export to get the full content)';
+                }
+                resultBox.textContent = preview;
+
+                resultStats.textContent = '(kept ' + keptRecords + ' / ' + totalRecords + ' records' +
+                    (keptHeaders > 0 ? ', including ' + keptHeaders + ' comment lines' : '') + ')';
+
+                copyBtn.disabled = false;
+                downloadBtn.disabled = false;
+                resultMsg.innerHTML = '';
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultBox.textContent = '';
+                resultStats.textContent = '';
+                copyBtn.disabled = true;
+                downloadBtn.disabled = true;
+                resultMsg.innerHTML = '';
+                currentResultText = '';
+            }
+
+            function copyText(text, msgEl) {
+                if (!text) { showMsg(msgEl, '❌ Nothing to copy', 'error'); return; }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(msgEl, '✅ Copied', 'success');
+                        toast('Copied');
+                    }).catch(function () { fallbackCopy(text, msgEl); });
+                } else {
+                    fallbackCopy(text, msgEl);
+                }
+            }
+
+            function fallbackCopy(text, msgEl) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(msgEl, '✅ Copied', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(msgEl, '❌ Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!currentResultText) {
+                    showMsg(resultMsg, '❌ Nothing to export', 'error');
+                    return;
+                }
+                let filename = 'filtered.gff';
+                if (currentFileName) {
+                    filename = 'filtered_' + currentFileName.replace(/\.(gff3?|gtf|txt)$/i, '') + '.gff';
+                }
+                const blob = new Blob([currentResultText], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '✅ Exported ' + filename, 'success');
+                toast('Exported');
+            }
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    gffFile.disabled = false;
+                    gffText.disabled = true;
+                    gffText.value = '';
+                } else {
+                    gffFile.disabled = true;
+                    gffFile.value = '';
+                    gffText.disabled = false;
+                }
+
+                parsedData = null;
+                currentFileName = '';
+                chromGrid.innerHTML = '<span class="empty-hint">Please import a GFF file first</span>';
+                featureGrid.innerHTML = '<span class="empty-hint">Please import a GFF file first</span>';
+                chromCount.textContent = '0';
+                featureCount.textContent = '0';
+                runBtn.disabled = true;
+                msgTip.innerHTML = '';
+                runMsg.innerHTML = '';
+                importProgress.hide();
+                filterProgress.hide();
+                clearResults();
+            };
+
+            gffFile.addEventListener('change', function (e) {
+                if (!e.target.files || e.target.files.length === 0) return;
+                loadFromFile();
+            });
+
+            gffText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!gffFile.files || gffFile.files.length === 0) {
+                        if (gffText.value.trim()) { loadFromText(); return; }
+                        showMsg(msgTip, '❌ Please choose a file or paste data.', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            selectAllChromBtn.addEventListener('click', function () {
+                const boxes = chromGrid.querySelectorAll('input.chrom-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = true; });
+                updateCounts();
+            });
+
+            selectNoneChromBtn.addEventListener('click', function () {
+                const boxes = chromGrid.querySelectorAll('input.chrom-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = false; });
+                updateCounts();
+            });
+
+            selectAllFeatureBtn.addEventListener('click', function () {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = true; });
+                updateCounts();
+            });
+
+            selectNoneFeatureBtn.addEventListener('click', function () {
+                const boxes = featureGrid.querySelectorAll('input.feature-cb');
+                if (boxes.length === 0) return;
+                boxes.forEach(function (b) { b.checked = false; });
+                updateCounts();
+            });
+
+            runBtn.addEventListener('click', runFilter);
+            copyBtn.addEventListener('click', function () { copyText(currentResultText, resultMsg); });
+            downloadBtn.addEventListener('click', downloadResult);
+
+            switchInput();
+            emptyResult.style.display = 'block';
+            resultArea.style.display = 'none';
+            runBtn.disabled = true;
+            copyBtn.disabled = true;
+            downloadBtn.disabled = true;
+        })();
+    </script>
+</body>
+</html>
