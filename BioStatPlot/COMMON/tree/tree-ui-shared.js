@@ -214,7 +214,9 @@ function enableDrag(svg) {
         connectDrag = {
           track, trackId,
           startX: e.clientX, startY: e.clientY,
-          offset0: Number(track.connectOffset) || 0,
+          offset0: (st.mode === "circular")
+            ? (Number(track.connectOffset) || 0)
+            : (Number(track.connectOffsetRect != null ? track.connectOffsetRect : 0) || 0),
           unitX: (vb.w / st.zoom) / Math.max(1, rect.width),
           unitY: (vb.h / st.zoom) / Math.max(1, rect.height),
           isRadial: st.mode === "circular",
@@ -366,7 +368,7 @@ function enableDrag(svg) {
         connectDrag.track.connectOffset = connectDrag.offset0 + (dxSvg * ux + dySvg * uy);
       } else {
         const dxSvg = rawDx * connectDrag.unitX;
-        connectDrag.track.connectOffset = connectDrag.offset0 + dxSvg;
+        connectDrag.track.connectOffsetRect = connectDrag.offset0 + dxSvg;
       }
       global.TreeRenderer.draw();
       return;

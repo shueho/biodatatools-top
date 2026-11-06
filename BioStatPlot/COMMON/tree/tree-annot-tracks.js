@@ -122,6 +122,11 @@ function newTrackDefaults(type) {
     showLegend: true, legendTitle: '', legendOrientation: 'horizontal',
     legendX: null, legendY: null,
     featureColumn: '', featureLengthColumn: '',
+    featureInputMode: 'string',
+    featureTableRows: [], featureTableRaw: '',
+    featureSpecialEnable: false,
+    featureSpecialTypes: "5' UTR,3' UTR",
+    featureSpecialHeightRatio: 0.6,
     featureMin: null, featureMax: null,
     featureTickInterval: null,
     featureAlign: false,
@@ -130,7 +135,8 @@ function newTrackDefaults(type) {
     featureLineColor: '#888888', featureLineWidth: 1,
     featureLineGap: 0,
     connectHeaders: [], connectSourceColumn: '', connectTargetColumn: '', connectColorColumn: '',
-    connectOffset: 0, curveInset: null,
+    connectOffset: 0, connectOffsetRect: null, curveInset: null, connectReverse: false,
+    connectArrow: 'off',
     _connectRawRows: [],
     lineWidth: 1, lineOpacity: 0.6, lineStyle: 'solid',
     connectRadialOffset: 0, curveInset: null,
@@ -143,6 +149,7 @@ function newTrackDefaults(type) {
     bubbleShowGrid: false, bubbleGridColor: '#dddddd', bubbleGridWidth: 1, bubbleGridDashed: false,bubbleValueBold: true,
     cellGap: 0,
     bubbleLegendTicks: 3,
+    bubbleBgShow: false, bubbleBgColor: '#f0f4f8', bubbleBgOpacity: 0.6,
     legendItems: []
   };
 }
@@ -181,6 +188,8 @@ function getBarColumnValues(track) {
     if (v == null || v === '') return;
     const s = String(v);
     if (seen.has(s)) return;
+    if (isExcluded(track, s)) return;   
+
     seen.add(s); out.push(s);
   });
   out.sort();
@@ -238,20 +247,50 @@ function refreshTrackData(t) {
   if (!t) return;
   if (t.type === 'feature') {
     const ld = getLeafData(); const data = {};
-    if (ld && ld.rows) {
-      ld.rows.forEach(r => {
-        const k = String(r.Leaf || '').trim(); if (!k) return;
-        const raw = t.featureColumn ? String(r[t.featureColumn] == null ? '' : r[t.featureColumn]) : '';
-        const lenNum = parseFloat(t.featureLengthColumn ? r[t.featureLengthColumn] : null);
-        data[k] = { len: Number.isFinite(lenNum) && lenNum > 0 ? lenNum : null, raw };
+    if (t.featureInputMode === 'table' && Array.isArray(t.featureTableRows) && t.featureTableRows.length) {
+      const byLeaf = {};
+      t.featureTableRows.forEach(r => {
+        if (!r || !r.leaf) return;
+        const k = String(r.leaf).trim(); if (!k) return;
+        if (!byLeaf[k]) byLeaf[k] = [];
+        byLeaf[k].push(`${r.name || 'Domain'}=${r.start}-${r.end}`);
       });
+      const lenMap = {};
+      if (ld && ld.rows && t.featureLengthColumn) {
+        ld.rows.forEach(r => {
+          const k = String(r.Leaf || '').trim(); if (!k) return;
+          const v = parseFloat(r[t.featureLengthColumn]);
+          if (Number.isFinite(v) && v > 0) lenMap[k] = v;
+        });
+      }
+      if (ld && ld.rows) {
+        ld.rows.forEach(r => {
+          const k = String(r.Leaf || '').trim(); if (!k) return;
+          data[k] = { len: lenMap[k] || null, raw: (byLeaf[k] || []).join('|') };
+        });
+      }
+      Object.keys(byLeaf).forEach(k => {
+        if (!data[k]) data[k] = { len: lenMap[k] || null, raw: byLeaf[k].join('|') };
+      });
+    } else {
+      if (ld && ld.rows) {
+        ld.rows.forEach(r => {
+          const k = String(r.Leaf || '').trim(); if (!k) return;
+          const raw = t.featureColumn ? String(r[t.featureColumn] == null ? '' : r[t.featureColumn]) : '';
+          const lenNum = parseFloat(t.featureLengthColumn ? r[t.featureLengthColumn] : null);
+          data[k] = { len: Number.isFinite(lenNum) && lenNum > 0 ? lenNum : null, raw };
+        });
+      }
     }
     t.data = data;
     t._colorCache = null;
     return;
   }
   if (t.type === 'connect') {
-    t.data = (t._connectRawRows || []).map(row => {
+    const rawRows = Array.isArray(t._connectRawRows) ? t._connectRawRows : [];
+    t._connectRawRows = rawRows;
+    t.data = rawRows.map(row => {
+      if (!row || typeof row !== 'object') return { source: '', target: '', colorBy: '' };
       const source = String(row[t.connectSourceColumn] || '').trim();
       const target = String(row[t.connectTargetColumn] || '').trim();
       const colorBy = t.connectColorColumn ? String(row[t.connectColorColumn] || '').trim() : '';
@@ -260,8 +299,7 @@ function refreshTrackData(t) {
     t._connectColorCache = null;
     return;
   }
-  if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'multiheatmap' || t.type === 'bubble') t.data = buildMultiTrackData(t.columns);
-  else if (t.type === 'multisymbol') t.data = buildTrackData(t.column || t.shapeColumn);
+  if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'multiheatmap' || t.type === 'bubble') t.data = buildMultiTrackData(t.columns);  else if (t.type === 'multisymbol') t.data = buildTrackData(t.column || t.shapeColumn);
   else t.data = buildTrackData(t.column);
   t._colorCache = null; t._shapeCache = null;
 }
@@ -339,7 +377,9 @@ function getConnectColorMap(track) {
   const pal = global.TreePalette.getCategoricalScheme(track.palette || 'tableau10');
   const uniq = [];
   const seen = new Set();
-  (track.data || []).forEach(d => {
+  const dataArr = Array.isArray(track.data) ? track.data : [];
+  dataArr.forEach(d => {
+    if (!d) return;
     const v = String(d.colorBy == null ? '' : d.colorBy);
     if (!seen.has(v)) { seen.add(v); uniq.push(v); }
   });
@@ -484,12 +524,68 @@ function parseFeatureString(raw) {
   });
   return out;
 }
+function parseFeatureTableText(text) {
+  if (!text || !text.trim()) return [];
+  const parsed = global.PlotCommon.parseTable(text);
+  if (!parsed.headers.length || !parsed.data.length) return [];
+  const h = parsed.headers;
+  const colLeaf = h[0], colName = h[1], colStart = h[2], colEnd = h[3];
+  const rows = [];
+  parsed.data.forEach(r => {
+    const leaf = String(r[colLeaf] == null ? '' : r[colLeaf]).trim();
+    const name = String(r[colName] == null ? '' : r[colName]).trim();
+    const s = Number(r[colStart]); const e = Number(r[colEnd]);
+    if (!leaf || !name || !Number.isFinite(s) || !Number.isFinite(e)) return;
+    rows.push({ leaf, name, start: s, end: e });
+  });
+  return rows;
+}
+function applyFeatureTable(track, text) {
+  track.featureTableRaw = text || '';
+  track.featureTableRows = parseFeatureTableText(text);
+  refreshTrackData(track);
+  return track.featureTableRows.length;
+}
+function generateRandomFeatureTable(track) {
+  if (!C.getRoot()) return 0;
+  const leaves = T.visibleLeaves(C.getRoot());
+  const names = Array.from(new Set(leaves.map(l => String(l.name || '').trim()).filter(Boolean)));
+  if (!names.length) return 0;
+  const specialTypes = String(track.featureSpecialTypes || "5' UTR,3' UTR")
+    .split(/[,，]/).map(s => s.trim()).filter(Boolean);
+  const utr5 = specialTypes[0] || "5' UTR";
+  const utr3 = specialTypes[1] || "3' UTR";
+  const rows = [];
+  rows.push(['Leaf', 'Domain', 'Start', 'End']);
+  names.forEach(name => {
+    const total = 800 + Math.floor(Math.random() * 800);
+    const s5 = 1 + Math.floor(Math.random() * 20);
+    const e5 = s5 + 60 + Math.floor(Math.random() * 60);
+    rows.push([name, utr5, s5, e5]);
+    let cursor = e5 + 20;
+    const nCds = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < nCds; i++) {
+      const len = 100 + Math.floor(Math.random() * 300);
+      const s = cursor, e = s + len;
+      if (e > total - 120) break;
+      rows.push([name, 'cds', s, e]);
+      cursor = e + 20 + Math.floor(Math.random() * 30);
+    }
+    const s3 = cursor;
+    const e3 = Math.min(total, s3 + 80);
+    if (e3 > s3) rows.push([name, utr3, s3, e3]);
+  });
+  track.featureTableRaw = rows.map(r => r.join('\t')).join('\n');
+  track.featureTableRows = rows.slice(1).map(r => ({ leaf: r[0], name: r[1], start: Number(r[2]), end: Number(r[3]) }));
+  refreshTrackData(track);
+  return rows.length - 1;
+}
 function computeFeatureDomain(track, leaves) {
   let dataMax = 0;
   leaves.forEach(l => {
     const info = datasetValue(track, l);
     if (!info) return;
-    parseFeatureString(info.raw).forEach(d => { if (d.end > dataMax) dataMax = d.end; });
+    parseFeatureString(info.raw).forEach(d => { const m = Math.max(d.start, d.end); if (m > dataMax) dataMax = m; });
     if (info.len != null && info.len > dataMax) dataMax = info.len;
   });
   const userMin = Number(track.featureMin);
@@ -663,6 +759,21 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
   const _yBot = Math.max(...leaves.map(l => rowOf(l).bottom));
   C.el("rect", { x, y: _yTop, width: Math.max(1, w), height: Math.max(1, _yBot - _yTop), fill: "transparent", "pointer-events": "all", "data-track-band": track.id, style: "cursor:grab" });
 }
+
+
+
+function drawArrowHead(x, y, dx, dy, size, color, parent) {
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return;
+  const ux = dx / len, uy = dy / len;
+  const px = -uy, py = ux;
+  const bx = x - ux * size;
+  const by = y - uy * size;
+  const w = size * 0.5;
+  const pts = `${x},${y} ${bx + px * w},${by + py * w} ${bx - px * w},${by - py * w}`;
+  C.el('polygon', { points: pts, fill: color, 'pointer-events': 'none' }, parent);
+}
+
 function drawOneConnectTrack(track, x, w, leaves, rowH, invert) {
   const colorMap = getConnectColorMap(track);
   const lineW = Number(track.lineWidth) || 1;
@@ -676,17 +787,35 @@ function drawOneConnectTrack(track, x, w, leaves, rowH, invert) {
     if (!nameToLeaf.has(key)) nameToLeaf.set(key, l);
   });
 
-  const offset = Number(track.connectOffset) || 0;
+  const offset = Number(track.connectOffsetRect != null ? track.connectOffsetRect : 0) || 0;
   const xEnd = (invert ? (x - w) : (x + w)) + offset;
   const xStart = x + offset;
   const raw = track.curveInset;
   const curveAmt = (raw != null && raw !== '' && Number.isFinite(Number(raw)))
     ? Math.max(0, Math.min(1, Number(raw))) : 1;
-  const xCtrl = xStart + (xEnd - xStart) * curveAmt;
+  const reverse = !!track.connectReverse;
+  const span = xEnd - xStart;
+  const xCtrl = reverse
+    ? (xStart - span * curveAmt)
+    : (xStart + span * curveAmt);
   const hitW = Math.max(10, lineW + 8);
 
-  (track.data || []).forEach(d => {
-    if (!d.source || !d.target) return;
+  const arrowMode = track.connectArrow || 'off';
+  const hasStartArrow = arrowMode === 'both';
+  const hasEndArrow = arrowMode === 'both' || arrowMode === 'single';
+  const arrowSize = (arrowMode !== 'off') ? Math.max(6, Math.min(14, lineW * 4)) : 0;
+  const dirSign = Math.sign(xStart - xCtrl) || 1;  
+
+  let curveStartX = xStart;
+  let curveEndX = xStart;
+  if (curveAmt >= 0.01) {
+    if (hasStartArrow) curveStartX = xStart - dirSign * arrowSize;
+    if (hasEndArrow) curveEndX = xStart - dirSign * arrowSize;
+  }
+
+  const dataArr = Array.isArray(track.data) ? track.data : [];
+  dataArr.forEach(d => {
+    if (!d || !d.source || !d.target) return;
     const src = nameToLeaf.get(d.source);
     const tgt = nameToLeaf.get(d.target);
     if (!src || !tgt) return;
@@ -696,7 +825,7 @@ function drawOneConnectTrack(track, x, w, leaves, rowH, invert) {
     const color = colorMap[String(d.colorBy == null ? '' : d.colorBy)] || '#cccccc';
     const dPath = (curveAmt < 0.01)
       ? `M ${xStart} ${y1} L ${xStart} ${y2}`
-      : `M ${xStart} ${y1} C ${xCtrl} ${y1}, ${xCtrl} ${y2}, ${xStart} ${y2}`;
+      : `M ${curveStartX} ${y1} C ${xCtrl} ${y1}, ${xCtrl} ${y2}, ${curveEndX} ${y2}`;
     C.el('path', {
       d: dPath, fill: 'none', stroke: color,
       'stroke-width': lineW, opacity: lineOp,
@@ -710,6 +839,23 @@ function drawOneConnectTrack(track, x, w, leaves, rowH, invert) {
       'pointer-events': 'stroke',
       style: 'cursor:grab'
     });
+
+    if (arrowMode !== 'off') {
+      let sdx, sdy, edx, edy;
+      if (curveAmt < 0.01) {
+        sdx = 0; sdy = y1 - y2;
+        edx = 0; edy = y2 - y1;
+      } else {
+        sdx = dirSign; sdy = 0;
+        edx = dirSign; edy = 0;
+      }
+      if (hasStartArrow) {
+        drawArrowHead(xStart, y1, sdx, sdy, arrowSize, color, null);
+      }
+      if (hasEndArrow) {
+        drawArrowHead(xStart, y2, edx, edy, arrowSize, color, null);
+      }
+    }
   });
 }
 function drawOneConnectTrackRadial(track, rIn, rOut, leaves, invert) {
@@ -729,6 +875,7 @@ function drawOneConnectTrackRadial(track, rIn, rOut, leaves, invert) {
   });
 
   const cx = 470, cy = 380;
+
   const offset = Number(track.connectOffset) || 0;
   const raw = track.curveInset;
   const curveAmt = (raw != null && raw !== '' && Number.isFinite(Number(raw)))
@@ -736,9 +883,11 @@ function drawOneConnectTrackRadial(track, rIn, rOut, leaves, invert) {
   const rEnd = Math.max(0, rIn + offset);
   const rCtrl = rEnd * (1 - curveAmt);
   const hitW = Math.max(10, lineW + 8);
+  const arrowMode = track.connectArrow || 'off';
 
-  (track.data || []).forEach(d => {
-    if (!d.source || !d.target) return;
+  const dataArr = Array.isArray(track.data) ? track.data : [];
+  dataArr.forEach(d => {
+    if (!d || !d.source || !d.target) return;
     const src = nameToLeaf.get(d.source);
     const tgt = nameToLeaf.get(d.target);
     if (!src || !tgt) return;
@@ -770,9 +919,28 @@ function drawOneConnectTrackRadial(track, rIn, rOut, leaves, invert) {
       'pointer-events': 'stroke',
       style: 'cursor:grab'
     });
+
+    if (arrowMode !== 'off') {
+      const arrowSize = Math.max(6, Math.min(14, lineW * 4));
+      let sdx, sdy, edx, edy;
+      if (curveAmt < 0.01) {
+        sdx = p0.x - p3.x; sdy = p0.y - p3.y;
+        edx = p3.x - p0.x; edy = p3.y - p0.y;
+      } else {
+        const cp1 = L.polar(cx, cy, rCtrl, a1);
+        const cp2 = L.polar(cx, cy, rCtrl, a2);
+        sdx = p0.x - cp1.x; sdy = p0.y - cp1.y;
+        edx = p3.x - cp2.x; edy = p3.y - cp2.y;
+      }
+      if (arrowMode === 'both') {
+        drawArrowHead(p0.x, p0.y, sdx, sdy, arrowSize, color, null);
+      }
+      if (arrowMode === 'both' || arrowMode === 'single') {
+        drawArrowHead(p3.x, p3.y, edx, edy, arrowSize, color, null);
+      }
+    }
   });
 }
-
 function barDomain(track, leaves, percent) {
   const allVals = leaves.map(l => {
     const raw = datasetValue(track, l);
@@ -1142,6 +1310,10 @@ function drawFeatureTrackRect(track, x, w, leaves, rowOf, invert) {
   const ff = fontFam();
   const ts = trackTextStyle(track);
   const tfs = Math.max(6, Number(ts.fontSize) || 10);
+  const specialSet = (track.featureSpecialEnable && track.featureSpecialTypes)
+    ? new Set(String(track.featureSpecialTypes).split(/[,，]/).map(s => s.trim()).filter(Boolean))
+    : null;
+  const specialRatio = Math.max(0.1, Math.min(1, Number(track.featureSpecialHeightRatio) || 0.6));
 
   const { axMin, axMax } = computeFeatureDomain(track, leaves);
   const pos = v => invert
@@ -1191,7 +1363,9 @@ function drawFeatureTrackRect(track, x, w, leaves, rowOf, invert) {
       const px1 = pos(d.start), px2 = pos(d.end);
       const left = Math.min(px1, px2);
       const width = Math.max(1, Math.abs(px2 - px1));
-      C.el('rect', { x: left, y: cy - barH / 2, width, height: barH,
+      const isSpecial = specialSet && specialSet.has(String(d.name));
+      const thisBarH = isSpecial ? barH * specialRatio : barH;
+      C.el('rect', { x: left, y: cy - thisBarH / 2, width, height: thisBarH,
         fill: colorOf(track, d.name, colorMap), 'pointer-events': 'none' });
       if (showLabel && d.name && width >= 10) {
         const txt = global.TreeDrawNode && global.TreeDrawNode.fitText
@@ -1433,6 +1607,57 @@ function drawTrackLegend(track, x, y, colorMap) {
   return yy + fs + 8 + extraHeight;
 }
 
+function applyBubbleTrackBg(radial, placed, leaves, rowH, rowBounds, halfStep) {
+  if (!placed || !placed.length || !leaves || !leaves.length) return;
+  const svgEl = C.getSvg();
+  if (!svgEl) return;
+  const guideG = svgEl.querySelector('.track-guide-lines');
+  const cx = 470, cy = 380;
+  placed.forEach(item => {
+    const track = item.track;
+    if (!track || track.type !== 'bubble' || !track.bubbleBgShow) return;
+    const fillColor = track.bubbleBgColor || '#f0f4f8';
+    const op = track.bubbleBgOpacity != null ? track.bubbleBgOpacity : 0.6;
+    let node = null;
+    if (!radial) {
+      if (item.w == null || item.w <= 0) return;
+      const fallbackH = rowH || 14;
+      const ys = leaves.map(l => {
+        const b = rowBounds && rowBounds.get(l);
+        return b ? [b.top, b.bottom] : [l.y - fallbackH / 2, l.y + fallbackH / 2];
+      });
+      const yTop = Math.min(...ys.map(p => p[0]));
+      const yBot = Math.max(...ys.map(p => p[1]));
+      node = C.el("rect", {
+        x: item.x, y: yTop, width: Math.max(1, item.w), height: Math.max(1, yBot - yTop),
+        fill: fillColor, opacity: op, "pointer-events": "none", class: "bubble-bg"
+      });
+    } else {
+      const rIn = item.ringStart;
+      const rOut = item.ringStart + item.ringW;
+      if (!(rOut > rIn + 0.5)) return;
+      const angs = leaves.map(l => l.angle).filter(a => a != null);
+      if (!angs.length) return;
+      const maxBubbleSize = Math.max(Number(track.bubbleMaxSize) || 10, Number(track.bubbleFixedSize) || 5);
+      const midR = Math.max(1, (rIn + rOut) / 2);
+      const angPad = (maxBubbleSize / midR) * 180 / Math.PI;
+      const pad = Math.max(halfStep || 0, angPad);
+      const a0 = Math.min(...angs) - pad;
+      const a1 = Math.max(...angs) + pad;
+      const p0i = L.polar(cx, cy, rIn, a0), p0o = L.polar(cx, cy, rOut, a0);
+      const p1o = L.polar(cx, cy, rOut, a1), p1i = L.polar(cx, cy, rIn, a1);
+      const large = (a1 - a0) > 180 ? 1 : 0;
+      const d = `M ${p0i.x} ${p0i.y} L ${p0o.x} ${p0o.y} A ${rOut} ${rOut} 0 ${large} 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rIn} ${rIn} 0 ${large} 0 ${p0i.x} ${p0i.y} Z`;
+      node = C.el("path", {
+        d, fill: fillColor, opacity: op, "pointer-events": "none", class: "bubble-bg"
+      });
+    }
+    if (!node) return;
+    if (guideG && guideG.parentNode === svgEl) svgEl.insertBefore(node, guideG);
+    else svgEl.insertBefore(node, svgEl.firstChild);
+  });
+}
+
 function renderCustomTracks(radial) {
   const maxD = Math.max(T.maxDepth(C.getRoot(), 0), 0.01);
   const st = C.state;
@@ -1542,6 +1767,8 @@ function renderCustomTracks(radial) {
         }), guideG);
       });
     }
+    applyBubbleTrackBg(false, placed, leaves, rowH, rowBounds, 0);
+
     let autoLegendX;
     if (isInv) {
       const root = C.getRoot();
@@ -1896,7 +2123,7 @@ function renderCustomTracks(radial) {
           if (!info) return;
           const doms = parseFeatureString(info.raw);
           let rowMax = 0;
-          doms.forEach(d => { if (d.end > rowMax) rowMax = d.end; });
+          doms.forEach(d => { const m = Math.max(d.start, d.end); if (m > rowMax) rowMax = m; });
           if (info.len != null && info.len > rowMax) rowMax = info.len;
 
           const dom = computeFeatureDomain(track, leaves);
@@ -1926,14 +2153,20 @@ function renderCustomTracks(radial) {
             });
           }
 
+          const specialSet = (track.featureSpecialEnable && track.featureSpecialTypes)
+            ? new Set(String(track.featureSpecialTypes).split(/[,，]/).map(s => s.trim()).filter(Boolean))
+            : null;
+          const specialRatio = Math.max(0.1, Math.min(1, Number(track.featureSpecialHeightRatio) || 0.6));
           doms.forEach(d => {
             const rA = toR(d.start), rB = toR(d.end);
             const p0 = L.polar(cx, cy, rA, l.angle);
             const p1 = L.polar(cx, cy, rB, l.angle);
+            const isSpecial = specialSet && specialSet.has(String(d.name));
+            const thisStrokeW = isSpecial ? domStrokeW * specialRatio : domStrokeW;
             C.el('line', {
               x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
               stroke: colorOf(track, d.name, colorMap),
-              'stroke-width': domStrokeW,
+              'stroke-width': thisStrokeW,
               'stroke-linecap': 'butt',
               'pointer-events': 'none'
             });
@@ -2057,6 +2290,8 @@ function renderCustomTracks(radial) {
         }), guideG);
       });
     }
+    applyBubbleTrackBg(true, placed, leaves, 0, null, halfStep);
+
     const _rootR = L.getRadialInnerBase() + (285 * (st.scaleH || 1)) * tMaxUsed / maxD2;
     const legendX = isInv ? (cx + _rootR + 40) : (cx + rBase + 40);
     let legendY = isInv ? (cy - _rootR) : (cy - 150);
@@ -2083,20 +2318,60 @@ C.registerSnapshot('customTracks', () => ({
   trackSeq,
   trackCommon: { ...trackCommon }
 }), s => {
-  if (Array.isArray(s.tracks)) customTracks = s.tracks;
+  if (Array.isArray(s.tracks)) {
+    customTracks = s.tracks;
+    customTracks.forEach(t => {
+      if (!t) return;
+      if (t.type === 'connect') {
+        if (t.connectOffsetRect == null && t.connectOffset != null) {
+          t.connectOffsetRect = Number(t.connectOffset) || 0;
+        }
+        if (!Array.isArray(t._connectRawRows)) t._connectRawRows = [];
+        if (!Array.isArray(t.data)) t.data = [];
+      } else if (t.type !== 'legend') {
+        if (!t.data || typeof t.data !== 'object' || Array.isArray(t.data)) t.data = {};
+      }
+      if (!Array.isArray(t.columns)) t.columns = [];
+      if (!Array.isArray(t.refLines)) t.refLines = [];
+      if (!Array.isArray(t.legendItems)) t.legendItems = [];
+      if (!Array.isArray(t.excludedValues)) t.excludedValues = [];
+      if (!t.customColors || typeof t.customColors !== 'object') t.customColors = {};
+      if (!t.columnColors || typeof t.columnColors !== 'object') t.columnColors = {};
+      if (!t.shapeMap || typeof t.shapeMap !== 'object') t.shapeMap = {};
+      if (t.type === 'feature') {
+        if (!t.featureInputMode) t.featureInputMode = 'string';
+        if (!Array.isArray(t.featureTableRows)) t.featureTableRows = [];
+        if (t.featureSpecialTypes == null) t.featureSpecialTypes = "5' UTR,3' UTR";
+        if (t.featureSpecialEnable == null) t.featureSpecialEnable = false;
+        if (t.featureSpecialHeightRatio == null) t.featureSpecialHeightRatio = 0.6;
+      }
+      if (t.type === 'bubble') {
+        if (t.bubbleBgShow == null) t.bubbleBgShow = false;
+        if (t.bubbleBgColor == null) t.bubbleBgColor = '#f0f4f8';
+        if (t.bubbleBgOpacity == null) t.bubbleBgOpacity = 0.6;
+      }
+    });
+  }
   if (typeof s.trackSeq === 'number') trackSeq = s.trackSeq;
   if (s.trackCommon) Object.assign(trackCommon, s.trackCommon);
   if (global.TreeTracks && global.TreeTracks.tracks) {
-    global.TreeTracks.tracks.forEach(t => refreshTrackData(t));
+    global.TreeTracks.tracks.forEach(t => {
+      try { refreshTrackData(t); } catch (err) { console.warn('[customTracks set] refreshTrackData failed:', err, t && t.type, t && t.id); }
+    });
+    global.TreeTracks.tracks.forEach(t => {
+      if (!t) return;
+      if (t.type === 'connect') { if (!Array.isArray(t.data)) t.data = []; }
+      else if (t.type !== 'legend') { if (!t.data || typeof t.data !== 'object' || Array.isArray(t.data)) t.data = {}; }
+    });
   }
 });
-
 global.TreeTracks = {
   get tracks() { return customTracks; },
   get trackCommon() { return trackCommon; }, set trackCommon(v) { Object.assign(trackCommon, v); },
   trackTypeLabel, trackDefaultName, newTrackDefaults,
   addCustomTrack, updateCustomTrack, removeCustomTrack, toggleCustomTrack,
   buildTrackData, buildMultiTrackData, refreshTrackData,
+  parseFeatureTableText, applyFeatureTable, generateRandomFeatureTable,
   getTrackColorMap, collectUniqueValues, renderCustomTracks,
   computeTrackWidth, datasetValue, getBarColumnValues, getBarColorMap,
   drawTrackSymbol, sampleTrackColor, evalBinaryLogic,

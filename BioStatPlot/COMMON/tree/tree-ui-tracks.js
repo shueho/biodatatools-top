@@ -96,7 +96,7 @@ function applyConnectData(track, text) {
   }
   track._connectRawRows = parsed.data;
   global.TreeTracks.refreshTrackData(track);
-  return { ok: true, count: track.data.length };
+  return { ok: true, count: Array.isArray(track.data) ? track.data.length : 0 };
 }
 
 function generateRandomConnectData(track) {
@@ -129,6 +129,8 @@ function refreshTrackList(container) {
   if (!box) return;
   const TT = global.TreeTracks;
   if (!TT || !TT.tracks.length) { box.innerHTML = ''; return; }
+
+  const savedMultiColScroll = [...box.querySelectorAll('.multi-col-checks')].map(el => el.scrollTop);
   const expanded = TT.tracks.filter(t => !t.collapsed);
   if (expanded.length > 1) {
     const keep = expanded[0];
@@ -142,12 +144,10 @@ function refreshTrackList(container) {
     const typeLabel = TT.trackTypeLabel(t.type);
     let body = '';
     if (t.type === 'feature') {
+      const isTableMode = t.featureInputMode === 'table';
+      const featureTableText = t.featureTableRaw || '';
       body = `
         <div class="param-grid cols-4">
-          <div class="param-item"><label>${I.t('featureColumn')}</label>
-            <select data-tprop="featureColumn" data-tid="${t.id}">${colOpts(t.featureColumn)}</select></div>
-          <div class="param-item"><label>${I.t('featureLengthColumn')}</label>
-            <select data-tprop="featureLengthColumn" data-tid="${t.id}">${colOpts(t.featureLengthColumn)}</select></div>
           <div class="param-item"><label>${I.t('trackNameLabel')}</label>
             <input type="text" data-tprop="name" data-tid="${t.id}" value="${escA(t.name)}"></div>
           <div class="param-item"><label>${I.t('trackOffsetLabel')}</label>
@@ -156,9 +156,36 @@ function refreshTrackList(container) {
             <input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width||140}" min="40" max="500"></div>
           <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="featureAlign" data-tid="${t.id}" ${t.featureAlign?'checked':''}> ${I.t('featureAlign')}</label></div>
         </div>
-        <div class="info-box" style="margin:6px 0;font-size:12px;line-height:1.65;">
-          ${I.t('featureHint')}
-          <span data-feature-hint="${t.id}"></span>
+        <div class="style-box" style="margin-top:8px;">
+          <div class="style-box-title">${I.t('featureDataSection')}</div>
+          <div class="param-grid cols-4">
+            <div class="param-item"><label>${I.t('featureInputMode')}</label>
+              <select data-tprop="featureInputMode" data-tid="${t.id}">
+                <option value="string" ${!isTableMode ? 'selected' : ''}>${I.t('featureInputModeString')}</option>
+                <option value="table" ${isTableMode ? 'selected' : ''}>${I.t('featureInputModeTable')}</option>
+              </select></div>
+            <div class="param-item"><label>${I.t('featureLengthColumn')}</label>
+              <select data-tprop="featureLengthColumn" data-tid="${t.id}">${colOpts(t.featureLengthColumn)}</select></div>
+            ${!isTableMode ? `
+            <div class="param-item" style="grid-column: span 2;"><label>${I.t('featureColumn')}</label>
+              <select data-tprop="featureColumn" data-tid="${t.id}">${colOpts(t.featureColumn)}</select></div>
+            ` : ''}
+          </div>
+          ${!isTableMode ? `
+          <div class="info-box" style="margin:8px 0 0;font-size:12px;line-height:1.65;">
+            ${I.t('featureHint')}
+            <span data-feature-hint="${t.id}"></span>
+          </div>` : `
+          <div style="margin-top:8px;" data-feature-table-wrap="${t.id}">
+            <textarea data-feature-table-textarea="${t.id}" rows="6" class="import-text" spellcheck="false" placeholder="${escA(I.t('featureTablePlaceholder'))}" style="width:100%;font-family:Consolas,monospace;font-size:12px;box-sizing:border-box;">${escA(featureTableText)}</textarea>
+            <div class="info-box" style="margin-top:6px;font-size:12px;line-height:1.6;">${I.t('featureTableHint')}</div>
+            <div class="btn-group" style="margin-top:6px;">
+              <button class="btn" data-feature-apply="${t.id}" type="button">${I.t('featureTableApply')}</button>
+              <button class="btn" data-feature-random="${t.id}" type="button">${I.t('featureTableRandom')}</button>
+              <button class="btn btn-outline" data-feature-upload="${t.id}" type="button">${I.t('featureTableUpload')}</button>
+              <input type="file" data-feature-file="${t.id}" accept=".csv,.tsv,.txt" style="display:none;">
+            </div>
+          </div>`}
         </div>
         ${subTitle(I.t('featureAxisTitle'))}
         <div class="param-grid cols-4">
@@ -167,7 +194,7 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('trackMaxValue')}</label>
             <input type="number" data-tprop="featureMax" data-tid="${t.id}" value="${t.featureMax!=null?t.featureMax:''}" placeholder="auto"></div>
           <div class="param-item"><label>${I.t('trackAxisInterval')}</label>
-            <input type="number" data-tprop="featureTickInterval" data-tid="${t.id}" value="${t.featureTickInterval!=null?t.featureTickInterval:''}" placeholder="auto（3 刻度）"></div>
+            <input type="number" data-tprop="featureTickInterval" data-tid="${t.id}" value="${t.featureTickInterval!=null?t.featureTickInterval:''}" placeholder="auto"></div>
         </div>
         ${subTitle(I.t('featureBarTitle'))}
         <div class="param-grid cols-4">
@@ -185,6 +212,14 @@ function refreshTrackList(container) {
             <input type="number" data-tprop="featureLabelFontSize" data-tid="${t.id}" value="${t.featureLabelFontSize||8}" min="5" max="20"></div>
           <div class="param-item"><label>${I.t('featureLabelColor')}</label>
             <input type="color" data-tprop="featureLabelColor" data-tid="${t.id}" value="${t.featureLabelColor||'#ffffff'}"></div>
+        </div>
+        ${subTitle(I.t('featureSpecialTitle'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="featureSpecialEnable" data-tid="${t.id}" ${t.featureSpecialEnable?'checked':''}> ${I.t('featureSpecialEnable')}</label></div>
+          <div class="param-item" style="grid-column: span 2;"><label>${I.t('featureSpecialTypes')}</label>
+            <input type="text" data-tprop="featureSpecialTypes" data-tid="${t.id}" value="${escA(t.featureSpecialTypes || "5' UTR,3' UTR")}" placeholder="5' UTR,3' UTR"></div>
+          <div class="param-item"><label>${I.t('featureSpecialHeightRatio')}</label>
+            <input type="number" data-tprop="featureSpecialHeightRatio" data-tid="${t.id}" value="${t.featureSpecialHeightRatio!=null?t.featureSpecialHeightRatio:0.6}" min="0.1" max="1" step="0.05"></div>
         </div>
         <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
         ${legendBlock(t)}`;
@@ -506,6 +541,12 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('bubbleGridWidth')}</label><input type="number" data-tprop="bubbleGridWidth" data-tid="${t.id}" value="${t.bubbleGridWidth||1}" min="0.5" max="4" step="0.5"></div>
           <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="bubbleGridDashed" data-tid="${t.id}" ${t.bubbleGridDashed?'checked':''}> ${I.t('bubbleGridDashed')}</label></div>
         </div>
+        ${subTitle(I.t('bubbleBgShow'))}
+        <div class="param-grid cols-4">
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="bubbleBgShow" data-tid="${t.id}" ${t.bubbleBgShow?'checked':''}> ${I.t('bubbleBgShow')}</label></div>
+          <div class="param-item"><label>${I.t('bubbleBgColor')}</label><input type="color" data-tprop="bubbleBgColor" data-tid="${t.id}" value="${t.bubbleBgColor||'#f0f4f8'}"></div>
+          <div class="param-item"><label>${I.t('bubbleBgOpacity')}</label><input type="number" data-tprop="bubbleBgOpacity" data-tid="${t.id}" value="${t.bubbleBgOpacity!=null?t.bubbleBgOpacity:0.6}" min="0" max="1" step="0.05"></div>
+        </div>
         ${subTitle(I.t('multiheatmapColLabelsTitle'))}
         <div class="param-grid cols-4">
           <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="showColLabels" data-tid="${t.id}" ${t.showColLabels!==false?'checked':''}> ${I.t('multiheatmapShowColLabels')}</label></div>
@@ -560,14 +601,21 @@ function refreshTrackList(container) {
               <option value="dashed" ${t.lineStyle==='dashed'?'selected':''}>${I.t('styleLineDashed')}</option>
             </select></div>
           <div class="param-item"><label>${I.t('connectOffsetLabel')}</label>
-            <input type="number" data-tprop="connectOffset" data-tid="${t.id}"
-                   value="${t.connectOffset||0}" step="1"
+            <input type="number" data-tconnect-offset data-tid="${t.id}"
+                   value="${(C.state.mode === 'circular' ? (t.connectOffset||0) : (t.connectOffsetRect||0))}" step="1"
                    title="${I.t('connectOffsetHint')}"></div>
           <div class="param-item"><label>${I.t('connectCurveInsetLabel')}</label>
             <input type="number" data-tprop="curveInset" data-tid="${t.id}"
                    value="${t.curveInset != null ? t.curveInset : ''}"
                    min="0" max="1" step="0.05" placeholder="auto"
                    title="${I.t('connectCurveInsetHint')}"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="connectReverse" data-tid="${t.id}" ${t.connectReverse?'checked':''}> ${I.t('connectReverseLabel')}</label></div>
+          <div class="param-item"><label>${I.t('connectArrowLabel')}</label>
+            <select data-tprop="connectArrow" data-tid="${t.id}">
+              <option value="off" ${((t.connectArrow||'off')==='off')?'selected':''}>${I.t('connectArrowOff')}</option>
+              <option value="single" ${t.connectArrow==='single'?'selected':''}>${I.t('connectArrowSingle')}</option>
+              <option value="both" ${t.connectArrow==='both'?'selected':''}>${I.t('connectArrowBoth')}</option>
+            </select></div>
         </div>
         <div class="style-box" style="margin-top:8px;">
           <div class="style-box-title">${I.t('connectDataTitle')}</div>
@@ -639,6 +687,10 @@ function refreshTrackList(container) {
       </div>`;
   }).join('');
 
+  box.querySelectorAll('.multi-col-checks').forEach((el, i) => {
+    if (savedMultiColScroll[i] != null) el.scrollTop = savedMultiColScroll[i];
+  });
+
   box.querySelectorAll('[data-tprop]').forEach(el => {
     el.addEventListener('input', e => {
       const id = Number(el.dataset.tid);
@@ -665,7 +717,8 @@ function refreshTrackList(container) {
           || prop === 'featureColumn' || prop === 'featureLengthColumn'
           || prop === 'textAutoWidth' || prop === 'barColorMode' || prop === 'barColorColumn'
           || prop === 'textOrientation' || prop === 'showText' || prop === 'legendOrientation'
-          || prop === 'bubbleSizeMode') {
+          || prop === 'bubbleSizeMode' || prop === 'bubbleBgShow'
+          || prop === 'featureInputMode') {
         setTimeout(() => refreshTrackList(container), 0);
       }
     });
@@ -941,7 +994,8 @@ function refreshTrackList(container) {
         const isColumnColored = t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar' || t.type === 'bubble';
         let vals;
         if (isConnect) {
-          vals = Array.from(new Set((t.data || []).map(d => String(d.colorBy == null ? '' : d.colorBy))));
+          const dataArr = Array.isArray(t.data) ? t.data : [];
+          vals = Array.from(new Set(dataArr.map(d => String((d && d.colorBy) == null ? '' : d.colorBy))));
         } else if (isColumnColored) {
           vals = t.columns || [];
         } else {
@@ -1098,6 +1152,69 @@ function refreshTrackList(container) {
       global.TreeRenderer.draw();
     });
   });
+  box.querySelectorAll('[data-tconnect-offset]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const tid = Number(inp.dataset.tid);
+      const t = TT.tracks.find(x => x.id === tid);
+      if (!t) return;
+      const v = inp.value === '' ? 0 : Number(inp.value);
+      if (C.state.mode === 'circular') t.connectOffset = v;
+      else t.connectOffsetRect = v;
+      global.TreeRenderer.draw();
+    });
+  });
+  box.querySelectorAll('[data-feature-apply]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.featureApply);
+      const t = TT.tracks.find(x => x.id === id);
+      if (!t) return;
+      const ta = box.querySelector(`textarea[data-feature-table-textarea="${id}"]`);
+      if (!ta) return;
+      const n = TT.applyFeatureTable(t, ta.value);
+      global.TreeRenderer.draw();
+      refreshTrackList(container);
+      const st = document.getElementById('status');
+      if (st) st.textContent = I.t('featureTableApplied', { n });
+    });
+  });
+  box.querySelectorAll('[data-feature-random]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.featureRandom);
+      const t = TT.tracks.find(x => x.id === id);
+      if (!t) return;
+      const n = TT.generateRandomFeatureTable(t);
+      global.TreeRenderer.draw();
+      refreshTrackList(container);
+      const st = document.getElementById('status');
+      if (st) st.textContent = I.t('featureTableApplied', { n });
+    });
+  });
+  box.querySelectorAll('[data-feature-upload]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.featureUpload);
+      const fileInput = box.querySelector(`input[type="file"][data-feature-file="${id}"]`);
+      if (fileInput) fileInput.click();
+    });
+  });
+  box.querySelectorAll('input[type="file"][data-feature-file]').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const id = Number(inp.dataset.featureFile);
+      const t = TT.tracks.find(x => x.id === id);
+      if (!t) return;
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const text = ev.target.result || '';
+        TT.applyFeatureTable(t, text);
+        global.TreeRenderer.draw();
+        refreshTrackList(container);
+      };
+      reader.readAsText(f);
+      e.target.value = '';
+    });
+  });
+
   box.querySelectorAll('[data-connect-apply]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = Number(btn.dataset.connectApply);
@@ -1365,6 +1482,10 @@ function renderDatasetsPanel(container) {
           <select id="rangeLabelTrackTextOrientation"><option value="horizontal">${I.t('rangeLabelTextHorizontal')}</option><option value="vertical">${I.t('rangeLabelTextVertical')}</option></select></div>
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="rangeShowLabelsSelect" checked> ${I.t('rangeShowLabelsChk')}</label></div>
       </div>
+      <div class="style-box" style="margin-top:8px;">
+        <div class="style-box-title">${I.t('rangeLabelTextStyleTitle')}</div>
+        <div data-range-label-text-host></div>
+      </div>
       ${subTitle(I.t('legendPanelTitle'))}
       <div class="param-grid cols-4">
         <div class="param-item"><label class="mini-check"><input type="checkbox" id="showLegendChk"> ${I.t('legendShowChk')}</label></div>
@@ -1478,6 +1599,13 @@ function renderDatasetsPanel(container) {
     refreshTrackList(container);
     global.TreeRenderer.draw();
   });
+
+  const rangeLabelTextHost = container.querySelector('[data-range-label-text-host]');
+  if (rangeLabelTextHost) {
+    W.textStylePanel(rangeLabelTextHost, C.state.textStyles.rangeLabel, {
+      onChange: s => { Object.assign(C.state.textStyles.rangeLabel, s); global.TreeRenderer.draw(); }
+    });
+  }
 
   refreshTrackList(container);
 }

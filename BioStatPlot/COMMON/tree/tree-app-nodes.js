@@ -363,6 +363,18 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
       </button>
       <div class="nap-hint">${I.t('napRangeHint')}</div>
     </div>
+    ${isLeaf ? `
+    <button class="nap-btn has-sub" data-nap="label-style-toggle">${I.t('napLabelStyle')}</button>
+    <div class="nap-sub" data-sub="label-style">
+      <div class="nap-sub-title">${I.t('napLabelStyleTitle')}</div>
+      <div class="nap-row"><label>${I.t('napLabelColor')}</label><input type="color" class="nap-label-color" value="${n.labelColor || C.state.labelColor || '#222222'}"></div>
+      <div class="nap-row"><label>${I.t('napLabelBg')}</label><input type="color" class="nap-label-bg" value="${n.labelBg || '#ffffff'}"></div>
+      <button class="nap-sub-btn" data-nap="clear-label-style">
+        <span class="nap-sub-radio">×</span> ${I.t('napClearLabelStyle')}
+      </button>
+      <div class="nap-hint">${I.t('napLabelStyleHint')}</div>
+    </div>
+    ` : ''}
     <div class="nap-row"><label>${I.t('napSubtreeColor')}</label><input type="color" class="nap-color" value="${curColor}"></div>
     <div class="nap-row"><label>${I.t('napWidthFactor')}</label><input type="number" class="nap-width" min="0.2" max="8" step="0.1" value="${curWidth}"></div>
     <button class="nap-btn" data-nap="export-subtree" title="${I.t('napExportSubtreeTip')}">${I.t('napExportSubtree')}</button>
@@ -398,10 +410,13 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
         collapseSub.classList.remove("open");
         reposition();
       } else {
-        const willOpen = !collapseSub.classList.contains("open");
-        collapseSub.classList.toggle("open", willOpen);
-        collapseToggle.classList.toggle("open", willOpen);
-        if (willOpen) reposition();
+        n.collapsed = true;
+        collapseToggle.textContent = I.t('napExpand');
+        collapseToggle.classList.add("open");
+        collapseSub.classList.add("open");
+        global.TreeUI.refreshTreeView();
+        renderNodeTable();
+        reposition();
       }
     });
   }
@@ -455,10 +470,10 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
   if (rangeToggle && rangeSub) {
     rangeToggle.addEventListener("click", (e) => {
       e.stopPropagation();
-      const willOpen = !rangeSub.classList.contains("open");
-      rangeSub.classList.toggle("open", willOpen);
-      rangeToggle.classList.toggle("open", willOpen);
-      if (willOpen) reposition();
+      if (!rangeSub.classList.contains("open")) {
+        rangeSub.classList.add("open");
+        rangeToggle.classList.add("open");
+      }
     });
   }
 
@@ -528,6 +543,7 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
     const act = btn.dataset.nap;
     if (act === "collapse-toggle") return;
     if (act === "range-toggle") return;
+    if (act === "label-style-toggle") return;
     if (act === "close") {
       btn.addEventListener("click", (e) => { e.stopPropagation(); panel.style.display = "none"; });
       return;
@@ -537,6 +553,16 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
       if (btn.disabled) return;
       handleNodeAction(act, n);
     });
+  });
+  const labelColorInput = panel.querySelector(".nap-label-color");
+  if (labelColorInput) labelColorInput.addEventListener("input", () => {
+    n.labelColor = labelColorInput.value;
+    global.TreeRenderer.draw();
+  });
+  const labelBgInput = panel.querySelector(".nap-label-bg");
+  if (labelBgInput) labelBgInput.addEventListener("input", () => {
+    n.labelBg = labelBgInput.value;
+    global.TreeRenderer.draw();
   });
   const colorInput = panel.querySelector(".nap-color");
   if (colorInput) colorInput.addEventListener("change", () => {
@@ -559,6 +585,63 @@ function showNodeActionPanel(nodeId, clientX, clientY) {
     const top = Math.min(parseFloat(panel.style.top) || clientY + 8, window.innerHeight - h2 - 8);
     panel.style.left = Math.max(8, left) + "px";
     panel.style.top = Math.max(8, top) + "px";
+  }
+  function bindHoverSub(btn, sub) {
+    if (!btn || !sub) return;
+    let closeTimer = null;
+    function positionSub() {
+      const br = btn.getBoundingClientRect();
+      const subW = Math.max(240, sub.offsetWidth || 260);
+      const subH = sub.offsetHeight || 200;
+      let left, top;
+      if (br.right + subW + 8 > window.innerWidth) {
+        left = Math.max(8, br.left - subW - 4);
+      } else {
+        left = br.right + 2;
+      }
+      top = Math.min(br.top, window.innerHeight - subH - 12);
+      if (top < 8) top = 8;
+      sub.style.left = left + "px";
+      sub.style.top = top + "px";
+    }
+    function openSub() {
+      if (btn.disabled) return;
+      panel.querySelectorAll(".nap-sub.open").forEach(s => { if (s !== sub) s.classList.remove("open"); });
+      panel.querySelectorAll(".nap-btn.has-sub.open").forEach(b => { if (b !== btn) b.classList.remove("open"); });
+      sub.classList.add("open");
+      btn.classList.add("open");
+      positionSub();
+    }
+    function closeSub() {
+      sub.classList.remove("open");
+      btn.classList.remove("open");
+    }
+    function scheduleClose() {
+      clearTimeout(closeTimer);
+      closeTimer = setTimeout(() => {
+        if (btn.matches(":hover") || sub.matches(":hover")) { scheduleClose(); return; }
+        closeSub();
+      }, 350);
+    }
+    btn.addEventListener("mouseenter", () => { clearTimeout(closeTimer); openSub(); });
+    btn.addEventListener("mouseleave", scheduleClose);
+    sub.addEventListener("mouseenter", () => clearTimeout(closeTimer));
+    sub.addEventListener("mouseleave", scheduleClose);
+  }
+  bindHoverSub(collapseToggle, collapseSub);
+  bindHoverSub(rangeToggle, rangeSub);
+
+  const labelToggle = panel.querySelector('[data-nap="label-style-toggle"]');
+  const labelSub = panel.querySelector('[data-sub="label-style"]');
+  bindHoverSub(labelToggle, labelSub);
+  if (labelToggle && labelSub) {
+    labelToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!labelSub.classList.contains("open")) {
+        labelSub.classList.add("open");
+        labelToggle.classList.add("open");
+      }
+    });
   }
 }
 function showBranchActionPanel(branchNodeId, clientX, clientY) {
@@ -618,7 +701,13 @@ function handleNodeAction(action, n) {
     }
     return;
   }
-
+  if (action === "clear-label-style") {
+    n.labelColor = null;
+    n.labelBg = null;
+    global.TreeUI.refreshTreeView();
+    renderNodeTable();
+    return;
+  }
   if (action === "delete") n.deleted = true;
   else if (action === "reverse") {
     if (n.children && n.children.length > 1) n.children.reverse();

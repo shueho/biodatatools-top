@@ -230,8 +230,7 @@ global.TreeTraverse = {
   walk, allWalk, visibleChildren, isLeaf, labelOf, visibleLeaves,
   maxDepth, nodeById, leavesUnder, leafRowBounds,
   countInnerLeaves, collectInnerLeaves, hasRealChildren, duplicateLeafNames,
-  suppressUnary, rerootAt, moveNodeBeside,
-  duplicateLeafNames
+  suppressUnary, rerootAt, moveNodeBeside
 };
 global.TreeSerialize = { newickName, toNewick, toNexus, toPhyloXMLWithMeta, cropTreeToPathAndSubtree };
 })(window);

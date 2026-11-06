@@ -272,9 +272,7 @@ function renderAdvancedPanel(container) {
         bgShow: s.bgShow,
         bgColor: s.bgColor, bgFill: s.bgColor,
         bgOpacity: s.bgOpacity,
-        bgBorderColor: s.bgBorderColor, bgBorderWidth: s.bgBorderWidth,
-        offsetX: s.x, offsetY: s.y,
-        offsetTangent: s.offsetTangent, offsetRadial: s.offsetRadial
+        bgBorderColor: s.bgBorderColor, bgBorderWidth: s.bgBorderWidth
       });
       global.TreeRenderer.draw();
     }
@@ -311,9 +309,7 @@ function renderAdvancedPanel(container) {
         color: s.color, opacity: s.opacity,
         bgShow: s.bgShow, bgColor: s.bgColor, bgFill: s.bgColor,
         bgOpacity: s.bgOpacity,
-        bgBorderColor: s.bgBorderColor, bgBorderWidth: s.bgBorderWidth,
-        offsetX: s.x, offsetY: s.y,
-        offsetTangent: s.offsetTangent, offsetRadial: s.offsetRadial
+        bgBorderColor: s.bgBorderColor, bgBorderWidth: s.bgBorderWidth
       });
       global.TreeRenderer.draw();
     }
