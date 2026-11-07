@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub镜像链接生成工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>GitHub镜像链接生成工具</h2>
+            <p>将GitHub文件链接转换为多个镜像节点的可访问链接与下载命令，方便在国内网络环境下使用。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：输入GitHub链接</div>
+
+            <div class="text-input" style="margin:0;">
+                <input type="text" id="urlInput"
+                       placeholder="粘贴GitHub文件链接，支持 raw 文件、Release 资源以及 blob 页面"
+                       style="width:100%; padding:12px 14px; font-size:1rem; border:1px solid #ccc; border-radius:6px; font-family:Consolas,monospace;" />
+            </div>
+
+            <div class="info-box" style="margin-top:12px;">
+                <strong>支持格式：</strong><br>
+                · <code>https://raw.githubusercontent.com/owner/repo/branch/file</code>（raw 文件）<br>
+                · <code>https://github.com/owner/repo/releases/download/tag/file</code>（Release 资源）<br>
+                · <code>https://github.com/owner/repo/blob/branch/file</code>（blob 页面，会自动转换为对应的 raw 文件链接）<br>
+                · 已带 <code>wget</code> / <code>curl</code> 前缀的完整命令<br>
+                · 已带 <code>gh-proxy.com</code> / <code>gh-proxy.org</code> 旧代理前缀的链接（会自动剥离）
+            </div>
+
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <button class="btn" id="genBtn">生成镜像链接</button>
+                <button class="btn" id="exampleRawBtn">示例：raw文件</button>
+                <button class="btn" id="exampleBlobBtn">示例：blob页面</button>
+                <button class="btn" id="exampleAssetBtn">示例：Release资源</button>
+            </div>
+
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card" id="resultCard">
+            <div class="step-title">第二步：生成结果</div>
+
+            <div id="emptyResult" class="empty-tip">
+                请在上方输入GitHub文件链接并点击「生成镜像链接」
+            </div>
+
+            <div id="resultContent" style="display:none;">
+                <div style="margin-bottom:20px;">
+                    <div style="font-weight:600; color:#1f4068; margin-bottom:8px;">原始链接</div>
+                    <div id="origUrlBox"></div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <div style="font-weight:600; color:#1f4068; margin-bottom:8px;">镜像链接</div>
+                    <div id="mirrorList"></div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <div style="font-weight:600; color:#1f4068; margin-bottom:8px;">wget 命令</div>
+                    <div id="wgetList"></div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <div style="font-weight:600; color:#1f4068; margin-bottom:8px;">curl 命令</div>
+                    <div id="curlList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const urlInput = document.getElementById('urlInput');
+            const genBtn = document.getElementById('genBtn');
+            const msgTip = document.getElementById('msgTip');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultContent = document.getElementById('resultContent');
+            const origUrlBox = document.getElementById('origUrlBox');
+            const mirrorList = document.getElementById('mirrorList');
+            const wgetList = document.getElementById('wgetList');
+            const curlList = document.getElementById('curlList');
+
+            const MIRRORS = [
+                { id: 'cf',      name: 'Cloudflare (v4)',    domain: 'gh-proxy.org' },
+                { id: 'hk',      name: 'Cloudflare (v4)',    domain: 'v4.gh-proxy.org' },
+                { id: 'v6',      name: 'Cloudflare (v4/v6)', domain: 'v6.gh-proxy.org' },
+                { id: 'cdn',     name: 'Fastly (v4)',        domain: 'cdn.gh-proxy.org' },
+                { id: 'axisnow', name: 'AxisNow (v4)',       domain: 'axisnow.gh-proxy.org' }
+            ];
+
+            const GITHUB_HOSTS = [
+                'github.com',
+                'raw.githubusercontent.com'
+            ];
+
+            function showMsg(msg, type) {
+                msgTip.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (msgTip.innerHTML === '<span class="' + type + '">' + msg + '</span>') msgTip.innerHTML = '';
+                }, 6000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function parseGithubInput(input) {
+                let k = (input || '').trim();
+                if (!k) return { ok: false, error: '请输入GitHub文件链接' };
+
+                k = k.replace(/^(wget\s+-c\s+|wget\s+|curl\s+-sLO\s+|curl\s+-LO\s+|curl\s+-O\s+|curl\s+-fsSL\s+|curl\s+)/i, '').trim();
+                k = k.replace(/^["']|["']$/g, '');
+                k = k.replace(/^(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)?gh-proxy\.(?:com|org)\/+(https?:\/\/)?/i, function (_, s) {
+                    return s || 'https://';
+                });
+
+                if (!k) return { ok: false, error: '请输入GitHub文件链接' };
+
+                if (!k.startsWith('http://') && !k.startsWith('https://')) {
+                    k = 'https://' + k;
+                }
+
+                let parsed;
+                try {
+                    parsed = new URL(k);
+                } catch (e) {
+                    return { ok: false, error: '无效的URL格式' };
+                }
+
+                if (!GITHUB_HOSTS.some(function (h) {
+                    return parsed.hostname === h || parsed.hostname.endsWith('.' + h);
+                })) {
+                    return { ok: false, error: '仅支持 github.com 与 raw.githubusercontent.com 链接' };
+                }
+
+                let finalUrl = parsed.href;
+
+                if (parsed.hostname === 'github.com' || parsed.hostname === 'www.github.com') {
+                    const parts = parsed.pathname.split('/').filter(Boolean);
+
+                    const isBlobOrRaw = (parts.length >= 5 && (parts[2] === 'blob' || parts[2] === 'raw'));
+                    const isReleaseAsset = (parts.length >= 6 && parts[2] === 'releases' && parts[3] === 'download');
+
+                    if (isBlobOrRaw) {
+                        const owner = parts[0];
+                        const repo = parts[1];
+                        const branch = parts[3];
+                        const restPath = parts.slice(4).join('/');
+                        finalUrl = 'https://raw.githubusercontent.com/' + owner + '/' + repo + '/' + branch + '/' + restPath;
+                    } else if (isReleaseAsset) {
+                        finalUrl = parsed.href;
+                    } else {
+                        return { ok: false, error: '仅支持 raw 文件、Release 资源以及 blob 页面链接' };
+                    }
+                }
+
+                return { ok: true, url: finalUrl };
+            }
+
+            function makeMirrorRows(url) {
+                return MIRRORS.map(function (m) {
+                    return {
+                        name: m.name,
+                        url: 'https://' + m.domain + '/' + url
+                    };
+                });
+            }
+
+            function makeCommandRows(prefix, suffix, url) {
+                return MIRRORS.map(function (m) {
+                    return {
+                        name: m.name,
+                        cmd: prefix + 'https://' + m.domain + '/' + url + suffix
+                    };
+                });
+            }
+
+            function renderUrlRow(row) {
+                const wrap = document.createElement('div');
+                wrap.className = 'result-item';
+                wrap.style.cssText = 'padding:10px 12px; margin-bottom:8px; display:flex; ' +
+                    'align-items:flex-start; gap:10px; flex-wrap:wrap;';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.style.cssText = 'font-weight:600; color:#1f4068; min-width:160px; flex-shrink:0;';
+                nameDiv.textContent = row.name || '';
+
+                const urlDiv = document.createElement('div');
+                urlDiv.style.cssText = 'flex:1 1 320px; font-family:Consolas,monospace; ' +
+                    'font-size:0.88rem; color:#333; word-break:break-all; line-height:1.6;';
+                urlDiv.textContent = row.url || '';
+
+                const btnWrap = document.createElement('div');
+                btnWrap.style.cssText = 'display:flex; gap:6px; flex-shrink:0;';
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'btn btn-sm';
+                copyBtn.textContent = '复制';
+                copyBtn.addEventListener('click', function () { copyText(row.url || ''); });
+
+                const openBtn = document.createElement('button');
+                openBtn.className = 'btn btn-sm';
+                openBtn.textContent = '打开';
+                openBtn.addEventListener('click', function () {
+                    window.open(row.url, '_blank', 'noopener,noreferrer');
+                });
+
+                btnWrap.appendChild(copyBtn);
+                btnWrap.appendChild(openBtn);
+
+                wrap.appendChild(nameDiv);
+                wrap.appendChild(urlDiv);
+                wrap.appendChild(btnWrap);
+                return wrap;
+            }
+
+            function renderCmdRow(row) {
+                const wrap = document.createElement('div');
+                wrap.className = 'result-item';
+                wrap.style.cssText = 'padding:10px 12px; margin-bottom:8px; display:flex; ' +
+                    'align-items:flex-start; gap:10px; flex-wrap:wrap;';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.style.cssText = 'font-weight:600; color:#1f4068; min-width:160px; flex-shrink:0;';
+                nameDiv.textContent = row.name || '';
+
+                const cmdDiv = document.createElement('div');
+                cmdDiv.style.cssText = 'flex:1 1 320px; font-family:Consolas,monospace; ' +
+                    'font-size:0.88rem; color:#333; word-break:break-all; line-height:1.6; ' +
+                    'background:#f8fafc; padding:6px 10px; border-radius:4px; border:1px solid #e8edf2;';
+                cmdDiv.textContent = row.cmd || '';
+
+                const btnWrap = document.createElement('div');
+                btnWrap.style.cssText = 'display:flex; gap:6px; flex-shrink:0;';
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'btn btn-sm';
+                copyBtn.textContent = '复制';
+                copyBtn.addEventListener('click', function () { copyText(row.cmd || ''); });
+
+                btnWrap.appendChild(copyBtn);
+
+                wrap.appendChild(nameDiv);
+                wrap.appendChild(cmdDiv);
+                wrap.appendChild(btnWrap);
+                return wrap;
+            }
+
+            function copyText(text) {
+                if (!text) return;
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        toast('已复制');
+                    }).catch(function () { fallbackCopy(text); });
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    toast('已复制');
+                } catch (e) {
+                    toast('复制失败，请手动复制');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function doGenerate() {
+                const result = parseGithubInput(urlInput.value);
+
+                if (!result.ok) {
+                    showMsg('❌ ' + result.error, 'error');
+                    emptyResult.style.display = 'block';
+                    resultContent.style.display = 'none';
+                    return;
+                }
+
+                showMsg('✅ 已解析文件链接', 'success');
+
+                origUrlBox.innerHTML = '';
+                origUrlBox.appendChild(renderUrlRow({
+                    name: 'GitHub 原始链接',
+                    url: result.url
+                }));
+
+                mirrorList.innerHTML = '';
+                makeMirrorRows(result.url).forEach(function (row) {
+                    mirrorList.appendChild(renderUrlRow(row));
+                });
+
+                wgetList.innerHTML = '';
+                makeCommandRows('wget "', '"', result.url).forEach(function (row) {
+                    wgetList.appendChild(renderCmdRow(row));
+                });
+
+                curlList.innerHTML = '';
+                makeCommandRows('curl -LO "', '"', result.url).forEach(function (row) {
+                    curlList.appendChild(renderCmdRow(row));
+                });
+
+                emptyResult.style.display = 'none';
+                resultContent.style.display = 'block';
+            }
+
+            function setExample(text) {
+                urlInput.value = text;
+                urlInput.focus();
+                doGenerate();
+            }
+
+            genBtn.addEventListener('click', doGenerate);
+
+            urlInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    doGenerate();
+                }
+            });
+
+            document.getElementById('exampleRawBtn').addEventListener('click', function () {
+                setExample('https://raw.githubusercontent.com/shueho/BioDataTools/master/BioDataSpider/GenoSpider/GenoSpider.py');
+            });
+
+            document.getElementById('exampleBlobBtn').addEventListener('click', function () {
+                setExample('https://github.com/shueho/BioDataTools/blob/master/BioDataSpider/GenoSpider/GenoSpider.py');
+            });
+
+            document.getElementById('exampleAssetBtn').addEventListener('click', function () {
+                setExample('https://github.com/shueho/BioDataTools/releases/download/v20250918/BioDataTools-v20250918.zip');
+            });
+        })();
+    </script>
+</body>
+</html>
