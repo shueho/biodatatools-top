@@ -1,7 +1,7 @@
 // ===================== 【功能配置区 - 仅在此增删分类/工具】 =====================
 const toolConfig = [
     {
-        categoryName: "序列文件",
+        categoryName: "序列文件处理",
         categoryIcon: "🧬",
         tools: [
 {
@@ -65,7 +65,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "翻译与密码子",
+        categoryName: "密码子分析",
         categoryIcon: "🧩",
         tools: [
 {
@@ -104,7 +104,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "序列统计",
+        categoryName: "序列组成统计",
         categoryIcon: "📊",
         tools: [
 {
@@ -135,7 +135,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "基因组注释",
+        categoryName: "GFF注释工具",
         categoryIcon: "🏷️",
         tools: [
 {
@@ -158,7 +158,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "单倍型与群体",
+        categoryName: "群体遗传与单倍型",
         categoryIcon: "🕸️",
         tools: [
 {
@@ -187,7 +187,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "分类与微生物",
+        categoryName: "物种分类与丰度",
         categoryIcon: "🦠",
         tools: [
 {
@@ -210,7 +210,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "表格与矩阵",
+        categoryName: "表格与矩阵处理",
         categoryIcon: "📋",
         tools: [
 {
@@ -269,7 +269,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "地理空间",
+        categoryName: "经纬度与距离",
         categoryIcon: "🌐",
         tools: [
 {
@@ -286,7 +286,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "可视化",
+        categoryName: "绘图与可视化",
         categoryIcon: "📈",
         tools: [
 {
@@ -310,12 +310,6 @@ const toolConfig = [
 },
 
 {
-    toolName: "SVG合并工具",
-    toolDesc: "将多个SVG文件简单合并为一张大图，支持调整每行展示数量、间距和缩放。",
-    link: "ch/037.SVG_merger.html"
-},
-
-{
     toolName: "ARWEN tRNA二级结构提取",
     toolDesc: "从ARWEN输出结果中提取tRNA二级结构式，方便后续绘图。",
     link: "ch/029.ARWEN_trna_extract.html"
@@ -326,6 +320,17 @@ const toolConfig = [
     toolDesc: "对MITOS或ViennaRNA RNAplot输出的tRNA二级结构图进行美化。",
     toolIcon: "images/004.png",
     link: "ch/004.Trna_structure_beautifier.html"
+},
+        ]
+    },
+    {
+        categoryName: "通用工具",
+        categoryIcon: "🛠️",
+        tools: [
+{
+    toolName: "SVG合并工具",
+    toolDesc: "将多个SVG文件简单合并为一张大图，支持调整每行展示数量、间距和缩放。",
+    link: "ch/037.SVG_merger.html"
 },
 
 {
@@ -339,10 +344,28 @@ const toolConfig = [
     toolDesc: "提取SVG中的所有颜色，批量替换并实时预览。",
     link: "ch/047.SVG_recolor.html"
 },
+
+{
+    toolName: "大文件分页查看工具",
+    toolDesc: "流式读取并分页查看大文本或大表格文件，支持GB级文件、自定义分隔符、搜索定位。",
+    link: "ch/048.Large_file_viewer.html"
+},
+
+{
+    toolName: "GZ文件查看工具",
+    toolDesc: "流式解压并分页查看.gz/.bgz压缩文本文件。",
+    link: "ch/049.Gz_file_viewer.html"
+},
+
+{
+    toolName: "GitHub镜像链接生成工具",
+    toolDesc: "将GitHub文件链接转换为gh-proxy镜像节点链接与下载命令，方便在国内网络环境下使用。",
+    link: "ch/050.GitHub_mirror.html"
+},
         ]
     },
     {
-        categoryName: "其他",
+        categoryName: "下载与资源",
         categoryIcon: "📦",
         tools: [
 {
@@ -364,6 +387,8 @@ const toolConfig = [
     toolDesc: "生物信息学常用软件下载或官方链接。",
     link: "ch/997.Software_download.html"
 },
+
+
         ]
     }
 ];

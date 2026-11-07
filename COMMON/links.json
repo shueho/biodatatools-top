@@ -1,10 +1,12 @@
 {
   "zh": [
     { "title": "NCBI", "desc": "美国国家生物技术信息中心", "url": "https://www.ncbi.nlm.nih.gov/" },
-    { "title": "EBI", "desc": "欧洲生物信息学研究所", "url": "https://www.ebi.ac.uk/" }
+    { "title": "EBI", "desc": "欧洲生物信息学研究所", "url": "https://www.ebi.ac.uk/" },
+    { "title": "Zm-B73-REFERENCE-NAM-5.0", "desc": "玉米参考基因组V5", "url": "https://download.maizegdb.org/Zm-B73-REFERENCE-NAM-5.0" }
   ],
   "en": [
     { "title": "NCBI", "desc": "National Center for Biotechnology Information", "url": "https://www.ncbi.nlm.nih.gov/" },
-    { "title": "EBI", "desc": "European Bioinformatics Institute", "url": "https://www.ebi.ac.uk/" }
+    { "title": "EBI", "desc": "European Bioinformatics Institute", "url": "https://www.ebi.ac.uk/" },
+    { "title": "Zm-B73-REFERENCE-NAM-5.0", "desc": "Zea mays reference genome version 5", "url": "https://download.maizegdb.org/Zm-B73-REFERENCE-NAM-5.0" }
   ]
 }

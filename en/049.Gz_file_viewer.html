@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GZ File Viewer - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <script src="../COMMON/external/fflate-0.8.2.js"></script>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>GZ File Viewer</h2>
+            <p>Stream-decompress and paginate through .gz / .bgz compressed text files.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import GZ File</div>
+
+            <div class="file-input">
+                <input type="file" id="gzFile" accept=".gz,.bgz,.gzip" disabled>
+            </div>
+
+            <div class="info-box" style="margin-top:12px;">
+                <strong>Note:</strong> Uses the fflate library for streaming decompression; compatible with standard gzip, bgzip (.bgz), and multi-member gzip files.<br>
+                <strong>Memory limit:</strong> Decompressed content is kept entirely in memory. Compressed files up to 500 MB (decompressed &lt; 800 MB) are recommended.<br>
+            </div>
+
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">Preview File</button>
+                <button class="btn" id="exportBtn" disabled>Export Decompressed</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="progressWrap" class="result-item" style="display:none;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="progressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="progressStage">Preparing...</span>
+                    <span id="progressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Browse Pages</div>
+
+            <div id="pagerEmpty" class="empty-tip">Content will be shown here after importing a GZ file</div>
+
+            <div id="pagerContent" style="display:none;">
+                <div class="filter-box" style="margin-bottom:12px; gap:10px; align-items:center;">
+                    <label style="display:flex; align-items:center; gap:6px;">Search:
+                        <input type="text" id="searchInput" placeholder="Enter text to find"
+                               style="width:280px; padding:6px 10px; font-family:Consolas,monospace;">
+                    </label>
+                    <button class="btn btn-sm" id="searchPrevBtn">Previous</button>
+                    <button class="btn btn-sm" id="searchNextBtn">Next</button>
+                    <button class="btn btn-sm" id="searchClearBtn">Clear</button>
+                    <span id="searchInfo" class="tip-text" style="margin:0;"></span>
+                </div>
+
+                <div class="filter-box" style="margin-bottom:12px;">
+                    <label>Rows per page:
+                        <select id="pageSizeSelect" style="padding:4px 8px;">
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                            <option value="1000">1000</option>
+                        </select>
+                    </label>
+                    <span id="metaInfo" class="tip-text" style="margin:0;"></span>
+                </div>
+
+                <div class="result-toolbar" style="flex-wrap:wrap; gap:8px;">
+                    <button class="btn btn-sm" id="firstBtn">First</button>
+                    <button class="btn btn-sm" id="prevBtn">Prev</button>
+                    <span style="padding:0 6px; white-space:nowrap;">
+                        Page <strong id="pageNow">1</strong> / <span id="pageTotal">1</span>
+                    </span>
+                    <button class="btn btn-sm" id="nextBtn">Next</button>
+                    <button class="btn btn-sm" id="lastBtn">Last</button>
+                    <label style="margin-left:8px; white-space:nowrap;">Go to:
+                        <input type="number" id="jumpInput" min="1" value="1" style="width:80px;">
+                        <button class="btn btn-sm" id="jumpBtn">Go</button>
+                    </label>
+                    <button class="btn btn-sm" id="copyPageBtn" style="margin-left:auto;">Copy Current Page</button>
+                </div>
+
+                <div id="contentArea" class="result-item"
+                     style="margin-top:10px; max-height:640px; overflow:auto; min-height:120px;"></div>
+                <div id="pageTip" class="tip-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const READ_CHUNK = 2 * 1024 * 1024;
+            const CHUNK_SIZE = 1024 * 1024;
+            const MAX_DECOMPRESSED_CHARS = 800 * 1024 * 1024;
+
+            const gzFile = document.getElementById('gzFile');
+            const loadBtn = document.getElementById('loadBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const progressWrap = document.getElementById('progressWrap');
+            const progressBar = document.getElementById('progressBar');
+            const progressStage = document.getElementById('progressStage');
+            const progressPct = document.getElementById('progressPct');
+
+            const pagerEmpty = document.getElementById('pagerEmpty');
+            const pagerContent = document.getElementById('pagerContent');
+            const pageSizeSelect = document.getElementById('pageSizeSelect');
+            const metaInfo = document.getElementById('metaInfo');
+            const pageNow = document.getElementById('pageNow');
+            const pageTotal = document.getElementById('pageTotal');
+            const firstBtn = document.getElementById('firstBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const lastBtn = document.getElementById('lastBtn');
+            const jumpInput = document.getElementById('jumpInput');
+            const jumpBtn = document.getElementById('jumpBtn');
+            const copyPageBtn = document.getElementById('copyPageBtn');
+            const contentArea = document.getElementById('contentArea');
+            const pageTip = document.getElementById('pageTip');
+
+            const searchInput = document.getElementById('searchInput');
+            const searchPrevBtn = document.getElementById('searchPrevBtn');
+            const searchNextBtn = document.getElementById('searchNextBtn');
+            const searchClearBtn = document.getElementById('searchClearBtn');
+            const searchInfo = document.getElementById('searchInfo');
+
+            let state = {
+                chunks: [],
+                chunkStarts: [0],
+                lineOffsets: [0],
+                totalChars: 0,
+                lineCount: 0,
+                filename: '',
+                pageSize: 50,
+                currentPage: 1,
+                totalPages: 1
+            };
+
+            let searchState = {
+                query: '',
+                matches: [],
+                index: -1
+            };
+
+            let loadingToken = 0;
+            let isProcessing = false;
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 8000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function showProgress(stage) {
+                progressWrap.style.display = 'block';
+                setProgress(0, stage);
+            }
+
+            function setProgress(pct, stage) {
+                pct = Math.max(0, Math.min(100, Math.round(pct)));
+                progressBar.style.width = pct + '%';
+                progressPct.textContent = pct + '%';
+                if (stage) progressStage.textContent = stage;
+            }
+
+            function hideProgress() {
+                progressWrap.style.display = 'none';
+            }
+
+            function isFflateReady() {
+                return typeof fflate !== 'undefined' && typeof fflate.AsyncGunzip === 'function';
+            }
+
+            function findChunkIndex(globalPos) {
+                let lo = 0;
+                let hi = state.chunkStarts.length - 1;
+                while (lo < hi) {
+                    const mid = (lo + hi + 1) >> 1;
+                    if (state.chunkStarts[mid] <= globalPos) lo = mid;
+                    else hi = mid - 1;
+                }
+                return lo;
+            }
+
+            function getLineText(i) {
+                if (i < 0 || i >= state.lineCount) return '';
+                const start = state.lineOffsets[i];
+                const end = (i + 1 < state.lineOffsets.length)
+                    ? state.lineOffsets[i + 1]
+                    : state.totalChars;
+
+                let ci = findChunkIndex(start);
+                let text = '';
+                let pos = start;
+
+                while (pos < end && ci < state.chunks.length) {
+                    const chunkStart = state.chunkStarts[ci];
+                    const chunkEnd = chunkStart + state.chunks[ci].length;
+                    if (chunkEnd <= pos) { ci++; continue; }
+                    const localStart = Math.max(0, pos - chunkStart);
+                    const localEnd = Math.min(state.chunks[ci].length, end - chunkStart);
+                    text += state.chunks[ci].slice(localStart, localEnd);
+                    pos = chunkStart + localEnd;
+                    ci++;
+                }
+
+                if (text.charCodeAt(text.length - 1) === 10) text = text.slice(0, -1);
+                if (text.charCodeAt(text.length - 1) === 13) text = text.slice(0, -1);
+                return text;
+            }
+
+            async function decompressAndIndex(file, token, onProgress) {
+                const chunks = [];
+                const chunkStarts = [0];
+                const lineOffsets = [0];
+                let totalChars = 0;
+                let lineCount = 0;
+                let currentChunk = '';
+                let firstChunk = true;
+                let lastYield = performance.now();
+                let fatalError = null;
+                let done = false;
+
+                const decoder = new TextDecoder('utf-8');
+
+                function handleText(text) {
+                    if (!text) return;
+                    if (firstChunk) {
+                        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+                        firstChunk = false;
+                    }
+                    if (totalChars + text.length > MAX_DECOMPRESSED_CHARS) {
+                        throw new Error('Decompressed content exceeds ' +
+                            Math.round(MAX_DECOMPRESSED_CHARS / 1024 / 1024) +
+                            ' M chars, beyond the browser\'s memory capacity. Please use zcat on the command line to decompress, then open with the Large File Viewer.');
+                    }
+
+                    let pos = 0;
+                    while (true) {
+                        const idx = text.indexOf('\n', pos);
+                        if (idx === -1) break;
+                        lineCount++;
+                        lineOffsets.push(totalChars + idx + 1);
+                        pos = idx + 1;
+                    }
+
+                    totalChars += text.length;
+                    currentChunk += text;
+
+                    if (currentChunk.length >= CHUNK_SIZE) {
+                        chunks.push(currentChunk);
+                        chunkStarts.push(totalChars);
+                        currentChunk = '';
+                    }
+                }
+
+                const gunzip = new fflate.AsyncGunzip(function (err, chunk, final) {
+                    if (err) {
+                        fatalError = err;
+                        return;
+                    }
+                    try {
+                        if (chunk && chunk.length > 0) {
+                            const text = decoder.decode(chunk, { stream: !final });
+                            handleText(text);
+                        }
+                        if (final) {
+                            const tail = decoder.decode();
+                            if (tail) handleText(tail);
+                            done = true;
+                        }
+                    } catch (e) {
+                        fatalError = e;
+                    }
+                });
+
+                let byteOffset = 0;
+                while (byteOffset < file.size) {
+                    if (token !== loadingToken) throw new Error('cancelled');
+                    if (fatalError) throw fatalError;
+
+                    const end = Math.min(byteOffset + READ_CHUNK, file.size);
+                    const buf = await file.slice(byteOffset, end).arrayBuffer();
+                    const isLast = (end >= file.size);
+
+                    gunzip.push(new Uint8Array(buf), isLast);
+                    byteOffset = end;
+
+                    onProgress('decompress', byteOffset / file.size * 100);
+
+                    if (fatalError) throw fatalError;
+
+                    const now = performance.now();
+                    if (now - lastYield > 16) {
+                        onProgress('index', totalChars);
+                        await new Promise(function (r) { setTimeout(r, 0); });
+                        lastYield = now;
+                    }
+                }
+
+                await new Promise(function (resolve, reject) {
+                    const check = function () {
+                        if (token !== loadingToken) return reject(new Error('cancelled'));
+                        if (fatalError) return reject(fatalError);
+                        if (done) return resolve();
+                        setTimeout(check, 5);
+                    };
+                    check();
+                });
+
+                if (currentChunk.length > 0) {
+                    chunks.push(currentChunk);
+                    chunkStarts.push(totalChars);
+                }
+
+                if (lineOffsets.length > 0 && lineOffsets[lineOffsets.length - 1] === totalChars) {
+                    lineOffsets.pop();
+                }
+
+                if (totalChars > 0 && lineCount === 0) {
+                    lineCount = 1;
+                    lineOffsets.push(totalChars);
+                }
+
+                return {
+                    chunks: chunks,
+                    chunkStarts: chunkStarts,
+                    lineOffsets: lineOffsets,
+                    totalChars: totalChars,
+                    lineCount: lineCount
+                };
+            }
+
+            function recalcPagination() {
+                state.pageSize = parseInt(pageSizeSelect.value, 10) || 50;
+                state.totalPages = Math.max(1, Math.ceil(state.lineCount / state.pageSize));
+                if (state.currentPage > state.totalPages) state.currentPage = state.totalPages;
+                if (state.currentPage < 1) state.currentPage = 1;
+            }
+
+            function updateMeta() {
+                metaInfo.textContent = 'Total lines ' + state.lineCount +
+                    ' (in-memory)' +
+                    (state.filename ? ', file: ' + state.filename : '');
+                pageTotal.textContent = state.totalPages;
+                pageNow.textContent = state.currentPage;
+                jumpInput.max = state.totalPages;
+
+                const disabledFirst = (state.currentPage <= 1);
+                const disabledLast = (state.currentPage >= state.totalPages);
+                firstBtn.disabled = disabledFirst;
+                prevBtn.disabled = disabledFirst;
+                nextBtn.disabled = disabledLast;
+                lastBtn.disabled = disabledLast;
+            }
+
+            function renderCurrentPage() {
+                if (!state.lineCount) {
+                    contentArea.innerHTML = '<div style="padding:30px; text-align:center; color:#999;">No content to display</div>';
+                    pageTip.textContent = '';
+                    updateMeta();
+                    return;
+                }
+
+                const start = (state.currentPage - 1) * state.pageSize;
+                const end = Math.min(state.lineCount, start + state.pageSize);
+
+                const lines = [];
+                for (let i = start; i < end; i++) {
+                    lines.push(getLineText(i));
+                }
+
+                renderTextPage(lines, start);
+
+                pageTip.textContent = 'Showing lines ' + (start + 1) + ' to ' +
+                    Math.min(start + lines.length, state.lineCount) +
+                    ' (of ' + state.lineCount + ' lines)';
+                updateMeta();
+            }
+
+            function highlightInto(container, text, query) {
+                if (!query) {
+                    container.textContent = text;
+                    return;
+                }
+                const idx = text.indexOf(query);
+                if (idx === -1) {
+                    container.textContent = text;
+                    return;
+                }
+                container.textContent = '';
+                container.appendChild(document.createTextNode(text.slice(0, idx)));
+                const mark = document.createElement('mark');
+                mark.style.background = '#ffe58f';
+                mark.textContent = query;
+                container.appendChild(mark);
+                container.appendChild(document.createTextNode(text.slice(idx + query.length)));
+            }
+
+            function renderTextPage(lines, startLine) {
+                const query = searchState.query;
+                const matchLine = (searchState.index >= 0 && searchState.matches[searchState.index])
+                    ? searchState.matches[searchState.index].line
+                    : -1;
+
+                const pre = document.createElement('pre');
+                pre.style.cssText = 'margin:0; padding:0; font-family:Consolas,monospace; ' +
+                    'font-size:13px; line-height:1.65; white-space:pre; ' +
+                    'overflow-x:auto; color:#333;';
+
+                lines.forEach(function (line, i) {
+                    const lineNum = startLine + i;
+                    const div = document.createElement('div');
+                    if (lineNum === matchLine) div.style.background = '#fffbe6';
+                    highlightInto(div, line, query);
+                    pre.appendChild(div);
+                });
+
+                contentArea.innerHTML = '';
+                contentArea.appendChild(pre);
+
+                if (matchLine >= startLine && matchLine < startLine + lines.length) {
+                    const target = pre.children[matchLine - startLine];
+                    if (target) {
+                        setTimeout(function () { target.scrollIntoView({ block: 'center' }); }, 30);
+                    }
+                }
+            }
+
+            function goToPage(p) {
+                if (!state.lineCount) return;
+                p = parseInt(p, 10);
+                if (isNaN(p)) return;
+                if (p < 1) p = 1;
+                if (p > state.totalPages) p = state.totalPages;
+                state.currentPage = p;
+                renderCurrentPage();
+            }
+
+            function jumpToLine(lineNumber) {
+                if (lineNumber < 0) lineNumber = 0;
+                const page = Math.floor(lineNumber / state.pageSize) + 1;
+                goToPage(page);
+            }
+
+            function buildExportFilename() {
+                if (!state.filename) return 'decompressed.txt';
+                const base = state.filename.replace(/\.(gz|bgz|gzip)$/i, '');
+                if (base !== state.filename) return base;
+                return state.filename + '.decompressed.txt';
+            }
+
+            function exportDecompressed() {
+                if (!state.lineCount || state.chunks.length === 0) {
+                    showMsg(msgTip, '❌ Please decompress a file first', 'error');
+                    return;
+                }
+
+                const filename = buildExportFilename();
+                const outMB = (state.totalChars / 1024 / 1024).toFixed(1);
+
+                try {
+                    const blob = new Blob(state.chunks, { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
+
+                    showMsg(msgTip, '✅ Exported ' + filename + ' (' + outMB + ' M chars)', 'success');
+                    toast('Exported ' + filename);
+                } catch (e) {
+                    showMsg(msgTip, '❌ Export failed: ' + (e.message || e), 'error');
+                }
+            }
+
+            async function loadFromBlob(blob, filename) {
+                if (isProcessing) return;
+
+                if (!isFflateReady()) {
+                    showMsg(msgTip, '❌ fflate library not loaded.', 'error');
+                    return;
+                }
+
+                const token = ++loadingToken;
+                isProcessing = true;
+                loadBtn.disabled = true;
+                exportBtn.disabled = true;
+
+                try {
+                    const header = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+                    if (header.length < 2 || header[0] !== 0x1f || header[1] !== 0x8b) {
+                        throw new Error('File is not a valid gzip archive (missing gzip magic 0x1f 0x8b)');
+                    }
+                } catch (e) {
+                    isProcessing = false;
+                    loadBtn.disabled = false;
+                    showMsg(msgTip, '❌ ' + e.message, 'error');
+                    return;
+                }
+
+                showProgress('Decompressing...');
+
+                let result;
+                try {
+                    result = await decompressAndIndex(blob, token, function (stage, pctOrChars) {
+                        if (stage === 'decompress') {
+                            setProgress(pctOrChars, 'Decompressing: ' + Math.round(pctOrChars) + '%');
+                        } else if (stage === 'index') {
+                            const mb = (pctOrChars / 1024 / 1024).toFixed(1);
+                            setProgress(100, 'Indexing lines: ' + mb + ' M chars decompressed');
+                        }
+                    });
+                } catch (e) {
+                    if (e.message === 'cancelled' || token !== loadingToken) return;
+                    hideProgress();
+                    isProcessing = false;
+                    loadBtn.disabled = false;
+                    showMsg(msgTip, '❌ Decompression failed: ' + (e.message || e), 'error');
+                    return;
+                }
+
+                if (token !== loadingToken) return;
+
+                state.chunks = result.chunks;
+                state.chunkStarts = result.chunkStarts;
+                state.lineOffsets = result.lineOffsets;
+                state.totalChars = result.totalChars;
+                state.lineCount = result.lineCount;
+                state.filename = filename || '';
+                state.currentPage = 1;
+
+                resetSearch();
+
+                if (state.lineCount === 0) {
+                    hideProgress();
+                    isProcessing = false;
+                    loadBtn.disabled = false;
+                    exportBtn.disabled = true;
+                    showMsg(msgTip, '❌ No lines were parsed.', 'error');
+                    pagerEmpty.style.display = 'block';
+                    pagerContent.style.display = 'none';
+                    return;
+                }
+
+                recalcPagination();
+                renderCurrentPage();
+
+                pagerEmpty.style.display = 'none';
+                pagerContent.style.display = 'block';
+
+                setProgress(100, 'Decompression complete');
+                setTimeout(hideProgress, 500);
+
+                isProcessing = false;
+                loadBtn.disabled = false;
+                exportBtn.disabled = false;
+
+                const srcMB = (blob.size / 1024 / 1024).toFixed(1);
+                const outMB = (state.totalChars / 1024 / 1024).toFixed(1);
+                showMsg(msgTip, '✅ Decompressed and parsed ' + state.lineCount + ' lines (' +
+                    srcMB + ' MB → ' + outMB + ' M chars)' +
+                    (filename ? ', file: ' + filename : ''), 'success');
+                toast('Decompressed ' + state.lineCount + ' lines');
+            }
+
+            async function loadFromFile() {
+                const file = gzFile.files && gzFile.files[0];
+                if (!file) {
+                    showMsg(msgTip, '❌ Please select a gz file.', 'error');
+                    return;
+                }
+                if (isProcessing) return;
+                await loadFromBlob(file, file.name);
+            }
+
+            function resetSearch() {
+                searchState.query = '';
+                searchState.matches = [];
+                searchState.index = -1;
+                searchInfo.textContent = '';
+            }
+
+            function makePreview(line, query) {
+                const maxLen = 100;
+                const idx = line.indexOf(query);
+                let s;
+                if (line.length <= maxLen) {
+                    s = line;
+                } else {
+                    const half = Math.floor((maxLen - query.length) / 2);
+                    let start = Math.max(0, idx - half);
+                    let end = Math.min(line.length, start + maxLen);
+                    s = line.slice(start, end);
+                    if (start > 0) s = '…' + s;
+                    if (end < line.length) s = s + '…';
+                }
+                return s;
+            }
+
+            async function performSearch() {
+                const query = searchInput.value;
+                if (!query) {
+                    showMsg(searchInfo, 'Please enter a search term', 'error');
+                    return;
+                }
+                if (!state.lineCount) {
+                    showMsg(searchInfo, 'Please import a file first', 'error');
+                    return;
+                }
+
+                if (searchState.query === query && searchState.matches.length > 0) {
+                    searchInfo.textContent = searchState.matches.length + ' matches, currently at #' +
+                        (searchState.index + 1);
+                    return;
+                }
+
+                searchState.query = query;
+                searchState.matches = [];
+                searchState.index = -1;
+                searchInfo.textContent = 'Searching...';
+
+                const token = ++loadingToken;
+                const matches = [];
+                const total = state.lineCount;
+
+                let i = 0;
+                let lastYield = performance.now();
+
+                while (i < total) {
+                    if (token !== loadingToken) return;
+                    const end = Math.min(i + 5000, total);
+                    for (; i < end; i++) {
+                        const text = getLineText(i);
+                        if (text.indexOf(query) >= 0) {
+                            matches.push({ line: i, preview: makePreview(text, query) });
+                        }
+                    }
+                    const now = performance.now();
+                    if (now - lastYield > 16) {
+                        searchInfo.textContent = 'Searching... ' + Math.round(i / total * 100) + '%';
+                        await new Promise(function (r) { setTimeout(r, 0); });
+                        lastYield = now;
+                    }
+                }
+
+                if (token !== loadingToken) return;
+
+                searchState.matches = matches;
+
+                if (matches.length === 0) {
+                    searchInfo.innerHTML = '<span class="warn">No matches</span>';
+                    toast('No matches');
+                    return;
+                }
+
+                searchState.index = 0;
+                searchInfo.textContent = matches.length + ' matches, currently at #1';
+                jumpToLine(matches[0].line);
+            }
+
+            async function searchNext() {
+                if (searchState.matches.length === 0) {
+                    await performSearch();
+                    return;
+                }
+                searchState.index = (searchState.index + 1) % searchState.matches.length;
+                searchInfo.textContent = searchState.matches.length + ' matches, currently at #' +
+                    (searchState.index + 1);
+                jumpToLine(searchState.matches[searchState.index].line);
+            }
+
+            async function searchPrev() {
+                if (searchState.matches.length === 0) {
+                    await performSearch();
+                    return;
+                }
+                searchState.index = (searchState.index - 1 + searchState.matches.length) % searchState.matches.length;
+                searchInfo.textContent = searchState.matches.length + ' matches, currently at #' +
+                    (searchState.index + 1);
+                jumpToLine(searchState.matches[searchState.index].line);
+            }
+
+            function copyPage() {
+                if (!state.lineCount) {
+                    showMsg(pageTip, '❌ Nothing to copy', 'error');
+                    return;
+                }
+                const start = (state.currentPage - 1) * state.pageSize;
+                const end = Math.min(state.lineCount, start + state.pageSize);
+
+                let text = '';
+                for (let i = start; i < end; i++) {
+                    text += getLineText(i) + '\n';
+                }
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(pageTip, '✅ Current page copied', 'success');
+                        toast('Current page copied');
+                    }).catch(function () { fallbackCopy(text); });
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(pageTip, '✅ Current page copied', 'success');
+                    toast('Current page copied');
+                } catch (e) {
+                    showMsg(pageTip, '❌ Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            gzFile.addEventListener('change', function () {
+                if (!gzFile.files || gzFile.files.length === 0) return;
+                loadFromFile();
+            });
+
+            loadBtn.addEventListener('click', function () {
+                if (!gzFile.files || gzFile.files.length === 0) {
+                    showMsg(msgTip, '❌ Please select a gz file.', 'error');
+                    return;
+                }
+                loadFromFile();
+            });
+
+            exportBtn.addEventListener('click', exportDecompressed);
+
+            pageSizeSelect.addEventListener('change', function () {
+                if (state.lineCount) {
+                    state.currentPage = 1;
+                    recalcPagination();
+                    renderCurrentPage();
+                }
+            });
+
+            firstBtn.addEventListener('click', function () { goToPage(1); });
+            prevBtn.addEventListener('click', function () { goToPage(state.currentPage - 1); });
+            nextBtn.addEventListener('click', function () { goToPage(state.currentPage + 1); });
+            lastBtn.addEventListener('click', function () { goToPage(state.totalPages); });
+
+            jumpBtn.addEventListener('click', function () { goToPage(jumpInput.value); });
+            jumpInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); goToPage(jumpInput.value); }
+            });
+
+            copyPageBtn.addEventListener('click', copyPage);
+
+            searchNextBtn.addEventListener('click', searchNext);
+            searchPrevBtn.addEventListener('click', searchPrev);
+            searchClearBtn.addEventListener('click', function () {
+                searchInput.value = '';
+                resetSearch();
+                if (state.lineCount) renderCurrentPage();
+            });
+
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (e.shiftKey) searchPrev();
+                    else searchNext();
+                }
+            });
+
+            gzFile.disabled = false;
+
+            if (!isFflateReady()) {
+                showMsg(msgTip, '❌ fflate library not loaded.', 'error');
+            }
+        })();
+    </script>
+</body>
+</html>

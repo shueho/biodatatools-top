@@ -1,7 +1,7 @@
 // ===================== 【功能配置区 - 仅在此增删分类/工具】 =====================
 const toolConfig = [
     {
-        categoryName: "Sequence Files",
+        categoryName: "Sequence File Processing",
         categoryIcon: "🧬",
         tools: [
 {
@@ -64,7 +64,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "Translation & Codons",
+        categoryName: "Codon Analysis",
         categoryIcon: "🧩",
         tools: [
 {
@@ -102,7 +102,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "Sequence Statistics",
+        categoryName: "Sequence Composition Stats",
         categoryIcon: "📊",
         tools: [
 {
@@ -133,7 +133,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "Genome Annotation",
+        categoryName: "GFF Annotation Tools",
         categoryIcon: "🏷️",
         tools: [
 {
@@ -156,7 +156,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "Haplotype & Population",
+        categoryName: "Population Genetics & Haplotype",
         categoryIcon: "🕸️",
         tools: [
 {
@@ -185,7 +185,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "Taxonomy & Microbiome",
+        categoryName: "Taxonomy & Abundance Tables",
         categoryIcon: "🦠",
         tools: [
 {
@@ -208,7 +208,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "Tables & Matrices",
+        categoryName: "Table & Matrix Utilities",
         categoryIcon: "📋",
         tools: [
 {
@@ -268,7 +268,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "Geographic",
+        categoryName: "Geo Coordinates & Distance",
         categoryIcon: "🌐",
         tools: [
 {
@@ -285,7 +285,7 @@ const toolConfig = [
         ]
     },
     {
-        categoryName: "Visualization",
+        categoryName: "Plotting & Visualization",
         categoryIcon: "📈",
         tools: [
 {
@@ -308,12 +308,6 @@ const toolConfig = [
 },
 
 {
-    toolName: "SVG Merger Tool",
-    toolDesc: "Merge multiple SVG files into one large image. Supports adjusting order, items per row, spacing and scaling.",
-    link: "en/037.SVG_merger.html"
-},
-
-{
     toolName: "ARWEN tRNA Secondary Structure Extraction",
     toolDesc: "Extract tRNA secondary structures from ARWEN output to facilitate downstream plotting.",
     link: "en/029.ARWEN_trna_extract.html"
@@ -324,6 +318,17 @@ const toolConfig = [
     toolDesc: "Enhance tRNA secondary structure diagrams exported from MITOS or ViennaRNA RNAplot.",
     toolIcon: "images/004.png",
     link: "en/004.Trna_structure_beautifier.html"
+},
+        ]
+    },
+    {
+        categoryName: "General Utilities",
+        categoryIcon: "🛠️",
+        tools: [
+{
+    toolName: "SVG Merger Tool",
+    toolDesc: "Merge multiple SVG files into one large image. Supports adjusting order, items per row, spacing and scaling.",
+    link: "en/037.SVG_merger.html"
 },
 
 {
@@ -337,10 +342,28 @@ const toolConfig = [
     toolDesc: "Extract all colors from an SVG, batch replace them, and preview changes in real time.",
     link: "en/047.SVG_recolor.html"
 },
+
+{
+    toolName: "Large File Viewer",
+    toolDesc: "Stream and paginate large text or tabular files. Supports GB-scale files, custom delimiters, and search.",
+    link: "en/048.Large_file_viewer.html"
+},
+
+{
+    toolName: "GZ File Viewer",
+    toolDesc: "Stream-decompress and paginate through .gz / .bgz compressed text files.",
+    link: "en/049.Gz_file_viewer.html"
+},
+
+{
+    toolName: "GitHub Mirror Link Generator",
+    toolDesc: "Convert GitHub file links into gh-proxy mirror node links and download commands, making them easier to use in mainland China's network environment.",
+    link: "en/050.GitHub_mirror.html"
+},
         ]
     },
     {
-        categoryName: "Others",
+        categoryName: "Downloads & Resources",
         categoryIcon: "📦",
         tools: [
 {
@@ -362,6 +385,7 @@ const toolConfig = [
     toolDesc: "Downloads and official links for commonly used bioinformatics software.",
     link: "en/997.Software_download.html"
 },
+
         ]
     }
 ];

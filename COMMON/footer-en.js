@@ -171,7 +171,7 @@
                 }
                 .donate-title .donate-tip img {
                     display: block;
-                    max-width: 400px;
+                    max-width: 300px;
                     height: auto;
                 }
                 .donate-title:hover .donate-tip {

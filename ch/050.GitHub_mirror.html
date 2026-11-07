@@ -14,29 +14,27 @@
     <div class="main" id="app">
         <div class="page-intro">
             <h2>GitHub镜像链接生成工具</h2>
-            <p>将GitHub文件链接转换为多个镜像节点的可访问链接与下载命令，方便在国内网络环境下使用。</p>
+            <p>将GitHub文件链接转换为gh-proxy镜像节点链接与下载命令，方便在国内网络环境下使用。</p>
         </div>
 
         <div class="step-card">
-            <div class="step-title">第一步：输入GitHub链接</div>
+            <div class="step-title">第一步：输入链接</div>
 
             <div class="text-input" style="margin:0;">
                 <input type="text" id="urlInput"
-                       placeholder="粘贴GitHub文件链接，支持 raw 文件、Release 资源以及 blob 页面"
+                       placeholder="粘贴GitHub链接，支持raw文件、Release资源以及blob页面"
                        style="width:100%; padding:12px 14px; font-size:1rem; border:1px solid #ccc; border-radius:6px; font-family:Consolas,monospace;" />
             </div>
 
             <div class="info-box" style="margin-top:12px;">
                 <strong>支持格式：</strong><br>
-                · <code>https://raw.githubusercontent.com/owner/repo/branch/file</code>（raw 文件）<br>
-                · <code>https://github.com/owner/repo/releases/download/tag/file</code>（Release 资源）<br>
-                · <code>https://github.com/owner/repo/blob/branch/file</code>（blob 页面，会自动转换为对应的 raw 文件链接）<br>
-                · 已带 <code>wget</code> / <code>curl</code> 前缀的完整命令<br>
-                · 已带 <code>gh-proxy.com</code> / <code>gh-proxy.org</code> 旧代理前缀的链接（会自动剥离）
+                · <code>https://raw.githubusercontent.com/owner/repo/branch/file</code>（raw文件）<br>
+                · <code>https://github.com/owner/repo/releases/download/tag/file</code>（Release资源）<br>
+                · <code>https://github.com/owner/repo/blob/branch/file</code>（blob页面，会自动转换为对应的raw文件链接）<br>
             </div>
 
             <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <button class="btn" id="genBtn">生成镜像链接</button>
+                <button class="btn" id="genBtn">生成链接</button>
                 <button class="btn" id="exampleRawBtn">示例：raw文件</button>
                 <button class="btn" id="exampleBlobBtn">示例：blob页面</button>
                 <button class="btn" id="exampleAssetBtn">示例：Release资源</button>
@@ -49,7 +47,7 @@
             <div class="step-title">第二步：生成结果</div>
 
             <div id="emptyResult" class="empty-tip">
-                请在上方输入GitHub文件链接并点击「生成镜像链接」
+                请在上方输入GitHub文件链接并点击“生成镜像链接”
             </div>
 
             <div id="resultContent" style="display:none;">
@@ -64,12 +62,12 @@
                 </div>
 
                 <div style="margin-bottom:20px;">
-                    <div style="font-weight:600; color:#1f4068; margin-bottom:8px;">wget 命令</div>
+                    <div style="font-weight:600; color:#1f4068; margin-bottom:8px;">wget命令</div>
                     <div id="wgetList"></div>
                 </div>
 
                 <div style="margin-bottom:20px;">
-                    <div style="font-weight:600; color:#1f4068; margin-bottom:8px;">curl 命令</div>
+                    <div style="font-weight:600; color:#1f4068; margin-bottom:8px;">curl命令</div>
                     <div id="curlList"></div>
                 </div>
             </div>
@@ -150,7 +148,7 @@
                 if (!GITHUB_HOSTS.some(function (h) {
                     return parsed.hostname === h || parsed.hostname.endsWith('.' + h);
                 })) {
-                    return { ok: false, error: '仅支持 github.com 与 raw.githubusercontent.com 链接' };
+                    return { ok: false, error: '仅支持github.com与raw.githubusercontent.com链接' };
                 }
 
                 let finalUrl = parsed.href;
@@ -170,7 +168,7 @@
                     } else if (isReleaseAsset) {
                         finalUrl = parsed.href;
                     } else {
-                        return { ok: false, error: '仅支持 raw 文件、Release 资源以及 blob 页面链接' };
+                        return { ok: false, error: '仅支持raw文件、Release资源以及blob页面链接' };
                     }
                 }
 

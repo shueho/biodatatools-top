@@ -126,7 +126,7 @@
                 z-index: 100;
                 white-space: nowrap;
             }
-            .pd-donate-tip img { display: block; max-width: 400px; height: auto; }
+            .pd-donate-tip img { display: block; max-width: 300px; height: auto; }
             .pd-donate-title:hover .pd-donate-tip { visibility: visible; opacity: 1; }
 
             .pd-footer-bottom {

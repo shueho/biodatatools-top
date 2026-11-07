@@ -118,7 +118,7 @@
         bottom: calc(100% + 14px);
         width: 360px;
         max-width: calc(100vw - 32px);
-        max-height: calc(100vh - 160px);
+        max-height: calc(100vh - 120px);
         overflow-y: auto;
         padding: 20px 22px 18px;
         background: #fff;
@@ -185,7 +185,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        margin: 0 18px 12px;
+        margin: 0 18px 10px;
         font-size: 16px;
         font-weight: 800;
         color: #1f4068;
@@ -206,9 +206,9 @@
     }
 
     .bdt-donate-l-text {
-        margin: 0 0 12px;
+        margin: 0 0 10px;
         font-size: 13px;
-        line-height: 1.9;
+        line-height: 1.7;
         color: #5a6b7d;
         text-align: left;
         word-break: break-word;
@@ -232,12 +232,14 @@
     .bdt-donate-l-img {
         display: block;
         width: 100%;
+        max-height: 220px;
+        object-fit: contain;
         height: auto;
         margin: 0 auto;
         padding: 4px;
         border: 1px solid #e8edf2;
         border-radius: 10px;
-        background: #f8fafc;
+        background: #fff;
         box-sizing: border-box;
     }
 
@@ -258,7 +260,11 @@
         .bdt-donate-l-panel {
             width: calc(100vw - 32px);
             max-width: 340px;
+            max-height: calc(100vh - 100px);
             padding: 16px 16px 14px;
+        }
+        .bdt-donate-l-img {
+            max-height: 180px;
         }
     }
     `;
@@ -357,7 +363,7 @@
 
             if (overlap > 0) {
                 wrap.style.bottom = (overlap + baseGap) + 'px';
-                var maxH = Math.max(220, vh - (overlap + baseGap) - 90);
+                var maxH = Math.max(220, vh - (overlap + baseGap) - 60);
                 panel.style.maxHeight = maxH + 'px';
             } else {
                 wrap.style.bottom = baseGap + 'px';

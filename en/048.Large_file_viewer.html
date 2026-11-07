@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Large File Viewer - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>Large File Viewer</h2>
+            <p>Stream and paginate large text or tabular files. Supports GB-scale files, custom delimiters, and search.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import File</div>
+
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
+            </div>
+
+            <div class="file-input">
+                <input type="file" id="dataFile" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="dataText" placeholder="Paste text content here" disabled></textarea>
+            </div>
+
+            <div class="filter-box" style="margin-top:8px;">
+                <label>View mode:
+                    <select id="viewModeSelect" style="padding:4px 8px; min-width:140px;">
+                        <option value="text" selected>Text mode</option>
+                        <option value="table">Table mode</option>
+                    </select>
+                </label>
+            </div>
+
+            <div id="tableOptions" class="filter-box" style="display:none; margin-top:8px;">
+                <label>Delimiter:
+                    <select id="delimSelect" style="padding:4px 8px;">
+                        <option value="tab">Tab</option>
+                        <option value="comma">Comma (,)</option>
+                        <option value="semicolon">Semicolon (;)</option>
+                        <option value="space">Space (consecutive spaces treated as one)</option>
+                        <option value="pipe">Pipe (|)</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </label>
+                <label id="customDelimWrap" style="display:none;">Custom delimiter:
+                    <input type="text" id="customDelim" value="," style="width:80px;">
+                </label>
+                <label><input type="checkbox" id="hasHeader" checked> First row is header</label>
+            </div>
+
+            <div class="info-box">
+                <strong>Note:</strong> Text is split by newline; table mode further splits each line by the selected delimiter.<br>
+            </div>
+
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">Import &amp; Parse</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+
+            <div id="progressWrap" class="result-item" style="display:none;">
+                <div style="height:10px; background:#e8edf2; border-radius:5px; overflow:hidden;">
+                    <div id="progressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.88rem; color:#1f4068;">
+                    <span id="progressStage">Preparing...</span>
+                    <span id="progressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Browse Pages</div>
+
+            <div id="pagerEmpty" class="empty-tip">Content will be shown here after importing a file</div>
+
+            <div id="pagerContent" style="display:none;">
+                <div class="filter-box" style="margin-bottom:12px; gap:10px; align-items:center;">
+                    <label style="display:flex; align-items:center; gap:6px;">Search:
+                        <input type="text" id="searchInput" placeholder="Enter text to find"
+                               style="width:280px; padding:6px 10px; font-family:Consolas,monospace;">
+                    </label>
+                    <button class="btn btn-sm" id="searchPrevBtn">Previous</button>
+                    <button class="btn btn-sm" id="searchNextBtn">Next</button>
+                    <button class="btn btn-sm" id="searchClearBtn">Clear</button>
+                    <span id="searchInfo" class="tip-text" style="margin:0;"></span>
+                </div>
+
+                <div class="filter-box" style="margin-bottom:12px;">
+                    <label>Rows per page:
+                        <select id="pageSizeSelect" style="padding:4px 8px;">
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                            <option value="1000">1000</option>
+                        </select>
+                    </label>
+                    <span id="metaInfo" class="tip-text" style="margin:0;"></span>
+                </div>
+
+                <div class="result-toolbar" style="flex-wrap:wrap; gap:8px;">
+                    <button class="btn btn-sm" id="firstBtn">First</button>
+                    <button class="btn btn-sm" id="prevBtn">Prev</button>
+                    <span style="padding:0 6px; white-space:nowrap;">
+                        Page <strong id="pageNow">1</strong> / <span id="pageTotal">1</span>
+                    </span>
+                    <button class="btn btn-sm" id="nextBtn">Next</button>
+                    <button class="btn btn-sm" id="lastBtn">Last</button>
+                    <label style="margin-left:8px; white-space:nowrap;">Go to:
+                        <input type="number" id="jumpInput" min="1" value="1" style="width:80px;">
+                        <button class="btn btn-sm" id="jumpBtn">Go</button>
+                    </label>
+                    <button class="btn btn-sm" id="copyPageBtn" style="margin-left:auto;">Copy Current Page</button>
+                </div>
+
+                <div id="contentArea" class="result-item"
+                     style="margin-top:10px; max-height:640px; overflow:auto; min-height:120px;"></div>
+                <div id="pageTip" class="tip-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const LARGE_FILE_THRESHOLD = 100 * 1024 * 1024;
+            const SPARSE_INTERVAL = 500;
+            const READ_CHUNK = 2 * 1024 * 1024;
+
+            const dataFile = document.getElementById('dataFile');
+            const dataText = document.getElementById('dataText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const viewModeSelect = document.getElementById('viewModeSelect');
+            const tableOptions = document.getElementById('tableOptions');
+            const delimSelect = document.getElementById('delimSelect');
+            const customDelimWrap = document.getElementById('customDelimWrap');
+            const customDelim = document.getElementById('customDelim');
+            const hasHeader = document.getElementById('hasHeader');
+
+            const progressWrap = document.getElementById('progressWrap');
+            const progressBar = document.getElementById('progressBar');
+            const progressStage = document.getElementById('progressStage');
+            const progressPct = document.getElementById('progressPct');
+
+            const pagerEmpty = document.getElementById('pagerEmpty');
+            const pagerContent = document.getElementById('pagerContent');
+            const pageSizeSelect = document.getElementById('pageSizeSelect');
+            const metaInfo = document.getElementById('metaInfo');
+            const pageNow = document.getElementById('pageNow');
+            const pageTotal = document.getElementById('pageTotal');
+            const firstBtn = document.getElementById('firstBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const lastBtn = document.getElementById('lastBtn');
+            const jumpInput = document.getElementById('jumpInput');
+            const jumpBtn = document.getElementById('jumpBtn');
+            const copyPageBtn = document.getElementById('copyPageBtn');
+            const contentArea = document.getElementById('contentArea');
+            const pageTip = document.getElementById('pageTip');
+
+            const searchInput = document.getElementById('searchInput');
+            const searchPrevBtn = document.getElementById('searchPrevBtn');
+            const searchNextBtn = document.getElementById('searchNextBtn');
+            const searchClearBtn = document.getElementById('searchClearBtn');
+            const searchInfo = document.getElementById('searchInfo');
+
+            const EXAMPLE = [
+                'ID\tName\tCategory\tScore\tNote',
+                'S001\tAlpha\tGroup A\t95\tExcellent',
+                'S002\tBeta\tGroup A\t87\tGood',
+                'S003\tGamma\tGroup B\t76\tPass',
+                'S004\tDelta\tGroup B\t92\tExcellent',
+                'S005\tEpsilon\tGroup C\t68\tPass',
+                'S006\tZeta\tGroup C\t81\tGood',
+                'S007\tEta\tGroup A\t73\tPass',
+                'S008\tTheta\tGroup B\t88\tGood',
+                'S009\tIota\tGroup C\t97\tExcellent',
+                'S010\tKappa\tGroup A\t62\tPass'
+            ].join('\n');
+
+            let state = {
+                sourceType: 'memory',
+                file: null,
+                text: '',
+                offsets: [],
+                checkpoints: [],
+                lineCount: 0,
+                filename: '',
+                mode: 'text',
+                pageSize: 50,
+                currentPage: 1,
+                totalPages: 1,
+                dataStartLine: 0,
+                dataLineCount: 0
+            };
+
+            let searchState = {
+                query: '',
+                matches: [],
+                index: -1,
+                matchLineSet: null,
+                matchTexts: null
+            };
+
+            let loadingToken = 0;
+            let renderToken = 0;
+            let isProcessing = false;
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 8000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function showProgress(stage) {
+                progressWrap.style.display = 'block';
+                setProgress(0, stage);
+            }
+
+            function setProgress(pct, stage) {
+                pct = Math.max(0, Math.min(100, Math.round(pct)));
+                progressBar.style.width = pct + '%';
+                progressPct.textContent = pct + '%';
+                if (stage) progressStage.textContent = stage;
+            }
+
+            function hideProgress() {
+                progressWrap.style.display = 'none';
+            }
+
+            function readBlobText(blob) {
+                if (blob.text) return blob.text();
+                return new Promise(function (resolve, reject) {
+                    const r = new FileReader();
+                    r.onload = function (e) { resolve(e.target.result); };
+                    r.onerror = reject;
+                    r.readAsText(blob);
+                });
+            }
+
+            function scanMemoryOffsets(text, onProgress, onDone) {
+                const len = text.length;
+                const offsets = [0];
+                let pos = 0;
+
+                function step() {
+                    const start = performance.now();
+                    let linesInChunk = 0;
+
+                    while (pos < len) {
+                        const idx = text.indexOf('\n', pos);
+                        if (idx === -1) { pos = len; break; }
+                        offsets.push(idx + 1);
+                        pos = idx + 1;
+                        linesInChunk++;
+                        if (linesInChunk % 5000 === 0 && performance.now() - start > 16) break;
+                    }
+
+                    onProgress(len === 0 ? 100 : Math.round(pos / len * 100));
+
+                    if (pos < len) {
+                        setTimeout(step, 0);
+                    } else {
+                        if (offsets.length > 1 && offsets[offsets.length - 1] === len) offsets.pop();
+                        if (len === 0) offsets.length = 0;
+                        onDone({ offsets: offsets, lineCount: offsets.length });
+                    }
+                }
+
+                step();
+            }
+
+            async function scanFileCheckpoints(file, token, onProgress) {
+                const checkpoints = [{ line: 0, byteOffset: 0 }];
+                let lineCount = 0;
+                let byteOffset = 0;
+                let leftover = '';
+
+                while (byteOffset < file.size) {
+                    if (token !== loadingToken) throw new Error('cancelled');
+
+                    const end = Math.min(byteOffset + READ_CHUNK, file.size);
+                    const chunk = await readBlobText(file.slice(byteOffset, end));
+                    const data = leftover + chunk;
+                    const baseOffset = byteOffset - leftover.length;
+
+                    let pos = 0;
+                    while (true) {
+                        const idx = data.indexOf('\n', pos);
+                        if (idx === -1) break;
+                        lineCount++;
+                        pos = idx + 1;
+                        if (lineCount % SPARSE_INTERVAL === 0) {
+                            checkpoints.push({
+                                line: lineCount,
+                                byteOffset: baseOffset + pos
+                            });
+                        }
+                    }
+                    leftover = data.slice(pos);
+                    byteOffset = end;
+                    onProgress(byteOffset / file.size * 100);
+                }
+
+                if (leftover.length > 0) lineCount++;
+
+                return { checkpoints: checkpoints, lineCount: lineCount };
+            }
+
+            async function readPageFromFile(file, startLine, pageSize, checkpoints) {
+                let cp = checkpoints[0];
+                for (let i = checkpoints.length - 1; i >= 0; i--) {
+                    if (checkpoints[i].line <= startLine) {
+                        cp = checkpoints[i];
+                        break;
+                    }
+                }
+
+                const skipRemaining = startLine - cp.line;
+                let currentLine = cp.line;
+                let byteOffset = cp.byteOffset;
+                let buffer = '';
+                const lines = [];
+                let skipped = 0;
+
+                while (lines.length < pageSize) {
+                    if (buffer.length < READ_CHUNK && byteOffset < file.size) {
+                        const end = Math.min(byteOffset + READ_CHUNK, file.size);
+                        buffer += await readBlobText(file.slice(byteOffset, end));
+                        byteOffset = end;
+                    }
+
+                    let pos = 0;
+                    let progressed = false;
+
+                    while (pos < buffer.length) {
+                        const idx = buffer.indexOf('\n', pos);
+                        if (idx === -1) {
+                            if (byteOffset < file.size) break;
+                            if (pos < buffer.length) {
+                                const lastLine = buffer.slice(pos);
+                                if (skipped < skipRemaining) {
+                                    skipped++;
+                                } else if (lines.length < pageSize) {
+                                    lines.push(lastLine);
+                                }
+                                pos = buffer.length;
+                                progressed = true;
+                            }
+                            break;
+                        }
+
+                        const lineText = buffer.slice(pos, idx);
+                        pos = idx + 1;
+                        progressed = true;
+                        currentLine++;
+
+                        if (skipped < skipRemaining) {
+                            skipped++;
+                        } else if (lines.length < pageSize) {
+                            lines.push(lineText);
+                        }
+                        if (lines.length >= pageSize) break;
+                    }
+
+                    buffer = buffer.slice(pos);
+
+                    if (lines.length >= pageSize) break;
+                    if (!progressed && byteOffset >= file.size) break;
+                    if (!progressed && buffer.length > 0 && byteOffset >= file.size) {
+                        if (skipped < skipRemaining) skipped++;
+                        else if (lines.length < pageSize) lines.push(buffer);
+                        break;
+                    }
+                }
+
+                return lines;
+            }
+
+            async function scanFileForQuery(file, query, token, onProgress) {
+                const matches = [];
+                let byteOffset = 0;
+                let leftover = '';
+                let lineNumber = 0;
+
+                while (byteOffset < file.size) {
+                    if (token !== loadingToken) throw new Error('cancelled');
+
+                    const end = Math.min(byteOffset + READ_CHUNK, file.size);
+                    const chunk = await readBlobText(file.slice(byteOffset, end));
+                    const data = leftover + chunk;
+
+                    let pos = 0;
+                    while (true) {
+                        const idx = data.indexOf('\n', pos);
+                        if (idx === -1) break;
+                        const lineText = data.slice(pos, idx);
+                        if (lineText.indexOf(query) >= 0) {
+                            matches.push({
+                                line: lineNumber,
+                                preview: makePreview(lineText, query)
+                            });
+                        }
+                        lineNumber++;
+                        pos = idx + 1;
+                    }
+                    leftover = data.slice(pos);
+                    byteOffset = end;
+                    onProgress(byteOffset / file.size * 100);
+                }
+                if (leftover.length > 0) {
+                    if (leftover.indexOf(query) >= 0) {
+                        matches.push({
+                            line: lineNumber,
+                            preview: makePreview(leftover, query)
+                        });
+                    }
+                }
+                return matches;
+            }
+
+            function makePreview(line, query) {
+                const maxLen = 100;
+                const idx = line.indexOf(query);
+                let s;
+                if (line.length <= maxLen) {
+                    s = line;
+                } else {
+                    const half = Math.floor((maxLen - query.length) / 2);
+                    let start = Math.max(0, idx - half);
+                    let end = Math.min(line.length, start + maxLen);
+                    s = line.slice(start, end);
+                    if (start > 0) s = '…' + s;
+                    if (end < line.length) s = s + '…';
+                }
+                return s;
+            }
+
+            function getMemoryLine(i) {
+                const s = state.offsets[i];
+                const e = (i + 1 < state.offsets.length) ? state.offsets[i + 1] : state.text.length;
+                let line = state.text.slice(s, e);
+                if (line.charCodeAt(line.length - 1) === 10) line = line.slice(0, -1);
+                if (line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+                return line;
+            }
+
+            function getDelimiter() {
+                const v = delimSelect.value;
+                if (v === 'tab') return '\t';
+                if (v === 'comma') return ',';
+                if (v === 'semicolon') return ';';
+                if (v === 'pipe') return '|';
+                if (v === 'space') return null;
+                const c = customDelim.value;
+                return c === '' ? null : c;
+            }
+
+            function splitLine(line) {
+                const d = getDelimiter();
+                if (d === null) {
+                    return line.trim() === '' ? [''] : line.trim().split(/\s+/);
+                }
+                return line.split(d);
+            }
+
+            function recalcPagination() {
+                const withHeader = (state.mode === 'table' && hasHeader.checked &&
+                    state.lineCount > 0);
+                state.dataStartLine = withHeader ? 1 : 0;
+                state.dataLineCount = Math.max(0, state.lineCount - state.dataStartLine);
+                state.pageSize = parseInt(pageSizeSelect.value, 10) || 50;
+                state.totalPages = Math.max(1, Math.ceil(state.dataLineCount / state.pageSize));
+                if (state.currentPage > state.totalPages) state.currentPage = state.totalPages;
+                if (state.currentPage < 1) state.currentPage = 1;
+            }
+
+            function updateMeta() {
+                const modeText = state.mode === 'text' ? 'Text mode' : 'Table mode';
+                const sizeText = state.sourceType === 'file'
+                    ? ' (streaming)'
+                    : ' (in-memory)';
+                metaInfo.textContent = 'Total lines ' + state.lineCount +
+                    ', data lines ' + state.dataLineCount +
+                    ' (' + modeText + sizeText + ')' +
+                    (state.filename ? ', file: ' + state.filename : '');
+                pageTotal.textContent = state.totalPages;
+                pageNow.textContent = state.currentPage;
+                jumpInput.max = state.totalPages;
+
+                const disabledFirst = (state.currentPage <= 1);
+                const disabledLast = (state.currentPage >= state.totalPages);
+                firstBtn.disabled = disabledFirst;
+                prevBtn.disabled = disabledFirst;
+                nextBtn.disabled = disabledLast;
+                lastBtn.disabled = disabledLast;
+            }
+
+            async function fetchPageLines(startLine, pageSize) {
+                if (state.sourceType === 'memory') {
+                    const lines = [];
+                    for (let i = startLine; i < Math.min(startLine + pageSize, state.lineCount); i++) {
+                        lines.push(getMemoryLine(i));
+                    }
+                    return lines;
+                }
+                return await readPageFromFile(state.file, startLine, pageSize, state.checkpoints);
+            }
+
+            async function renderCurrentPage() {
+                if (!state.lineCount || state.dataLineCount === 0) {
+                    contentArea.innerHTML = '<div style="padding:30px; text-align:center; color:#999;">No content to display</div>';
+                    pageTip.textContent = '';
+                    updateMeta();
+                    return;
+                }
+
+                const myToken = ++renderToken;
+                contentArea.innerHTML = '<div style="padding:30px; text-align:center; color:#999;">Loading...</div>';
+
+                const start = state.dataStartLine + (state.currentPage - 1) * state.pageSize;
+                const end = Math.min(state.dataStartLine + state.dataLineCount, start + state.pageSize);
+
+                let headerLine = null;
+                if (state.mode === 'table' && hasHeader.checked && state.dataStartLine === 1 && state.lineCount > 0) {
+                    if (state.sourceType === 'memory') {
+                        headerLine = getMemoryLine(0);
+                    } else {
+                        const h = await readPageFromFile(state.file, 0, 1, state.checkpoints);
+                        headerLine = h[0] || '';
+                    }
+                    if (myToken !== renderToken) return;
+                }
+
+                let lines;
+                try {
+                    lines = await fetchPageLines(start, state.pageSize);
+                } catch (e) {
+                    if (myToken !== renderToken) return;
+                    contentArea.innerHTML = '<div style="padding:30px; text-align:center; color:#c00;">Load failed: ' + e.message + '</div>';
+                    return;
+                }
+                if (myToken !== renderToken) return;
+
+                if (state.mode === 'text') {
+                    renderTextPage(lines, start);
+                } else {
+                    renderTablePage(lines, headerLine, start);
+                }
+
+                pageTip.textContent = 'Showing lines ' + (start + 1) + ' to ' +
+                    Math.min(start + lines.length, state.dataStartLine + state.dataLineCount) +
+                    ' (of ' + state.dataLineCount + ' data lines)';
+                updateMeta();
+            }
+
+            function highlightInto(container, text, query) {
+                if (!query) {
+                    container.textContent = text;
+                    return;
+                }
+                const idx = text.indexOf(query);
+                if (idx === -1) {
+                    container.textContent = text;
+                    return;
+                }
+                container.textContent = '';
+                container.appendChild(document.createTextNode(text.slice(0, idx)));
+                const mark = document.createElement('mark');
+                mark.style.background = '#ffe58f';
+                mark.textContent = query;
+                container.appendChild(mark);
+                container.appendChild(document.createTextNode(text.slice(idx + query.length)));
+            }
+
+            function renderTextPage(lines, startLine) {
+                const query = searchState.query;
+                const matchLine = (searchState.index >= 0 && searchState.matches[searchState.index])
+                    ? searchState.matches[searchState.index].line
+                    : -1;
+
+                const pre = document.createElement('pre');
+                pre.style.cssText = 'margin:0; padding:0; font-family:Consolas,monospace; ' +
+                    'font-size:13px; line-height:1.65; white-space:pre; ' +
+                    'overflow-x:auto; color:#333;';
+
+                lines.forEach(function (line, i) {
+                    const lineNum = startLine + i;
+                    const div = document.createElement('div');
+                    if (lineNum === matchLine) {
+                        div.style.background = '#fffbe6';
+                    }
+                    highlightInto(div, line, query);
+                    pre.appendChild(div);
+                });
+
+                contentArea.innerHTML = '';
+                contentArea.appendChild(pre);
+
+                if (matchLine >= startLine && matchLine < startLine + lines.length) {
+                    const target = pre.children[matchLine - startLine];
+                    if (target) {
+                        setTimeout(function () {
+                            target.scrollIntoView({ block: 'center' });
+                        }, 30);
+                    }
+                }
+            }
+
+            function renderTablePage(lines, headerLine, startLine) {
+                const query = searchState.query;
+                const matchLine = (searchState.index >= 0 && searchState.matches[searchState.index])
+                    ? searchState.matches[searchState.index].line
+                    : -1;
+
+                let maxCols = 0;
+                const rows = lines.map(function (line) {
+                    const cols = splitLine(line);
+                    if (cols.length > maxCols) maxCols = cols.length;
+                    return cols;
+                });
+
+                let headerCells = null;
+                if (headerLine !== null) {
+                    headerCells = splitLine(headerLine);
+                    if (headerCells.length > maxCols) maxCols = headerCells.length;
+                }
+                if (maxCols === 0) maxCols = 1;
+
+                const wrap = document.createElement('div');
+                wrap.className = 'table-container';
+                wrap.style.cssText = 'max-height:none; margin:0; border:none;';
+
+                const table = document.createElement('table');
+                table.style.cssText = 'margin:0;';
+
+                if (headerCells) {
+                    const thead = document.createElement('thead');
+                    const tr = document.createElement('tr');
+                    for (let c = 0; c < maxCols; c++) {
+                        const th = document.createElement('th');
+                        th.textContent = c < headerCells.length ? headerCells[c] : '';
+                        tr.appendChild(th);
+                    }
+                    thead.appendChild(tr);
+                    table.appendChild(thead);
+                }
+
+                const tbody = document.createElement('tbody');
+                rows.forEach(function (cols, i) {
+                    const lineNum = startLine + i;
+                    const tr = document.createElement('tr');
+                    if (lineNum === matchLine) tr.style.background = '#fffbe6';
+                    for (let c = 0; c < maxCols; c++) {
+                        const td = document.createElement('td');
+                        td.style.textAlign = 'left';
+                        highlightInto(td, c < cols.length ? cols[c] : '', query);
+                        tr.appendChild(td);
+                    }
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                wrap.appendChild(table);
+
+                contentArea.innerHTML = '';
+                contentArea.appendChild(wrap);
+
+                if (matchLine >= startLine && matchLine < startLine + rows.length) {
+                    const target = tbody.children[matchLine - startLine];
+                    if (target) {
+                        setTimeout(function () {
+                            target.scrollIntoView({ block: 'center' });
+                        }, 30);
+                    }
+                }
+            }
+
+            async function goToPage(p) {
+                if (!state.lineCount) return;
+                p = parseInt(p, 10);
+                if (isNaN(p)) return;
+                if (p < 1) p = 1;
+                if (p > state.totalPages) p = state.totalPages;
+                state.currentPage = p;
+                await renderCurrentPage();
+            }
+
+            async function jumpToLine(lineNumber) {
+                if (lineNumber < state.dataStartLine) lineNumber = state.dataStartLine;
+                const page = Math.floor((lineNumber - state.dataStartLine) / state.pageSize) + 1;
+                await goToPage(page);
+            }
+
+            async function applyAndRender() {
+                recalcPagination();
+                await renderCurrentPage();
+            }
+
+            async function finishLoadingMemory(text, filename, token) {
+                state.sourceType = 'memory';
+                state.file = null;
+                state.text = text;
+                state.checkpoints = [];
+                state.filename = filename || '';
+
+                showProgress('Scanning line offsets...');
+
+                await new Promise(function (resolve) {
+                    scanMemoryOffsets(
+                        text,
+                        function (pct) { setProgress(pct, 'Scanning line offsets: ' + pct + '%'); },
+                        function (result) {
+                            if (token !== loadingToken) return resolve();
+                            state.offsets = result.offsets;
+                            state.lineCount = result.lineCount;
+                            resolve();
+                        }
+                    );
+                });
+
+                if (token !== loadingToken) return;
+
+                if (state.lineCount === 0) {
+                    hideProgress();
+                    showMsg(msgTip, '❌ No lines were parsed.', 'error');
+                    pagerEmpty.style.display = 'block';
+                    pagerContent.style.display = 'none';
+                    return;
+                }
+
+                state.currentPage = 1;
+                resetSearch();
+                recalcPagination();
+                await renderCurrentPage();
+
+                pagerEmpty.style.display = 'none';
+                pagerContent.style.display = 'block';
+
+                setProgress(100, 'Parse complete');
+                setTimeout(hideProgress, 500);
+
+                showMsg(msgTip, '✅ Parsed ' + state.lineCount + ' lines' +
+                    (filename ? ' (file: ' + filename + ')' : '') +
+                    ', in-memory mode', 'success');
+                toast('Parsed ' + state.lineCount + ' lines');
+            }
+
+            async function finishLoadingFile(file, token) {
+                state.sourceType = 'file';
+                state.file = file;
+                state.text = '';
+                state.offsets = [];
+                state.filename = file.name;
+
+                showProgress('Indexing file...');
+
+                let result;
+                try {
+                    result = await scanFileCheckpoints(file, token, function (pct) {
+                        setProgress(pct, 'Indexing file: ' + pct + '%');
+                    });
+                } catch (e) {
+                    if (e.message === 'cancelled' || token !== loadingToken) return;
+                    hideProgress();
+                    showMsg(msgTip, '❌ Scan failed: ' + e.message, 'error');
+                    return;
+                }
+
+                if (token !== loadingToken) return;
+
+                state.checkpoints = result.checkpoints;
+                state.lineCount = result.lineCount;
+
+                if (state.lineCount === 0) {
+                    hideProgress();
+                    showMsg(msgTip, '❌ No lines were parsed.', 'error');
+                    pagerEmpty.style.display = 'block';
+                    pagerContent.style.display = 'none';
+                    return;
+                }
+
+                state.currentPage = 1;
+                resetSearch();
+                recalcPagination();
+                await renderCurrentPage();
+
+                pagerEmpty.style.display = 'none';
+                pagerContent.style.display = 'block';
+
+                setProgress(100, 'Parse complete');
+                setTimeout(hideProgress, 500);
+
+                const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+                showMsg(msgTip, '✅ Parsed ' + state.lineCount + ' lines (file ' + sizeMB +
+                    ' MB), streaming mode', 'success');
+                toast('Parsed ' + state.lineCount + ' lines');
+            }
+
+            async function loadFromFile() {
+                const file = dataFile.files && dataFile.files[0];
+                if (!file) {
+                    showMsg(msgTip, '❌ Please select a file.', 'error');
+                    return;
+                }
+                if (isProcessing) return;
+
+                const token = ++loadingToken;
+                isProcessing = true;
+                loadBtn.disabled = true;
+                showProgress('Reading file...');
+
+                try {
+                    if (file.size >= LARGE_FILE_THRESHOLD) {
+                        await finishLoadingFile(file, token);
+                    } else {
+                        setProgress(0, 'Reading file...');
+                        const text = await readBlobText(file);
+                        if (token !== loadingToken) return;
+                        await finishLoadingMemory(text, file.name, token);
+                    }
+                } catch (e) {
+                    if (token !== loadingToken) return;
+                    hideProgress();
+                    showMsg(msgTip, '❌ Load failed: ' + (e.message || e), 'error');
+                } finally {
+                    if (token === loadingToken) {
+                        isProcessing = false;
+                        loadBtn.disabled = false;
+                    }
+                }
+            }
+
+            async function loadFromText() {
+                if (isProcessing) return;
+                const text = dataText.value;
+                if (!text || !text.trim()) {
+                    showMsg(msgTip, '❌ Please paste some text.', 'error');
+                    return;
+                }
+                const token = ++loadingToken;
+                isProcessing = true;
+                loadBtn.disabled = true;
+                try {
+                    await finishLoadingMemory(text, '', token);
+                } catch (e) {
+                    hideProgress();
+                    showMsg(msgTip, '❌ Load failed: ' + (e.message || e), 'error');
+                } finally {
+                    if (token === loadingToken) {
+                        isProcessing = false;
+                        loadBtn.disabled = false;
+                    }
+                }
+            }
+
+            async function loadExample() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+
+                viewModeSelect.value = 'table';
+                switchViewMode();
+                delimSelect.value = 'tab';
+                onDelimChange();
+
+                dataText.value = EXAMPLE;
+                await loadFromText();
+            }
+
+            function resetSearch() {
+                searchState.query = '';
+                searchState.matches = [];
+                searchState.index = -1;
+                searchState.matchLineSet = null;
+                searchInfo.textContent = '';
+            }
+
+            async function performSearch() {
+                const query = searchInput.value;
+                if (!query) {
+                    showMsg(searchInfo, 'Please enter a search term', 'error');
+                    return;
+                }
+                if (!state.lineCount) {
+                    showMsg(searchInfo, 'Please import a file first', 'error');
+                    return;
+                }
+
+                if (searchState.query === query && searchState.matches.length > 0) {
+                    searchInfo.textContent = searchState.matches.length + ' matches, currently at #' +
+                        (searchState.index + 1);
+                    return;
+                }
+
+                searchState.query = query;
+                searchState.matches = [];
+                searchState.index = -1;
+                searchInfo.textContent = 'Searching...';
+
+                const token = ++loadingToken;
+                try {
+                    let matches = [];
+                    if (state.sourceType === 'memory') {
+                        const total = state.lineCount;
+                        let i = 0;
+                        while (i < total) {
+                            if (token !== loadingToken) return;
+                            const end = Math.min(i + 5000, total);
+                            for (; i < end; i++) {
+                                const lineText = getMemoryLine(i);
+                                if (lineText.indexOf(query) >= 0) {
+                                    matches.push({ line: i, preview: makePreview(lineText, query) });
+                                }
+                            }
+                            searchInfo.textContent = 'Searching... ' + Math.round(i / total * 100) + '%';
+                            await new Promise(function (r) { setTimeout(r, 0); });
+                        }
+                    } else {
+                        matches = await scanFileForQuery(state.file, query, token, function (pct) {
+                            searchInfo.textContent = 'Searching... ' + Math.round(pct) + '%';
+                        });
+                    }
+
+                    if (token !== loadingToken) return;
+
+                    searchState.matches = matches;
+
+                    if (matches.length === 0) {
+                        searchInfo.innerHTML = '<span class="warn">No matches</span>';
+                        toast('No matches');
+                        return;
+                    }
+
+                    searchState.index = 0;
+                    searchInfo.textContent = matches.length + ' matches, currently at #1';
+                    await jumpToLine(matches[0].line);
+                } catch (e) {
+                    if (e.message === 'cancelled') return;
+                    searchInfo.innerHTML = '<span class="error">Search failed: ' + e.message + '</span>';
+                }
+            }
+
+            async function searchNext() {
+                if (searchState.matches.length === 0) {
+                    await performSearch();
+                    return;
+                }
+                searchState.index = (searchState.index + 1) % searchState.matches.length;
+                searchInfo.textContent = searchState.matches.length + ' matches, currently at #' +
+                    (searchState.index + 1);
+                await jumpToLine(searchState.matches[searchState.index].line);
+            }
+
+            async function searchPrev() {
+                if (searchState.matches.length === 0) {
+                    await performSearch();
+                    return;
+                }
+                searchState.index = (searchState.index - 1 + searchState.matches.length) % searchState.matches.length;
+                searchInfo.textContent = searchState.matches.length + ' matches, currently at #' +
+                    (searchState.index + 1);
+                await jumpToLine(searchState.matches[searchState.index].line);
+            }
+
+            async function copyPage() {
+                if (!state.lineCount || state.dataLineCount === 0) {
+                    showMsg(pageTip, '❌ Nothing to copy', 'error');
+                    return;
+                }
+                const start = state.dataStartLine + (state.currentPage - 1) * state.pageSize;
+                const end = Math.min(state.dataStartLine + state.dataLineCount, start + state.pageSize);
+
+                let text = '';
+                if (state.mode === 'table' && hasHeader.checked && state.dataStartLine === 1) {
+                    if (state.sourceType === 'memory') {
+                        text += getMemoryLine(0) + '\n';
+                    } else {
+                        const h = await readPageFromFile(state.file, 0, 1, state.checkpoints);
+                        text += (h[0] || '') + '\n';
+                    }
+                }
+                const lines = await fetchPageLines(start, end - start);
+                lines.forEach(function (line) { text += line + '\n'; });
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(pageTip, '✅ Current page copied', 'success');
+                        toast('Current page copied');
+                    }).catch(function () { fallbackCopy(text); });
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(pageTip, '✅ Current page copied', 'success');
+                    toast('Current page copied');
+                } catch (e) {
+                    showMsg(pageTip, '❌ Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function onDelimChange() {
+                customDelimWrap.style.display = (delimSelect.value === 'custom') ? 'inline-flex' : 'none';
+                if (state.lineCount) applyAndRender();
+            }
+
+            window.switchViewMode = function () {
+                const mode = viewModeSelect.value;
+                state.mode = mode;
+                tableOptions.style.display = (mode === 'table') ? 'flex' : 'none';
+                if (state.lineCount) {
+                    state.currentPage = 1;
+                    resetSearch();
+                    applyAndRender();
+                }
+            };
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    dataFile.disabled = false;
+                    dataText.disabled = true;
+                    dataText.value = '';
+                } else {
+                    dataFile.disabled = true;
+                    dataFile.value = '';
+                    dataText.disabled = false;
+                }
+            };
+
+            dataFile.addEventListener('change', function () {
+                if (!dataFile.files || dataFile.files.length === 0) return;
+                loadFromFile();
+            });
+
+            dataText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!dataFile.files || dataFile.files.length === 0) {
+                        if (dataText.value.trim()) { loadFromText(); return; }
+                        showMsg(msgTip, '❌ Please choose a file or paste text.', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            viewModeSelect.addEventListener('change', switchViewMode);
+
+            pageSizeSelect.addEventListener('change', function () {
+                if (state.lineCount) {
+                    state.currentPage = 1;
+                    applyAndRender();
+                }
+            });
+
+            hasHeader.addEventListener('change', function () {
+                if (state.lineCount && state.mode === 'table') {
+                    state.currentPage = 1;
+                    applyAndRender();
+                }
+            });
+
+            delimSelect.addEventListener('change', onDelimChange);
+            customDelim.addEventListener('input', function () {
+                if (state.lineCount && state.mode === 'table') applyAndRender();
+            });
+
+            firstBtn.addEventListener('click', function () { goToPage(1); });
+            prevBtn.addEventListener('click', function () { goToPage(state.currentPage - 1); });
+            nextBtn.addEventListener('click', function () { goToPage(state.currentPage + 1); });
+            lastBtn.addEventListener('click', function () { goToPage(state.totalPages); });
+
+            jumpBtn.addEventListener('click', function () { goToPage(jumpInput.value); });
+            jumpInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); goToPage(jumpInput.value); }
+            });
+
+            copyPageBtn.addEventListener('click', copyPage);
+
+            searchNextBtn.addEventListener('click', searchNext);
+            searchPrevBtn.addEventListener('click', searchPrev);
+            searchClearBtn.addEventListener('click', function () {
+                searchInput.value = '';
+                resetSearch();
+                if (state.lineCount) renderCurrentPage();
+            });
+
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (e.shiftKey) searchPrev();
+                    else searchNext();
+                }
+            });
+
+            switchInput();
+            switchViewMode();
+            onDelimChange();
+        })();
+    </script>
+</body>
+</html>
