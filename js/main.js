@@ -2,11 +2,9 @@ function renderSideNav() {
     const navList = document.getElementById('navList');
     navList.innerHTML = '';
 
-    // ===== 判断当前页面语言：中文页 → home-ch.html，英文页 → home.html =====
     const isChinese = document.documentElement.lang.toLowerCase().startsWith('zh')
                    || window.location.pathname.includes('index-ch.html');
     const plotHome  = isChinese ? 'BioStatPlot/home-ch.html' : 'BioStatPlot/home.html';
-    // =====================================================================
 
     const blogItem = document.createElement('li');
     blogItem.innerHTML = `<a href="blog/home.html" class="parent-item blog-home-item">📝 Blog</a>`;
@@ -20,7 +18,7 @@ function renderSideNav() {
         const categoryItem = document.createElement('li');
         const subMenuId = `submenu-${catIndex}`;
         categoryItem.innerHTML = `
-            <a class="parent-item" onclick="toggleSubMenu(${catIndex})">
+            <a class="parent-item" onclick="toggleSubMenu(${catIndex}); scrollToCategory(${catIndex})">
                 ${category.categoryIcon} ${category.categoryName}
             </a>
             <ul class="sub-menu" id="${subMenuId}"></ul>
@@ -39,8 +37,25 @@ function renderSideNav() {
 }
 
 function toggleSubMenu(catIndex) {
-    const subMenu = document.getElementById(`submenu-${catIndex}`);
-    subMenu.classList.toggle('open');
+    const currentSubMenu = document.getElementById(`submenu-${catIndex}`);
+    const wasOpen = currentSubMenu.classList.contains('open');
+
+    document.querySelectorAll('.sub-menu').forEach(menu => {
+        menu.classList.remove('open');
+    });
+
+    if (!wasOpen) {
+        currentSubMenu.classList.add('open');
+    }
+}
+
+function scrollToCategory(catIndex) {
+    const targetEl = document.getElementById(`category-${catIndex}`);
+    if (targetEl) {
+        const headerHeight = document.querySelector('header').offsetHeight || 100;
+        const offsetTop = targetEl.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
+        window.scrollTo({ top: offsetTop, behavior: 'smooth' });
+    }
 }
 
 function scrollToTool(toolId) {
@@ -63,6 +78,7 @@ function renderToolList() {
         const catWrap = document.createElement('div');
         catWrap.className = 'tool-category';
         catWrap.setAttribute('data-category-index', catIndex);
+        catWrap.id = `category-${catIndex}`;
         catWrap.innerHTML = `
             <div class="category-title">
                 <span class="category-icon">${category.categoryIcon}</span>
@@ -138,7 +154,6 @@ function initLanguageSwitch() {
     }
 }
 
-// ========== DOM 加载完成 ==========
 window.addEventListener('DOMContentLoaded', function () {
     renderSideNav();
     renderToolList();
@@ -152,7 +167,6 @@ window.addEventListener('DOMContentLoaded', function () {
 
     initLanguageSwitch();
 
-    // ========== 导航跟随页脚 ==========
     (function() {
         const sideNav = document.getElementById('sideNav');
         const footer = document.querySelector('footer');

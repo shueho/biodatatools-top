@@ -333,15 +333,9 @@
   <!-- ========== 英文工具页面（/en/） ========== -->
   <!-- ============================================================ -->
 
-  <!-- ===== 分类：Nucleic Acid Sequence Processing (11个) ===== -->
+  <!-- ===== 分类：Sequence Files (9个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/en/001.Genbank_feat_extract.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/005.CDS_translate.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -389,39 +383,21 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/en/033.Codon_position_split.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/034.Variant_site_extractor.html</loc>
-    <lastmod>2026-08-31</lastmod>
+    <loc>https://www.biodatatools.top/en/041.FASTA_Table_converter.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：Statistical Analysis (9个) ===== -->
+  <!-- ===== 分类：Translation & Codons (5个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/en/005.CDS_translate.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
   <url>
     <loc>https://www.biodatatools.top/en/002.RSCU.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/007.Protparam.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/009.Base_composition.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/011.Codon_position_base_stats.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -433,7 +409,33 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.biodatatools.top/en/033.Codon_position_split.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/011.Codon_position_base_stats.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ===== 分类：Sequence Statistics (5个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/en/009.Base_composition.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.biodatatools.top/en/016.Group_freq_stat.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/034.Variant_site_extractor.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -445,51 +447,33 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/en/035.Taxonomy_abundance_parser.html</loc>
-    <lastmod>2026-09-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/039.Abundance_table_filter.html</loc>
-    <lastmod>2026-10-10</lastmod>
+    <loc>https://www.biodatatools.top/en/007.Protparam.html</loc>
+    <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：Plotting & Visualization (5个) ===== -->
+  <!-- ===== 分类：Genome Annotation (3个) ===== -->
   <url>
-    <loc>https://www.biodatatools.top/en/003.RSCU_plot.html</loc>
-    <lastmod>2026-08-31</lastmod>
+    <loc>https://www.biodatatools.top/en/043.GFF_simplify.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/en/004.Trna_structure_beautifier.html</loc>
-    <lastmod>2026-08-31</lastmod>
+    <loc>https://www.biodatatools.top/en/044.GFF_gene_density.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/en/008.Visualize_gene_arrangement.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/036.Gephi_legend_generator.html</loc>
-    <lastmod>2026-09-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/037.SVG_merger.html</loc>
-    <lastmod>2026-09-18</lastmod>
+    <loc>https://www.biodatatools.top/en/045.GFF_filter.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：Gadget (14个) ===== -->
+  <!-- ===== 分类：Haplotype & Population (4个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/en/017.TaxSet_generator.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -514,6 +498,28 @@
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+
+  <!-- ===== 分类：Taxonomy & Microbiome (3个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/en/035.Taxonomy_abundance_parser.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/039.Abundance_table_filter.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/038.Taxonomy_format_converter.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- ===== 分类：Tables & Matrices (8个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/en/022.Wide_long_table_reshaping.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -533,25 +539,7 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/en/025.Geo_coordinate_converter.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://www.biodatatools.top/en/026.Long_to_triangular.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/028.Haversine_distance_matrix.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/en/029.ARWEN_trna_extract.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -569,15 +557,73 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/en/038.Taxonomy_format_converter.html</loc>
-    <lastmod>2026-09-18</lastmod>
+    <loc>https://www.biodatatools.top/en/040.Motif_parser.html</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/042.Domain_annotation_merger.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
 
+  <!-- ===== 分类：Geographic (2个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/en/025.Geo_coordinate_converter.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/028.Haversine_distance_matrix.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- ===== 分类：Visualization (6个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/en/003.RSCU_plot.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/008.Visualize_gene_arrangement.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/036.Gephi_legend_generator.html</loc>
+    <lastmod>2026-09-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/037.SVG_merger.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/029.ARWEN_trna_extract.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/en/004.Trna_structure_beautifier.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
   <!-- ===== 分类：Others (3个) ===== -->
   <url>
-    <loc>https://www.biodatatools.top/en/997.Software_download.html</loc>
+    <loc>https://www.biodatatools.top/en/999.Script_download.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -589,7 +635,7 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/en/999.Script_download.html</loc>
+    <loc>https://www.biodatatools.top/en/997.Software_download.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -599,15 +645,9 @@
   <!-- ========== 中文工具页面（/ch/） ========== -->
   <!-- ============================================================ -->
 
-  <!-- ===== 分类：核酸序列处理 (11个) ===== -->
+  <!-- ===== 分类：序列文件 (9个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/ch/001.Genbank_feat_extract.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/005.CDS_translate.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -655,39 +695,21 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/ch/033.Codon_position_split.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/034.Variant_site_extractor.html</loc>
-    <lastmod>2026-08-31</lastmod>
+    <loc>https://www.biodatatools.top/ch/041.FASTA_Table_converter.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：统计分析 (9个) ===== -->
+  <!-- ===== 分类：翻译与密码子 (5个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/ch/005.CDS_translate.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
   <url>
     <loc>https://www.biodatatools.top/ch/002.RSCU.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/007.Protparam.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/009.Base_composition.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/011.Codon_position_base_stats.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -699,7 +721,33 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://www.biodatatools.top/ch/033.Codon_position_split.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/011.Codon_position_base_stats.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ===== 分类：序列统计 (5个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/ch/009.Base_composition.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://www.biodatatools.top/ch/016.Group_freq_stat.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/034.Variant_site_extractor.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -711,51 +759,33 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/ch/035.Taxonomy_abundance_parser.html</loc>
-    <lastmod>2026-09-18</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/039.Abundance_table_filter.html</loc>
-    <lastmod>2026-10-10</lastmod>
+    <loc>https://www.biodatatools.top/ch/007.Protparam.html</loc>
+    <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：绘图与美化 (5个) ===== -->
+  <!-- ===== 分类：基因组注释 (3个) ===== -->
   <url>
-    <loc>https://www.biodatatools.top/ch/003.RSCU_plot.html</loc>
-    <lastmod>2026-08-31</lastmod>
+    <loc>https://www.biodatatools.top/ch/043.GFF_simplify.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/ch/004.Trna_structure_beautifier.html</loc>
-    <lastmod>2026-08-31</lastmod>
+    <loc>https://www.biodatatools.top/ch/044.GFF_gene_density.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/ch/008.Visualize_gene_arrangement.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/036.Gephi_legend_generator.html</loc>
-    <lastmod>2026-09-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/037.SVG_merger.html</loc>
-    <lastmod>2026-09-18</lastmod>
+    <loc>https://www.biodatatools.top/ch/045.GFF_filter.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 
-  <!-- ===== 分类：小工具 (14个) ===== -->
+  <!-- ===== 分类：单倍型群体 (4个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/ch/017.TaxSet_generator.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -780,6 +810,28 @@
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+
+  <!-- ===== 分类：分类与微生物 (3个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/ch/035.Taxonomy_abundance_parser.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/039.Abundance_table_filter.html</loc>
+    <lastmod>2026-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/038.Taxonomy_format_converter.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- ===== 分类：表格与矩阵 (8个) ===== -->
   <url>
     <loc>https://www.biodatatools.top/ch/022.Wide_long_table_reshaping.html</loc>
     <lastmod>2026-08-31</lastmod>
@@ -799,25 +851,7 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/ch/025.Geo_coordinate_converter.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://www.biodatatools.top/ch/026.Long_to_triangular.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/028.Haversine_distance_matrix.html</loc>
-    <lastmod>2026-08-31</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.biodatatools.top/ch/029.ARWEN_trna_extract.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -835,15 +869,73 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/ch/038.Taxonomy_format_converter.html</loc>
-    <lastmod>2026-09-18</lastmod>
+    <loc>https://www.biodatatools.top/ch/040.Motif_parser.html</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/042.Domain_annotation_merger.html</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
 
+  <!-- ===== 分类：地理空间 (2个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/ch/025.Geo_coordinate_converter.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/028.Haversine_distance_matrix.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- ===== 分类：可视化 (6个) ===== -->
+  <url>
+    <loc>https://www.biodatatools.top/ch/003.RSCU_plot.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/008.Visualize_gene_arrangement.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/036.Gephi_legend_generator.html</loc>
+    <lastmod>2026-09-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/037.SVG_merger.html</loc>
+    <lastmod>2026-09-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/029.ARWEN_trna_extract.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.biodatatools.top/ch/004.Trna_structure_beautifier.html</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
   <!-- ===== 分类：其他 (3个) ===== -->
   <url>
-    <loc>https://www.biodatatools.top/ch/997.Software_download.html</loc>
+    <loc>https://www.biodatatools.top/ch/999.Script_download.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -855,7 +947,7 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.biodatatools.top/ch/999.Script_download.html</loc>
+    <loc>https://www.biodatatools.top/ch/997.Software_download.html</loc>
     <lastmod>2026-08-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

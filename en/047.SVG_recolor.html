@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Batch Recolor Tool - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+    <style>
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-bottom: 1px solid #eef2f7;
+            flex-wrap: wrap;
+        }
+        .color-row:last-child { border-bottom: none; }
+        .color-row .swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid #d0d7de;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .color-row .orig-info { min-width: 130px; }
+        .color-row .orig-hex {
+            font-family: Consolas, monospace;
+            font-weight: 600;
+            color: #1f4068;
+            font-size: 0.92rem;
+        }
+        .color-row .count {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-left: 4px;
+        }
+        .color-row .arrow { color: #6c757d; font-weight: 600; }
+        .color-row input[type="color"] {
+            width: 38px;
+            height: 30px;
+            padding: 2px;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .color-row input[type="text"].hex-input {
+            width: 90px;
+            font-family: Consolas, monospace;
+            font-size: 0.88rem;
+            padding: 4px 6px;
+        }
+        .recolor-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .recolor-left {
+            flex: 1 1 380px;
+            min-width: 320px;
+        }
+        .recolor-right {
+            flex: 1 1 500px;
+            min-width: 320px;
+        }
+        .preview-svg-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            max-height: 640px;
+            overflow: auto;
+            padding: 16px;
+            background: #f8fafc;
+            border: 1px solid #e8edf2;
+            border-radius: 8px;
+        }
+        .preview-svg-wrap svg {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main" id="app">
+        <div class="page-intro">
+            <h2>SVG Batch Recolor Tool</h2>
+            <p>Extract all colors from an SVG, batch replace them, and preview changes in real time.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import SVG File</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload file</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste source</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="svgFile" accept=".svg,.xml,.txt" disabled>
+            </div>
+            <div class="text-input">
+                <textarea id="svgText" placeholder="Paste SVG source (starting with &lt;svg ...&gt;)" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> This tool scans colors in fill, stroke, stop-color, color, flood-color, and lighting-color attributes, inline styles, and <code>&lt;style&gt;</code> blocks.<br>
+                If the SVG contains many external CSS classes, it is recommended to expand them into inline attributes with Illustrator before importing.
+            </div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">Import and Parse</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Color Mapping and Live Preview</div>
+
+            <div class="recolor-layout">
+
+                <div class="recolor-left">
+                    <div style="font-weight:500; color:#1f4068; margin-bottom:8px;">
+                        Color List <span id="colorCount" class="tip-text" style="margin-left:8px; font-weight:400;">0 colors</span>
+                    </div>
+
+                    <div class="filter-box" style="margin-bottom:10px; gap:10px;">
+                        <button class="btn btn-sm" id="resetAllBtn">Reset All to Original Colors</button>
+                    </div>
+
+                    <div class="info-box" style="margin-bottom:10px;">
+                        Changing the new color updates the preview on the right immediately. Click the original color swatch on the left to reset this row's new color to the original.
+                    </div>
+
+                    <div id="colorList" class="result-item"
+                         style="max-height:520px; overflow-y:auto; padding:0;">
+                        <div style="padding:30px; text-align:center; color:#999;">Please import an SVG file first</div>
+                    </div>
+                </div>
+
+                <div class="recolor-right">
+                    <div style="font-weight:500; color:#1f4068; margin-bottom:8px;">
+                        Live Preview <span id="previewInfo" class="tip-text" style="margin-left:8px; font-weight:400;"></span>
+                    </div>
+
+                    <div class="result-toolbar" style="margin-top:0;">
+                        <button class="btn" id="copyBtn" disabled>Copy SVG Source</button>
+                        <button class="btn" id="downloadBtn" disabled>Export SVG File</button>
+                        <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+                    </div>
+
+                    <div class="preview-svg-wrap" id="previewBox">
+                        <span class="empty-hint">Preview will appear here after importing an SVG</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const svgFile = document.getElementById('svgFile');
+            const svgText = document.getElementById('svgText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const colorList = document.getElementById('colorList');
+            const colorCount = document.getElementById('colorCount');
+            const resetAllBtn = document.getElementById('resetAllBtn');
+
+            const copyBtn = document.getElementById('copyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resultMsg = document.getElementById('resultMsg');
+            const previewBox = document.getElementById('previewBox');
+            const previewInfo = document.getElementById('previewInfo');
+
+            const COLOR_ATTRS = ['fill', 'stroke', 'stop-color', 'color', 'flood-color', 'lighting-color'];
+
+            const EXAMPLE = [
+                '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360">',
+                '  <rect x="0" y="0" width="480" height="360" fill="#ffffff"/>',
+                '  <circle cx="100" cy="100" r="60" fill="#e63946"/>',
+                '  <circle cx="240" cy="100" r="60" fill="#e63946"/>',
+                '  <circle cx="380" cy="100" r="60" fill="#f4a261"/>',
+                '  <rect x="60" y="220" width="120" height="100" fill="#2a9d8f" stroke="#264653" stroke-width="4"/>',
+                '  <rect x="220" y="220" width="120" height="100" fill="#e9c46a" stroke="#264653" stroke-width="4"/>',
+                '  <rect x="380" y="220" width="60" height="100" fill="#264653"/>',
+                '  <text x="240" y="40" font-family="Arial" font-size="20" fill="#1d3557" text-anchor="middle">SVG Recolor Demo</text>',
+                '</svg>'
+            ].join('\n');
+
+            let state = {
+                svgText: '',
+                origW: 0,
+                origH: 0,
+                filename: '',
+                colorRows: [],
+                lastPreviewSvg: ''
+            };
+
+            let ctxNormalizer = null;
+            const normalizeCache = new Map();
+
+            function getNormalizerCtx() {
+                if (!ctxNormalizer) {
+                    const c = document.createElement('canvas');
+                    c.width = 1; c.height = 1;
+                    ctxNormalizer = c.getContext('2d');
+                }
+                return ctxNormalizer;
+            }
+
+            function rgbToHex(r, g, b) {
+                return '#' + [r, g, b].map(function (v) {
+                    const h = Math.max(0, Math.min(255, Math.round(v))).toString(16);
+                    return h.length === 1 ? '0' + h : h;
+                }).join('');
+            }
+
+            function hexToRgb(hex) {
+                let h = hex.replace('#', '');
+                if (h.length === 3) {
+                    h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+                }
+                return {
+                    r: parseInt(h.slice(0, 2), 16),
+                    g: parseInt(h.slice(2, 4), 16),
+                    b: parseInt(h.slice(4, 6), 16)
+                };
+            }
+
+            function normalizeColor(colorStr) {
+                if (colorStr === null || colorStr === undefined) return null;
+                const raw = String(colorStr).trim();
+                if (!raw) return null;
+
+                if (normalizeCache.has(raw)) return normalizeCache.get(raw);
+
+                const lower = raw.toLowerCase();
+                if (lower === 'none' || lower === 'transparent' ||
+                    lower === 'currentcolor' || lower.indexOf('url(') === 0) {
+                    normalizeCache.set(raw, null);
+                    return null;
+                }
+
+                const ctx = getNormalizerCtx();
+                ctx.fillStyle = '#000001';
+                ctx.fillStyle = raw;
+                const r1 = ctx.fillStyle;
+                ctx.fillStyle = '#000002';
+                ctx.fillStyle = raw;
+                const r2 = ctx.fillStyle;
+
+                if (r1 !== r2) {
+                    normalizeCache.set(raw, null);
+                    return null;
+                }
+
+                let result = null;
+                const norm = ctx.fillStyle;
+                if (norm.charAt(0) === '#') {
+                    result = { hex: norm.toLowerCase(), alpha: 1 };
+                } else {
+                    const m = norm.match(/^rgba?\(([^)]+)\)$/);
+                    if (m) {
+                        const parts = m[1].split(',').map(function (s) { return s.trim(); });
+                        const r = parseInt(parts[0], 10);
+                        const g = parseInt(parts[1], 10);
+                        const b = parseInt(parts[2], 10);
+                        const a = parts.length > 3 ? parseFloat(parts[3]) : 1;
+                        result = { hex: rgbToHex(r, g, b), alpha: a };
+                    }
+                }
+                normalizeCache.set(raw, result);
+                return result;
+            }
+
+            function buildColorReplacement(norm, newHex) {
+                if (norm.alpha >= 1) return newHex;
+                const rgb = hexToRgb(newHex);
+                return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + norm.alpha + ')';
+            }
+
+            function scanColors(svgDoc) {
+                const colorUse = new Map();
+
+                function record(colorStr) {
+                    const n = normalizeColor(colorStr);
+                    if (!n) return;
+                    if (!colorUse.has(n.hex)) {
+                        colorUse.set(n.hex, { hex: n.hex, count: 0 });
+                    }
+                    colorUse.get(n.hex).count++;
+                }
+
+                const allEls = svgDoc.querySelectorAll('*');
+                allEls.forEach(function (el) {
+                    COLOR_ATTRS.forEach(function (attr) {
+                        if (el.hasAttribute(attr)) {
+                            record(el.getAttribute(attr));
+                        }
+                    });
+                    if (el.hasAttribute('style')) {
+                        const styleStr = el.getAttribute('style');
+                        styleStr.split(';').forEach(function (d) {
+                            const idx = d.indexOf(':');
+                            if (idx < 0) return;
+                            const prop = d.slice(0, idx).trim().toLowerCase();
+                            if (COLOR_ATTRS.indexOf(prop) >= 0) {
+                                record(d.slice(idx + 1).trim());
+                            }
+                        });
+                    }
+                });
+
+                svgDoc.querySelectorAll('style').forEach(function (sb) {
+                    const css = sb.textContent || '';
+                    const re = /(fill|stroke|stop-color|color|flood-color|lighting-color)\s*:\s*([^;}]+)/gi;
+                    let m;
+                    while ((m = re.exec(css)) !== null) {
+                        record(m[2].trim());
+                    }
+                });
+
+                const arr = Array.from(colorUse.values());
+                arr.sort(function (a, b) { return b.count - a.count; });
+                return arr;
+            }
+
+            function parseSvgText(text) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'image/svg+xml');
+                const err = doc.querySelector('parsererror');
+                if (err) throw new Error('SVG parsing failed: ' + err.textContent.split('\n')[0]);
+
+                const svgEl = doc.querySelector('svg');
+                if (!svgEl) throw new Error('<svg> root element not found');
+                if (!svgEl.getAttribute('xmlns')) {
+                    svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                }
+
+                let w = 0, h = 0;
+                const vb = svgEl.getAttribute('viewBox');
+                if (vb) {
+                    const parts = vb.replace(/,/g, ' ').trim().split(/\s+/).map(Number);
+                    if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+                        w = parts[2]; h = parts[3];
+                    }
+                }
+                if (!w || !h) {
+                    w = parseFloat(svgEl.getAttribute('width')) || 0;
+                    h = parseFloat(svgEl.getAttribute('height')) || 0;
+                }
+                if (!w || !h) { w = 800; h = 600; }
+                if (!svgEl.getAttribute('width')) svgEl.setAttribute('width', String(w));
+                if (!svgEl.getAttribute('height')) svgEl.setAttribute('height', String(h));
+
+                const normalized = new XMLSerializer().serializeToString(svgEl);
+                return { svgText: normalized, origW: w, origH: h, doc: doc };
+            }
+
+            function loadFromText(text, filename) {
+                if (!text || !text.trim()) {
+                    showMsg(msgTip, '❌ Content is empty. Please choose a file or paste SVG source.', 'error');
+                    return;
+                }
+
+                let parsed;
+                try {
+                    parsed = parseSvgText(text);
+                } catch (e) {
+                    showMsg(msgTip, '❌ ' + e.message, 'error');
+                    return;
+                }
+
+                const colorUsage = scanColors(parsed.doc);
+
+                state.svgText = parsed.svgText;
+                state.origW = parsed.origW;
+                state.origH = parsed.origH;
+                state.filename = filename || '';
+                state.colorRows = colorUsage.map(function (c) {
+                    return { origHex: c.hex, newHex: c.hex, count: c.count };
+                });
+
+                renderColorList();
+                updatePreview();
+
+                colorCount.textContent = colorUsage.length + ' colors';
+                copyBtn.disabled = false;
+                downloadBtn.disabled = false;
+                resultMsg.innerHTML = '';
+                previewInfo.textContent = 'Original size ' + Math.round(parsed.origW) + ' × ' +
+                    Math.round(parsed.origH) + ' px' +
+                    (filename ? ' (File: ' + filename + ')' : '');
+
+                showMsg(msgTip, '✅ SVG parsed: ' + Math.round(parsed.origW) + ' × ' +
+                    Math.round(parsed.origH) + ' px, ' + colorUsage.length + ' colors', 'success');
+                toast('SVG parsed');
+            }
+
+            function renderColorList() {
+                colorList.innerHTML = '';
+
+                if (state.colorRows.length === 0) {
+                    colorList.innerHTML = '<div style="padding:30px; text-align:center; color:#999;">No replaceable colors found in SVG</div>';
+                    return;
+                }
+
+                state.colorRows.forEach(function (row, idx) {
+                    const div = document.createElement('div');
+                    div.className = 'color-row';
+                    div.dataset.idx = String(idx);
+
+                    const origSwatch = document.createElement('div');
+                    origSwatch.className = 'swatch';
+                    origSwatch.style.background = row.origHex;
+                    origSwatch.title = "Click to reset this row's new color to the original";
+                    origSwatch.addEventListener('click', function () {
+                        row.newHex = row.origHex;
+                        refreshRow(idx);
+                        updatePreview();
+                    });
+
+                    const origInfo = document.createElement('div');
+                    origInfo.className = 'orig-info';
+                    origInfo.innerHTML =
+                        '<span class="orig-hex">' + row.origHex + '</span>' +
+                        '<span class="count">× ' + row.count + '</span>';
+
+                    const arrow = document.createElement('span');
+                    arrow.className = 'arrow';
+                    arrow.textContent = '→';
+
+                    const newColor = document.createElement('input');
+                    newColor.type = 'color';
+                    newColor.value = row.newHex;
+                    newColor.addEventListener('input', function () {
+                        row.newHex = newColor.value.toLowerCase();
+                        const hexInput = div.querySelector('.hex-input');
+                        if (hexInput) hexInput.value = row.newHex;
+                        updatePreview();
+                    });
+
+                    const hexInput = document.createElement('input');
+                    hexInput.type = 'text';
+                    hexInput.className = 'hex-input';
+                    hexInput.value = row.newHex;
+                    hexInput.maxLength = 7;
+                    hexInput.addEventListener('change', function () {
+                        const v = hexInput.value.trim();
+                        if (/^#[0-9a-fA-F]{6}$/.test(v) || /^#[0-9a-fA-F]{3}$/.test(v)) {
+                            const n = normalizeColor(v);
+                            if (n) {
+                                row.newHex = n.hex;
+                                newColor.value = row.newHex;
+                                hexInput.value = row.newHex;
+                                updatePreview();
+                                return;
+                            }
+                        }
+                        hexInput.value = row.newHex;
+                    });
+
+                    div.appendChild(origSwatch);
+                    div.appendChild(origInfo);
+                    div.appendChild(arrow);
+                    div.appendChild(newColor);
+                    div.appendChild(hexInput);
+                    colorList.appendChild(div);
+                });
+            }
+
+            function refreshRow(idx) {
+                const row = state.colorRows[idx];
+                const el = colorList.querySelector('.color-row[data-idx="' + idx + '"]');
+                if (!el) return;
+                const newColor = el.querySelector('input[type="color"]');
+                const hexInput = el.querySelector('.hex-input');
+                if (newColor) newColor.value = row.newHex;
+                if (hexInput) hexInput.value = row.newHex;
+            }
+
+            function buildColorMap() {
+                const map = new Map();
+                state.colorRows.forEach(function (row) {
+                    if (row.newHex !== row.origHex) {
+                        map.set(row.origHex, row.newHex);
+                    }
+                });
+                return map;
+            }
+
+            function replaceColorsInStyle(styleStr, colorMap) {
+                if (!styleStr) return styleStr;
+                const decls = styleStr.split(';');
+                const out = decls.map(function (d) {
+                    const idx = d.indexOf(':');
+                    if (idx < 0) return d;
+                    const prop = d.slice(0, idx).trim().toLowerCase();
+                    if (COLOR_ATTRS.indexOf(prop) < 0) return d;
+                    const val = d.slice(idx + 1).trim();
+                    const n = normalizeColor(val);
+                    if (!n || !colorMap.has(n.hex)) return d;
+                    const repl = buildColorReplacement(n, colorMap.get(n.hex));
+                    return prop + ':' + repl;
+                });
+                return out.join(';');
+            }
+
+            function replaceColorsInCss(cssText, colorMap) {
+                if (!cssText) return cssText;
+                const re = /(fill|stroke|stop-color|color|flood-color|lighting-color)(\s*:\s*)([^;}]+)/gi;
+                return cssText.replace(re, function (full, prop, colon, val) {
+                    const trimmed = val.trim();
+                    const n = normalizeColor(trimmed);
+                    if (!n || !colorMap.has(n.hex)) return full;
+                    return prop + colon + buildColorReplacement(n, colorMap.get(n.hex));
+                });
+            }
+
+            function applyColorChanges(origSvgText, colorMap) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(origSvgText, 'image/svg+xml');
+                if (doc.querySelector('parsererror')) return origSvgText;
+
+                doc.querySelectorAll('*').forEach(function (el) {
+                    COLOR_ATTRS.forEach(function (attr) {
+                        if (el.hasAttribute(attr)) {
+                            const val = el.getAttribute(attr);
+                            const n = normalizeColor(val);
+                            if (n && colorMap.has(n.hex)) {
+                                el.setAttribute(attr, buildColorReplacement(n, colorMap.get(n.hex)));
+                            }
+                        }
+                    });
+                    if (el.hasAttribute('style')) {
+                        const old = el.getAttribute('style');
+                        const neu = replaceColorsInStyle(old, colorMap);
+                        if (neu !== old) el.setAttribute('style', neu);
+                    }
+                });
+
+                doc.querySelectorAll('style').forEach(function (sb) {
+                    const old = sb.textContent || '';
+                    const neu = replaceColorsInCss(old, colorMap);
+                    if (neu !== old) sb.textContent = neu;
+                });
+
+                return new XMLSerializer().serializeToString(doc);
+            }
+
+            let previewFrame = null;
+            function updatePreview() {
+                if (!state.svgText) return;
+                if (previewFrame) cancelAnimationFrame(previewFrame);
+                previewFrame = requestAnimationFrame(function () {
+                    const colorMap = buildColorMap();
+                    const newSvg = colorMap.size === 0
+                        ? state.svgText
+                        : applyColorChanges(state.svgText, colorMap);
+                    state.lastPreviewSvg = newSvg;
+
+                    previewBox.innerHTML = '';
+                    const wrap = document.createElement('div');
+                    wrap.style.display = 'flex';
+                    wrap.style.justifyContent = 'center';
+                    wrap.style.width = '100%';
+                    wrap.innerHTML = newSvg;
+                    const svgEl = wrap.querySelector('svg');
+                    if (svgEl) {
+                        svgEl.style.maxWidth = '100%';
+                        svgEl.style.height = 'auto';
+                    }
+                    previewBox.appendChild(wrap);
+                });
+            }
+
+            function doResetAll() {
+                state.colorRows.forEach(function (row) {
+                    row.newHex = row.origHex;
+                });
+                renderColorList();
+                updatePreview();
+                toast('Reset to original colors');
+            }
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 8000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function loadFromFile() {
+                const file = svgFile.files && svgFile.files[0];
+                if (!file) {
+                    showMsg(msgTip, '❌ Please choose a file.', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    loadFromText(e.target.result, file.name);
+                };
+                reader.onerror = function () {
+                    showMsg(msgTip, '❌ File read failed.', 'error');
+                };
+                reader.readAsText(file);
+            }
+
+            function loadExample() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInput();
+                svgText.value = EXAMPLE;
+                loadFromText(EXAMPLE, '');
+            }
+
+            function copyResult() {
+                const text = state.lastPreviewSvg || state.svgText;
+                if (!text) {
+                    showMsg(resultMsg, '❌ No content to copy', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(resultMsg, '✅ SVG source copied', 'success');
+                        toast('Copied');
+                    }).catch(function () { fallbackCopy(text); });
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '✅ SVG source copied', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(resultMsg, '❌ Copy failed. Please copy manually.', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                const text = state.lastPreviewSvg || state.svgText;
+                if (!text) {
+                    showMsg(resultMsg, '❌ No content to export', 'error');
+                    return;
+                }
+                let filename = 'recolored.svg';
+                if (state.filename) {
+                    filename = state.filename.replace(/\.(svg|xml|txt)$/i, '') + '_recolored.svg';
+                }
+                const blob = new Blob([text], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '✅ Exported ' + filename, 'success');
+                toast('Exported');
+            }
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    svgFile.disabled = false;
+                    svgText.disabled = true;
+                    svgText.value = '';
+                } else {
+                    svgFile.disabled = true;
+                    svgFile.value = '';
+                    svgText.disabled = false;
+                }
+
+                state = {
+                    svgText: '', origW: 0, origH: 0,
+                    filename: '', colorRows: [], lastPreviewSvg: ''
+                };
+                colorList.innerHTML = '<div style="padding:30px; text-align:center; color:#999;">Please import an SVG file first</div>';
+                colorCount.textContent = '0 colors';
+                previewBox.innerHTML = '<span class="empty-hint">Preview will appear here after importing an SVG</span>';
+                previewInfo.textContent = '';
+                copyBtn.disabled = true;
+                downloadBtn.disabled = true;
+                msgTip.innerHTML = '';
+                resultMsg.innerHTML = '';
+            };
+
+            svgFile.addEventListener('change', function (e) {
+                if (!e.target.files || e.target.files.length === 0) return;
+                loadFromFile();
+            });
+
+            svgText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText(svgText.value, '');
+                }
+            });
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!svgFile.files || svgFile.files.length === 0) {
+                        if (svgText.value.trim()) { loadFromText(svgText.value, ''); return; }
+                        showMsg(msgTip, '❌ Please choose a file or paste SVG source.', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText(svgText.value, '');
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+            resetAllBtn.addEventListener('click', doResetAll);
+            copyBtn.addEventListener('click', copyResult);
+            downloadBtn.addEventListener('click', downloadResult);
+
+            switchInput();
+        })();
+    </script>
+</body>
+</html>

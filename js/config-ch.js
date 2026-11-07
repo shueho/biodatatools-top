@@ -1,7 +1,7 @@
 // ===================== 【功能配置区 - 仅在此增删分类/工具】 =====================
 const toolConfig = [
     {
-        categoryName: "核酸序列处理",
+        categoryName: "序列文件",
         categoryIcon: "🧬",
         tools: [
 {
@@ -9,13 +9,6 @@ const toolConfig = [
     toolDesc: "支持上传GenBank文件/粘贴GenBank文本，提取基因、CDS、mRNA、内含子等特征序列。",
     toolIcon: "images/001.png",
     link: "ch/001.Genbank_feat_extract.html"
-},
-
-{
-    toolName: "核酸到氨基酸序列翻译",
-    toolDesc: "将蛋白编码基因序列翻译为氨基酸序列（支持简并/混合碱基智能翻译）。",
-    toolIcon: "images/005.png",
-    link: "ch/005.CDS_translate.html"
 },
 
 {
@@ -65,73 +58,28 @@ const toolConfig = [
 },
 
 {
-    toolName: "密码子位点拆分工具",
-    toolDesc: "将多条FASTA序列按密码子位点（1、2、3）拆分为新序列。",
-    link: "ch/033.Codon_position_split.html"
-},
-
-{
-    toolName: "变异位点提取工具",
-    toolDesc: "从已比对的FASTA序列中提取所有变异位点。",
-    link: "ch/034.Variant_site_extractor.html"
-},
-
-{
     toolName: "FASTA/Table格式相互转换",
     toolDesc: "自动识别输入是FASTA还是表格（Table）格式，一键完成两者之间的互相转换。",
     link: "ch/041.FASTA_Table_converter.html"
 },
-
-{
-    toolName: "GFF/GTF文件简化工具",
-    toolDesc: "提取GFF/GTF文件属性列中指定的字段，去除不需要的信息，减小文件体积。",
-    link: "ch/043.GFF_simplify.html"
-},
-
-
-{
-    toolName: "基因密度计算工具",
-    toolDesc: "基于GFF注释文件，使用滑动窗口法统计并计算基因密度。",
-    link: "ch/044.GFF_gene_density.html"
-},
-
-{
-    toolName: "GFF文件筛选工具",
-    toolDesc: "按染色体和特征类型筛选GFF文件，仅保留指定染色体上指定类型的记录，导出精简后的GFF文件。",
-    link: "ch/045.GFF_filter.html"
-},
         ]
     },
     {
-        categoryName: "统计分析",
-        categoryIcon: "📐",
+        categoryName: "翻译与密码子",
+        categoryIcon: "🧩",
         tools: [
+{
+    toolName: "核酸到氨基酸序列翻译",
+    toolDesc: "将蛋白编码基因序列翻译为氨基酸序列（支持简并/混合碱基智能翻译）。",
+    toolIcon: "images/005.png",
+    link: "ch/005.CDS_translate.html"
+},
+
 {
     toolName: "RSCU计算工具",
     toolDesc: "相对同义密码子使用度计算（RSCU）。",
     toolIcon: "images/002.png",
     link: "ch/002.RSCU.html"
-},
-
-{
-    toolName: "Expasy Protparam参数批量计算（蛋白质理化性质）",
-    toolDesc: "导入蛋白/氨基酸序列，在网页中批量计算Expasy Protparam可以得到的所有参数。",
-    toolIcon: "images/007.png",
-    link: "ch/007.Protparam.html"
-},
-
-{
-    toolName: "碱基组成统计",
-    toolDesc: "批量统计FASTA序列的碱基频数、GC/AT含量及Skew值。",
-    toolIcon: "images/009.png",
-    link: "ch/009.Base_composition.html"
-},
-
-{
-    toolName: "密码子各位点碱基组成统计",
-    toolDesc: "计算密码子三个位点A/T/G/C碱基的频数或频率，支持密码子过滤。",
-    toolIcon: "images/011.png",
-    link: "ch/011.Codon_position_base_stats.html"
 },
 
 {
@@ -142,74 +90,76 @@ const toolConfig = [
 },
 
 {
+    toolName: "密码子位点拆分工具",
+    toolDesc: "将多条FASTA序列按密码子位点（1、2、3）拆分为新序列。",
+    link: "ch/033.Codon_position_split.html"
+},
+
+{
+    toolName: "密码子各位点碱基组成统计",
+    toolDesc: "计算密码子三个位点A/T/G/C碱基的频数或频率，支持密码子过滤。",
+    toolIcon: "images/011.png",
+    link: "ch/011.Codon_position_base_stats.html"
+},
+        ]
+    },
+    {
+        categoryName: "序列统计",
+        categoryIcon: "📊",
+        tools: [
+{
+    toolName: "碱基组成统计",
+    toolDesc: "批量统计FASTA序列的碱基频数、GC/AT含量及Skew值。",
+    toolIcon: "images/009.png",
+    link: "ch/009.Base_composition.html"
+},
+
+{
     toolName: "分组统计碱基/氨基酸使用情况",
     toolDesc: "导入FASTA序列并设置分组后按分组统计碱基或氨基酸的频数或频率。",
     link: "ch/016.Group_freq_stat.html"
 },
 
 {
-    toolName: "矩阵标准化工具",
-    toolDesc: "导入矩阵数据，按行/列进行标准化及相对值的计算。",
-    link: "ch/032.Matrix_standardization.html"
+    toolName: "变异位点提取工具",
+    toolDesc: "从已比对的FASTA序列中提取所有变异位点。",
+    link: "ch/034.Variant_site_extractor.html"
 },
 
 {
-    toolName: "物种丰度表分类解析",
-    toolDesc: "将丰度表格中的分类信息（如 d__Bacteria;k__Bacteria;p__Proteobacteria;...）拆分为域、界、门、纲、目、科、属、种，并按照某一等级进行分组求和，支持相对丰度计算及缺失等级补全。",
-    link: "ch/035.Taxonomy_abundance_parser.html"
+    toolName: "Expasy Protparam参数批量计算（蛋白质理化性质）",
+    toolDesc: "导入蛋白/氨基酸序列，在网页中批量计算Expasy Protparam可以得到的所有参数。",
+    toolIcon: "images/007.png",
+    link: "ch/007.Protparam.html"
 },
-
-{
-    toolName: "丰度表筛选与预处理",
-    toolDesc: "对ASV/OTU/物种/基因丰度表进行筛选与预处理，支持按流行度阈值与相对丰度阈值进行筛选。",
-    link: "ch/039.Abundance_table_filter.html"
-},
-
         ]
     },
     {
-        categoryName: "绘图与美化",
-        categoryIcon: "📈",
+        categoryName: "基因组注释",
+        categoryIcon: "🏷️",
         tools: [
 {
-    toolName: "RSCU柱形图绘制",
-    toolDesc: "支持单序列/多基因/多物种RSCU柱形图绘制。",
-    toolIcon: "images/003.png",
-    link: "ch/003.RSCU_plot.html"
+    toolName: "GFF/GTF属性精简工具",
+    toolDesc: "提取GFF/GTF文件属性列中指定的字段，去除不需要的信息，减小文件体积。",
+    link: "ch/043.GFF_simplify.html"
 },
 
 {
-    toolName: "tRNA二级结构图美化组图工具",
-    toolDesc: "对MITOS或ViennaRNA RNAplot输出的tRNA二级结构图进行美化。",
-    toolIcon: "images/004.png",
-    link: "ch/004.Trna_structure_beautifier.html"
+    toolName: "基因密度计算工具",
+    toolDesc: "基于GFF注释文件，使用滑动窗口法统计并计算基因密度。",
+    link: "ch/044.GFF_gene_density.html"
 },
 
 {
-    toolName: "基因排列可视化（基因重排图）",
-    toolDesc: "用于展示基因排布及基因重排，支持区分正负链及非编码区的可视化。",
-    toolIcon: "images/008.png",
-    link: "ch/008.Visualize_gene_arrangement.html"
+    toolName: "GFF子集提取工具",
+    toolDesc: "按染色体和特征类型从GFF文件提取子集，导出精简后的GFF文件。",
+    link: "ch/045.GFF_filter.html"
 },
-
-{
-    toolName: "Gephi图例生成器",
-    toolDesc: "从Gephi导出的网络图SVG中提取节点颜色，生成图例。",
-    link: "ch/036.Gephi_legend_generator.html"
-},
-
-{
-    toolName: "SVG合并工具",
-    toolDesc: "将多个SVG文件简单合并为一张大图，支持调整每行展示数量、间距和缩放。",
-    link: "ch/037.SVG_merger.html"
-},
-
-
         ]
     },
     {
-        categoryName: "小工具",
-        categoryIcon: "🔧",
+        categoryName: "单倍型与群体",
+        categoryIcon: "🕸️",
         tools: [
 {
     toolName: "DnaSP序列分组生成器",
@@ -234,7 +184,35 @@ const toolConfig = [
     toolDesc: "将DnaSP生成的ARP文件和HAP文件合并为单个ARP文件，可以用于导入SAMOVA软件。",
     link: "ch/021.Arp_hap_merger.html"
 },
+        ]
+    },
+    {
+        categoryName: "分类与微生物",
+        categoryIcon: "🦠",
+        tools: [
+{
+    toolName: "物种丰度表分类解析",
+    toolDesc: "将丰度表格中的分类信息（如 d__Bacteria;k__Bacteria;p__Proteobacteria;...）拆分为域、界、门、纲、目、科、属、种，并按照某一等级进行分组求和，支持相对丰度计算及缺失等级补全。",
+    link: "ch/035.Taxonomy_abundance_parser.html"
+},
 
+{
+    toolName: "丰度表筛选与预处理",
+    toolDesc: "对ASV/OTU/物种/基因丰度表进行筛选与预处理，支持按流行度阈值与相对丰度阈值进行筛选。",
+    link: "ch/039.Abundance_table_filter.html"
+},
+
+{
+    toolName: "物种注释格式转换",
+    toolDesc: "实现单列分类字符串（d__Bacteria;p__Proteobacteria;...）与多列等级表格（Domain、Kingdom、Phylum...）之间的互相转换。",
+    link: "ch/038.Taxonomy_format_converter.html"
+},
+        ]
+    },
+    {
+        categoryName: "表格与矩阵",
+        categoryIcon: "📋",
+        tools: [
 {
     toolName: "宽表格与长表格数据互转工具",
     toolDesc: "在宽格式（多列变量）与长格式（变量-值对）之间灵活转换表格数据。",
@@ -254,27 +232,9 @@ const toolConfig = [
 },
 
 {
-    toolName: "经纬度格式互转工具",
-    toolDesc: "经纬度格式转换工具，支持度分秒(DMS)与十进制之间的相互转换。",
-    link: "ch/025.Geo_coordinate_converter.html"
-},
-
-{
     toolName: "长列表转下三角矩阵",
     toolDesc: "将三列数据（项目1-项目2-值）转换为下三角矩阵，支持顺序调整与子集选取。",
     link: "ch/026.Long_to_triangular.html"
-},
-
-{
-    toolName: "Haversine距离矩阵生成器",
-    toolDesc: "根据坐标点的经纬度，计算两两点位之间的大圆距离（单位：km）。",
-    link: "ch/028.Haversine_distance_matrix.html"
-},
-
-{
-    toolName: "ARWEN tRNA二级结构提取",
-    toolDesc: "从ARWEN输出结果中提取tRNA二级结构式，方便后续绘图。",
-    link: "ch/029.ARWEN_trna_extract.html"
 },
 
 {
@@ -290,9 +250,9 @@ const toolConfig = [
 },
 
 {
-    toolName: "物种注释格式转换",
-    toolDesc: "实现单列分类字符串（d__Bacteria;p__Proteobacteria;...）与多列等级表格（Domain、Kingdom、Phylum...）之间的互相转换。",
-    link: "ch/038.Taxonomy_format_converter.html"
+    toolName: "矩阵标准化工具",
+    toolDesc: "导入矩阵数据，按行/列进行标准化及相对值的计算。",
+    link: "ch/032.Matrix_standardization.html"
 },
 
 {
@@ -308,10 +268,82 @@ const toolConfig = [
 },
         ]
     },
+    {
+        categoryName: "地理空间",
+        categoryIcon: "🌐",
+        tools: [
+{
+    toolName: "经纬度格式互转工具",
+    toolDesc: "经纬度格式转换工具，支持度分秒(DMS)与十进制之间的相互转换。",
+    link: "ch/025.Geo_coordinate_converter.html"
+},
 
+{
+    toolName: "Haversine距离矩阵生成器",
+    toolDesc: "根据坐标点的经纬度，计算两两点位之间的大圆距离（单位：km）。",
+    link: "ch/028.Haversine_distance_matrix.html"
+},
+        ]
+    },
+    {
+        categoryName: "可视化",
+        categoryIcon: "📈",
+        tools: [
+{
+    toolName: "RSCU柱形图绘制",
+    toolDesc: "支持单序列/多基因/多物种RSCU柱形图绘制。",
+    toolIcon: "images/003.png",
+    link: "ch/003.RSCU_plot.html"
+},
+
+{
+    toolName: "基因排列可视化（基因重排图）",
+    toolDesc: "用于展示基因排布及基因重排，支持区分正负链及非编码区的可视化。",
+    toolIcon: "images/008.png",
+    link: "ch/008.Visualize_gene_arrangement.html"
+},
+
+{
+    toolName: "Gephi图例生成器",
+    toolDesc: "从Gephi导出的网络图SVG中提取节点颜色，生成图例。",
+    link: "ch/036.Gephi_legend_generator.html"
+},
+
+{
+    toolName: "SVG合并工具",
+    toolDesc: "将多个SVG文件简单合并为一张大图，支持调整每行展示数量、间距和缩放。",
+    link: "ch/037.SVG_merger.html"
+},
+
+{
+    toolName: "ARWEN tRNA二级结构提取",
+    toolDesc: "从ARWEN输出结果中提取tRNA二级结构式，方便后续绘图。",
+    link: "ch/029.ARWEN_trna_extract.html"
+},
+
+{
+    toolName: "tRNA二级结构图美化组图工具",
+    toolDesc: "对MITOS或ViennaRNA RNAplot输出的tRNA二级结构图进行美化。",
+    toolIcon: "images/004.png",
+    link: "ch/004.Trna_structure_beautifier.html"
+},
+
+{
+    toolName: "SVG格式转换工具",
+    toolDesc: "将SVG矢量图转换为PNG、JPG、WEBP、PDF、EPS等格式，可自定义尺寸与分辨率。",
+    link: "ch/046.SVG_converter.html"
+},
+
+{
+    toolName: "SVG批量改色工具",
+    toolDesc: "提取SVG中的所有颜色，批量替换并实时预览。",
+    link: "ch/047.SVG_recolor.html"
+},
+        ]
+    },
     {
         categoryName: "其他",
-        categoryIcon: "📋",
+        categoryIcon: "📦",
         tools: [
 {
     toolName: "脚本下载",
