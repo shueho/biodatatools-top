@@ -132,6 +132,13 @@ const toolConfig = [
     toolIcon: "images/007.png",
     link: "ch/007.Protparam.html"
 },
+
+
+{
+    toolName: "转换/颠换计算",
+    toolDesc: "计算比对好的多条序列两两之间的转换数、颠换数、总数及比值R，支持频数/频率输出。",
+    link: "ch/051.Transition_transversion_matrix.html"
+},
         ]
     },
     {

@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转换/颠换计算 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>转换/颠换计算</h2>
+            <p>计算比对好的多条序列两两之间的转换数、颠换数、总数及比值R，支持频数/频率输出。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入FASTA比对文件</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传FASTA文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴FASTA文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.txt,.fas">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="粘贴已比对好的FASTA序列（所有序列需等长）" disabled></textarea>
+            </div>
+            <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;">
+                <button class="btn" id="loadBtn">加载序列</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：计算参数</div>
+            <div class="param-group">
+                <label>输出内容：
+                    <select id="outputType">
+                        <option value="ts">Ts：转换数</option>
+                        <option value="tv">Tv：颠换数</option>
+                        <option value="total">d：转换数+颠换数(Ts+Tv)</option>
+                        <option value="r">R：转换数/颠换数(Ts/Tv)</option>
+                    </select>
+                </label>
+                <label>缺失/简并碱基处理：
+                    <select id="gapMode">
+                        <option value="pairwise" selected>成对删除（逐对剔除缺失位点）</option>
+                        <option value="complete">完全删除（先剔除所有含缺失位点，再比较）</option>
+                    </select>
+                </label>
+            </div>
+            <div class="param-group">
+                <label>数值模式：
+                    <select id="freqMode">
+                        <option value="freq" selected>频率（计数/总长）</option>
+                        <option value="count">频数（原始计数）</option>
+                    </select>
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;">
+                    <input type="checkbox" id="includeGap" disabled> 频率计算时总长包含gap位点
+                </label>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong>
+                <strong>转换</strong>：A↔G、C↔T；<strong>颠换</strong>：A↔C、A↔T、G↔C、G↔T。<br>
+                <strong>R = 转换数/颠换数</strong>，若颠换数为0且存在转换则显示+Inf，两者均为0显示Nan。<br>
+                <strong>频率模式</strong>：分母可选为“含gap的完整比对长度”或“不含gap的有效位点数”。完全删除模式下所有序列对使用同一分母；成对删除模式下每对序列使用各自的有效位点数。<br>
+                <strong>R值</strong>为比值，不受频数/频率模式影响。
+            </div>
+            <div style="margin-top:12px;">
+                <button class="btn" id="calcBtn" disabled>开始计算</button>
+            </div>
+            <div id="paramTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：结果预览与导出</div>
+            <div id="resultArea" style="display:none;">
+                <div class="result-toolbar">
+                    <button class="btn" id="copyResultBtn">复制矩阵</button>
+                    <button class="btn" id="exportBtn">导出矩阵</button>
+                    <span id="resultTip" class="tip-text" style="margin:0;"></span>
+                </div>
+                <div class="table-container">
+                    <table id="matrixTable">
+                        <thead id="matrixHead"></thead>
+                        <tbody id="matrixBody"></tbody>
+                    </table>
+                </div>
+                <div style="font-size:0.85rem;color:#6c757d;margin-top:6px;" id="statInfo"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">计算完成后，矩阵将在此处显示</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const outputType = document.getElementById('outputType');
+            const gapMode = document.getElementById('gapMode');
+            const freqMode = document.getElementById('freqMode');
+            const includeGap = document.getElementById('includeGap');
+            const calcBtn = document.getElementById('calcBtn');
+            const paramTip = document.getElementById('paramTip');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const matrixHead = document.getElementById('matrixHead');
+            const matrixBody = document.getElementById('matrixBody');
+            const statInfo = document.getElementById('statInfo');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let sequences = [];
+            let currentResult = null;
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                if (el === msgTip || el === paramTip || el === resultTip) {
+                    setTimeout(function () {
+                        if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                    }, 5000);
+                }
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(s) {
+                if (s === null || s === undefined) return '';
+                return String(s).replace(/[&<>"]/g, function (m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let name = '', seq = '';
+                for (let i = 0; i < lines.length; i++) {
+                    const t = lines[i].trim();
+                    if (!t) continue;
+                    if (t.charAt(0) === '>') {
+                        if (name && seq) seqs.push({ id: name, seq: seq });
+                        name = t.slice(1).trim().split(/\s+/)[0] || 'Unnamed';
+                        seq = '';
+                    } else {
+                        seq += t;
+                    }
+                }
+                if (name && seq) seqs.push({ id: name, seq: seq });
+                return seqs;
+            }
+
+            function isBase(c) {
+                if (!c) return false;
+                const u = c.toUpperCase();
+                return u === 'A' || u === 'T' || u === 'C' || u === 'G' || u === 'U';
+            }
+
+            function normBase(c) {
+                const u = c.toUpperCase();
+                return u === 'U' ? 'T' : u;
+            }
+
+            function isTransition(a, b) {
+                return (a === 'A' && b === 'G') || (a === 'G' && b === 'A') ||
+                       (a === 'C' && b === 'T') || (a === 'T' && b === 'C');
+            }
+
+            function loadData(text) {
+                const parsed = parseFasta(text);
+                if (parsed.length < 2) {
+                    showMsg(msgTip, '❌ 至少需要2条序列', 'error');
+                    return false;
+                }
+
+                const lens = {};
+                parsed.forEach(function (s) { lens[s.seq.length] = true; });
+                const unequal = Object.keys(lens).length > 1;
+
+                let maxLen = 0;
+                parsed.forEach(function (s) { if (s.seq.length > maxLen) maxLen = s.seq.length; });
+                parsed.forEach(function (s) {
+                    if (s.seq.length < maxLen) s.seq = s.seq + '-'.repeat(maxLen - s.seq.length);
+                });
+
+                sequences = parsed;
+                calcBtn.disabled = false;
+                clearResults();
+
+                if (unequal) {
+                    showMsg(msgTip, '⚠️ 已加载 ' + parsed.length + ' 条序列（长度不一致，已末尾补“-”对齐）', 'warn');
+                } else {
+                    showMsg(msgTip, '✅ 成功加载 ' + parsed.length + ' 条序列，长度 ' + maxLen + ' bp', 'success');
+                }
+                toast('已加载 ' + parsed.length + ' 条序列');
+                return true;
+            }
+
+            function loadFromFile() {
+                const file = fastaFile.files[0];
+                if (!file) { showMsg(msgTip, '请选择文件', 'error'); return; }
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    fastaText.value = e.target.result;
+                    loadData(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                const text = fastaText.value.trim();
+                if (!text) { showMsg(msgTip, '请粘贴FASTA内容', 'error'); return; }
+                loadData(text);
+            }
+
+            function computeStats(seqs, mode) {
+                const n = seqs.length;
+                const fullLen = seqs[0].seq.length;
+                const ts = [], tv = [], validSites = [];
+                for (let i = 0; i < n; i++) {
+                    ts.push(new Array(n).fill(0));
+                    tv.push(new Array(n).fill(0));
+                    validSites.push(new Array(n).fill(0));
+                }
+
+                if (mode === 'complete') {
+                    const globalValid = [];
+                    let globalValidCount = 0;
+                    for (let k = 0; k < fullLen; k++) {
+                        let ok = true;
+                        for (let s = 0; s < n; s++) {
+                            if (!isBase(seqs[s].seq.charAt(k))) { ok = false; break; }
+                        }
+                        globalValid.push(ok);
+                        if (ok) globalValidCount++;
+                    }
+                    for (let i = 0; i < n; i++) {
+                        const s1 = seqs[i].seq.toUpperCase();
+                        for (let j = 0; j < i; j++) {
+                            const s2 = seqs[j].seq.toUpperCase();
+                            let cts = 0, ctv = 0;
+                            for (let k = 0; k < fullLen; k++) {
+                                if (!globalValid[k]) continue;
+                                const an = normBase(s1.charAt(k));
+                                const bn = normBase(s2.charAt(k));
+                                if (an === bn) continue;
+                                if (isTransition(an, bn)) cts++;
+                                else ctv++;
+                            }
+                            ts[i][j] = cts;
+                            tv[i][j] = ctv;
+                            validSites[i][j] = globalValidCount;
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < n; i++) {
+                        const s1 = seqs[i].seq.toUpperCase();
+                        for (let j = 0; j < i; j++) {
+                            const s2 = seqs[j].seq.toUpperCase();
+                            const len = Math.min(s1.length, s2.length);
+                            let cts = 0, ctv = 0, cValid = 0;
+                            for (let k = 0; k < len; k++) {
+                                const a = s1.charAt(k), b = s2.charAt(k);
+                                if (!isBase(a) || !isBase(b)) continue;
+                                cValid++;
+                                const an = normBase(a), bn = normBase(b);
+                                if (an === bn) continue;
+                                if (isTransition(an, bn)) cts++;
+                                else ctv++;
+                            }
+                            ts[i][j] = cts;
+                            tv[i][j] = ctv;
+                            validSites[i][j] = cValid;
+                        }
+                    }
+                }
+                return { ts: ts, tv: tv, validSites: validSites, fullLen: fullLen };
+            }
+
+            function buildMatrix(stats, type, fMode, incGap) {
+                const n = stats.ts.length;
+                const names = sequences.map(function (s) { return s.id; });
+                const matrix = [];
+
+                for (let i = 0; i < n; i++) {
+                    matrix.push([]);
+                    for (let j = 0; j < n; j++) {
+                        if (j >= i) { matrix[i][j] = ''; continue; }
+
+                        let v;
+                        if (type === 'r') {
+                            const cts = stats.ts[i][j];
+                            const ctv = stats.tv[i][j];
+                            if (ctv === 0) {
+                                v = (cts === 0) ? 'Nan' : '+Inf';
+                            } else {
+                                v = (cts / ctv).toFixed(4);
+                            }
+                        } else {
+                            let count;
+                            if (type === 'ts') count = stats.ts[i][j];
+                            else if (type === 'tv') count = stats.tv[i][j];
+                            else count = stats.ts[i][j] + stats.tv[i][j];
+
+                            if (fMode === 'freq') {
+                                const denom = incGap ? stats.fullLen : stats.validSites[i][j];
+                                v = denom === 0 ? 'Nan' : (count / denom).toFixed(6);
+                            } else {
+                                v = count;
+                            }
+                        }
+                        matrix[i][j] = v;
+                    }
+                }
+                return { names: names, matrix: matrix };
+            }
+
+            function renderMatrix(names, matrix) {
+                let thead = '<tr><th></th>';
+                for (let j = 0; j < names.length; j++) {
+                    thead += '<th>' + escapeHtml(names[j]) + '</th>';
+                }
+                thead += '</tr>';
+                matrixHead.innerHTML = thead;
+
+                let tbody = '';
+                for (let i = 0; i < names.length; i++) {
+                    tbody += '<tr>';
+                    tbody += '<td style="font-weight:500;background:#f7f9fc;">' + escapeHtml(names[i]) + '</td>';
+                    for (let j = 0; j < names.length; j++) {
+                        const v = matrix[i][j];
+                        tbody += '<td>' + escapeHtml(v === '' ? '' : v) + '</td>';
+                    }
+                    tbody += '</tr>';
+                }
+                matrixBody.innerHTML = tbody;
+            }
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                currentResult = null;
+                copyResultBtn.disabled = true;
+                exportBtn.disabled = true;
+                matrixHead.innerHTML = '';
+                matrixBody.innerHTML = '';
+                statInfo.textContent = '';
+                resultTip.innerHTML = '';
+            }
+
+            function updateFreqControls() {
+                const isFreq = freqMode.value === 'freq';
+                const isRatio = outputType.value === 'r';
+                includeGap.disabled = !isFreq || isRatio;
+                if (includeGap.disabled) includeGap.checked = false;
+            }
+
+            freqMode.addEventListener('change', updateFreqControls);
+            outputType.addEventListener('change', updateFreqControls);
+
+            calcBtn.addEventListener('click', function () {
+                if (sequences.length < 2) {
+                    showMsg(paramTip, '请先加载至少2条序列', 'error');
+                    return;
+                }
+
+                const type = outputType.value;
+                const mode = gapMode.value;
+                const fMode = freqMode.value;
+                const incGap = includeGap.checked;
+                const stats = computeStats(sequences, mode);
+                const built = buildMatrix(stats, type, fMode, incGap);
+
+                currentResult = built;
+
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+                renderMatrix(built.names, built.matrix);
+                copyResultBtn.disabled = false;
+                exportBtn.disabled = false;
+
+                const labelMap = {
+                    ts: '转换数 (Ts)',
+                    tv: '颠换数 (Tv)',
+                    total: '转换+颠换总数 (Ts+Tv)',
+                    r: 'R值 (Ts/Tv)'
+                };
+                const parts = [];
+                parts.push('共 ' + built.names.length + ' 条序列');
+                parts.push('输出：' + labelMap[type]);
+                parts.push('缺失处理：' + (mode === 'complete' ? '完全删除' : '成对删除'));
+                if (type !== 'r') {
+                    parts.push('数值：' + (fMode === 'freq' ? '频率' : '频数'));
+                    if (fMode === 'freq') {
+                        parts.push('总长：' + (incGap ? '含gap' : '不含gap'));
+                    }
+                }
+                statInfo.textContent = parts.join(' · ');
+
+                showMsg(paramTip, '✅ 计算完成', 'success');
+                toast('计算完成');
+            });
+
+            function getMatrixText() {
+                if (!currentResult) return '';
+                const names = currentResult.names;
+                const matrix = currentResult.matrix;
+                const lines = [];
+                lines.push(['', ...names].join('\t'));
+                for (let i = 0; i < names.length; i++) {
+                    const row = [names[i]];
+                    for (let j = 0; j < names.length; j++) {
+                        row.push(matrix[i][j] === '' ? '' : matrix[i][j]);
+                    }
+                    lines.push(row.join('\t'));
+                }
+                return lines.join('\n');
+            }
+
+            copyResultBtn.addEventListener('click', function () {
+                const text = getMatrixText();
+                if (!text) { showMsg(resultTip, '无结果可复制', 'error'); return; }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(resultTip, '已复制矩阵', 'success');
+                        toast('已复制');
+                    }).catch(function () { fallbackCopy(text); });
+                } else {
+                    fallbackCopy(text);
+                }
+            });
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultTip, '已复制矩阵', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(resultTip, '复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            exportBtn.addEventListener('click', function () {
+                const text = getMatrixText();
+                if (!text) { showMsg(resultTip, '无结果可导出', 'error'); return; }
+                const csv = text.split('\n').map(function (line) {
+                    return line.split('\t').join(',');
+                }).join('\n');
+                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'TsTv_matrix.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultTip, '矩阵已导出', 'success');
+                toast('已导出');
+            });
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+                sequences = [];
+                calcBtn.disabled = true;
+                clearResults();
+                msgTip.innerHTML = '';
+                paramTip.innerHTML = '';
+            };
+
+            fastaFile.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    fastaText.value = ev.target.result;
+                    loadData(ev.target.result);
+                };
+                reader.readAsText(file);
+                this.value = '';
+            });
+
+            fastaText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!fastaFile.files || fastaFile.files.length === 0) {
+                        if (fastaText.value.trim()) { loadData(fastaText.value); return; }
+                        showMsg(msgTip, '❌ 请选择文件或粘贴FASTA内容', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', function () {
+                const example =
+                    '>Seq1\n' +
+                    'ATGCGTACGTAGCTAGCTAGCATCGATCGTAGCTAGCTAGC-TAGCGATCGATCGATCGT\n' +
+                    '>Seq2\n' +
+                    'ATGCGTACGTGGCTAGCTAGCATCGATCGTGGCTAGCTAGCTTAG-GATCGATCGATCGT\n' +
+                    '>Seq3\n' +
+                    'ATGCGTACGTAGCTAGCTAGAATCGATCGTAGCTAGCTAGTTTAG-GATCGATCGATCGT\n' +
+                    '>Seq4\n' +
+                    'ATGCGTACGTGGCTAGCTAGAATCGATCGTAGCTAGCTAGCTTAGCGA--GATCGATCGT\n' +
+                    '>Seq5\n' +
+                    'ATGCGTACGTAGCTAGCTAGCATCGATCGTAGCTAGCTAGCTTAGCGATC-ATCGATCGT\n';
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInput();
+                fastaText.value = example;
+                loadData(example);
+            });
+
+            window.switchInput();
+            calcBtn.disabled = true;
+            updateFreqControls();
+            clearResults();
+        })();
+    </script>
+</body>
+</html>

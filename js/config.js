@@ -130,6 +130,12 @@ const toolConfig = [
     toolIcon: "images/007.png",
     link: "en/007.Protparam.html"
 },
+
+{
+    toolName: "Transition/Transversion Calculation",
+    toolDesc: "Calculate pairwise transition counts, transversion counts, total differences, and R ratio from aligned sequences, with support for count/frequency output.",
+    link: "en/051.Transition_transversion_matrix.html"
+},
         ]
     },
     {
