@@ -9,6 +9,7 @@
 
     var CFG = Object.assign({
         image: 'https://www.biodatatools.top/images/donate.png',
+        helpImage: 'https://www.biodatatools.top/images/weixin.png',
         label: '',
         lang: 'auto'
     }, window.donateWidgetConfig || {});
@@ -37,6 +38,14 @@
                     '<a href="https://www.biodatatools.top" target="_blank" rel="noopener noreferrer">https://www.biodatatools.top</a>' +
                     '。',
                 '同时期待您助力项目发展：'
+            ],
+            helpButton: '获取帮助',
+            helpTitle: '获取帮助',
+            helpDialogLabel: '获取帮助',
+            helpImgAlt: '微信公众号二维码',
+            helpParas: [
+                '部分工具附带视频教程，点击工具页中的【当前工具使用教程视频】按钮可查看详细演示。',
+                '各工具图文教程将持续更新，欢迎关注公众号并发送工具名称，查看对应帮助文档。'
             ]
         },
         en: {
@@ -53,6 +62,14 @@
                     '<a href="https://www.biodatatools.top" target="_blank" rel="noopener noreferrer">https://www.biodatatools.top</a>' +
                     '.',
                 'Your support helps the project keep growing:'
+            ],
+            helpButton: 'Get Help',
+            helpTitle: 'Get Help',
+            helpDialogLabel: 'Get help',
+            helpImgAlt: 'WeChat Official Account QR code',
+            helpParas: [
+                'Some tools come with video tutorials. Click the "Tutorial video for this tool" button on the tool page to view a detailed demonstration.',
+                'Illustrated guides for each tool will be updated continuously. Follow our WeChat Official Account and send us the tool name to view its help documentation.'
             ]
         }
     };
@@ -67,7 +84,8 @@
         z-index: 999;
         display: flex;
         flex-direction: column;
-        align-items: flex-end;
+        align-items: stretch;
+        gap: 14px;
         font-family: "Segoe UI", "Microsoft Yahei", sans-serif;
         line-height: 1.6;
     }
@@ -75,6 +93,7 @@
     .bdt-donate-btn {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 7px;
         padding: 10px 18px;
         border: none;
@@ -130,7 +149,8 @@
         transition: opacity .25s ease, transform .25s ease, visibility .25s;
         pointer-events: none;
     }
-    .bdt-donate.show .bdt-donate-panel {
+    .bdt-donate.show .bdt-donate-panel--donate,
+    .bdt-donate.show-help .bdt-donate-panel--help {
         opacity: 1;
         visibility: visible;
         transform: translateY(0) scale(1);
@@ -242,6 +262,7 @@
         .bdt-donate {
             right: 14px;
             bottom: 14px;
+            gap: 12px;
         }
         .bdt-donate-btn {
             padding: 9px 15px;
@@ -292,59 +313,99 @@
         wrap.setAttribute('lang', LANG === 'zh' ? 'zh-CN' : 'en');
 
         wrap.innerHTML =
-            '<div class="bdt-donate-panel" role="dialog" aria-label="' + escapeAttr(T.dialogLabel) + '">' +
+            '<div class="bdt-donate-panel bdt-donate-panel--donate" role="dialog" aria-label="' + escapeAttr(T.dialogLabel) + '">' +
                 '<button type="button" class="bdt-donate-close" aria-label="' + escapeAttr(T.closeLabel) + '">&times;</button>' +
                 '<div class="bdt-donate-title">' + T.title + '</div>' +
                 buildTextHtml(T.paras) +
                 '<img class="bdt-donate-img" src="' + escapeAttr(CFG.image) + '" alt="' + escapeAttr(T.imgAlt) + '" loading="lazy">' +
             '</div>' +
-            '<button type="button" class="bdt-donate-btn" aria-expanded="false" aria-label="' + escapeAttr(T.button) + '">' +
+            '<div class="bdt-donate-panel bdt-donate-panel--help" role="dialog" aria-label="' + escapeAttr(T.helpDialogLabel) + '">' +
+                '<button type="button" class="bdt-donate-close" aria-label="' + escapeAttr(T.closeLabel) + '">&times;</button>' +
+                '<div class="bdt-donate-title">' + T.helpTitle + '</div>' +
+                buildTextHtml(T.helpParas) +
+                '<img class="bdt-donate-img" src="' + escapeAttr(CFG.helpImage) + '" alt="' + escapeAttr(T.helpImgAlt) + '" loading="lazy">' +
+            '</div>' +
+            '<button type="button" class="bdt-donate-btn bdt-donate-btn--donate" aria-expanded="false" aria-label="' + escapeAttr(T.button) + '">' +
                 '<svg viewBox="0 0 24 24" aria-hidden="true">' +
                     '<path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3' +
                     'c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5' +
                     'c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>' +
                 '</svg>' +
                 '<span>' + T.button + '</span>' +
+            '</button>' +
+            '<button type="button" class="bdt-donate-btn bdt-donate-btn--help" aria-expanded="false" aria-label="' + escapeAttr(T.helpButton) + '">' +
+                '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+                    '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z' +
+                    'm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5' +
+                    'c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8' +
+                    'c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>' +
+                '</svg>' +
+                '<span>' + T.helpButton + '</span>' +
             '</button>';
 
         return wrap;
     }
 
     function bindEvents(wrap) {
-        var btn = wrap.querySelector('.bdt-donate-btn');
-        var panel = wrap.querySelector('.bdt-donate-panel');
-        var closeBtn = wrap.querySelector('.bdt-donate-close');
+        var donateBtn = wrap.querySelector('.bdt-donate-btn--donate');
+        var helpBtn = wrap.querySelector('.bdt-donate-btn--help');
 
-        function open() {
-            wrap.classList.add('show');
-            btn.setAttribute('aria-expanded', 'true');
-        }
-        function close() {
-            wrap.classList.remove('show');
-            btn.setAttribute('aria-expanded', 'false');
+        function closeAll() {
+            wrap.classList.remove('show', 'show-help');
+            donateBtn.setAttribute('aria-expanded', 'false');
+            helpBtn.setAttribute('aria-expanded', 'false');
         }
 
-        btn.addEventListener('click', function (e) {
+        function toggle(which) {
+            if (which === 'donate') {
+                if (wrap.classList.contains('show')) { closeAll(); return; }
+                closeAll();
+                wrap.classList.add('show');
+                donateBtn.setAttribute('aria-expanded', 'true');
+            } else {
+                if (wrap.classList.contains('show-help')) { closeAll(); return; }
+                closeAll();
+                wrap.classList.add('show-help');
+                helpBtn.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        donateBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            wrap.classList.contains('show') ? close() : open();
+            toggle('donate');
         });
-        closeBtn.addEventListener('click', function (e) {
+        helpBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            close();
+            toggle('help');
         });
-        panel.addEventListener('click', function (e) {
-            e.stopPropagation();
+
+        wrap.querySelectorAll('.bdt-donate-close').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                closeAll();
+            });
         });
+
+        wrap.querySelectorAll('.bdt-donate-panel').forEach(function (panel) {
+            panel.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        });
+
         document.addEventListener('click', function (e) {
-            if (wrap.classList.contains('show') && !wrap.contains(e.target)) close();
+            if ((wrap.classList.contains('show') || wrap.classList.contains('show-help')) && !wrap.contains(e.target)) {
+                closeAll();
+            }
         });
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && wrap.classList.contains('show')) close();
+            if (e.key === 'Escape' && (wrap.classList.contains('show') || wrap.classList.contains('show-help'))) {
+                closeAll();
+            }
         });
     }
 
     function setupPositionTracking(wrap) {
-        var panel = wrap.querySelector('.bdt-donate-panel');
+        var panels = wrap.querySelectorAll('.bdt-donate-panel');
         var ticking = false;
 
         function update() {
@@ -358,10 +419,10 @@
             if (overlap > 0) {
                 wrap.style.bottom = (overlap + baseGap) + 'px';
                 var maxH = Math.max(220, vh - (overlap + baseGap) - 60);
-                panel.style.maxHeight = maxH + 'px';
+                panels.forEach(function (p) { p.style.maxHeight = maxH + 'px'; });
             } else {
                 wrap.style.bottom = baseGap + 'px';
-                panel.style.maxHeight = '';
+                panels.forEach(function (p) { p.style.maxHeight = ''; });
             }
         }
 
