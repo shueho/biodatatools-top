@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>转换/颠换计算 - BioDataTools</title>
+    <title>转换/颠换计算（多序列比对FASTA文件） - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
@@ -13,8 +13,8 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>转换/颠换计算</h2>
-            <p>计算比对好的多条序列两两之间的转换数、颠换数、总数及比值R，支持频数/频率输出。</p>
+            <h2>转换/颠换计算（多序列比对FASTA文件）</h2>
+            <p>计算比对好的多条序列两两之间的转换、颠换、总数及比值R，支持频数/频率输出。</p>
         </div>
 
         <div class="step-card">
@@ -30,7 +30,7 @@
                 <textarea id="fastaText" placeholder="粘贴已比对好的FASTA序列（所有序列需等长）" disabled></textarea>
             </div>
             <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;">
-                <button class="btn" id="loadBtn">加载序列</button>
+                <button class="btn" id="loadBtn">导入序列</button>
                 <button class="btn" id="exampleBtn">加载示例</button>
             </div>
             <div id="msgTip" class="tip-text"></div>
@@ -41,10 +41,10 @@
             <div class="param-group">
                 <label>输出内容：
                     <select id="outputType">
-                        <option value="ts">Ts：转换数</option>
-                        <option value="tv">Tv：颠换数</option>
-                        <option value="total">d：转换数+颠换数(Ts+Tv)</option>
-                        <option value="r">R：转换数/颠换数(Ts/Tv)</option>
+                        <option value="ts">Ts：转换</option>
+                        <option value="tv">Tv：颠换</option>
+                        <option value="total">d：转换+颠换(Ts+Tv)</option>
+                        <option value="r">R：转换/颠换(Ts/Tv)</option>
                     </select>
                 </label>
                 <label>缺失/简并碱基处理：
@@ -68,7 +68,7 @@
             <div class="info-box">
                 <strong>说明：</strong>
                 <strong>转换</strong>：A↔G、C↔T；<strong>颠换</strong>：A↔C、A↔T、G↔C、G↔T。<br>
-                <strong>R = 转换数/颠换数</strong>，若颠换数为0且存在转换则显示+Inf，两者均为0显示Nan。<br>
+                <strong>R = 转换/颠换</strong>，若颠换为0且存在转换则显示+Inf，两者均为0显示Nan。<br>
                 <strong>频率模式</strong>：分母可选为“含gap的完整比对长度”或“不含gap的有效位点数”。完全删除模式下所有序列对使用同一分母；成对删除模式下每对序列使用各自的有效位点数。<br>
                 <strong>R值</strong>为比值，不受频数/频率模式影响。
             </div>
@@ -93,6 +93,7 @@
                     </table>
                 </div>
                 <div style="font-size:0.85rem;color:#6c757d;margin-top:6px;" id="statInfo"></div>
+                <div id="overallInfo" style="margin-top:10px;padding:10px 14px;background:#f0f7ff;border:1px solid #b8d4f0;border-radius:6px;font-size:0.9rem;color:#1f4068;"></div>
             </div>
             <div id="emptyResult" class="empty-tip">计算完成后，矩阵将在此处显示</div>
         </div>
@@ -130,6 +131,7 @@
             const matrixHead = document.getElementById('matrixHead');
             const matrixBody = document.getElementById('matrixBody');
             const statInfo = document.getElementById('statInfo');
+            const overallInfo = document.getElementById('overallInfo');
             const copyResultBtn = document.getElementById('copyResultBtn');
             const exportBtn = document.getElementById('exportBtn');
             const resultTip = document.getElementById('resultTip');
@@ -199,27 +201,24 @@
                     return false;
                 }
 
-                const lens = {};
-                parsed.forEach(function (s) { lens[s.seq.length] = true; });
-                const unequal = Object.keys(lens).length > 1;
+const lens = {};
+parsed.forEach(function (s) { lens[s.seq.length] = true; });
+const lenList = Object.keys(lens).map(Number);
 
-                let maxLen = 0;
-                parsed.forEach(function (s) { if (s.seq.length > maxLen) maxLen = s.seq.length; });
-                parsed.forEach(function (s) {
-                    if (s.seq.length < maxLen) s.seq = s.seq + '-'.repeat(maxLen - s.seq.length);
-                });
+if (lenList.length > 1) {
+    lenList.sort(function (a, b) { return a - b; });
+    showMsg(msgTip, '❌ 序列长度不一致（长度范围 ' + lenList[0] + '–' + lenList[lenList.length - 1] +
+        ' bp），请先进行比对后再导入。', 'error');
+    return false;
+}
 
-                sequences = parsed;
-                calcBtn.disabled = false;
-                clearResults();
-
-                if (unequal) {
-                    showMsg(msgTip, '⚠️ 已加载 ' + parsed.length + ' 条序列（长度不一致，已末尾补“-”对齐）', 'warn');
-                } else {
-                    showMsg(msgTip, '✅ 成功加载 ' + parsed.length + ' 条序列，长度 ' + maxLen + ' bp', 'success');
-                }
-                toast('已加载 ' + parsed.length + ' 条序列');
-                return true;
+const maxLen = lenList[0];
+sequences = parsed;
+calcBtn.disabled = false;
+clearResults();
+showMsg(msgTip, '✅ 成功加载 ' + parsed.length + ' 条序列，长度 ' + maxLen + ' bp', 'success');
+toast('已加载 ' + parsed.length + ' 条序列');
+return true;
             }
 
             function loadFromFile() {
@@ -362,6 +361,47 @@
                 matrixBody.innerHTML = tbody;
             }
 
+            function renderOverall(stats, type, fMode, incGap) {
+                const n = stats.ts.length;
+                let totalTs = 0, totalTv = 0, totalDenom = 0;
+                for (let i = 1; i < n; i++) {
+                    for (let j = 0; j < i; j++) {
+                        totalTs += stats.ts[i][j];
+                        totalTv += stats.tv[i][j];
+                        totalDenom += incGap ? stats.fullLen : stats.validSites[i][j];
+                    }
+                }
+                const totalD = totalTs + totalTv;
+
+                function fmt(count) {
+                    if (fMode === 'freq') {
+                        return totalDenom === 0 ? 'Nan' : (count / totalDenom).toFixed(6);
+                    }
+                    return String(count);
+                }
+
+                let rStr;
+                if (totalTv === 0) {
+                    rStr = (totalTs === 0) ? 'Nan' : '+Inf';
+                } else {
+                    rStr = (totalTs / totalTv).toFixed(4);
+                }
+
+                let unitLabel = '';
+                if (type !== 'r') {
+                    unitLabel = fMode === 'freq'
+                        ? '（' + (incGap ? '含gap' : '不含gap') + '，频率）'
+                        : '（频数）';
+                }
+
+                overallInfo.innerHTML =
+                    '<strong>整体汇总' + unitLabel + '：</strong> ' +
+                    '转换(Ts) = <strong>' + fmt(totalTs) + '</strong>　|　' +
+                    '颠换(Tv) = <strong>' + fmt(totalTv) + '</strong>　|　' +
+                    '总计(d) = <strong>' + fmt(totalD) + '</strong>　|　' +
+                    'R = <strong>' + rStr + '</strong>';
+            }
+
             function clearResults() {
                 resultArea.style.display = 'none';
                 emptyResult.style.display = 'block';
@@ -371,6 +411,7 @@
                 matrixHead.innerHTML = '';
                 matrixBody.innerHTML = '';
                 statInfo.textContent = '';
+                overallInfo.innerHTML = '';
                 resultTip.innerHTML = '';
             }
 
@@ -402,13 +443,14 @@
                 resultArea.style.display = 'block';
                 emptyResult.style.display = 'none';
                 renderMatrix(built.names, built.matrix);
+                renderOverall(stats, type, fMode, incGap);
                 copyResultBtn.disabled = false;
                 exportBtn.disabled = false;
 
                 const labelMap = {
-                    ts: '转换数 (Ts)',
-                    tv: '颠换数 (Tv)',
-                    total: '转换+颠换总数 (Ts+Tv)',
+                    ts: '转换 (Ts)',
+                    tv: '颠换 (Tv)',
+                    total: '转换+颠换 (Ts+Tv)',
                     r: 'R值 (Ts/Tv)'
                 };
                 const parts = [];

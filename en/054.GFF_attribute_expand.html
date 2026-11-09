@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GFF Attribute Expander - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>GFF Attribute Expander</h2>
+            <p>Expand the GFF attribute column into separate columns while keeping the first 8 columns unchanged. Select feature types and attribute fields freely, with configurable missing-value filling and TSV/CSV export.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import GFF File</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="gffFile" accept=".gff,.gff3,.gtf,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="gffText" placeholder="Paste GFF/GTF content" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> Supports GFF3 and GTF. Lines starting with <code>#</code> will be skipped. The attribute column supports both <code>key=value;</code> and <code>key "value";</code> formats; if the same key appears more than once in a line, only the first value is kept.
+            </div>
+            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">Import & Parse</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="progressWrap" class="result-item" style="display:none;margin-top:10px;">
+                <div style="height:10px;background:#e8edf2;border-radius:5px;overflow:hidden;">
+                    <div id="progressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:0.88rem;color:#1f4068;">
+                    <span id="progressStage">Preparing...</span>
+                    <span id="progressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Select Feature Types and Attribute Fields</div>
+
+            <div style="font-weight:500;color:#1f4068;margin:12px 0 8px;">
+                Feature Types <span id="typeCount" class="tip-text" style="margin-left:8px;font-weight:400;">0 types</span>
+            </div>
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="typeAllBtn">Select All</button>
+                <button class="btn btn-sm" id="typeNoneBtn">Deselect All</button>
+                <button class="btn btn-sm" id="typeInvertBtn">Invert</button>
+            </div>
+            <div id="typeGrid" class="result-item" style="display:flex;flex-wrap:wrap;gap:8px 20px;max-height:200px;overflow-y:auto;padding:12px;">
+                <span class="empty-hint">Please import a GFF file first</span>
+            </div>
+
+            <div style="font-weight:500;color:#1f4068;margin:16px 0 8px;">
+                Attribute Fields <span id="attrCount" class="tip-text" style="margin-left:8px;font-weight:400;">0 fields</span>
+            </div>
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="attrAllBtn">Select All</button>
+                <button class="btn btn-sm" id="attrNoneBtn">Deselect All</button>
+                <button class="btn btn-sm" id="attrInvertBtn">Invert</button>
+            </div>
+            <div id="attrGrid" class="result-item" style="display:flex;flex-wrap:wrap;gap:8px 20px;max-height:260px;overflow-y:auto;padding:12px;">
+                <span class="empty-hint">Please import a GFF file first</span>
+            </div>
+
+            <div class="filter-box" style="gap:20px;margin-top:16px;">
+                <label>Missing value fill: <input type="text" id="fillValue" value="NA" style="width:100px;"></label>
+                <label>Output format:
+                    <select id="outputFormat" style="padding:4px 8px;">
+                        <option value="tsv" selected>TSV (tab)</option>
+                        <option value="csv">CSV (comma)</option>
+                    </select>
+                </label>
+            </div>
+            <div class="info-box" style="margin-top:8px;">
+                <strong>Hint:</strong> The first 8 columns are fixed as <code>seqid</code>, <code>source</code>, <code>type</code>, <code>start</code>, <code>end</code>, <code>score</code>, <code>strand</code>, <code>phase</code>; following columns are the selected attribute fields (sorted alphabetically). The attribute list refreshes dynamically based on the selected feature types, showing only attributes that actually appear in those types. When an attribute is missing for a row, the fill value above is used; empty strings are also treated as missing. If no attributes are selected, only the first 8 columns are output.
+            </div>
+            <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                <button class="btn" id="runBtn" disabled>Generate Table</button>
+                <span id="runMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Preview and Export Results</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyBtn" disabled>Copy Result</button>
+                <button class="btn" id="downloadBtn" disabled>Export File</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px;font-weight:500;color:#1f4068;" id="resultStats"></div>
+                <div class="table-container" id="previewWrap">
+                    <table id="previewTable">
+                        <thead id="previewHead"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">The result will be shown here after generating the table.</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const GFF_COLS = ['seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase'];
+            const DEFAULT_ATTRS = ['ID', 'Parent', 'Name', 'gene'];
+            const PREVIEW_LIMIT = 500;
+
+            const gffFile = document.getElementById('gffFile');
+            const gffText = document.getElementById('gffText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const progressWrap = document.getElementById('progressWrap');
+            const progressBar = document.getElementById('progressBar');
+            const progressStage = document.getElementById('progressStage');
+            const progressPct = document.getElementById('progressPct');
+
+            const typeGrid = document.getElementById('typeGrid');
+            const typeCount = document.getElementById('typeCount');
+            const typeAllBtn = document.getElementById('typeAllBtn');
+            const typeNoneBtn = document.getElementById('typeNoneBtn');
+            const typeInvertBtn = document.getElementById('typeInvertBtn');
+
+            const attrGrid = document.getElementById('attrGrid');
+            const attrCount = document.getElementById('attrCount');
+            const attrAllBtn = document.getElementById('attrAllBtn');
+            const attrNoneBtn = document.getElementById('attrNoneBtn');
+            const attrInvertBtn = document.getElementById('attrInvertBtn');
+
+            const fillValueInput = document.getElementById('fillValue');
+            const outputFormat = document.getElementById('outputFormat');
+            const runBtn = document.getElementById('runBtn');
+            const runMsg = document.getElementById('runMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultStats = document.getElementById('resultStats');
+            const previewHead = document.getElementById('previewHead');
+            const previewBody = document.getElementById('previewBody');
+            const copyBtn = document.getElementById('copyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            const EXAMPLE = [
+                '##gff-version 3',
+                '#!gff-spec-version 1.21',
+                '#!processor NCBI annotwriter',
+                '##sequence-region NC_024459.2 1 307041717',
+                'NC_024459.2\tRefSeq\tregion\t1\t307041717\t.\t+\t.\tID=NC_024459.2:1..307041717;Dbxref=taxon:4577;Name=1;chromosome=1;gbkey=Src;genome=chromosome',
+                'NC_024459.2\tGnomon\tgene\t44256\t49832\t.\t+\t.\tID=gene-LOC103644366;Dbxref=GeneID:103644366;Name=LOC103644366;gbkey=Gene;gene=LOC103644366;gene_biotype=protein_coding',
+                'NC_024459.2\tGnomon\tmRNA\t44256\t49832\t.\t+\t.\tID=rna-XM_020544715.2;Parent=gene-LOC103644366;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;Name=XM_020544715.2;gbkey=mRNA;gene=LOC103644366;transcript_id=XM_020544715.2',
+                'NC_024459.2\tGnomon\texon\t44256\t44947\t.\t+\t.\tID=exon-XM_020544715.2-1;Parent=rna-XM_020544715.2;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;gbkey=mRNA;gene=LOC103644366;transcript_id=XM_020544715.2',
+                'NC_024459.2\tGnomon\texon\t45666\t45803\t.\t+\t.\tID=exon-XM_020544715.2-2;Parent=rna-XM_020544715.2;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;gbkey=mRNA;gene=LOC103644366;transcript_id=XM_020544715.2',
+                'NC_024459.2\tGnomon\tCDS\t44258\t44947\t.\t+\t0\tID=cds-XP_020400304.1;Parent=rna-XM_020544715.2;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;Name=XP_020400304.1;gbkey=CDS;gene=LOC103644366;protein_id=XP_020400304.1'
+            ].join('\n');
+
+            let parsedData = null;
+            let isProcessing = false;
+            let loadToken = 0;
+            let selectedAttrSet = null;
+            let resultHeaders = [];
+            let resultRows = [];
+            let resultFileName = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 8000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(s) {
+                if (s === null || s === undefined) return '';
+                return String(s).replace(/[&<>"]/g, function (m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+
+            function setProgress(pct, stage) {
+                pct = Math.max(0, Math.min(100, Math.round(pct)));
+                progressBar.style.width = pct + '%';
+                progressPct.textContent = pct + '%';
+                if (stage) progressStage.textContent = stage;
+                progressWrap.style.display = 'block';
+            }
+
+            function hideProgress() {
+                setTimeout(function () { progressWrap.style.display = 'none'; }, 500);
+            }
+
+            function parseAttrs(str) {
+                const attrs = {};
+                if (!str) return attrs;
+                const parts = str.split(';');
+                for (let i = 0; i < parts.length; i++) {
+                    const t = parts[i].trim();
+                    if (!t) continue;
+                    const eq = t.indexOf('=');
+                    if (eq > 0) {
+                        const k = t.slice(0, eq).trim();
+                        const v = t.slice(eq + 1).trim();
+                        if (k && !(k in attrs)) attrs[k] = v;
+                    } else {
+                        const m = t.match(/^(\S+)\s+(.*)$/);
+                        if (m) {
+                            let v = m[2].trim();
+                            if (v.length >= 2 && v.charAt(0) === '"' && v.charAt(v.length - 1) === '"') {
+                                v = v.slice(1, -1);
+                            }
+                            if (!(m[1] in attrs)) attrs[m[1]] = v;
+                        }
+                    }
+                }
+                return attrs;
+            }
+
+            function parseGffAsync(text, token, onProgress, onDone) {
+                const lines = text.split(/\r?\n/);
+                const total = lines.length;
+                const items = [];
+                const typeOrder = [];
+                const typeSet = new Set();
+                const typeAttrs = new Map();
+                let i = 0;
+                let commentLines = 0;
+                let badLines = 0;
+                let recordCount = 0;
+
+                function step() {
+                    if (token !== loadToken) return;
+                    const t0 = performance.now();
+                    let n = 0;
+                    while (i < total) {
+                        const line = lines[i++];
+                        n++;
+                        if (!line || !line.trim()) continue;
+                        if (line.charAt(0) === '#') { commentLines++; continue; }
+                        const cols = line.split('\t');
+                        if (cols.length < 9) { badLines++; continue; }
+                        const type = cols[2].trim();
+                        if (!type) { badLines++; continue; }
+                        const attrs = parseAttrs(cols[8]);
+                        const keys = Object.keys(attrs);
+
+                        let tas = typeAttrs.get(type);
+                        if (!tas) { tas = new Set(); typeAttrs.set(type, tas); }
+                        for (let k = 0; k < keys.length; k++) tas.add(keys[k]);
+
+                        if (!typeSet.has(type)) {
+                            typeSet.add(type);
+                            typeOrder.push(type);
+                        }
+                        items.push({ cols: cols.slice(0, 8), type: type, attrs: attrs });
+                        recordCount++;
+                        if (n % 3000 === 0 && performance.now() - t0 > 16) break;
+                    }
+                    onProgress(total === 0 ? 100 : i / total * 100);
+                    if (i < total) {
+                        setTimeout(step, 0);
+                    } else {
+                        onDone({
+                            items: items,
+                            typeOrder: typeOrder,
+                            typeAttrs: typeAttrs,
+                            commentLines: commentLines,
+                            badLines: badLines,
+                            recordCount: recordCount
+                        });
+                    }
+                }
+                step();
+            }
+
+            function getSelectedTypes() {
+                const set = new Set();
+                typeGrid.querySelectorAll('input.type-cb:checked').forEach(function (b) {
+                    set.add(b.value);
+                });
+                return set;
+            }
+
+            function getVisibleAttrs() {
+                if (!parsedData) return [];
+                const types = getSelectedTypes();
+                if (types.size === 0) return [];
+                const set = new Set();
+                types.forEach(function (t) {
+                    const s = parsedData.typeAttrs.get(t);
+                    if (s) s.forEach(function (k) { set.add(k); });
+                });
+                return Array.from(set).sort(function (a, b) { return a < b ? -1 : (a > b ? 1 : 0); });
+            }
+
+            function renderTypeGrid(data) {
+                typeGrid.innerHTML = '';
+                if (!data || data.typeOrder.length === 0) {
+                    typeGrid.innerHTML = '<span class="empty-hint">No feature types parsed</span>';
+                    updateTypeCount();
+                    return;
+                }
+                const list = data.typeOrder.slice().sort();
+                list.forEach(function (t) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = t;
+                    cb.className = 'type-cb';
+                    cb.checked = true;
+                    cb.addEventListener('change', function () {
+                        updateTypeCount();
+                        renderAttrGrid();
+                    });
+                    const span = document.createElement('span');
+                    span.textContent = t;
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    typeGrid.appendChild(label);
+                });
+                updateTypeCount();
+            }
+
+            function renderAttrGrid() {
+                attrGrid.innerHTML = '';
+                if (!parsedData) {
+                    attrGrid.innerHTML = '<span class="empty-hint">Please import a GFF file first</span>';
+                    updateAttrCount();
+                    return;
+                }
+                const types = getSelectedTypes();
+                if (types.size === 0) {
+                    attrGrid.innerHTML = '<span class="empty-hint">Please select at least one feature type</span>';
+                    updateAttrCount();
+                    return;
+                }
+                const visible = getVisibleAttrs();
+                if (visible.length === 0) {
+                    attrGrid.innerHTML = '<span class="empty-hint">Selected feature types have no attribute fields</span>';
+                    updateAttrCount();
+                    return;
+                }
+                if (selectedAttrSet === null) {
+                    selectedAttrSet = new Set();
+                    visible.forEach(function (k) {
+                        if (DEFAULT_ATTRS.indexOf(k) >= 0) selectedAttrSet.add(k);
+                    });
+                }
+                visible.forEach(function (k) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = k;
+                    cb.className = 'attr-cb';
+                    cb.checked = selectedAttrSet.has(k);
+                    cb.addEventListener('change', function () {
+                        if (cb.checked) selectedAttrSet.add(k);
+                        else selectedAttrSet.delete(k);
+                        updateAttrCount();
+                    });
+                    const span = document.createElement('span');
+                    span.textContent = k;
+                    if (DEFAULT_ATTRS.indexOf(k) >= 0) span.style.fontWeight = '600';
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    attrGrid.appendChild(label);
+                });
+                updateAttrCount();
+            }
+
+            function updateTypeCount() {
+                const boxes = typeGrid.querySelectorAll('input.type-cb');
+                let sel = 0;
+                boxes.forEach(function (b) { if (b.checked) sel++; });
+                typeCount.textContent = sel + ' / ' + boxes.length + ' selected';
+                updateRunBtn();
+            }
+
+            function updateAttrCount() {
+                const visible = getVisibleAttrs();
+                let sel = 0;
+                if (selectedAttrSet) {
+                    visible.forEach(function (k) { if (selectedAttrSet.has(k)) sel++; });
+                }
+                attrCount.textContent = sel + ' / ' + visible.length + ' selected';
+                updateRunBtn();
+            }
+
+            function updateRunBtn() {
+                const types = typeGrid.querySelectorAll('input.type-cb:checked').length;
+                runBtn.disabled = isProcessing || !parsedData || types === 0;
+            }
+
+            function finishLoading(data, filename) {
+                parsedData = data;
+                resultFileName = filename || '';
+                selectedAttrSet = null;
+                renderTypeGrid(data);
+                renderAttrGrid();
+                clearResults();
+
+                let info = '✅ Parsed ' + data.recordCount + ' data rows, ' +
+                    data.typeOrder.length + ' feature types';
+                if (data.commentLines > 0) info += ' (skipped ' + data.commentLines + ' comment lines)';
+                if (data.badLines > 0) info += ' (skipped ' + data.badLines + ' malformed lines)';
+                showMsg(msgTip, info, 'success');
+                toast('Parsed ' + data.recordCount + ' rows');
+
+                setProgress(100, 'Parsing complete');
+                hideProgress();
+                updateRunBtn();
+            }
+
+            function loadDataFromText(text, filename) {
+                if (!text || !text.trim()) {
+                    hideProgress();
+                    showMsg(msgTip, '❌ Content is empty. Please select a file or paste GFF content.', 'error');
+                    return;
+                }
+                isProcessing = true;
+                runBtn.disabled = true;
+                setProgress(0, 'Parsing data...');
+                const token = ++loadToken;
+
+                parseGffAsync(text, token, function (pct) {
+                    setProgress(pct, 'Parsing data: ' + Math.round(pct) + '%');
+                }, function (data) {
+                    isProcessing = false;
+                    if (token !== loadToken) return;
+                    if (!data || data.recordCount === 0) {
+                        hideProgress();
+                        showMsg(msgTip, '❌ No valid GFF data rows parsed', 'error');
+                        return;
+                    }
+                    finishLoading(data, filename);
+                });
+            }
+
+            function loadFromFile() {
+                const file = gffFile.files && gffFile.files[0];
+                if (!file) {
+                    showMsg(msgTip, '❌ Please select a file', 'error');
+                    return;
+                }
+                if (isProcessing) return;
+                isProcessing = true;
+                runBtn.disabled = true;
+                setProgress(0, 'Reading file...');
+
+                const reader = new FileReader();
+                reader.onprogress = function (e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round(e.loaded / e.total * 100);
+                        setProgress(pct, 'Reading file: ' + pct + '%');
+                    }
+                };
+                reader.onload = function (e) {
+                    isProcessing = false;
+                    setTimeout(function () {
+                        loadDataFromText(e.target.result, file.name);
+                    }, 60);
+                };
+                reader.onerror = function () {
+                    isProcessing = false;
+                    hideProgress();
+                    showMsg(msgTip, '❌ File read failed', 'error');
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                if (isProcessing) return;
+                const text = gffText.value;
+                if (!text.trim()) {
+                    showMsg(msgTip, '❌ Please paste GFF content', 'error');
+                    return;
+                }
+                loadDataFromText(text, '');
+            }
+
+            function loadExample() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInput();
+                gffText.value = EXAMPLE;
+                loadDataFromText(EXAMPLE, '');
+            }
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    gffFile.disabled = false;
+                    gffText.disabled = true;
+                    gffText.value = '';
+                } else {
+                    gffFile.disabled = true;
+                    gffFile.value = '';
+                    gffText.disabled = false;
+                }
+                parsedData = null;
+                selectedAttrSet = null;
+                typeGrid.innerHTML = '<span class="empty-hint">Please import a GFF file first</span>';
+                attrGrid.innerHTML = '<span class="empty-hint">Please import a GFF file first</span>';
+                typeCount.textContent = '0 types';
+                attrCount.textContent = '0 fields';
+                msgTip.innerHTML = '';
+                runMsg.innerHTML = '';
+                hideProgress();
+                clearResults();
+                updateRunBtn();
+            };
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultHeaders = [];
+                resultRows = [];
+                previewHead.innerHTML = '';
+                previewBody.innerHTML = '';
+                resultStats.textContent = '';
+                resultMsg.innerHTML = '';
+                copyBtn.disabled = true;
+                downloadBtn.disabled = true;
+            }
+
+            function getSelectedAttrs() {
+                const visible = getVisibleAttrs();
+                if (!selectedAttrSet) return [];
+                return visible.filter(function (k) { return selectedAttrSet.has(k); });
+            }
+
+            function doGenerate() {
+                if (!parsedData) {
+                    showMsg(runMsg, '❌ Please import a GFF file first', 'error');
+                    return;
+                }
+                const selectedTypes = getSelectedTypes();
+                if (selectedTypes.size === 0) {
+                    showMsg(runMsg, '❌ Please select at least one feature type', 'error');
+                    return;
+                }
+                const selectedAttrs = getSelectedAttrs();
+                const fillValue = fillValueInput.value;
+
+                const headers = GFF_COLS.concat(selectedAttrs);
+                const rows = [];
+                const items = parsedData.items;
+                for (let i = 0; i < items.length; i++) {
+                    const it = items[i];
+                    if (!selectedTypes.has(it.type)) continue;
+                    const row = it.cols.slice();
+                    for (let k = 0; k < selectedAttrs.length; k++) {
+                        const key = selectedAttrs[k];
+                        const v = it.attrs[key];
+                        row.push((v === undefined || v === null || v === '') ? fillValue : v);
+                    }
+                    rows.push(row);
+                }
+
+                if (rows.length === 0) {
+                    showMsg(runMsg, '⚠️ No data rows after filtering with the current conditions', 'warn');
+                    clearResults();
+                    return;
+                }
+
+                resultHeaders = headers;
+                resultRows = rows;
+                renderPreview(headers, rows);
+
+                let detail = '✅ Done: ' + rows.length + ' rows × ' + headers.length + ' columns';
+                if (selectedAttrs.length === 0) detail += ' (only the first 8 columns)';
+                showMsg(runMsg, detail, 'success');
+                toast('Table generated');
+            }
+
+            function renderPreview(headers, rows) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                const maxShow = Math.min(rows.length, PREVIEW_LIMIT);
+                resultStats.textContent = 'Total ' + rows.length + ' rows × ' + headers.length +
+                    ' columns (showing first ' + maxShow + ' rows)';
+
+                let thead = '<tr>';
+                for (let i = 0; i < headers.length; i++) {
+                    thead += '<th>' + escapeHtml(headers[i]) + '</th>';
+                }
+                thead += '</tr>';
+                previewHead.innerHTML = thead;
+
+                let tbody = '';
+                for (let r = 0; r < maxShow; r++) {
+                    tbody += '<tr>';
+                    for (let c = 0; c < rows[r].length; c++) {
+                        tbody += '<td>' + escapeHtml(rows[r][c]) + '</td>';
+                    }
+                    tbody += '</tr>';
+                }
+                previewBody.innerHTML = tbody;
+
+                copyBtn.disabled = false;
+                downloadBtn.disabled = false;
+                resultMsg.innerHTML = '';
+            }
+
+            function formatCell(v, delim) {
+                const s = String(v);
+                if (delim === ',') {
+                    if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 ||
+                        s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) {
+                        return '"' + s.replace(/"/g, '""') + '"';
+                    }
+                    return s;
+                }
+                return s.replace(/[\t\r\n]/g, ' ');
+            }
+
+            function buildText(delim) {
+                if (!resultHeaders.length) return '';
+                const lines = [];
+                lines.push(resultHeaders.map(function (h) { return formatCell(h, delim); }).join(delim));
+                for (let i = 0; i < resultRows.length; i++) {
+                    lines.push(resultRows[i].map(function (c) { return formatCell(c, delim); }).join(delim));
+                }
+                return lines.join('\n');
+            }
+
+            function copyResult() {
+                if (!resultHeaders.length) {
+                    showMsg(resultMsg, '❌ No result to copy', 'error');
+                    return;
+                }
+                const delim = outputFormat.value === 'csv' ? ',' : '\t';
+                const text = buildText(delim);
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(resultMsg, '✅ Result copied', 'success');
+                        toast('Copied');
+                    }).catch(function () { fallbackCopy(text); });
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '✅ Result copied', 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(resultMsg, '❌ Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!resultHeaders.length) {
+                    showMsg(resultMsg, '❌ No result to export', 'error');
+                    return;
+                }
+                const isCsv = outputFormat.value === 'csv';
+                const delim = isCsv ? ',' : '\t';
+                const text = buildText(delim);
+                const ext = isCsv ? 'csv' : 'tsv';
+                let baseName = 'gff_expanded';
+                if (resultFileName) {
+                    baseName = resultFileName.replace(/\.(gff3?|gtf|txt)$/i, '') + '_expanded';
+                }
+                const filename = baseName + '.' + ext;
+                const blob = new Blob(['\uFEFF' + text + '\n'], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '✅ Exported ' + filename, 'success');
+                toast('Exported');
+            }
+
+            function setChecked(className, value) {
+                const boxes = document.querySelectorAll('input.' + className);
+                boxes.forEach(function (b) { b.checked = value; });
+            }
+
+            function invertChecked(className) {
+                const boxes = document.querySelectorAll('input.' + className);
+                boxes.forEach(function (b) { b.checked = !b.checked; });
+            }
+
+            gffFile.addEventListener('change', function (e) {
+                if (!e.target.files || e.target.files.length === 0) return;
+                loadFromFile();
+            });
+
+            gffText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!gffFile.files || gffFile.files.length === 0) {
+                        if (gffText.value.trim()) { loadDataFromText(gffText.value, ''); return; }
+                        showMsg(msgTip, '❌ Please select a file or paste data', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            typeAllBtn.addEventListener('click', function () {
+                setChecked('type-cb', true);
+                updateTypeCount();
+                renderAttrGrid();
+            });
+            typeNoneBtn.addEventListener('click', function () {
+                setChecked('type-cb', false);
+                updateTypeCount();
+                renderAttrGrid();
+            });
+            typeInvertBtn.addEventListener('click', function () {
+                invertChecked('type-cb');
+                updateTypeCount();
+                renderAttrGrid();
+            });
+
+            attrAllBtn.addEventListener('click', function () {
+                if (!selectedAttrSet) selectedAttrSet = new Set();
+                getVisibleAttrs().forEach(function (k) { selectedAttrSet.add(k); });
+                renderAttrGrid();
+            });
+            attrNoneBtn.addEventListener('click', function () {
+                if (!selectedAttrSet) selectedAttrSet = new Set();
+                getVisibleAttrs().forEach(function (k) { selectedAttrSet.delete(k); });
+                renderAttrGrid();
+            });
+            attrInvertBtn.addEventListener('click', function () {
+                if (!selectedAttrSet) selectedAttrSet = new Set();
+                getVisibleAttrs().forEach(function (k) {
+                    if (selectedAttrSet.has(k)) selectedAttrSet.delete(k);
+                    else selectedAttrSet.add(k);
+                });
+                renderAttrGrid();
+            });
+
+            runBtn.addEventListener('click', doGenerate);
+            copyBtn.addEventListener('click', copyResult);
+            downloadBtn.addEventListener('click', downloadResult);
+
+            outputFormat.addEventListener('change', function () {
+                if (resultHeaders.length) {
+                    resultMsg.innerHTML = '';
+                }
+            });
+
+            window.switchInput();
+            updateTypeCount();
+            updateAttrCount();
+            updateRunBtn();
+            clearResults();
+        })();
+    </script>
+</body>
+</html>

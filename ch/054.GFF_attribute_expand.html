@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GFF属性展开工具 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>GFF属性展开工具</h2>
+            <p>将GFF属性字段展开为独立列，前8列保持原样，可自选特征类型与属性字段，支持缺失值填充与TSV/CSV导出。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入GFF文件</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInput()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInput()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="gffFile" accept=".gff,.gff3,.gtf,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="gffText" placeholder="粘贴GFF/GTF内容" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong> 支持GFF3与GTF格式。以#开头的注释行将被跳过。属性列同时支持“key=value;”与“key "value";”两种形式；同一行中重复出现的属性键只保留第一次出现的值。
+            </div>
+            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn" id="loadBtn">导入并解析</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="progressWrap" class="result-item" style="display:none;margin-top:10px;">
+                <div style="height:10px;background:#e8edf2;border-radius:5px;overflow:hidden;">
+                    <div id="progressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#4773AA,#1f4068);"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:0.88rem;color:#1f4068;">
+                    <span id="progressStage">准备中...</span>
+                    <span id="progressPct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：选择特征类型与属性字段</div>
+
+            <div style="font-weight:500;color:#1f4068;margin:12px 0 8px;">
+                特征类型 <span id="typeCount" class="tip-text" style="margin-left:8px;font-weight:400;">0 种</span>
+            </div>
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="typeAllBtn">全选</button>
+                <button class="btn btn-sm" id="typeNoneBtn">取消全选</button>
+                <button class="btn btn-sm" id="typeInvertBtn">反选</button>
+            </div>
+            <div id="typeGrid" class="result-item" style="display:flex;flex-wrap:wrap;gap:8px 20px;max-height:200px;overflow-y:auto;padding:12px;">
+                <span class="empty-hint">请先导入GFF文件</span>
+            </div>
+
+            <div style="font-weight:500;color:#1f4068;margin:16px 0 8px;">
+                属性字段 <span id="attrCount" class="tip-text" style="margin-left:8px;font-weight:400;">0 个</span>
+            </div>
+            <div class="filter-box" style="margin-bottom:8px;">
+                <button class="btn btn-sm" id="attrAllBtn">全选</button>
+                <button class="btn btn-sm" id="attrNoneBtn">取消全选</button>
+                <button class="btn btn-sm" id="attrInvertBtn">反选</button>
+            </div>
+            <div id="attrGrid" class="result-item" style="display:flex;flex-wrap:wrap;gap:8px 20px;max-height:260px;overflow-y:auto;padding:12px;">
+                <span class="empty-hint">请先导入GFF文件</span>
+            </div>
+
+            <div class="filter-box" style="gap:20px;margin-top:16px;">
+                <label>缺失值填充：<input type="text" id="fillValue" value="NA" style="width:100px;"></label>
+                <label>输出格式：
+                    <select id="outputFormat" style="padding:4px 8px;">
+                        <option value="tsv" selected>TSV（制表符）</option>
+                        <option value="csv">CSV（逗号）</option>
+                    </select>
+                </label>
+            </div>
+            <div class="info-box" style="margin-top:8px;">
+                <strong>提示：</strong>前8列固定为seqid、source、type、start、end、score、strand、phase；其后依次为所勾选的属性列（按字母序排列）。属性字段列表会随所选特征类型动态刷新，仅显示这些类型中实际出现过的属性。某行缺少某属性时，填入上方指定的缺失值；原值为空字符串时同样视为缺失。属性全部不勾选时，仅输出前8列。
+            </div>
+            <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                <button class="btn" id="runBtn" disabled>生成表格</button>
+                <span id="runMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：结果预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyBtn" disabled>复制结果</button>
+                <button class="btn" id="downloadBtn" disabled>导出文件</button>
+                <span id="resultMsg" class="tip-text" style="margin:0;"></span>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="margin-bottom:6px;font-weight:500;color:#1f4068;" id="resultStats"></div>
+                <div class="table-container" id="previewWrap">
+                    <table id="previewTable">
+                        <thead id="previewHead"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="emptyResult" class="empty-tip">生成表格后，结果将在此处显示</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const GFF_COLS = ['seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase'];
+            const DEFAULT_ATTRS = ['ID', 'Parent', 'Name', 'gene'];
+            const PREVIEW_LIMIT = 500;
+
+            const gffFile = document.getElementById('gffFile');
+            const gffText = document.getElementById('gffText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const progressWrap = document.getElementById('progressWrap');
+            const progressBar = document.getElementById('progressBar');
+            const progressStage = document.getElementById('progressStage');
+            const progressPct = document.getElementById('progressPct');
+
+            const typeGrid = document.getElementById('typeGrid');
+            const typeCount = document.getElementById('typeCount');
+            const typeAllBtn = document.getElementById('typeAllBtn');
+            const typeNoneBtn = document.getElementById('typeNoneBtn');
+            const typeInvertBtn = document.getElementById('typeInvertBtn');
+
+            const attrGrid = document.getElementById('attrGrid');
+            const attrCount = document.getElementById('attrCount');
+            const attrAllBtn = document.getElementById('attrAllBtn');
+            const attrNoneBtn = document.getElementById('attrNoneBtn');
+            const attrInvertBtn = document.getElementById('attrInvertBtn');
+
+            const fillValueInput = document.getElementById('fillValue');
+            const outputFormat = document.getElementById('outputFormat');
+            const runBtn = document.getElementById('runBtn');
+            const runMsg = document.getElementById('runMsg');
+
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultStats = document.getElementById('resultStats');
+            const previewHead = document.getElementById('previewHead');
+            const previewBody = document.getElementById('previewBody');
+            const copyBtn = document.getElementById('copyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resultMsg = document.getElementById('resultMsg');
+
+            const EXAMPLE = [
+                '##gff-version 3',
+                '#!gff-spec-version 1.21',
+                '#!processor NCBI annotwriter',
+                '##sequence-region NC_024459.2 1 307041717',
+                'NC_024459.2\tRefSeq\tregion\t1\t307041717\t.\t+\t.\tID=NC_024459.2:1..307041717;Dbxref=taxon:4577;Name=1;chromosome=1;gbkey=Src;genome=chromosome',
+                'NC_024459.2\tGnomon\tgene\t44256\t49832\t.\t+\t.\tID=gene-LOC103644366;Dbxref=GeneID:103644366;Name=LOC103644366;gbkey=Gene;gene=LOC103644366;gene_biotype=protein_coding',
+                'NC_024459.2\tGnomon\tmRNA\t44256\t49832\t.\t+\t.\tID=rna-XM_020544715.2;Parent=gene-LOC103644366;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;Name=XM_020544715.2;gbkey=mRNA;gene=LOC103644366;transcript_id=XM_020544715.2',
+                'NC_024459.2\tGnomon\texon\t44256\t44947\t.\t+\t.\tID=exon-XM_020544715.2-1;Parent=rna-XM_020544715.2;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;gbkey=mRNA;gene=LOC103644366;transcript_id=XM_020544715.2',
+                'NC_024459.2\tGnomon\texon\t45666\t45803\t.\t+\t.\tID=exon-XM_020544715.2-2;Parent=rna-XM_020544715.2;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;gbkey=mRNA;gene=LOC103644366;transcript_id=XM_020544715.2',
+                'NC_024459.2\tGnomon\tCDS\t44258\t44947\t.\t+\t0\tID=cds-XP_020400304.1;Parent=rna-XM_020544715.2;Dbxref=GeneID:103644366,Genbank:XM_020544715.2;Name=XP_020400304.1;gbkey=CDS;gene=LOC103644366;protein_id=XP_020400304.1'
+            ].join('\n');
+
+            let parsedData = null;
+            let isProcessing = false;
+            let loadToken = 0;
+            let selectedAttrSet = null;
+            let resultHeaders = [];
+            let resultRows = [];
+            let resultFileName = '';
+
+            function showMsg(el, msg, type) {
+                el.innerHTML = '<span class="' + type + '">' + msg + '</span>';
+                setTimeout(function () {
+                    if (el.innerHTML === '<span class="' + type + '">' + msg + '</span>') el.innerHTML = '';
+                }, 8000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function escapeHtml(s) {
+                if (s === null || s === undefined) return '';
+                return String(s).replace(/[&<>"]/g, function (m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m] || m;
+                });
+            }
+
+            function setProgress(pct, stage) {
+                pct = Math.max(0, Math.min(100, Math.round(pct)));
+                progressBar.style.width = pct + '%';
+                progressPct.textContent = pct + '%';
+                if (stage) progressStage.textContent = stage;
+                progressWrap.style.display = 'block';
+            }
+
+            function hideProgress() {
+                setTimeout(function () { progressWrap.style.display = 'none'; }, 500);
+            }
+
+            function parseAttrs(str) {
+                const attrs = {};
+                if (!str) return attrs;
+                const parts = str.split(';');
+                for (let i = 0; i < parts.length; i++) {
+                    const t = parts[i].trim();
+                    if (!t) continue;
+                    const eq = t.indexOf('=');
+                    if (eq > 0) {
+                        const k = t.slice(0, eq).trim();
+                        const v = t.slice(eq + 1).trim();
+                        if (k && !(k in attrs)) attrs[k] = v;
+                    } else {
+                        const m = t.match(/^(\S+)\s+(.*)$/);
+                        if (m) {
+                            let v = m[2].trim();
+                            if (v.length >= 2 && v.charAt(0) === '"' && v.charAt(v.length - 1) === '"') {
+                                v = v.slice(1, -1);
+                            }
+                            if (!(m[1] in attrs)) attrs[m[1]] = v;
+                        }
+                    }
+                }
+                return attrs;
+            }
+
+            function parseGffAsync(text, token, onProgress, onDone) {
+                const lines = text.split(/\r?\n/);
+                const total = lines.length;
+                const items = [];
+                const typeOrder = [];
+                const typeSet = new Set();
+                const typeAttrs = new Map();
+                let i = 0;
+                let commentLines = 0;
+                let badLines = 0;
+                let recordCount = 0;
+
+                function step() {
+                    if (token !== loadToken) return;
+                    const t0 = performance.now();
+                    let n = 0;
+                    while (i < total) {
+                        const line = lines[i++];
+                        n++;
+                        if (!line || !line.trim()) continue;
+                        if (line.charAt(0) === '#') { commentLines++; continue; }
+                        const cols = line.split('\t');
+                        if (cols.length < 9) { badLines++; continue; }
+                        const type = cols[2].trim();
+                        if (!type) { badLines++; continue; }
+                        const attrs = parseAttrs(cols[8]);
+                        const keys = Object.keys(attrs);
+
+                        let tas = typeAttrs.get(type);
+                        if (!tas) { tas = new Set(); typeAttrs.set(type, tas); }
+                        for (let k = 0; k < keys.length; k++) tas.add(keys[k]);
+
+                        if (!typeSet.has(type)) {
+                            typeSet.add(type);
+                            typeOrder.push(type);
+                        }
+                        items.push({ cols: cols.slice(0, 8), type: type, attrs: attrs });
+                        recordCount++;
+                        if (n % 3000 === 0 && performance.now() - t0 > 16) break;
+                    }
+                    onProgress(total === 0 ? 100 : i / total * 100);
+                    if (i < total) {
+                        setTimeout(step, 0);
+                    } else {
+                        onDone({
+                            items: items,
+                            typeOrder: typeOrder,
+                            typeAttrs: typeAttrs,
+                            commentLines: commentLines,
+                            badLines: badLines,
+                            recordCount: recordCount
+                        });
+                    }
+                }
+                step();
+            }
+
+            function getSelectedTypes() {
+                const set = new Set();
+                typeGrid.querySelectorAll('input.type-cb:checked').forEach(function (b) {
+                    set.add(b.value);
+                });
+                return set;
+            }
+
+            function getVisibleAttrs() {
+                if (!parsedData) return [];
+                const types = getSelectedTypes();
+                if (types.size === 0) return [];
+                const set = new Set();
+                types.forEach(function (t) {
+                    const s = parsedData.typeAttrs.get(t);
+                    if (s) s.forEach(function (k) { set.add(k); });
+                });
+                return Array.from(set).sort(function (a, b) { return a < b ? -1 : (a > b ? 1 : 0); });
+            }
+
+            function renderTypeGrid(data) {
+                typeGrid.innerHTML = '';
+                if (!data || data.typeOrder.length === 0) {
+                    typeGrid.innerHTML = '<span class="empty-hint">未解析到任何特征类型</span>';
+                    updateTypeCount();
+                    return;
+                }
+                const list = data.typeOrder.slice().sort();
+                list.forEach(function (t) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = t;
+                    cb.className = 'type-cb';
+                    cb.checked = true;
+                    cb.addEventListener('change', function () {
+                        updateTypeCount();
+                        renderAttrGrid();
+                    });
+                    const span = document.createElement('span');
+                    span.textContent = t;
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    typeGrid.appendChild(label);
+                });
+                updateTypeCount();
+            }
+
+            function renderAttrGrid() {
+                attrGrid.innerHTML = '';
+                if (!parsedData) {
+                    attrGrid.innerHTML = '<span class="empty-hint">请先导入GFF文件</span>';
+                    updateAttrCount();
+                    return;
+                }
+                const types = getSelectedTypes();
+                if (types.size === 0) {
+                    attrGrid.innerHTML = '<span class="empty-hint">请至少勾选一个特征类型</span>';
+                    updateAttrCount();
+                    return;
+                }
+                const visible = getVisibleAttrs();
+                if (visible.length === 0) {
+                    attrGrid.innerHTML = '<span class="empty-hint">所选特征类型没有属性字段</span>';
+                    updateAttrCount();
+                    return;
+                }
+                if (selectedAttrSet === null) {
+                    selectedAttrSet = new Set();
+                    visible.forEach(function (k) {
+                        if (DEFAULT_ATTRS.indexOf(k) >= 0) selectedAttrSet.add(k);
+                    });
+                }
+                visible.forEach(function (k) {
+                    const label = document.createElement('label');
+                    label.style.display = 'inline-flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '6px';
+                    label.style.fontWeight = '400';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = k;
+                    cb.className = 'attr-cb';
+                    cb.checked = selectedAttrSet.has(k);
+                    cb.addEventListener('change', function () {
+                        if (cb.checked) selectedAttrSet.add(k);
+                        else selectedAttrSet.delete(k);
+                        updateAttrCount();
+                    });
+                    const span = document.createElement('span');
+                    span.textContent = k;
+                    if (DEFAULT_ATTRS.indexOf(k) >= 0) span.style.fontWeight = '600';
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    attrGrid.appendChild(label);
+                });
+                updateAttrCount();
+            }
+
+            function updateTypeCount() {
+                const boxes = typeGrid.querySelectorAll('input.type-cb');
+                let sel = 0;
+                boxes.forEach(function (b) { if (b.checked) sel++; });
+                typeCount.textContent = '已选 ' + sel + ' / 共 ' + boxes.length + ' 种';
+                updateRunBtn();
+            }
+
+            function updateAttrCount() {
+                const visible = getVisibleAttrs();
+                let sel = 0;
+                if (selectedAttrSet) {
+                    visible.forEach(function (k) { if (selectedAttrSet.has(k)) sel++; });
+                }
+                attrCount.textContent = '已选 ' + sel + ' / 共 ' + visible.length + ' 个';
+                updateRunBtn();
+            }
+
+            function updateRunBtn() {
+                const types = typeGrid.querySelectorAll('input.type-cb:checked').length;
+                runBtn.disabled = isProcessing || !parsedData || types === 0;
+            }
+
+            function finishLoading(data, filename) {
+                parsedData = data;
+                resultFileName = filename || '';
+                selectedAttrSet = null;
+                renderTypeGrid(data);
+                renderAttrGrid();
+                clearResults();
+
+                let info = '✅ 已解析 ' + data.recordCount + ' 行数据，' +
+                    data.typeOrder.length + ' 种特征类型';
+                if (data.commentLines > 0) info += '（跳过 ' + data.commentLines + ' 行注释）';
+                if (data.badLines > 0) info += '（跳过 ' + data.badLines + ' 行异常）';
+                showMsg(msgTip, info, 'success');
+                toast('已解析 ' + data.recordCount + ' 行数据');
+
+                setProgress(100, '解析完成');
+                hideProgress();
+                updateRunBtn();
+            }
+
+            function loadDataFromText(text, filename) {
+                if (!text || !text.trim()) {
+                    hideProgress();
+                    showMsg(msgTip, '❌ 内容为空，请选择文件或粘贴GFF内容', 'error');
+                    return;
+                }
+                isProcessing = true;
+                runBtn.disabled = true;
+                setProgress(0, '解析数据...');
+                const token = ++loadToken;
+
+                parseGffAsync(text, token, function (pct) {
+                    setProgress(pct, '解析数据: ' + Math.round(pct) + '%');
+                }, function (data) {
+                    isProcessing = false;
+                    if (token !== loadToken) return;
+                    if (!data || data.recordCount === 0) {
+                        hideProgress();
+                        showMsg(msgTip, '❌ 未解析到有效的GFF数据行', 'error');
+                        return;
+                    }
+                    finishLoading(data, filename);
+                });
+            }
+
+            function loadFromFile() {
+                const file = gffFile.files && gffFile.files[0];
+                if (!file) {
+                    showMsg(msgTip, '❌ 请选择文件', 'error');
+                    return;
+                }
+                if (isProcessing) return;
+                isProcessing = true;
+                runBtn.disabled = true;
+                setProgress(0, '读取文件...');
+
+                const reader = new FileReader();
+                reader.onprogress = function (e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round(e.loaded / e.total * 100);
+                        setProgress(pct, '读取文件: ' + pct + '%');
+                    }
+                };
+                reader.onload = function (e) {
+                    isProcessing = false;
+                    setTimeout(function () {
+                        loadDataFromText(e.target.result, file.name);
+                    }, 60);
+                };
+                reader.onerror = function () {
+                    isProcessing = false;
+                    hideProgress();
+                    showMsg(msgTip, '❌ 文件读取失败', 'error');
+                };
+                reader.readAsText(file);
+            }
+
+            function loadFromText() {
+                if (isProcessing) return;
+                const text = gffText.value;
+                if (!text.trim()) {
+                    showMsg(msgTip, '❌ 请粘贴GFF内容', 'error');
+                    return;
+                }
+                loadDataFromText(text, '');
+            }
+
+            function loadExample() {
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInput();
+                gffText.value = EXAMPLE;
+                loadDataFromText(EXAMPLE, '');
+            }
+
+            window.switchInput = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    gffFile.disabled = false;
+                    gffText.disabled = true;
+                    gffText.value = '';
+                } else {
+                    gffFile.disabled = true;
+                    gffFile.value = '';
+                    gffText.disabled = false;
+                }
+                parsedData = null;
+                selectedAttrSet = null;
+                typeGrid.innerHTML = '<span class="empty-hint">请先导入GFF文件</span>';
+                attrGrid.innerHTML = '<span class="empty-hint">请先导入GFF文件</span>';
+                typeCount.textContent = '0 种';
+                attrCount.textContent = '0 个';
+                msgTip.innerHTML = '';
+                runMsg.innerHTML = '';
+                hideProgress();
+                clearResults();
+                updateRunBtn();
+            };
+
+            function clearResults() {
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultHeaders = [];
+                resultRows = [];
+                previewHead.innerHTML = '';
+                previewBody.innerHTML = '';
+                resultStats.textContent = '';
+                resultMsg.innerHTML = '';
+                copyBtn.disabled = true;
+                downloadBtn.disabled = true;
+            }
+
+            function getSelectedAttrs() {
+                const visible = getVisibleAttrs();
+                if (!selectedAttrSet) return [];
+                return visible.filter(function (k) { return selectedAttrSet.has(k); });
+            }
+
+            function doGenerate() {
+                if (!parsedData) {
+                    showMsg(runMsg, '❌ 请先导入GFF文件', 'error');
+                    return;
+                }
+                const selectedTypes = getSelectedTypes();
+                if (selectedTypes.size === 0) {
+                    showMsg(runMsg, '❌ 请至少勾选一个特征类型', 'error');
+                    return;
+                }
+                const selectedAttrs = getSelectedAttrs();
+                const fillValue = fillValueInput.value;
+
+                const headers = GFF_COLS.concat(selectedAttrs);
+                const rows = [];
+                const items = parsedData.items;
+                for (let i = 0; i < items.length; i++) {
+                    const it = items[i];
+                    if (!selectedTypes.has(it.type)) continue;
+                    const row = it.cols.slice();
+                    for (let k = 0; k < selectedAttrs.length; k++) {
+                        const key = selectedAttrs[k];
+                        const v = it.attrs[key];
+                        row.push((v === undefined || v === null || v === '') ? fillValue : v);
+                    }
+                    rows.push(row);
+                }
+
+                if (rows.length === 0) {
+                    showMsg(runMsg, '⚠️ 按当前条件筛选后没有数据行', 'warn');
+                    clearResults();
+                    return;
+                }
+
+                resultHeaders = headers;
+                resultRows = rows;
+                renderPreview(headers, rows);
+
+                let detail = '✅ 生成完成：' + rows.length + ' 行 × ' + headers.length + ' 列';
+                if (selectedAttrs.length === 0) detail += '（仅输出前8列）';
+                showMsg(runMsg, detail, 'success');
+                toast('生成完成');
+            }
+
+            function renderPreview(headers, rows) {
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+
+                const maxShow = Math.min(rows.length, PREVIEW_LIMIT);
+                resultStats.textContent = '共 ' + rows.length + ' 行 × ' + headers.length +
+                    ' 列（预览前 ' + maxShow + ' 行）';
+
+                let thead = '<tr>';
+                for (let i = 0; i < headers.length; i++) {
+                    thead += '<th>' + escapeHtml(headers[i]) + '</th>';
+                }
+                thead += '</tr>';
+                previewHead.innerHTML = thead;
+
+                let tbody = '';
+                for (let r = 0; r < maxShow; r++) {
+                    tbody += '<tr>';
+                    for (let c = 0; c < rows[r].length; c++) {
+                        tbody += '<td>' + escapeHtml(rows[r][c]) + '</td>';
+                    }
+                    tbody += '</tr>';
+                }
+                previewBody.innerHTML = tbody;
+
+                copyBtn.disabled = false;
+                downloadBtn.disabled = false;
+                resultMsg.innerHTML = '';
+            }
+
+            function formatCell(v, delim) {
+                const s = String(v);
+                if (delim === ',') {
+                    if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 ||
+                        s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) {
+                        return '"' + s.replace(/"/g, '""') + '"';
+                    }
+                    return s;
+                }
+                return s.replace(/[\t\r\n]/g, ' ');
+            }
+
+            function buildText(delim) {
+                if (!resultHeaders.length) return '';
+                const lines = [];
+                lines.push(resultHeaders.map(function (h) { return formatCell(h, delim); }).join(delim));
+                for (let i = 0; i < resultRows.length; i++) {
+                    lines.push(resultRows[i].map(function (c) { return formatCell(c, delim); }).join(delim));
+                }
+                return lines.join('\n');
+            }
+
+            function copyResult() {
+                if (!resultHeaders.length) {
+                    showMsg(resultMsg, '❌ 无结果可复制', 'error');
+                    return;
+                }
+                const delim = outputFormat.value === 'csv' ? ',' : '\t';
+                const text = buildText(delim);
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(resultMsg, '✅ 已复制结果', 'success');
+                        toast('已复制');
+                    }).catch(function () { fallbackCopy(text); });
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(resultMsg, '✅ 已复制结果', 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(resultMsg, '❌ 复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                if (!resultHeaders.length) {
+                    showMsg(resultMsg, '❌ 无结果可导出', 'error');
+                    return;
+                }
+                const isCsv = outputFormat.value === 'csv';
+                const delim = isCsv ? ',' : '\t';
+                const text = buildText(delim);
+                const ext = isCsv ? 'csv' : 'tsv';
+                let baseName = 'gff_expanded';
+                if (resultFileName) {
+                    baseName = resultFileName.replace(/\.(gff3?|gtf|txt)$/i, '') + '_expanded';
+                }
+                const filename = baseName + '.' + ext;
+                const blob = new Blob(['\uFEFF' + text + '\n'], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultMsg, '✅ 已导出 ' + filename, 'success');
+                toast('已导出');
+            }
+
+            function setChecked(className, value) {
+                const boxes = document.querySelectorAll('input.' + className);
+                boxes.forEach(function (b) { b.checked = value; });
+            }
+
+            function invertChecked(className) {
+                const boxes = document.querySelectorAll('input.' + className);
+                boxes.forEach(function (b) { b.checked = !b.checked; });
+            }
+
+            gffFile.addEventListener('change', function (e) {
+                if (!e.target.files || e.target.files.length === 0) return;
+                loadFromFile();
+            });
+
+            gffText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    loadFromText();
+                }
+            });
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    if (!gffFile.files || gffFile.files.length === 0) {
+                        if (gffText.value.trim()) { loadDataFromText(gffText.value, ''); return; }
+                        showMsg(msgTip, '❌ 请选择文件或粘贴数据', 'error');
+                        return;
+                    }
+                    loadFromFile();
+                } else {
+                    loadFromText();
+                }
+            });
+
+            exampleBtn.addEventListener('click', loadExample);
+
+            typeAllBtn.addEventListener('click', function () {
+                setChecked('type-cb', true);
+                updateTypeCount();
+                renderAttrGrid();
+            });
+            typeNoneBtn.addEventListener('click', function () {
+                setChecked('type-cb', false);
+                updateTypeCount();
+                renderAttrGrid();
+            });
+            typeInvertBtn.addEventListener('click', function () {
+                invertChecked('type-cb');
+                updateTypeCount();
+                renderAttrGrid();
+            });
+
+            attrAllBtn.addEventListener('click', function () {
+                if (!selectedAttrSet) selectedAttrSet = new Set();
+                getVisibleAttrs().forEach(function (k) { selectedAttrSet.add(k); });
+                renderAttrGrid();
+            });
+            attrNoneBtn.addEventListener('click', function () {
+                if (!selectedAttrSet) selectedAttrSet = new Set();
+                getVisibleAttrs().forEach(function (k) { selectedAttrSet.delete(k); });
+                renderAttrGrid();
+            });
+            attrInvertBtn.addEventListener('click', function () {
+                if (!selectedAttrSet) selectedAttrSet = new Set();
+                getVisibleAttrs().forEach(function (k) {
+                    if (selectedAttrSet.has(k)) selectedAttrSet.delete(k);
+                    else selectedAttrSet.add(k);
+                });
+                renderAttrGrid();
+            });
+
+            runBtn.addEventListener('click', doGenerate);
+            copyBtn.addEventListener('click', copyResult);
+            downloadBtn.addEventListener('click', downloadResult);
+
+            outputFormat.addEventListener('change', function () {
+                if (resultHeaders.length) {
+                    resultMsg.innerHTML = '';
+                }
+            });
+
+            window.switchInput();
+            updateTypeCount();
+            updateAttrCount();
+            updateRunBtn();
+            clearResults();
+        })();
+    </script>
+</body>
+</html>

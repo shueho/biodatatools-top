@@ -32,12 +32,16 @@
                 <textarea id="dataText" placeholder="Paste text content here" disabled></textarea>
             </div>
 
-            <div class="filter-box" style="margin-top:8px;">
+            <div class="filter-box" style="margin-top:8px; flex-wrap:wrap; gap:12px; align-items:center;">
                 <label>View mode:
                     <select id="viewModeSelect" style="padding:4px 8px; min-width:140px;">
                         <option value="text" selected>Text mode</option>
                         <option value="table">Table mode</option>
                     </select>
+                </label>
+                <label><input type="checkbox" id="skipComments"> Skip comment lines</label>
+                <label id="commentPrefixWrap" style="display:none;">Comment prefix:
+                    <input type="text" id="commentPrefix" value="#" style="width:70px;">
                 </label>
             </div>
 
@@ -163,6 +167,10 @@
             const customDelim = document.getElementById('customDelim');
             const hasHeader = document.getElementById('hasHeader');
 
+            const skipComments = document.getElementById('skipComments');
+            const commentPrefixWrap = document.getElementById('commentPrefixWrap');
+            const commentPrefix = document.getElementById('commentPrefix');
+
             const progressWrap = document.getElementById('progressWrap');
             const progressBar = document.getElementById('progressBar');
             const progressStage = document.getElementById('progressStage');
@@ -217,7 +225,8 @@
                 currentPage: 1,
                 totalPages: 1,
                 dataStartLine: 0,
-                dataLineCount: 0
+                dataLineCount: 0,
+                commentPrefix: ''
             };
 
             let searchState = {
@@ -259,6 +268,15 @@
                 progressWrap.style.display = 'none';
             }
 
+            function getCommentPrefix() {
+                if (!skipComments.checked) return '';
+                return commentPrefix.value || '';
+            }
+
+            function updateCommentUI() {
+                commentPrefixWrap.style.display = skipComments.checked ? 'inline-flex' : 'none';
+            }
+
             function readBlobText(blob) {
                 if (blob.text) return blob.text();
                 return new Promise(function (resolve, reject) {
@@ -269,22 +287,24 @@
                 });
             }
 
-            function scanMemoryOffsets(text, onProgress, onDone) {
+            function scanMemoryOffsets(text, prefix, onProgress, onDone) {
                 const len = text.length;
-                const offsets = [0];
+                const offsets = [];
                 let pos = 0;
 
                 function step() {
-                    const start = performance.now();
+                    const t0 = performance.now();
                     let linesInChunk = 0;
 
                     while (pos < len) {
                         const idx = text.indexOf('\n', pos);
-                        if (idx === -1) { pos = len; break; }
-                        offsets.push(idx + 1);
-                        pos = idx + 1;
+                        const nextPos = (idx === -1) ? len : idx + 1;
+                        if (!(prefix && text.startsWith(prefix, pos))) {
+                            offsets.push(pos);
+                        }
+                        pos = nextPos;
                         linesInChunk++;
-                        if (linesInChunk % 5000 === 0 && performance.now() - start > 16) break;
+                        if (linesInChunk % 5000 === 0 && performance.now() - t0 > 16) break;
                     }
 
                     onProgress(len === 0 ? 100 : Math.round(pos / len * 100));
@@ -292,8 +312,6 @@
                     if (pos < len) {
                         setTimeout(step, 0);
                     } else {
-                        if (offsets.length > 1 && offsets[offsets.length - 1] === len) offsets.pop();
-                        if (len === 0) offsets.length = 0;
                         onDone({ offsets: offsets, lineCount: offsets.length });
                     }
                 }
@@ -301,7 +319,7 @@
                 step();
             }
 
-            async function scanFileCheckpoints(file, token, onProgress) {
+            async function scanFileCheckpoints(file, prefix, token, onProgress) {
                 const checkpoints = [{ line: 0, byteOffset: 0 }];
                 let lineCount = 0;
                 let byteOffset = 0;
@@ -319,26 +337,29 @@
                     while (true) {
                         const idx = data.indexOf('\n', pos);
                         if (idx === -1) break;
-                        lineCount++;
-                        pos = idx + 1;
-                        if (lineCount % SPARSE_INTERVAL === 0) {
-                            checkpoints.push({
-                                line: lineCount,
-                                byteOffset: baseOffset + pos
-                            });
+                        if (!(prefix && data.startsWith(prefix, pos))) {
+                            lineCount++;
+                            if (lineCount % SPARSE_INTERVAL === 0) {
+                                checkpoints.push({
+                                    line: lineCount,
+                                    byteOffset: baseOffset + idx + 1
+                                });
+                            }
                         }
+                        pos = idx + 1;
                     }
                     leftover = data.slice(pos);
                     byteOffset = end;
                     onProgress(byteOffset / file.size * 100);
                 }
 
-                if (leftover.length > 0) lineCount++;
+                if (leftover.length > 0 && !(prefix && leftover.startsWith(prefix))) lineCount++;
 
                 return { checkpoints: checkpoints, lineCount: lineCount };
             }
 
             async function readPageFromFile(file, startLine, pageSize, checkpoints) {
+                const prefix = state.commentPrefix;
                 let cp = checkpoints[0];
                 for (let i = checkpoints.length - 1; i >= 0; i--) {
                     if (checkpoints[i].line <= startLine) {
@@ -348,7 +369,6 @@
                 }
 
                 const skipRemaining = startLine - cp.line;
-                let currentLine = cp.line;
                 let byteOffset = cp.byteOffset;
                 let buffer = '';
                 const lines = [];
@@ -370,10 +390,12 @@
                             if (byteOffset < file.size) break;
                             if (pos < buffer.length) {
                                 const lastLine = buffer.slice(pos);
-                                if (skipped < skipRemaining) {
-                                    skipped++;
-                                } else if (lines.length < pageSize) {
-                                    lines.push(lastLine);
+                                if (!(prefix && lastLine.startsWith(prefix))) {
+                                    if (skipped < skipRemaining) {
+                                        skipped++;
+                                    } else if (lines.length < pageSize) {
+                                        lines.push(lastLine);
+                                    }
                                 }
                                 pos = buffer.length;
                                 progressed = true;
@@ -382,9 +404,11 @@
                         }
 
                         const lineText = buffer.slice(pos, idx);
+                        const isComment = prefix && lineText.startsWith(prefix);
                         pos = idx + 1;
                         progressed = true;
-                        currentLine++;
+
+                        if (isComment) continue;
 
                         if (skipped < skipRemaining) {
                             skipped++;
@@ -399,8 +423,10 @@
                     if (lines.length >= pageSize) break;
                     if (!progressed && byteOffset >= file.size) break;
                     if (!progressed && buffer.length > 0 && byteOffset >= file.size) {
-                        if (skipped < skipRemaining) skipped++;
-                        else if (lines.length < pageSize) lines.push(buffer);
+                        if (!(prefix && buffer.startsWith(prefix))) {
+                            if (skipped < skipRemaining) skipped++;
+                            else if (lines.length < pageSize) lines.push(buffer);
+                        }
                         break;
                     }
                 }
@@ -409,6 +435,7 @@
             }
 
             async function scanFileForQuery(file, query, token, onProgress) {
+                const prefix = state.commentPrefix;
                 const matches = [];
                 let byteOffset = 0;
                 let leftover = '';
@@ -426,6 +453,8 @@
                         const idx = data.indexOf('\n', pos);
                         if (idx === -1) break;
                         const lineText = data.slice(pos, idx);
+                        pos = idx + 1;
+                        if (prefix && lineText.startsWith(prefix)) continue;
                         if (lineText.indexOf(query) >= 0) {
                             matches.push({
                                 line: lineNumber,
@@ -433,13 +462,12 @@
                             });
                         }
                         lineNumber++;
-                        pos = idx + 1;
                     }
                     leftover = data.slice(pos);
                     byteOffset = end;
                     onProgress(byteOffset / file.size * 100);
                 }
-                if (leftover.length > 0) {
+                if (leftover.length > 0 && !(prefix && leftover.startsWith(prefix))) {
                     if (leftover.indexOf(query) >= 0) {
                         matches.push({
                             line: lineNumber,
@@ -734,11 +762,15 @@
                 state.checkpoints = [];
                 state.filename = filename || '';
 
+                const prefix = getCommentPrefix();
+                state.commentPrefix = prefix;
+
                 showProgress('Scanning line offsets...');
 
                 await new Promise(function (resolve) {
                     scanMemoryOffsets(
                         text,
+                        prefix,
                         function (pct) { setProgress(pct, 'Scanning line offsets: ' + pct + '%'); },
                         function (result) {
                             if (token !== loadingToken) return resolve();
@@ -783,11 +815,14 @@
                 state.offsets = [];
                 state.filename = file.name;
 
+                const prefix = getCommentPrefix();
+                state.commentPrefix = prefix;
+
                 showProgress('Indexing file...');
 
                 let result;
                 try {
-                    result = await scanFileCheckpoints(file, token, function (pct) {
+                    result = await scanFileCheckpoints(file, prefix, token, function (pct) {
                         setProgress(pct, 'Indexing file: ' + pct + '%');
                     });
                 } catch (e) {
@@ -884,6 +919,32 @@
                 }
             }
 
+            async function reparseWithCurrentOptions() {
+                if (isProcessing || !state.lineCount) return;
+                const token = ++loadingToken;
+                isProcessing = true;
+                loadBtn.disabled = true;
+                try {
+                    if (state.sourceType === 'file' && state.file) {
+                        await finishLoadingFile(state.file, token);
+                    } else {
+                        await finishLoadingMemory(state.text, state.filename, token);
+                    }
+                } catch (e) {
+                    if (token === loadingToken) hideProgress();
+                } finally {
+                    if (token === loadingToken) {
+                        isProcessing = false;
+                        loadBtn.disabled = false;
+                    }
+                }
+            }
+
+            function onCommentOptionChange() {
+                updateCommentUI();
+                if (state.lineCount) reparseWithCurrentOptions();
+            }
+
             async function loadExample() {
                 const radio = document.querySelector('input[name="inputMode"][value="text"]');
                 if (radio) radio.checked = true;
@@ -972,7 +1033,7 @@
             }
 
             async function searchNext() {
-                if (searchState.matches.length === 0) {
+                if (searchState.matches.length === 0 || searchInput.value !== searchState.query) {
                     await performSearch();
                     return;
                 }
@@ -983,7 +1044,7 @@
             }
 
             async function searchPrev() {
-                if (searchState.matches.length === 0) {
+                if (searchState.matches.length === 0 || searchInput.value !== searchState.query) {
                     await performSearch();
                     return;
                 }
@@ -1113,6 +1174,9 @@
                 }
             });
 
+            skipComments.addEventListener('change', onCommentOptionChange);
+            commentPrefix.addEventListener('change', onCommentOptionChange);
+
             delimSelect.addEventListener('change', onDelimChange);
             customDelim.addEventListener('input', function () {
                 if (state.lineCount && state.mode === 'table') applyAndRender();
@@ -1149,6 +1213,7 @@
             switchInput();
             switchViewMode();
             onDelimChange();
+            updateCommentUI();
         })();
     </script>
 </body>

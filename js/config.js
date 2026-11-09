@@ -61,6 +61,12 @@ const toolConfig = [
     toolDesc: "Automatically detects whether the input is FASTA or Table format, and converts between them with one click.",
     link: "en/041.FASTA_Table_converter.html"
 },
+
+{
+    toolName: "FASTA Sequence Viewer & Extractor (Large Files)",
+    toolDesc: "For viewing and sequence extraction from genome-scale FASTA files. Supports extracting gene or transcript sequences by ID from CDS, transcript, and other FASTA data; does not support splitting/exporting by chromosome, but supports preview.",
+    link: "en/053.FASTA_view_extract.html"
+},
         ]
     },
     {
@@ -132,8 +138,8 @@ const toolConfig = [
 },
 
 {
-    toolName: "Transition/Transversion Calculation",
-    toolDesc: "Calculate pairwise transition counts, transversion counts, total differences, and R ratio from aligned sequences, with support for count/frequency output.",
+    toolName: "Transition/Transversion Calculation (Multiple Sequence Alignment FASTA)",
+    toolDesc: "Calculate pairwise transitions, transversions, total differences, and the R ratio from aligned sequences, with support for count/frequency output.",
     link: "en/051.Transition_transversion_matrix.html"
 },
         ]
@@ -158,6 +164,18 @@ const toolConfig = [
     toolName: "GFF Subset Extractor",
     toolDesc: "Extract a subset from a GFF file by chromosome and feature type, and export a trimmed GFF file.",
     link: "en/045.GFF_filter.html"
+},
+
+{
+    toolName: "GFF Feature Sequence Extractor",
+    toolDesc: "Extract feature sequences from a genome FASTA based on GFF annotations, supporting multi-segment concatenation, reverse complement for negative strand, and upstream/downstream extension.",
+    link: "en/052.GFF_feature_extract.html"
+},
+
+{
+    toolName: "GFF Attribute Expander",
+    toolDesc: "Expand the GFF attribute column into separate columns while keeping the first 8 columns unchanged. Select feature types and attribute fields freely, with configurable missing-value filling and TSV/CSV export.",
+    link: "en/054.GFF_attribute_expand.html"
 },
         ]
     },

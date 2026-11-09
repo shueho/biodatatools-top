@@ -62,6 +62,12 @@ const toolConfig = [
     toolDesc: "自动识别输入是FASTA还是表格（Table）格式，一键完成两者之间的互相转换。",
     link: "ch/041.FASTA_Table_converter.html"
 },
+
+{
+    toolName: "FASTA序列查看与提取工具（大文件）",
+    toolDesc: "用于基因组级别FASTA文件的查看与序列提取。可从CDS、转录本等FASTA数据中按ID提取基因或转录本序列；不支持按染色体拆分导出，但支持预览。",
+    link: "ch/053.FASTA_view_extract.html"
+},
         ]
     },
     {
@@ -135,8 +141,8 @@ const toolConfig = [
 
 
 {
-    toolName: "转换/颠换计算",
-    toolDesc: "计算比对好的多条序列两两之间的转换数、颠换数、总数及比值R，支持频数/频率输出。",
+    toolName: "转换/颠换计算（多序列比对FASTA文件）",
+    toolDesc: "计算比对好的多条序列两两之间的转换、颠换、总数及比值R，支持频数/频率输出。",
     link: "ch/051.Transition_transversion_matrix.html"
 },
         ]
@@ -161,6 +167,18 @@ const toolConfig = [
     toolName: "GFF子集提取工具",
     toolDesc: "按染色体和特征类型从GFF文件提取子集，导出精简后的GFF文件。",
     link: "ch/045.GFF_filter.html"
+},
+
+{
+    toolName: "GFF特征序列提取",
+    toolDesc: "从基因组FASTA中按GFF注释提取特征序列，支持多段拼接、负链反向互补与上下游扩展。",
+    link: "ch/052.GFF_feature_extract.html"
+},
+
+{
+    toolName: "GFF属性展开工具",
+    toolDesc: "将GFF属性字段展开为独立列，前8列保持原样，可自选特征类型与属性字段，支持缺失值填充与TSV/CSV导出。",
+    link: "ch/054.GFF_attribute_expand.html"
 },
         ]
     },

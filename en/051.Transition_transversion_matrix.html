@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transition/Transversion Calculation - BioDataTools</title>
+    <title>Transition/Transversion Calculation (Multiple Sequence Alignment FASTA) - BioDataTools</title>
     <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/global.css">
 </head>
@@ -13,8 +13,8 @@
 
     <div class="main">
         <div class="page-intro">
-            <h2>Transition / Transversion Calculation</h2>
-            <p>Calculate pairwise transition counts, transversion counts, total differences, and R ratio from aligned sequences, with support for count/frequency output.</p>
+            <h2>Transition/Transversion Calculation (Multiple Sequence Alignment FASTA)</h2>
+            <p>Calculate pairwise transitions, transversions, total differences, and the R ratio from aligned sequences, with support for count/frequency output.</p>
         </div>
 
         <div class="step-card">
@@ -30,7 +30,7 @@
                 <textarea id="fastaText" placeholder="Paste aligned FASTA sequences (all sequences must be equal length)" disabled></textarea>
             </div>
             <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;">
-                <button class="btn" id="loadBtn">Load sequences</button>
+                <button class="btn" id="loadBtn">Import sequences</button>
                 <button class="btn" id="exampleBtn">Load example</button>
             </div>
             <div id="msgTip" class="tip-text"></div>
@@ -41,10 +41,10 @@
             <div class="param-group">
                 <label>Output:
                     <select id="outputType">
-                        <option value="ts">Ts: Transition count</option>
-                        <option value="tv">Tv: Transversion count</option>
-                        <option value="total">d: Transition + Transversion (Ts+Tv)</option>
-                        <option value="r">R: Transition / Transversion (Ts/Tv)</option>
+                        <option value="ts">Ts: Transitions</option>
+                        <option value="tv">Tv: Transversions</option>
+                        <option value="total">d: Transitions + Transversions (Ts+Tv)</option>
+                        <option value="r">R: Transitions / Transversions (Ts/Tv)</option>
                     </select>
                 </label>
                 <label>Missing/ambiguous base handling:
@@ -93,6 +93,7 @@
                     </table>
                 </div>
                 <div style="font-size:0.85rem;color:#6c757d;margin-top:6px;" id="statInfo"></div>
+                <div id="overallInfo" style="margin-top:10px;padding:10px 14px;background:#f0f7ff;border:1px solid #b8d4f0;border-radius:6px;font-size:0.9rem;color:#1f4068;"></div>
             </div>
             <div id="emptyResult" class="empty-tip">The matrix will be displayed here after calculation.</div>
         </div>
@@ -130,6 +131,7 @@
             const matrixHead = document.getElementById('matrixHead');
             const matrixBody = document.getElementById('matrixBody');
             const statInfo = document.getElementById('statInfo');
+            const overallInfo = document.getElementById('overallInfo');
             const copyResultBtn = document.getElementById('copyResultBtn');
             const exportBtn = document.getElementById('exportBtn');
             const resultTip = document.getElementById('resultTip');
@@ -199,27 +201,24 @@
                     return false;
                 }
 
-                const lens = {};
-                parsed.forEach(function (s) { lens[s.seq.length] = true; });
-                const unequal = Object.keys(lens).length > 1;
+const lens = {};
+parsed.forEach(function (s) { lens[s.seq.length] = true; });
+const lenList = Object.keys(lens).map(Number);
 
-                let maxLen = 0;
-                parsed.forEach(function (s) { if (s.seq.length > maxLen) maxLen = s.seq.length; });
-                parsed.forEach(function (s) {
-                    if (s.seq.length < maxLen) s.seq = s.seq + '-'.repeat(maxLen - s.seq.length);
-                });
+if (lenList.length > 1) {
+    lenList.sort(function (a, b) { return a - b; });
+    showMsg(msgTip, '❌ Sequence lengths are not equal (range ' + lenList[0] + '–' + lenList[lenList.length - 1] +
+        ' bp). Please align the sequences before importing.', 'error');
+    return false;
+}
 
-                sequences = parsed;
-                calcBtn.disabled = false;
-                clearResults();
-
-                if (unequal) {
-                    showMsg(msgTip, '⚠️ Loaded ' + parsed.length + ' sequences (lengths differ; padded with "-" at the end)', 'warn');
-                } else {
-                    showMsg(msgTip, '✅ Successfully loaded ' + parsed.length + ' sequences, length ' + maxLen + ' bp', 'success');
-                }
-                toast('Loaded ' + parsed.length + ' sequences');
-                return true;
+const maxLen = lenList[0];
+sequences = parsed;
+calcBtn.disabled = false;
+clearResults();
+showMsg(msgTip, '✅ Successfully loaded ' + parsed.length + ' sequences, length ' + maxLen + ' bp', 'success');
+toast('Loaded ' + parsed.length + ' sequences');
+return true;
             }
 
             function loadFromFile() {
@@ -362,6 +361,47 @@
                 matrixBody.innerHTML = tbody;
             }
 
+            function renderOverall(stats, type, fMode, incGap) {
+                const n = stats.ts.length;
+                let totalTs = 0, totalTv = 0, totalDenom = 0;
+                for (let i = 1; i < n; i++) {
+                    for (let j = 0; j < i; j++) {
+                        totalTs += stats.ts[i][j];
+                        totalTv += stats.tv[i][j];
+                        totalDenom += incGap ? stats.fullLen : stats.validSites[i][j];
+                    }
+                }
+                const totalD = totalTs + totalTv;
+
+                function fmt(count) {
+                    if (fMode === 'freq') {
+                        return totalDenom === 0 ? 'Nan' : (count / totalDenom).toFixed(6);
+                    }
+                    return String(count);
+                }
+
+                let rStr;
+                if (totalTv === 0) {
+                    rStr = (totalTs === 0) ? 'Nan' : '+Inf';
+                } else {
+                    rStr = (totalTs / totalTv).toFixed(4);
+                }
+
+                let unitLabel = '';
+                if (type !== 'r') {
+                    unitLabel = fMode === 'freq'
+                        ? ' (' + (incGap ? 'including gaps' : 'excluding gaps') + ', frequency)'
+                        : ' (count)';
+                }
+
+                overallInfo.innerHTML =
+                    '<strong>Overall summary' + unitLabel + ':</strong> ' +
+                    'Transitions (Ts) = <strong>' + fmt(totalTs) + '</strong> &nbsp;|&nbsp; ' +
+                    'Transversions (Tv) = <strong>' + fmt(totalTv) + '</strong> &nbsp;|&nbsp; ' +
+                    'Total (d) = <strong>' + fmt(totalD) + '</strong> &nbsp;|&nbsp; ' +
+                    'R = <strong>' + rStr + '</strong>';
+            }
+
             function clearResults() {
                 resultArea.style.display = 'none';
                 emptyResult.style.display = 'block';
@@ -371,6 +411,7 @@
                 matrixHead.innerHTML = '';
                 matrixBody.innerHTML = '';
                 statInfo.textContent = '';
+                overallInfo.innerHTML = '';
                 resultTip.innerHTML = '';
             }
 
@@ -402,13 +443,14 @@
                 resultArea.style.display = 'block';
                 emptyResult.style.display = 'none';
                 renderMatrix(built.names, built.matrix);
+                renderOverall(stats, type, fMode, incGap);
                 copyResultBtn.disabled = false;
                 exportBtn.disabled = false;
 
                 const labelMap = {
-                    ts: 'Transition count (Ts)',
-                    tv: 'Transversion count (Tv)',
-                    total: 'Transition + Transversion (Ts+Tv)',
+                    ts: 'Transitions (Ts)',
+                    tv: 'Transversions (Tv)',
+                    total: 'Transitions + Transversions (Ts+Tv)',
                     r: 'R value (Ts/Tv)'
                 };
                 const parts = [];
@@ -544,17 +586,17 @@
             });
 
             exampleBtn.addEventListener('click', function () {
-                const example =
-                    '>Seq1\n' +
-                    'ATGCGTACGTAGCTAGCTAGCATCGATCGTAGCTAGCTAGC-TAGCGATCGATCGATCGT\n' +
-                    '>Seq2\n' +
-                    'ATGCGTACGTGGCTAGCTAGCATCGATCGTGGCTAGCTAGCTTAG-GATCGATCGATCGT\n' +
-                    '>Seq3\n' +
-                    'ATGCGTACGTAGCTAGCTAGAATCGATCGTAGCTAGCTAGTTTAG-GATCGATCGATCGT\n' +
-                    '>Seq4\n' +
-                    'ATGCGTACGTGGCTAGCTAGAATCGATCGTAGCTAGCTAGCTTAGCGA--GATCGATCGT\n' +
-                    '>Seq5\n' +
-                    'ATGCGTACGTAGCTAGCTAGCATCGATCGTAGCTAGCTAGCTTAGCGATC-ATCGATCGT\n';
+const example =
+    '>Seq1\n' +
+    'ATGCGTACGTAGCTAGCTAGCATCGATCGTAGCTAGCTAGCTTAGCGATCGATCGATCGT\n' +
+    '>Seq2\n' +
+    'ATGCGTACGTGGCTAGCTAGCATCGATCGTGGCTAGCTAGCTTAGCGATCGATCGATCGT\n' +
+    '>Seq3\n' +
+    'ATGCGTACGTAGCTAGCTAGAATCGATCGTAGCTAGCTAGTTTAGCGATCGATCGATCGT\n' +
+    '>Seq4\n' +
+    'ATGCGTACGTGGCTAGCTAGAATCGATCGTAGCTAGCTAGCTTAGCG-TCGATCGATCGT\n' +
+    '>Seq5\n' +
+    'ATGCGTACGTAGCTAGCTAGCATCGATCGTAGCTAGCTAGCTTAGCGATC-ATCGATCGT\n';
                 const radio = document.querySelector('input[name="inputMode"][value="text"]');
                 if (radio) radio.checked = true;
                 window.switchInput();
