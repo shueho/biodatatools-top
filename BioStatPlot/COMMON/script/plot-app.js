@@ -196,6 +196,9 @@
         }
 
         function resetChart() {
+    if (global.PlotCanvas && PlotCanvas.injectCanvasInfoBox && chartPreview) {
+        PlotCanvas.injectCanvasInfoBox(chartPreview);
+    }
             if (chartPreview) {
                 chartPreview.innerHTML = '<div class="placeholder">' + PlotI18N.t('placeholder') + '</div>';
             }
