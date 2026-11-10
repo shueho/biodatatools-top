@@ -651,6 +651,8 @@
         const title = opts.title || L10n.importTitle;
         const infoHtml = opts.infoBox || L10n.importInfo;
         const defaultMode = opts.defaultMode || 'file';
+        const groupName = opts.groupName || 'inputMode';   
+        const embedded = !!opts.embedded;      
 
         let examples = [];
         if (Array.isArray(opts.examples) && opts.examples.length) {
@@ -660,12 +662,12 @@
             examples = [{ label: L10n.exampleBtn, data: opts.exampleData }];
         }
 
-        container.className = 'step-card';
+        container.className = embedded ? 'param-panel' : 'step-card';
         container.innerHTML = `
-            <div class="step-title">${title}</div>
+            <div class="${embedded ? 'param-panel-title' : 'step-title'}">${title}</div>
             <div class="mode-tabs">
-                <label><input type="radio" name="inputMode" value="file" ${defaultMode === 'file' ? 'checked' : ''}> ${L10n.modeFile}</label>
-                <label><input type="radio" name="inputMode" value="text" ${defaultMode === 'text' ? 'checked' : ''}> ${L10n.modeText}</label>
+                <label><input type="radio" name="${groupName}" value="file" ${defaultMode === 'file' ? 'checked' : ''}> ${L10n.modeFile}</label>
+                <label><input type="radio" name="${groupName}" value="text" ${defaultMode === 'text' ? 'checked' : ''}> ${L10n.modeText}</label>
             </div>
             <div class="file-input"><input type="file" class="import-file" accept=".csv,.tsv,.txt"></div>
             <div class="text-input"><textarea class="import-text" placeholder="${L10n.importPlaceholder}"></textarea></div>
@@ -720,9 +722,9 @@
             opts.onReset && opts.onReset();
         }
 
-        container.querySelectorAll('input[name="inputMode"]').forEach(r => {
+        container.querySelectorAll('input[name="' + groupName + '"]').forEach(r => {
             r.addEventListener('change', () => {
-                const mode = container.querySelector('input[name="inputMode"]:checked').value;
+                const mode = container.querySelector('input[name="' + groupName + '"]:checked').value;
                 setMode(mode);
             });
         });
@@ -766,7 +768,7 @@
                 const idx = parseInt(btn.dataset.exampleIdx, 10);
                 const ex = examples[idx];
                 if (!ex || !ex.data) return;
-                container.querySelector('input[name="inputMode"][value="text"]').checked = true;
+                container.querySelector('input[name="' + groupName + '"][value="text"]').checked = true;
                 setMode('text');
                 textArea.value = ex.data;
                 importData();
@@ -775,7 +777,6 @@
 
         setMode(defaultMode);
     }
-
     /* ---------- 聚合与排序 ---------- */
     function aggregateAndSort(data, opts) {
         opts = opts || {};

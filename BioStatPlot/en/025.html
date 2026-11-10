@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chromosome Mapping & Feature Density - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Chromosome Mapping & Feature Density</h2>
+            <p>Visualize chromosome structures overlaid with feature density heatmaps and gene labels. Supports both vertical and horizontal layouts.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Data</div>
+            <div class="info-box">
+                If you have a <strong>GFF annotation file</strong> for your genome, you can use the
+                <a href="../../en/044.GFF_gene_density.html" target="_blank" style="color:#1f4068;font-weight:600;">Gene Density Calculator</a>
+                to generate the following two files: <strong>genome structure file</strong> and <strong>feature/gene density file</strong>.
+            </div>
+            <div id="genomeImportPanel"></div>
+            <div id="densityImportPanel"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Specify Data Columns</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Genome Structure Columns</div>
+                <div id="cols-genome"></div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Feature / Gene Density Columns</div>
+                <div id="cols-density"></div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Colors</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Chromosome Colors</div>
+                <div id="chrColorPanel"></div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Density Continuous Colors</div>
+                <div id="densityColorPanel"></div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Plot Parameters</div>
+
+            <div id="globalSettingsPanel"></div>
+
+            <div id="colorbarPanel"></div>
+            <div id="axisPanel"></div>
+            <div id="layoutPanel"></div>
+            <div id="labelPanel"></div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">Draw Chart</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 5: Preview & Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
+                <button class="btn" id="exportStateBtn" type="button">Export Style</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">Import data and complete settings, then click "Draw Chart" to view the result</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer-en.js"></script>
+    <script src="../COMMON/donate-widget-left.js"></script>
+
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/025.js"></script>
+</body>
+</html>

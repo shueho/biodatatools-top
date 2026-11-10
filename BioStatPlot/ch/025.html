@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>染色体定位与特征密度图 - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>染色体定位与特征密度图</h2>
+            <p>可视化染色体结构，叠加基因等特征密度热图与基因标注。支持横向/纵向布局。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入数据</div>
+            <div class="info-box">
+                如果你有基因组的 <strong>GFF注释文件</strong>，可以使用
+                <a href="../../ch/044.GFF_gene_density.html" target="_blank" style="color:#1f4068;font-weight:600;">基因密度计算工具</a>
+                生成以下两个文件：<strong>基因组结构文件</strong>、<strong>特征/基因密度文件</strong>。
+            </div>
+            <div id="genomeImportPanel"></div>
+            <div id="densityImportPanel"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：指定数据列</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">基因组结构列</div>
+                <div id="cols-genome"></div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">特征/基因密度列</div>
+                <div id="cols-density"></div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：颜色设置</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">染色体颜色</div>
+                <div id="chrColorPanel"></div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">密度连续色</div>
+                <div id="densityColorPanel"></div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：绘图参数</div>
+
+            <div id="globalSettingsPanel"></div>
+
+            <div id="colorbarPanel"></div>
+            <div id="axisPanel"></div>
+            <div id="layoutPanel"></div>
+            <div id="labelPanel"></div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
+                <button class="btn" id="exportStateBtn" type="button">导出样式</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer.js"></script>
+    <script src="../COMMON/donate-widget-left.js"></script>
+
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/025.js"></script>
+</body>
+</html>

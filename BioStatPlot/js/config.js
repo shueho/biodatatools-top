@@ -66,6 +66,8 @@
                 en: 'Heatmap',
                 tools: [
                     { id: '022', zh: '相关性热图', en: 'Correlation Heatmap' },
+                    { id: '025', zh: '染色体定位与特征密度图', en: 'Chromosome Mapping & Feature Density', ext: 'jpg' },
+
 
                 ]
             },
@@ -93,7 +95,7 @@
         en: 'Basic Statistics',
         tools: [
             { id: 's001', zh: '统计量计算器', en: 'Statistics Calculator' },
-            { id: 'xxx', zh: '开发中', en: 'NULL',ext: null }
+            { id: 'xxx', zh: '开发中', en: 'NULL',ext: 'NULL' }
         ]
     },
 
@@ -105,7 +107,7 @@
                 zh: '开发中',
                 en: 'NULL',
                 tools: [
-                    { id: 'xxx', zh: '开发中', en: 'NULL',ext: null }
+                    { id: 'xxx', zh: '开发中', en: 'NULL',ext: 'NULL' }
                 ]
             }
         ]

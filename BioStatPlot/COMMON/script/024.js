@@ -497,7 +497,7 @@ function updateAxisTitleInputs(app) {
         const labelModeTop = EN ? 'Auto Top N' : '自动Top N';
         const labelModeCustom = EN ? 'Custom names' : '自定义名称';
         const labelTopNLabel = EN ? 'Top N per direction' : '每方向Top N';
-        const labelCustomLabel = EN ? 'Custom names (comma-separated)' : '自定义名称（逗号分隔）';
+        const labelCustomLabel = EN ? 'Custom names (one per line)' : '自定义名称（每行一个）';
         const labelFsLabel = EN ? 'Font size' : '字号';
         const labelBoldLabel = EN ? 'Bold' : '加粗';
         const labelItalicLabel = EN ? 'Italic' : '斜体';
@@ -567,10 +567,10 @@ function updateAxisTitleInputs(app) {
             + '  <div class="param-item" style="grid-column: span 4;"><label>' + labelTopNLabel + '</label>'
             + '    <input type="number" class="vp-label-topn" value="' + v.labelTopN + '" min="1" max="100" step="1"></div>'
             + '</div>'
-            + '<div class="param-grid cols-4 vp-label-custom-item" style="' + (v.labelMode === 'custom' ? '' : 'display:none;') + '">'
-            + '  <div class="param-item" style="grid-column: span 4;"><label>' + labelCustomLabel + '</label>'
-            + '    <input type="text" class="vp-label-custom" value="' + esc(v.labelCustomNames) + '"></div>'
-            + '</div>'
++ '<div class="param-grid cols-4 vp-label-custom-item" style="' + (v.labelMode === 'custom' ? '' : 'display:none;') + '">'
++ '  <div class="param-item" style="grid-column: span 4;"><label>' + labelCustomLabel + '</label>'
++ '    <textarea class="vp-label-custom" rows="4" placeholder="GENE1&#10;GENE2&#10;GENE3" style="width:100%;resize:vertical;box-sizing:border-box;">' + esc(v.labelCustomNames) + '</textarea></div>'
++ '</div>'
 
             /* 标签样式 */
             + '<div class="param-grid cols-4">'
@@ -695,14 +695,14 @@ function updateAxisTitleInputs(app) {
             });
         }
 
-        c.querySelectorAll('input, select').forEach(function (el) {
-            const h = function () {
-                readVolcanoPanel(app);
-                if (app.state.currentSvg) app.drawChart();
-            };
-            el.addEventListener('input', h);
-            el.addEventListener('change', h);
-        });
+c.querySelectorAll('input, select, textarea').forEach(function (el) {
+    const h = function () {
+        readVolcanoPanel(app);
+        if (app.state.currentSvg) app.drawChart();
+    };
+    el.addEventListener('input', h);
+    el.addEventListener('change', h);
+});
 
         ['vp-up-label', 'vp-down-label', 'vp-normal-label'].forEach(function (cls) {
             const el = c.querySelector('.' + cls);
