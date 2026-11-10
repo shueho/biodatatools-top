@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火山图 - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>火山图</h2>
+            <p>展示差异倍数与显著性的关系，支持数据转换、阈值线、Top N 标签与自定义标签。</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：指定数据列与数据转换</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">数据列</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>X 轴（FC / logFC）</label>
+                        <select id="xColSel" disabled><option value="">— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>Y 轴（p / q / -log 值）</label>
+                        <select id="yColSel" disabled><option value="">— 请先导入数据 —</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>名称列（可选）</label>
+                        <select id="nameColSel" disabled><option value="">无</option></select>
+                    </div>
+                </div>
+                <div class="info-box" style="margin-top:8px;">
+                    X / Y 均为数值列。名称列用于标签显示（如基因名、蛋白名）。
+                </div>
+            </div>
+
+            <div id="transformPanelContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：设置显著类别颜色</div>
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：设置绘图参数</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+            <div id="axisPanelContainer"></div>
+            <div id="volcanoPanelContainer"></div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer.js"></script>
+    <script src="../COMMON/donate-widget-left.js"></script>
+
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-axis.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/024.js"></script>
+</body>
+</html>

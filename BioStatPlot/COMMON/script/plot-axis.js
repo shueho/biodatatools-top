@@ -471,10 +471,7 @@
                         <input type="number" class="ax-${key}-break-to" value="${cfg.breakTo}" style="width:80px;">
                     </label>
                 </div>
-                <div class="font-row" style="padding-top:0;">
-                    <span class="font-label"></span>
-                    <span class="axis-tip">${t.breakTip}</span>
-                </div>
+                <div class="info-box" style="margin-top:8px;">${t.breakTip}</div>
             `;
         }
 
@@ -573,10 +570,7 @@
                     <input type="number" class="ax-${key}-cross-value" value="${cfg.crossValue}" style="width:80px;">
                 </label>
             </div>
-            <div class="font-row" style="padding-top:0;">
-                <span class="font-label"></span>
-                <span class="axis-tip">${t.crossTip}</span>
-            </div>
+            <div class="info-box" style="margin-top:8px;">${t.crossTip}</div>
         `;
 
         html += `</div>`;
