@@ -60,64 +60,90 @@ function probeImage(url) {
     });
 }
 
-async function resolveIconFiles(id) {
+async function resolveIconFiles(id, forcedExt) {
     if (!id || typeof id !== 'string') return [];
-    
-    const exts = id.startsWith('t') ? ['svg', 'png'] : ['svg'];
+
+    if (String(forcedExt || '').toUpperCase() === 'NULL') return [];
+    const exts = forcedExt ? [forcedExt] : ['svg'];
     const files = [];
 
     for (let i = 1; i <= ICON_PROBE_MAX; i++) {
         let found = null;
         for (const ext of exts) {
             const name = `${id}-${i}.${ext}`;
-            if (await probeImage(LOCAL_BASE + name)) { 
-                found = name; 
-                break; 
+            if (await probeImage(LOCAL_BASE + name)) {
+                found = name;
+                break;
             }
         }
         if (found) {
             files.push(found);
         } else {
-            break; 
+            break;
         }
     }
 
     if (!files.length) {
         for (const ext of exts) {
             const name = `${id}.${ext}`;
-            if (await probeImage(LOCAL_BASE + name)) { 
-                files.push(name); 
-                break; 
+            if (await probeImage(LOCAL_BASE + name)) {
+                files.push(name);
+                break;
             }
         }
     }
 
     if (!files.length) {
-        files.push(`${id}.svg`);
+        files.push(`${id}.${exts[0]}`);
     }
-    
+
     return files;
 }
 
+
 async function preloadAllIcons() {
     if (typeof toolCategories === 'undefined') return;
-    const ids = new Set();
-    toolCategories.forEach(cat => {
-        (cat.tools || []).forEach(t => { if (t.id) ids.add(t.id); });
-        (cat.subcategories || []).forEach(sub => {
-            (sub.tools || []).forEach(t => { if (t.id) ids.add(t.id); });
+
+    const toolMap = new Map();         
+
+    const collect = (tools) => {
+        (tools || []).forEach(t => {
+            if (!t || !t.id) return;
+
+            const raw = t.ext !== undefined ? t.ext
+                      : t.iconExt !== undefined ? t.iconExt
+                      : t.format;
+
+            let ext;
+            if (raw === undefined || raw === null) {
+                ext = '';                                  
+            } else {
+                const s = String(raw).trim();
+                ext = (s === '' || s.toUpperCase() === 'NULL')
+                    ? 'NULL'                                
+                    : s.toLowerCase().replace(/^\./, '');  
+            }
+
+            if (!toolMap.has(t.id)) {
+                toolMap.set(t.id, ext);
+            }
         });
+    };
+
+    toolCategories.forEach(cat => {
+        collect(cat.tools);
+        (cat.subcategories || []).forEach(sub => collect(sub.tools));
     });
-    await Promise.all(Array.from(ids).map(async id => {
+
+    await Promise.all(Array.from(toolMap.entries()).map(async ([id, ext]) => {
         if (iconFileCache.has(id)) return;
         if (!iconLoadingPromises.has(id)) {
-            iconLoadingPromises.set(id, resolveIconFiles(id));
+            iconLoadingPromises.set(id, resolveIconFiles(id, ext));
         }
         const files = await iconLoadingPromises.get(id);
         iconFileCache.set(id, files);
     }));
 }
-
 /* ============================================================
    图标渲染
 ============================================================ */

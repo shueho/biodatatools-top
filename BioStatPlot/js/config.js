@@ -73,7 +73,7 @@
                 zh: '系统进化树',
                 en: 'phylogenetic tree',
                 tools: [
-                    { id: 't001', zh: '进化树可视化', en: 'Phylogenetic Tree Visualization' },
+                    { id: 't001', zh: '进化树可视化', en: 'Phylogenetic Tree Visualization', ext: 'png' },
 
                 ]
             },
@@ -93,7 +93,7 @@
         en: 'Basic Statistics',
         tools: [
             { id: 's001', zh: '统计量计算器', en: 'Statistics Calculator' },
-            { id: 'xxx', zh: '开发中', en: 'NULL' }
+            { id: 'xxx', zh: '开发中', en: 'NULL',ext: null }
         ]
     },
 
@@ -105,7 +105,7 @@
                 zh: '开发中',
                 en: 'NULL',
                 tools: [
-                    { id: 'xxx', zh: '开发中', en: 'NULL' }
+                    { id: 'xxx', zh: '开发中', en: 'NULL',ext: null }
                 ]
             }
         ]
