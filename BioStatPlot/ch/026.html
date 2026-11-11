@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>序列Logo图 - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>序列Logo图</h2>
+            <p>展示多条对齐序列在每个位置的保守性与碱基/氨基酸偏好。纵轴信息量（bits）= log₂(K) − 熵，可切换为频率（probability）模式。</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：指定数据列与分类方法</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">数据列</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>序列ID列（可选）</label>
+                        <select id="seqIdColSel" disabled><option value="">无（自动编号）</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>序列列</label>
+                        <select id="seqColSel" disabled><option value="">— 请先导入数据 —</option></select>
+                    </div>
+                </div>
+                <div style="font-size:12px;color:#999;margin-top:8px;">
+                    导入格式：可选一列 <strong>序列 ID</strong>（文本），另一列为 <strong>Consensus 序列</strong>。序列格式示例：<code>AC[M:0.6;T:0.4]GT</code>，方括号内为「字母:频率」，未加方括号的单个字母表示频率 1.0。若没有 ID 列，将自动编号为 Sequence 1、Sequence 2……所有序列会全部绘制为分面。
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">分类方法</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>序列类型</label>
+                        <select id="seqType" data-redraw>
+                            <option value="dna">DNA / RNA</option>
+                            <option value="protein" selected>蛋白质</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="param-inline" style="margin-bottom:10px;">
+                    <label><input type="radio" name="colorMode" value="builtin" checked> 内置理化分组</label>
+                    <label><input type="radio" name="colorMode" value="custom"> 自定义分组</label>
+                    <label><input type="radio" name="colorMode" value="none"> 无分组（每字母独立）</label>
+                </div>
+                <div id="builtinSchemeWrap">
+                    <label style="font-size:14px;color:#666;">内置方案：
+                        <select id="builtinSchemeSel"></select>
+                    </label>
+                    <div id="builtinGroupHint" class="info-box" style="margin-top:8px;"></div>
+                </div>
+                <div id="customGroupWrap" style="display:none;">
+                    <label style="font-size:14px;color:#666;">自定义分组（每行一组，或分号分隔；同组字母用空格连接。可写成 <code>组名: A V L I M</code>）</label>
+                    <textarea id="customGroupText" rows="5" placeholder="例如：&#10;Hydrophobic: A V L I M&#10;Aromatic: F W Y&#10;Basic: K R H&#10;Acidic: D E&#10;Polar: S T N Q&#10;Special: G P C" style="margin-top:6px;"></textarea>
+                    <div class="param-inline" style="margin-top:8px;">
+                        <label>导入分组文件（.txt / .csv / .tsv）
+                            <input type="file" id="customGroupFile" accept=".txt,.csv,.tsv,.text" style="margin-left:6px;">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：选择色板与颜色</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">色板</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                    <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+                </div>
+                <div style="font-size:12px;color:#999;margin-top:4px;">选择色板会按分组顺序重新分配颜色；分组方案在第二步设置，逐组颜色可在此微调。</div>
+            </div>
+
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：设置绘图参数</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">序列Logo与排版设置</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>纵轴编码</label>
+                        <select id="logoYMode" data-redraw>
+                            <option value="bits" selected>信息量（bits）</option>
+                            <option value="probability">频率（probability）</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoLegendShowLetters" checked data-redraw> 图例包含字母</label>
+                    </div>
+                    <div class="param-item">
+                        <label>字母字体</label>
+                        <select id="logoLetterFont">
+                            <option value="Arial" selected>Arial</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoLetterBold" checked data-redraw> 字母加粗</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoLetterItalic" data-redraw> 字母斜体</label>
+                    </div>
+                    <div class="param-item">
+                        <label>每位置最小宽度</label>
+                        <input type="number" id="logoMinBand" value="14" min="8" max="60" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>位点间距</label>
+                        <input type="number" id="logoPositionGap" value="0" min="0" max="20" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>序列名称位置</label>
+                        <select id="logoTitlePos" data-redraw>
+                            <option value="top" selected>上方</option>
+                            <option value="left">左侧</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>序列名偏移</label>
+                        <input type="number" id="logoTitleLeftOffset" value="8" min="-100" max="200" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>序列名字号</label>
+                        <input type="number" id="logoTitleFontSize" value="14" min="6" max="36" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>序列名颜色</label>
+                        <input type="color" id="logoTitleColor" value="#1f4068" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoTitleBold" checked data-redraw> 序列名加粗</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoTitleItalic" data-redraw> 序列名斜体</label>
+                    </div>
+                    <div class="param-item">
+                        <label>序列间隔</label>
+                        <input type="number" id="logoFacetGap" value="16" min="0" max="100" step="1" data-redraw>
+                    </div>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">坐标轴设置</div>
+                
+                <div class="axis-subsection">Y 轴设置</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Y 轴最大值</label>
+                        <select id="logoYMaxMode" data-redraw>
+                            <option value="auto" selected>自动（理论最大值）</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>自定义 Y 最大值</label>
+                        <input type="number" id="logoYMax" value="4.5" min="0.1" max="10" step="0.1" disabled data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Y 轴刻度间隔</label>
+                        <input type="number" id="logoYTickInterval" value="0" min="0" max="10" step="0.1" data-redraw title="0 = 自动">
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoShowYAxisLine" checked data-redraw> 显示 Y 轴主体</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Y 轴标题位置</label>
+                        <select id="logoYTitleMode" data-redraw>
+                            <option value="none">不显示</option>
+                            <option value="perFacet" selected>每个序列都显示</option>
+                            <option value="single">只显示一个（居中）</option>
+                        </select>
+                    </div>
+                    <div class="param-item" style="grid-column: span 3;">
+                        <label>Y 轴标题内容</label>
+                        <input type="text" id="logoYTitleText" value="Information (bits)" data-redraw style="flex:1;">
+                    </div>
+                </div>
+
+                <div class="axis-subsection">X 轴设置</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>X 轴标签</label>
+                        <select id="logoXLabelMode" data-redraw>
+                            <option value="number" selected>数字（1 ~ L）</option>
+                            <option value="letter">最高频字母</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>X 轴刻度间隔</label>
+                        <input type="number" id="logoXTickInterval" value="1" min="0" max="100" step="1" data-redraw title="0 = 自动；1 = 每个位置都显示">
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoShowXTickLabels" checked data-redraw> 显示 X 轴刻度值</label>
+                    </div>
+                    <div class="param-item">
+                        <label>X 轴标题位置</label>
+                        <select id="logoXTitleMode" data-redraw>
+                            <option value="none">不显示</option>
+                            <option value="perFacet" selected>每个序列都显示</option>
+                            <option value="single">只显示一个（居中）</option>
+                        </select>
+                    </div>
+                    <div class="param-item" style="grid-column: span 3;">
+                        <label>X 轴标题内容</label>
+                        <input type="text" id="logoXTitleText" value="" placeholder="不填则不显示" data-redraw style="flex:1;">
+                    </div>
+                </div>
+
+                <div class="axis-subsection">刻度与标题样式（统一）</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>刻度字号</label>
+                        <input type="number" id="logoTickFontSize" value="11" min="6" max="24" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoTickBold" data-redraw> 刻度加粗</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoTickItalic" data-redraw> 刻度斜体</label>
+                    </div>
+                    <div class="param-item">
+                        <label>标题字号</label>
+                        <input type="number" id="logoAxisTitleFontSize" value="13" min="6" max="36" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoAxisTitleBold" checked data-redraw> 标题加粗</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoAxisTitleItalic" data-redraw> 标题斜体</label>
+                    </div>
+                    <div class="param-item">
+                        <label>轴线/文字颜色</label>
+                        <input type="color" id="logoAxisColor" value="#333333" data-redraw>
+                    </div>
+                </div>
+
+                <div class="axis-subsection">轴线与网格</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>轴线粗细</label>
+                        <input type="number" id="logoAxisWidth" value="1" min="0" max="5" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>刻度线长度</label>
+                        <input type="number" id="logoTickLength" value="4" min="0" max="10" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>刻度线粗细</label>
+                        <input type="number" id="logoTickWidth" value="1" min="0" max="5" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoShowYGrid" data-redraw> 显示 Y 轴网格线</label>
+                    </div>
+                    <div class="param-item">
+                        <label>网格线颜色</label>
+                        <input type="color" id="logoGridColor" value="#e8edf2" data-redraw>
+                    </div>
+                </div>
+                <div class="info-box" style="margin-top:10px;">
+                    <strong>纵轴说明：</strong>信息量（bits）模式中，每个位置的总高度 = log₂(K) − 熵，K 为字母表大小（DNA=4，蛋白质=20），完全保守的位置达到最大值，完全随机为 0；频率模式中每个位置总高度固定为 1.0。
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">文字轮廓</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>轮廓模式</label>
+                        <select id="logoOutlineMode" data-redraw>
+                            <option value="none" selected>无</option>
+                            <option value="outline">填充 + 轮廓</option>
+                            <option value="outlineOnly">只显示轮廓（分组色）</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>轮廓颜色</label>
+                        <input type="color" id="logoOutlineColor" value="#333333" data-redraw>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer.js"></script>
+    <script src="../COMMON/donate-widget-left.js"></script>
+
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/026.js"></script>
+</body>
+</html>

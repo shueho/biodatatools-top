@@ -6,7 +6,31 @@
 (function (global) {
     'use strict';
 
-    /* ---------- i18n ---------- */
+const FONT_OPTIONS = [
+    { value: 'Times New Roman', zh: 'Times New Roman', en: 'Times New Roman' },
+    { value: 'Arial',           zh: 'Arial',           en: 'Arial' },
+    { value: 'Helvetica',       zh: 'Helvetica',       en: 'Helvetica' },
+    { value: 'Verdana',         zh: 'Verdana',         en: 'Verdana' },
+    { value: 'Tahoma',          zh: 'Tahoma',          en: 'Tahoma' },
+    { value: 'Calibri',         zh: 'Calibri',         en: 'Calibri' },
+    { value: 'Georgia',         zh: 'Georgia',         en: 'Georgia' },
+    { value: 'Courier New',     zh: 'Courier New',     en: 'Courier New' },
+    { value: 'Consolas',        zh: 'Consolas',        en: 'Consolas' },
+    { value: 'DejaVu Sans',     zh: 'DejaVu Sans',     en: 'DejaVu Sans' },
+    { value: 'Microsoft YaHei', zh: '微软雅黑',         en: 'Microsoft YaHei' },
+    { value: 'SimSun',          zh: '宋体',             en: 'SimSun' },
+    { value: 'KaiTi',           zh: '楷体',             en: 'KaiTi' }
+];
+
+function fontOptionsHTML(selectedValue) {
+    const isEn = getLang() === 'en';
+    const sel = selectedValue || 'Times New Roman';
+    return FONT_OPTIONS.map(function (f) {
+        const label = isEn ? f.en : f.zh;
+        return '<option value="' + f.value + '"' +
+            (f.value === sel ? ' selected' : '') + '>' + label + '</option>';
+    }).join('');
+}
     const I18N = {
         zh: {
             noData: '无数据',
@@ -1341,17 +1365,13 @@ const markerW = isLineShape ? markerSize * 1.5 : markerSize;
                 <div class="param-inline" style="margin-top:8px;">
                     <label><input type="checkbox" id="showCanvasBorder" checked data-redraw>${S.showBorder}</label>
                 </div>
-                <div class="param-inline" style="margin-top:8px;">
-                    <label>${S.fontLabel}
-                        <select id="fontFamily" data-redraw>
-                            <option value="Times New Roman" selected>Times New Roman</option>
-                            <option value="Arial">Arial</option>
-                            <option value="Calibri">Calibri</option>
-                            <option value="Helvetica">Helvetica</option>
-                            <option value="Microsoft YaHei">微软雅黑</option>
-                        </select>
-                    </label>
-                </div>
+<div class="param-inline" style="margin-top:8px;">
+    <label>${S.fontLabel}
+        <select id="fontFamily" data-redraw>
+            ${fontOptionsHTML('Times New Roman')}
+        </select>
+    </label>
+</div>
             </div>
         `;
     }
@@ -1407,7 +1427,6 @@ const markerW = isLineShape ? markerSize * 1.5 : markerSize;
         `;
     }
 
-    /* ---------- 对外暴露 ---------- */
     global.PlotCommon = {
         hexToRgb, rgbToHex, mixColor, sampleStops, expandScheme,
         getCategoricalScheme,
@@ -1432,7 +1451,8 @@ const markerW = isLineShape ? markerSize * 1.5 : markerSize;
         downloadSVG, downloadPNG,
         showToast, escapeHtml, clone, uid,
         getLang, getLangUrl, t, L, PT,
-
+    FONT_OPTIONS,        
+    fontOptionsHTML,     
         num, numById, intById,
         estTextWidth, fmtNum, textColorOn,
         polarXY, buildValueText,

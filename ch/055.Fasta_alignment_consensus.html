@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FASTA比对序列转单行序列（各位点频数统计） - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>FASTA比对序列转单行序列（各位点频数统计）</h2>
+            <p>导入已比对的FASTA序列（DNA/RNA/氨基酸均可），按位点统计各字母的组成，转换为一行带注释的序列，用于绘制序列Logo或后续分析。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入FASTA比对文件</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="fastaFile" accept=".fasta,.fa,.fna,.ffn,.faa,.frn,.txt,.fas,.aln">
+            </div>
+            <div class="text-input">
+                <textarea id="fastaText" placeholder="粘贴比对后的标准FASTA格式内容（所有序列长度需一致）" disabled></textarea>
+            </div>
+            <div class="info-box">
+                所有序列必须已比对（长度一致）；gap 字符（<code>-</code>、<code>.</code>、<code>?</code> 等）按原样作为一个字母参与统计；字母大小写统一按大写统计。
+            </div>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="loadBtn">导入序列</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：结果预览与导出</div>
+            <div class="param-group">
+                <label>显示方式：
+                    <select id="displayMode">
+                        <option value="letters">仅显示序列（如 ATGC[GC]T）</option>
+                        <option value="count">显示频数（如 ATGC[G:3;C:3]T）</option>
+                        <option value="freq">显示频率（如 ATGC[G:0.5;C:0.5]T）</option>
+                    </select>
+                </label>
+                <label>显示阈值（按频率过滤，0 = 存在即展示，0.5 = 仅显示占比 &gt; 0.5 的字母）：
+                    <input type="number" id="thresholdInput" value="0" min="0" max="1" step="0.01" style="width:80px;">
+                </label>
+                <label style="display:flex; align-items:center; gap:6px;">
+                    <input type="checkbox" id="normalizeInput" checked>
+                    频率归一化（过滤后重新归一，使剩余字母频率之和为1）
+                </label>
+            </div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyBtn" disabled>复制结果</button>
+                <button class="btn" id="downloadBtn" disabled>导出表格</button>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div id="summary" class="tip-text" style="color:#1f4068; margin-bottom:8px;"></div>
+            <div id="motifBox">
+                <p style="color:#999; text-align:center; padding:30px 0;">导入比对后的FASTA序列后，将在此展示转换后的单行序列</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const PROB_PRECISION = 4;
+
+            const fastaFile = document.getElementById('fastaFile');
+            const fastaText = document.getElementById('fastaText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+
+            const displayMode = document.getElementById('displayMode');
+            const thresholdInput = document.getElementById('thresholdInput');
+            const normalizeInput = document.getElementById('normalizeInput');
+            const copyBtn = document.getElementById('copyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const toolbarTip = document.getElementById('toolbarTip');
+
+            const summaryEl = document.getElementById('summary');
+            const motifBox = document.getElementById('motifBox');
+
+            const state = {
+                seqs: [],
+                length: 0,
+                letters: [],
+                stats: []
+            };
+
+            let outputTsv = '';
+
+            function escapeHtml(s) {
+                return String(s).replace(/[&<>"']/g, function (m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+                });
+            }
+
+            function showMsg(msg, type) {
+                const prefix = type === 'success' ? '✅ ' : (type === 'error' ? '❌ ' : '');
+                msgTip.innerHTML = '<span class="' + (type || '') + '">' + prefix + escapeHtml(msg) + '</span>';
+                setTimeout(function () {
+                    if (msgTip.innerHTML === '<span class="' + (type || '') + '">' + prefix + escapeHtml(msg) + '</span>') msgTip.innerHTML = '';
+                }, 6000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function formatProbability(p) {
+                if (!(p > 0)) return '0';
+                let s = p.toFixed(PROB_PRECISION);
+                s = s.replace(/0+$/, '').replace(/\.$/, '');
+                return s || '0';
+            }
+
+            function getDisplayOptions() {
+                const mode = displayMode.value;
+                let threshold = parseFloat(thresholdInput.value);
+                if (isNaN(threshold) || threshold < 0) threshold = 0;
+                if (threshold > 1) threshold = 1;
+                const normalize = mode === 'freq' && normalizeInput.checked;
+                return { mode: mode, threshold: threshold, normalize: normalize };
+            }
+
+            function formatPosition(stat, opts) {
+                const entries = Object.keys(stat.probs)
+                    .filter(function (l) { return stat.probs[l] > opts.threshold; })
+                    .map(function (l) { return [l, stat.counts[l], stat.probs[l]]; });
+
+                entries.sort(function (a, b) {
+                    if (b[2] !== a[2]) return b[2] - a[2];
+                    return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0;
+                });
+
+                if (!entries.length) return '?';
+                if (entries.length === 1) return entries[0][0];
+
+                if (opts.mode === 'letters') {
+                    return '[' + entries.map(function (e) { return e[0]; }).join('') + ']';
+                }
+                if (opts.mode === 'count') {
+                    return '[' + entries.map(function (e) { return e[0] + ':' + e[1]; }).join(';') + ']';
+                }
+
+                let probs = entries.map(function (e) { return e[2]; });
+                if (opts.normalize) {
+                    const sum = probs.reduce(function (a, b) { return a + b; }, 0);
+                    if (sum > 0) probs = probs.map(function (p) { return p / sum; });
+                }
+                return '[' + entries.map(function (e, i) {
+                    return e[0] + ':' + formatProbability(probs[i]);
+                }).join(';') + ']';
+            }
+
+            function parseFasta(text) {
+                const lines = text.split(/\r?\n/);
+                const seqs = [];
+                let header = null;
+                let seq = '';
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    if (trimmed.charAt(0) === '>') {
+                        if (header !== null && seq) seqs.push({ id: header, seq: seq });
+                        header = trimmed.slice(1).trim();
+                        seq = '';
+                    } else {
+                        seq += trimmed.replace(/\s+/g, '');
+                    }
+                }
+                if (header !== null && seq) seqs.push({ id: header, seq: seq });
+                return seqs;
+            }
+
+            function computeStats(seqs) {
+                const length = seqs[0].seq.length;
+                const letterSet = new Set();
+                seqs.forEach(function (s) {
+                    const up = s.seq.toUpperCase();
+                    for (let i = 0; i < up.length; i++) letterSet.add(up.charAt(i));
+                });
+                const letters = Array.from(letterSet).sort(function (a, b) {
+                    return a < b ? -1 : a > b ? 1 : 0;
+                });
+
+                const counts = [];
+                for (let i = 0; i < length; i++) {
+                    const o = {};
+                    letters.forEach(function (l) { o[l] = 0; });
+                    counts.push(o);
+                }
+
+                const total = seqs.length;
+                seqs.forEach(function (s) {
+                    const up = s.seq.toUpperCase();
+                    for (let i = 0; i < length; i++) {
+                        const ch = up.charAt(i);
+                        if (counts[i][ch] !== undefined) counts[i][ch]++;
+                    }
+                });
+
+                const stats = counts.map(function (c) {
+                    const probs = {};
+                    letters.forEach(function (l) {
+                        if (c[l] > 0) probs[l] = c[l] / total;
+                    });
+                    return { counts: c, probs: probs };
+                });
+
+                return { length: length, letters: letters, stats: stats };
+            }
+
+            function buildConsensus() {
+                const opts = getDisplayOptions();
+                return state.stats.map(function (st) {
+                    return formatPosition(st, opts);
+                }).join('');
+            }
+
+            function renderSummary() {
+                if (!state.seqs.length) {
+                    summaryEl.innerHTML = '';
+                    return;
+                }
+                summaryEl.innerHTML =
+                    '<strong>序列数：</strong>' + state.seqs.length + ' 条' +
+                    ' &nbsp;|&nbsp; <strong>比对长度：</strong>' + state.length +
+                    ' &nbsp;|&nbsp; <strong>字母表：</strong><code>' +
+                    state.letters.map(escapeHtml).join(' ') + '</code>';
+            }
+
+            function renderTable() {
+                if (!state.seqs.length) {
+                    motifBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">导入比对后的FASTA序列后，将在此展示转换后的单行序列</p>';
+                    return;
+                }
+                const consensus = buildConsensus();
+                let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>';
+                html += '<th>Name</th><th>Sequence</th>';
+                html += '</tr></thead><tbody>';
+                html += '<tr>';
+                html += '<td style="text-align:left; white-space:nowrap;">Consensus</td>';
+                html += '<td style="text-align:left; word-break:break-all; font-family:Consolas,monospace;">' + escapeHtml(consensus) + '</td>';
+                html += '</tr>';
+                html += '</tbody></table></div></div>';
+                motifBox.innerHTML = html;
+            }
+
+            function getOutputRows() {
+                return [['Name', 'Sequence'], ['Consensus', buildConsensus()]];
+            }
+
+            function rowsToTsv(rows) {
+                return rows.map(function (r) {
+                    return r.map(function (v) { return String(v == null ? '' : v); }).join('\t');
+                }).join('\n') + '\n';
+            }
+
+            function csvValue(v) {
+                const s = String(v == null ? '' : v);
+                if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+                return s;
+            }
+
+            function rowsToCsv(rows) {
+                return rows.map(function (r) {
+                    return r.map(csvValue).join(',');
+                }).join('\n') + '\n';
+            }
+
+            function downloadRowsCsv(rows, filename) {
+                const csv = '\ufeff' + rowsToCsv(rows);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                toast('已导出表格');
+            }
+
+            function copyTextToClipboard(text, tipEl, successText) {
+                if (!text) {
+                    if (tipEl) tipEl.innerHTML = '<span class="error">❌ 暂无可复制内容</span>';
+                    toast('暂无可复制内容');
+                    return;
+                }
+                function done() {
+                    if (tipEl) tipEl.innerHTML = '<span class="success">✅ ' + successText + '</span>';
+                    toast(successText);
+                }
+                function fail() {
+                    if (tipEl) tipEl.innerHTML = '<span class="error">❌ 复制失败</span>';
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(done).catch(fail);
+                } else {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); done(); } catch (e) { fail(); }
+                    document.body.removeChild(ta);
+                }
+            }
+
+            function updateToolbar() {
+                const has = state.seqs.length > 0;
+                copyBtn.disabled = !has;
+                downloadBtn.disabled = !has;
+                outputTsv = has ? rowsToTsv(getOutputRows()) : '';
+            }
+
+            function loadSequences(text) {
+                try {
+                    const seqs = parseFasta(text);
+                    if (seqs.length === 0) throw new Error('未解析到有效序列（请检查FASTA格式）');
+
+                    const len = seqs[0].seq.length;
+                    for (let i = 1; i < seqs.length; i++) {
+                        if (seqs[i].seq.length !== len) {
+                            throw new Error('第 ' + (i + 1) + ' 条序列长度 ' + seqs[i].seq.length +
+                                ' 与第 1 条 ' + len + ' 不一致，请确认已比对');
+                        }
+                    }
+
+                    const computed = computeStats(seqs);
+                    state.seqs = seqs;
+                    state.length = computed.length;
+                    state.letters = computed.letters;
+                    state.stats = computed.stats;
+
+                    renderSummary();
+                    renderTable();
+                    updateToolbar();
+
+                    showMsg('成功加载 ' + seqs.length + ' 条序列，比对长度 ' + len +
+                        '，字母表 ' + computed.letters.join(','), 'success');
+                    toast('加载成功');
+                } catch (e) {
+                    state.seqs = [];
+                    state.length = 0;
+                    state.letters = [];
+                    state.stats = [];
+                    renderSummary();
+                    renderTable();
+                    updateToolbar();
+                    showMsg(e.message, 'error');
+                }
+            }
+
+            function syncNormalizeState() {
+                normalizeInput.disabled = displayMode.value !== 'freq';
+            }
+
+            window.switchInputMode = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    fastaFile.disabled = false;
+                    fastaText.disabled = true;
+                    fastaText.value = '';
+                } else {
+                    fastaFile.disabled = true;
+                    fastaFile.value = '';
+                    fastaText.disabled = false;
+                }
+            };
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    const file = fastaFile.files[0];
+                    if (!file) {
+                        showMsg('请选择文件', 'error');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        fastaText.value = e.target.result;
+                        loadSequences(e.target.result);
+                    };
+                    reader.onerror = function () {
+                        showMsg('文件读取失败', 'error');
+                    };
+                    reader.readAsText(file);
+                } else {
+                    const text = fastaText.value.trim();
+                    if (!text) {
+                        showMsg('请粘贴FASTA内容', 'error');
+                        return;
+                    }
+                    loadSequences(text);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function () {
+                const example = [
+                    '>seq1',  'ATGCTAGCTTGCTAT',
+                    '>seq2',  'ATGCTAGCTTGCTAT',
+                    '>seq3',  'ATGCTAGCTTGCTAT',
+                    '>seq4',  'ATGCTAGCTAGCTAT',
+                    '>seq5',  'ATGCCAGG-AGCCAA',
+                    '>seq6',  'ATGCCAGCNAGCTAG',
+                    '>seq7',  'ATGCCAGCTAGCTAG',
+                    '>seq8',  'GTGCCAGCTAGCTAG',
+                    '>seq9',  'GTGCCAGCTAGCTAG',
+                    '>seq10', 'GTGCCAGCTAGCTAG'
+                ].join('\n');
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                switchInputMode();
+                fastaText.value = example;
+                loadSequences(example);
+            });
+
+            displayMode.addEventListener('change', function () {
+                syncNormalizeState();
+                renderTable();
+                updateToolbar();
+            });
+
+            thresholdInput.addEventListener('input', function () {
+                renderTable();
+                updateToolbar();
+            });
+
+            normalizeInput.addEventListener('change', function () {
+                renderTable();
+                updateToolbar();
+            });
+
+            copyBtn.addEventListener('click', function () {
+                if (!outputTsv) outputTsv = rowsToTsv(getOutputRows());
+                copyTextToClipboard(outputTsv, toolbarTip, '结果已复制');
+            });
+
+            downloadBtn.addEventListener('click', function () {
+                if (!state.seqs.length) return;
+                downloadRowsCsv(getOutputRows(), 'consensus_sequence.csv');
+            });
+
+            switchInputMode();
+            syncNormalizeState();
+            renderTable();
+            updateToolbar();
+        })();
+    </script>
+</body>
+</html>

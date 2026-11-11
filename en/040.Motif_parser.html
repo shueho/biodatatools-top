@@ -44,9 +44,17 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">Step 2: Motif Information Preview</div>
+            <div class="step-title">Step 2: Motif Sequence and Base/Amino Acid Proportions</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyProportionBtn" disabled>Copy Result</button>
+                <button class="btn" id="downloadProportionBtn" disabled>Export Table</button>
+                <span id="proportionTip" class="tip-text"></span>
+            </div>
             <div id="motifBox">
-                <p style="color:#999; text-align:center; padding:30px 0;">After parsing, motif IDs, sequences, and related information will be displayed here.</p>
+                <p style="color:#999; text-align:center; padding:30px 0;">After parsing, the sequence and per-position base/amino acid proportions of each motif will be displayed here.</p>
+            </div>
+            <div class="info-box">
+                <strong>Note:</strong> Can be used to draw sequence logo plots.
             </div>
         </div>
 
@@ -87,7 +95,11 @@
         let parsedSequences = [];
         let parsedMotifs = [];
         let tsvOutput = '';
+        let proportionTsv = '';
         let pendingContent = '';
+
+        const PROB_PRECISION = 4;
+        const PROB_MIN = 0.001;
 
         const msgTip = document.getElementById('msgTip');
         const motifBox = document.getElementById('motifBox');
@@ -96,6 +108,9 @@
         const copyBtn = document.getElementById('copyBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const toolbarTip = document.getElementById('toolbarTip');
+        const copyProportionBtn = document.getElementById('copyProportionBtn');
+        const downloadProportionBtn = document.getElementById('downloadProportionBtn');
+        const proportionTip = document.getElementById('proportionTip');
         const resultFile = document.getElementById('resultFile');
         const resultText = document.getElementById('resultText');
 
@@ -132,15 +147,34 @@
             return 'none';
         }
 
-        function detectFormat(content) {
-            const t = (content || '').trim();
-            if (!t) return 'unknown';
-            if (/^<\?xml/i.test(t) || /^</.test(t)) {
-                if (/<MEME\b/i.test(t) || /^<meme\b/i.test(t)) return 'meme-xml';
-                if (/<mast\b/i.test(t) || /^<mast\b/i.test(t)) return 'mast-xml';
-                return 'unknown';
-            }
-            return 'unknown';
+        function normalizeMotifId(raw, fallbackIdx) {
+            const m = String(raw || '').match(/(\d+)/);
+            if (m) return 'motif_' + m[1];
+            return 'motif_' + (fallbackIdx + 1);
+        }
+
+        function normalizeMemeMotifId(rawId, idx) {
+            const s = String(rawId || '');
+            if (/^motif_\d+$/i.test(s)) return s;
+            const m = s.match(/(\d+)/);
+            if (m) return 'motif_' + m[1];
+            return 'motif_' + (idx + 1);
+        }
+
+        function parseProbMatrix(motifEl) {
+            const probs = [];
+            const probEl = motifEl.querySelector('probabilities');
+            if (!probEl) return probs;
+            probEl.querySelectorAll('alphabet_matrix > alphabet_array').forEach(function (arrEl) {
+                const row = {};
+                arrEl.querySelectorAll('value').forEach(function (vEl) {
+                    const letter = vEl.getAttribute('letter_id');
+                    const val = parseFloat(vEl.textContent);
+                    if (letter && !isNaN(val)) row[letter] = val;
+                });
+                probs.push(row);
+            });
+            return probs;
         }
 
         function parseMemeXmlContent(content) {
@@ -154,7 +188,7 @@
                 const id = el.getAttribute('id');
                 sequences[id] = {
                     id: id,
-                    name: el.getAttribute('name'),
+                    name: el.getAttribute('name') || id,
                     length: parseInt(el.getAttribute('length'), 10),
                     sites: []
                 };
@@ -162,12 +196,25 @@
 
             const motifInfo = {};
             const motifs = [];
-            doc.querySelectorAll('motifs > motif').forEach(function (el) {
-                const id = el.getAttribute('id');
+            doc.querySelectorAll('motifs > motif').forEach(function (el, idx) {
+                const rawId = el.getAttribute('id');
+                const displayId = normalizeMemeMotifId(rawId, idx);
+
+                let consensus = el.getAttribute('name') || '';
+                const regexEl = el.querySelector('regular_expression');
+                if (regexEl) {
+                    const rx = (regexEl.textContent || '').replace(/\s+/g, '');
+                    if (rx) consensus = rx;
+                }
+
+                const probs = parseProbMatrix(el);
+
                 const info = {
-                    id: id,
-                    alt: el.getAttribute('alt'),
-                    consensus: el.getAttribute('name'),
+                    id: displayId,
+                    rawId: rawId,
+                    alt: el.getAttribute('alt') || '',
+                    consensus: consensus,
+                    probs: probs,
                     width: parseInt(el.getAttribute('width'), 10),
                     sites: parseInt(el.getAttribute('sites'), 10),
                     eValue: el.getAttribute('e_value'),
@@ -175,7 +222,7 @@
                     llr: el.getAttribute('llr'),
                     ic: el.getAttribute('ic')
                 };
-                motifInfo[id] = info;
+                motifInfo[rawId] = info;
                 motifs.push(info);
             });
 
@@ -188,7 +235,7 @@
                     if (!mi) return;
                     const pos = parseInt(siteEl.getAttribute('position'), 10);
                     sequences[seqId].sites.push({
-                        motifId: motifId,
+                        motifId: mi.id,
                         motifName: mi.consensus,
                         motifAlt: mi.alt,
                         width: mi.width,
@@ -216,20 +263,109 @@
             };
         }
 
+        function parseBackground(bgEl) {
+            const bg = {};
+            if (!bgEl) return bg;
+            for (let i = 0; i < bgEl.attributes.length; i++) {
+                const attr = bgEl.attributes[i];
+                const v = parseFloat(attr.value);
+                if (!isNaN(v)) bg[attr.name] = v;
+            }
+            return bg;
+        }
+
+        function posToProbs(posEl, bg, nsites) {
+            const letters = Object.keys(bg || {});
+            if (!letters.length) return {};
+            const weights = {};
+            let sum = 0;
+            letters.forEach(function (l) {
+                const raw = parseFloat(posEl.getAttribute(l));
+                const lo = isNaN(raw) ? 0 : raw / 100;
+                const w = bg[l] * Math.pow(2, lo);
+                weights[l] = w;
+                sum += w;
+            });
+            const probs = {};
+            if (!(sum > 0)) return probs;
+            letters.forEach(function (l) { probs[l] = weights[l] / sum; });
+
+            if (!(nsites > 1)) return probs;
+
+            const MIN_COUNT = 0.5 / nsites;
+            const items = letters.map(function (l) { return [l, probs[l]]; })
+                .filter(function (it) { return it[1] >= MIN_COUNT; })
+                .sort(function (a, b) { return b[1] - a[1]; });
+
+            const out = {};
+            letters.forEach(function (l) { out[l] = 0; });
+            if (!items.length) return out;
+
+            const raws = items.map(function (it) { return it[1] * nsites; });
+            const counts = raws.map(function (x) { return Math.floor(x); });
+            let assigned = counts.reduce(function (a, b) { return a + b; }, 0);
+            let remainder = nsites - assigned;
+
+            const order = raws.map(function (x, i) { return [i, x - Math.floor(x)]; })
+                .sort(function (a, b) { return b[1] - a[1]; });
+            for (let j = 0; j < order.length && remainder > 0; j++, remainder--) {
+                counts[order[j][0]]++;
+            }
+            if (remainder > 0 && items.length) counts[0] += remainder;
+
+            items.forEach(function (it, i) { out[it[0]] = counts[i] / nsites; });
+            return out;
+        }
+
         function parseMastXmlContent(content) {
             const parser = new DOMParser();
             const doc = parser.parseFromString(content, 'text/xml');
             if (doc.querySelector('parsererror')) throw new Error('XML parsing failed.');
             if (!doc.querySelector('mast')) throw new Error('Not a valid MAST XML file.');
 
+            const rootBgEls = [];
+            const dbBgEls = [];
+            const allBgEls = doc.getElementsByTagName('background');
+            for (let i = 0; i < allBgEls.length; i++) {
+                const el = allBgEls[i];
+                let p = el.parentNode, inDb = false;
+                while (p && p.nodeType === 1) {
+                    const name = (p.nodeName || '').toLowerCase();
+                    if (name === 'motif_db') { inDb = true; break; }
+                    p = p.parentNode;
+                }
+                if (inDb) dbBgEls.push(el); else rootBgEls.push(el);
+            }
+
+            const backgrounds = {};
+            dbBgEls.forEach(function (bgEl, i) { backgrounds[i] = parseBackground(bgEl); });
+
+            const rootBgEl = rootBgEls[0] || null;
+            const rootBg = parseBackground(rootBgEl);
+
             const motifs = [];
             const motifByIdx = {};
             doc.querySelectorAll('motifs > motif').forEach(function (el, idx) {
                 const alt = el.getAttribute('alt') || '';
+                const seqStr = el.getAttribute('id') || '';
+                const dbIdx = parseInt(el.getAttribute('db'), 10);
+                const dbBg = backgrounds[isNaN(dbIdx) ? 0 : dbIdx] || backgrounds[0] || {};
+                const bg = Object.keys(dbBg).length ? dbBg : rootBg;
+                const nsites = parseInt(el.getAttribute('nsites'), 10);
+
+                console.log('[bg] motif', alt, 'uses',
+                    Object.keys(dbBg).length ? 'motif_db' : 'root', JSON.stringify(bg));
+
+                const probs = [];
+                el.querySelectorAll('pos').forEach(function (posEl) {
+                    probs.push(posToProbs(posEl, bg, nsites));
+                });
+
                 const info = {
-                    id: alt || el.getAttribute('id'),
+                    id: normalizeMotifId(alt, idx),   
                     alt: alt,
-                    consensus: el.getAttribute('id'),
+                    consensus: seqStr,               
+                    probs: probs,
                     width: parseInt(el.getAttribute('length'), 10),
                     sites: parseInt(el.getAttribute('nsites'), 10),
                     eValue: el.getAttribute('evalue'),
@@ -254,6 +390,7 @@
                     const mi = motifByIdx[idx];
                     if (!mi) return;
                     const pos = parseInt(hitEl.getAttribute('pos'), 10);
+                    const rc = hitEl.getAttribute('rc');
                     sites.push({
                         motifId: mi.id,
                         motifName: mi.consensus,
@@ -262,7 +399,7 @@
                         start: pos,
                         end: pos + mi.width - 1,
                         pvalue: hitEl.getAttribute('pvalue'),
-                        strand: normalizeStrand(hitEl.getAttribute('rc'))
+                        strand: (rc === '1' || String(rc).toLowerCase() === 'true') ? 'minus' : 'plus'
                     });
                 });
                 sites.sort(function (a, b) { return a.start - b.start; });
@@ -280,11 +417,58 @@
             return { sequences: sequences, motifs: motifs };
         }
 
+        function detectFormat(content) {
+            const t = (content || '').trim();
+            if (!t) return 'unknown';
+            if (/^<\?xml/i.test(t) || /^</.test(t)) {
+                if (/<MEME\b/i.test(t) || /^<meme\b/i.test(t)) return 'meme-xml';
+                if (/<mast\b/i.test(t) || /^<mast\b/i.test(t)) return 'mast-xml';
+                return 'unknown';
+            }
+            return 'unknown';
+        }
+
         function parseContent(content) {
             const fmt = detectFormat(content);
             if (fmt === 'meme-xml') return parseMemeXmlContent(content);
             if (fmt === 'mast-xml') return parseMastXmlContent(content);
             throw new Error('Unrecognized content format (only MEME/MAST XML is supported).');
+        }
+
+        function formatProbability(p) {
+            if (!(p > 0)) return '0';
+            let s = p.toFixed(PROB_PRECISION);
+            s = s.replace(/0+$/, '').replace(/\.$/, '');
+            return s || '0';
+        }
+
+        function formatPositionProbs(probs) {
+            if (!probs) return '';
+            const entries = [];
+            Object.keys(probs).forEach(function (letter) {
+                const p = probs[letter];
+                if (!(p > 0)) return;
+                if (p < PROB_MIN) return;
+                const rounded = parseFloat(p.toFixed(PROB_PRECISION));
+                if (!(rounded > 0)) return;
+                entries.push([letter, rounded]);
+            });
+            if (!entries.length) return 'N';
+            entries.sort(function (a, b) {
+                if (b[1] !== a[1]) return b[1] - a[1];
+                return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0;
+            });
+            if (entries.length === 1) return entries[0][0];
+            return '[' + entries.map(function (e) {
+                return e[0] + ':' + formatProbability(e[1]);
+            }).join(';') + ']';
+        }
+
+        function buildConsensusString(m) {
+            if (m.probs && m.probs.length) {
+                return m.probs.map(formatPositionProbs).join('');
+            }
+            return m.consensus || '';
         }
 
         function buildSitesString(seq, useId) {
@@ -298,27 +482,114 @@
             }).join('|');
         }
 
-        function renderMotifPreview() {
+        function rowsToTableHtml(rows) {
+            if (!rows || rows.length === 0) return '';
+            const headers = rows[0];
+            const longCols = {};
+            headers.forEach(function (h, i) {
+                if (h === 'Consensus' || h === 'Domains' || h === 'Sequence') longCols[i] = true;
+            });
+            let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>';
+            headers.forEach(function (h) {
+                html += '<th>' + escapeHtml(h) + '</th>';
+            });
+            html += '</tr></thead><tbody>';
+            for (let i = 1; i < rows.length; i++) {
+                html += '<tr>';
+                rows[i].forEach(function (v, idx) {
+                    let cellStyle = '';
+                    if (idx === 0) cellStyle = 'text-align:left; white-space:nowrap;';
+                    else if (longCols[idx]) cellStyle = 'text-align:left; word-break:break-all;';
+                    html += '<td' + (cellStyle ? ' style="' + cellStyle + '"' : '') + '>' + escapeHtml(v) + '</td>';
+                });
+                html += '</tr>';
+            }
+            html += '</tbody></table></div></div>';
+            return html;
+        }
+
+        function rowsToTsv(rows) {
+            return rows.map(function (r) {
+                return r.map(function (v) { return String(v == null ? '' : v); }).join('\t');
+            }).join('\n') + '\n';
+        }
+
+        function csvValue(v) {
+            const s = String(v == null ? '' : v);
+            if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+            return s;
+        }
+
+        function rowsToCsv(rows) {
+            return rows.map(function (r) {
+                return r.map(csvValue).join(',');
+            }).join('\n') + '\n';
+        }
+
+        function downloadRowsCsv(rows, filename) {
+            const csv = '\ufeff' + rowsToCsv(rows);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            window.showToast && window.showToast('✅ Table exported.');
+        }
+
+        function copyTextToClipboard(text, tipEl, successText) {
+            if (!text) {
+                if (tipEl) tipEl.innerHTML = '<span class="error">❌ No content to copy.</span>';
+                window.showToast && window.showToast('❌ No content to copy.');
+                return;
+            }
+            function done() {
+                if (tipEl) tipEl.innerHTML = '<span class="success">✅ ' + successText + '</span>';
+                window.showToast && window.showToast('✅ ' + successText);
+            }
+            function fail() {
+                if (tipEl) tipEl.innerHTML = '<span class="error">❌ Copy failed.</span>';
+            }
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(done).catch(fail);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); done(); } catch (e) { fail(); }
+                document.body.removeChild(ta);
+            }
+        }
+
+        function getProportionRows() {
+            const rows = [['Motif_ID', 'Consensus']];
+            parsedMotifs.forEach(function (m) {
+                rows.push([m.id, buildConsensusString(m)]);
+            });
+            return rows;
+        }
+
+        function renderProportion() {
             if (!parsedMotifs.length) {
+                proportionTsv = '';
                 motifBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">No motif data available.</p>';
                 return;
             }
-            let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>'
-                + '<th>Motif ID</th><th>Motif Sequence (Consensus)</th><th>width</th>'
-                + '<th>sites</th><th>E-value</th><th>LLR</th>'
-                + '</tr></thead><tbody>';
-            parsedMotifs.forEach(function (m) {
-                html += '<tr>'
-                    + '<td>' + escapeHtml(m.id) + '</td>'
-                    + '<td style="text-align:left; word-break:break-all; font-family:Consolas,monospace;">' + escapeHtml(m.consensus || '') + '</td>'
-                    + '<td>' + (m.width != null ? m.width : '') + '</td>'
-                    + '<td>' + (m.sites != null ? m.sites : '') + '</td>'
-                    + '<td>' + escapeHtml(m.eValue || '-') + '</td>'
-                    + '<td>' + escapeHtml(m.llr || '-') + '</td>'
-                    + '</tr>';
-            });
-            html += '</tbody></table></div></div>';
-            motifBox.innerHTML = html;
+            const rows = getProportionRows();
+            proportionTsv = rowsToTsv(rows);
+            motifBox.innerHTML = rowsToTableHtml(rows);
+        }
+
+        function updateProportionToolbar() {
+            const has = parsedMotifs.length > 0;
+            copyProportionBtn.disabled = !has;
+            downloadProportionBtn.disabled = !has;
         }
 
         function getOutputRows() {
@@ -350,47 +621,6 @@
                 rows.push([s.name, s.length, buildSitesString(s, useId)]);
             });
             return rows;
-        }
-
-        function rowsToTableHtml(rows) {
-            if (!rows || rows.length === 0) return '';
-            let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>';
-            rows[0].forEach(function (h) {
-                html += '<th>' + escapeHtml(h) + '</th>';
-            });
-            html += '</tr></thead><tbody>';
-            for (let i = 1; i < rows.length; i++) {
-                html += '<tr>';
-                rows[i].forEach(function (v, idx) {
-                    const isFirst = idx === 0;
-                    const isDomains = rows[0].length === 3 && idx === 2;
-                    let cellStyle = '';
-                    if (isFirst) cellStyle = 'text-align:left; white-space:nowrap;';
-                    if (isDomains) cellStyle = 'text-align:left; word-break:break-all;';
-                    html += '<td' + (cellStyle ? ' style="' + cellStyle + '"' : '') + '>' + escapeHtml(v) + '</td>';
-                });
-                html += '</tr>';
-            }
-            html += '</tbody></table></div></div>';
-            return html;
-        }
-
-        function rowsToTsv(rows) {
-            return rows.map(function (r) {
-                return r.map(function (v) { return String(v == null ? '' : v); }).join('\t');
-            }).join('\n') + '\n';
-        }
-
-        function csvValue(v) {
-            const s = String(v == null ? '' : v);
-            if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-            return s;
-        }
-
-        function rowsToCsv(rows) {
-            return rows.map(function (r) {
-                return r.map(csvValue).join(',');
-            }).join('\n') + '\n';
         }
 
         function renderOutput() {
@@ -430,9 +660,10 @@
                 return;
             }
 
-            renderMotifPreview();
+            renderProportion();
             renderOutput();
             updateToolbarState();
+            updateProportionToolbar();
             showMsg('✅ Parsed successfully: ' + parsedMotifs.length + ' motifs, ' + parsedSequences.length + ' sequences', 'success');
             window.showToast && window.showToast('✅ Parsed ' + parsedMotifs.length + ' motifs');
         }
@@ -511,52 +742,28 @@
             updateToolbarState();
         });
 
+        copyProportionBtn.addEventListener('click', function () {
+            copyTextToClipboard(proportionTsv, proportionTip, 'Result copied.');
+        });
+
+        downloadProportionBtn.addEventListener('click', function () {
+            if (!parsedMotifs.length) return;
+            downloadRowsCsv(getProportionRows(), 'motif_consensus_proportions.csv');
+        });
+
         copyBtn.addEventListener('click', function () {
-            if (!tsvOutput) {
-                window.showToast && window.showToast('❌ No content to copy.');
-                return;
-            }
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(tsvOutput).then(function () {
-                    toolbarTip.innerHTML = '<span class="success">✅ Result copied.</span>';
-                    window.showToast && window.showToast('✅ Result copied.');
-                }).catch(function () {
-                    toolbarTip.innerHTML = '<span class="error">❌ Copy failed.</span>';
-                });
-            } else {
-                const ta = document.createElement('textarea');
-                ta.value = tsvOutput;
-                document.body.appendChild(ta);
-                ta.select();
-                try {
-                    document.execCommand('copy');
-                    toolbarTip.innerHTML = '<span class="success">✅ Result copied.</span>';
-                } catch (e) {
-                    toolbarTip.innerHTML = '<span class="error">❌ Copy failed.</span>';
-                }
-                document.body.removeChild(ta);
-            }
+            copyTextToClipboard(tsvOutput, toolbarTip, 'Result copied.');
         });
 
         downloadBtn.addEventListener('click', function () {
             if (!parsedSequences.length && !parsedMotifs.length) return;
             const rows = getOutputRows();
-            const csv = '\ufeff' + rowsToCsv(rows);
             const style = outputStyle.value;
             let filename = 'sequence_domains_by_id.csv';
             if (style === 'motif') filename = 'motif_info.csv';
             else if (style === 'seq-seq') filename = 'sequence_domains_by_seq.csv';
             else if (style === 'sites') filename = 'motif_sites.csv';
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            window.showToast && window.showToast('✅ Table exported.');
+            downloadRowsCsv(rows, filename);
         });
 
         switchInput();

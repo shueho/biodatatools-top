@@ -98,8 +98,8 @@
         let proportionTsv = '';
         let pendingContent = '';
 
-const PROB_PRECISION = 4; // 概率保留小数位（去尾零后输出）
-const PROB_MIN = 0.001;   // 兜底：概率低于此值视为0（nsites吸附正常时不会触发）
+const PROB_PRECISION = 4; 
+const PROB_MIN = 0.001;   
         const msgTip = document.getElementById('msgTip');
         const motifBox = document.getElementById('motifBox');
         const outputBox = document.getElementById('outputBox');
@@ -138,7 +138,6 @@ const PROB_MIN = 0.001;   // 兜底：概率低于此值视为0（nsites吸附�
             showMsg('');
         }
 
-        /* ===================== 通用工具 ===================== */
 
         function normalizeStrand(v) {
             if (v === null || v === undefined) return 'none';
@@ -162,7 +161,6 @@ const PROB_MIN = 0.001;   // 兜底：概率低于此值视为0（nsites吸附�
             return 'motif_' + (idx + 1);
         }
 
-        /* ===================== 解析 MEME XML ===================== */
 
         function parseProbMatrix(motifEl) {
             const probs = [];
@@ -203,7 +201,6 @@ const PROB_MIN = 0.001;   // 兜底：概率低于此值视为0（nsites吸附�
                 const rawId = el.getAttribute('id');
                 const displayId = normalizeMemeMotifId(rawId, idx);
 
-                // 优先使用 regular_expression 作为 Motif 序列（DNA / 蛋白通用）
                 let consensus = el.getAttribute('name') || '';
                 const regexEl = el.querySelector('regular_expression');
                 if (regexEl) {
@@ -267,7 +264,6 @@ const PROB_MIN = 0.001;   // 兜底：概率低于此值视为0（nsites吸附�
             };
         }
 
-        /* ===================== 解析 MAST XML ===================== */
 
         function parseBackground(bgEl) {
             const bg = {};
@@ -280,9 +276,6 @@ const PROB_MIN = 0.001;   // 兜底：概率低于此值视为0（nsites吸附�
             return bg;
         }
 
-// log-odds（MEME/MAST 以 *100 的整数存储） + background -> 概率
-// nsites > 1 时，把概率吸附到 k/nsites：MEME 的 probabilities 矩阵本质是"计数/nsites"，
-// 这样能把 log-odds 反推产生的 ~1e-4 噪声和 0.8749/0.1248 这类误差还原成 0.875/0.125
 function posToProbs(posEl, bg, nsites) {
     const letters = Object.keys(bg || {});
     if (!letters.length) return {};
@@ -290,8 +283,8 @@ function posToProbs(posEl, bg, nsites) {
     let sum = 0;
     letters.forEach(function (l) {
         const raw = parseFloat(posEl.getAttribute(l));
-        const lo = isNaN(raw) ? 0 : raw / 100;      // log2 odds
-        const w = bg[l] * Math.pow(2, lo);          // 还原成概率权重
+        const lo = isNaN(raw) ? 0 : raw / 100;      
+        const w = bg[l] * Math.pow(2, lo);          
         weights[l] = w;
         sum += w;
     });
@@ -299,11 +292,9 @@ function posToProbs(posEl, bg, nsites) {
     if (!(sum > 0)) return probs;
     letters.forEach(function (l) { probs[l] = weights[l] / sum; });
 
-    // —— 吸附到 k/nsites ——
-    // —— 吸附到 k/nsites（最大余数法）——
+  
     if (!(nsites > 1)) return probs;
 
-    // 小于半个计数的概率项直接视为 0（拦掉 W 这类噪声）
     const MIN_COUNT = 0.5 / nsites;
     const items = letters.map(function (l) { return [l, probs[l]]; })
         .filter(function (it) { return it[1] >= MIN_COUNT; })
@@ -313,7 +304,6 @@ function posToProbs(posEl, bg, nsites) {
     letters.forEach(function (l) { out[l] = 0; });
     if (!items.length) return out;
 
-    // 先 floor，再把剩余计数按小数部分降序分配（不再硬塞给最后一项）
     const raws = items.map(function (it) { return it[1] * nsites; });
     const counts = raws.map(function (x) { return Math.floor(x); });
     let assigned = counts.reduce(function (a, b) { return a + b; }, 0);
@@ -324,7 +314,6 @@ function posToProbs(posEl, bg, nsites) {
     for (let j = 0; j < order.length && remainder > 0; j++, remainder--) {
         counts[order[j][0]]++;
     }
-    // 浮点兜底：极少数情况剩余仍 >0，补给最大项
     if (remainder > 0 && items.length) counts[0] += remainder;
 
     items.forEach(function (it, i) { out[it[0]] = counts[i] / nsites; });
@@ -335,9 +324,7 @@ function posToProbs(posEl, bg, nsites) {
             const doc = parser.parseFromString(content, 'text/xml');
             if (doc.querySelector('parsererror')) throw new Error('XML解析失败');
             if (!doc.querySelector('mast')) throw new Error('不是有效的MAST XML文件');
-
-            // 鲁棒收集所有 <background>：按是否位于 <motif_db> 内分类
-            // 不用 doc.querySelector('background')，避免只拿到文档里第一个（根级 --nrdb--）
+    
             const rootBgEls = [];
             const dbBgEls = [];
             const allBgEls = doc.getElementsByTagName('background');
@@ -352,11 +339,9 @@ function posToProbs(posEl, bg, nsites) {
                 if (inDb) dbBgEls.push(el); else rootBgEls.push(el);
             }
 
-            // motif_db 的 background（meme.xml 生成 motif 时的矩阵），按出现顺序编号
             const backgrounds = {};
             dbBgEls.forEach(function (bgEl, i) { backgrounds[i] = parseBackground(bgEl); });
 
-            // 根级 background（通常 --nrdb--），仅作兜底
             const rootBgEl = rootBgEls[0] || null;
             const rootBg = parseBackground(rootBgEl);
 
@@ -367,11 +352,9 @@ function posToProbs(posEl, bg, nsites) {
                 const seqStr = el.getAttribute('id') || '';
                 const dbIdx = parseInt(el.getAttribute('db'), 10);
                 const dbBg = backgrounds[isNaN(dbIdx) ? 0 : dbIdx] || backgrounds[0] || {};
-                // 优先用 motif_db（meme.xml）的 background，没有才退回根级
                 const bg = Object.keys(dbBg).length ? dbBg : rootBg;
                 const nsites = parseInt(el.getAttribute('nsites'), 10);
 
-                // 临时调试：确认用的是哪个 background（验证完可删）
                 console.log('[bg] motif', alt, '使用',
                     Object.keys(dbBg).length ? 'motif_db' : 'root', JSON.stringify(bg));
 
@@ -381,9 +364,9 @@ function posToProbs(posEl, bg, nsites) {
                 });
 
                 const info = {
-                    id: normalizeMotifId(alt, idx),   // MEME-1 -> motif_1
+                    id: normalizeMotifId(alt, idx),   
                     alt: alt,
-                    consensus: seqStr,                // MAST 用 id 属性里的序列
+                    consensus: seqStr,               
                     probs: probs,
                     width: parseInt(el.getAttribute('length'), 10),
                     sites: parseInt(el.getAttribute('nsites'), 10),
@@ -435,7 +418,6 @@ function posToProbs(posEl, bg, nsites) {
             motifs.sort(function (a, b) { return a.idx - b.idx; });
             return { sequences: sequences, motifs: motifs };
         }
-        /* ===================== 格式识别 ===================== */
 
         function detectFormat(content) {
             const t = (content || '').trim();
@@ -455,7 +437,6 @@ function posToProbs(posEl, bg, nsites) {
             throw new Error('无法识别的内容格式（仅支持MEME/MAST的XML）');
         }
 
-        /* ===================== 序列与占比构建 ===================== */
 
         function formatProbability(p) {
             if (!(p > 0)) return '0';
@@ -464,14 +445,13 @@ function posToProbs(posEl, bg, nsites) {
             return s || '0';
         }
 
-        // 单个位置：一个字母 -> "G"；多个 -> "[T:0.6875;A:0.25;C:0.0625]"（按概率降序）
         function formatPositionProbs(probs) {
             if (!probs) return '';
             const entries = [];
             Object.keys(probs).forEach(function (letter) {
                 const p = probs[letter];
                 if (!(p > 0)) return;
-                if (p < PROB_MIN) return;              // ← 新增：微小概率直接当0
+                if (p < PROB_MIN) return;             
                 const rounded = parseFloat(p.toFixed(PROB_PRECISION));
                 if (!(rounded > 0)) return;
                 entries.push([letter, rounded]);
@@ -487,7 +467,6 @@ function posToProbs(posEl, bg, nsites) {
             }).join(';') + ']';
         }
 
-        // 带占比注释的 Motif 序列（第二步 / 导出用）
         function buildConsensusString(m) {
             if (m.probs && m.probs.length) {
                 return m.probs.map(formatPositionProbs).join('');
@@ -506,7 +485,6 @@ function posToProbs(posEl, bg, nsites) {
             }).join('|');
         }
 
-        /* ===================== 表格渲染 / 导出工具 ===================== */
 
         function rowsToTableHtml(rows) {
             if (!rows || rows.length === 0) return '';
@@ -593,7 +571,6 @@ function posToProbs(posEl, bg, nsites) {
             }
         }
 
-        /* ===================== 第二步：占比预览 ===================== */
 
         function getProportionRows() {
             const rows = [['Motif_ID', 'Consensus']];
@@ -620,7 +597,6 @@ function posToProbs(posEl, bg, nsites) {
             downloadProportionBtn.disabled = !has;
         }
 
-        /* ===================== 第三步：输出表格 ===================== */
 
         function getOutputRows() {
             const style = outputStyle.value;
@@ -670,7 +646,6 @@ function posToProbs(posEl, bg, nsites) {
             downloadBtn.disabled = !hasData;
         }
 
-        /* ===================== 主流程 ===================== */
 
         function processContent(content) {
             if (!content || !content.trim()) {
@@ -739,7 +714,6 @@ function posToProbs(posEl, bg, nsites) {
             });
         }
 
-        /* ===================== 事件绑定 ===================== */
 
         document.getElementById('importFileBtn').addEventListener('click', function () {
             const mode = document.querySelector('input[name="inputMode"]:checked').value;
@@ -776,7 +750,6 @@ function posToProbs(posEl, bg, nsites) {
             updateToolbarState();
         });
 
-        /* 第二步：复制 / 导出占比 */
         copyProportionBtn.addEventListener('click', function () {
             copyTextToClipboard(proportionTsv, proportionTip, '结果已复制');
         });
@@ -786,7 +759,6 @@ function posToProbs(posEl, bg, nsites) {
             downloadRowsCsv(getProportionRows(), 'motif_consensus_proportions.csv');
         });
 
-        /* 第三步：复制 / 导出 */
         copyBtn.addEventListener('click', function () {
             copyTextToClipboard(tsvOutput, toolbarTip, '结果已复制');
         });

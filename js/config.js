@@ -67,6 +67,7 @@ const toolConfig = [
     toolDesc: "For viewing and sequence extraction from genome-scale FASTA files. Supports extracting gene or transcript sequences by ID from CDS, transcript, and other FASTA data; does not support splitting/exporting by chromosome, but supports preview.",
     link: "en/053.FASTA_view_extract.html"
 },
+
         ]
     },
     {
@@ -141,6 +142,12 @@ const toolConfig = [
     toolName: "Transition/Transversion Calculation (Multiple Sequence Alignment FASTA)",
     toolDesc: "Calculate pairwise transitions, transversions, total differences, and the R ratio from aligned sequences, with support for count/frequency output.",
     link: "en/051.Transition_transversion_matrix.html"
+},
+
+{
+    toolName: "FASTA Alignment to Single-Line Consensus (Per-Position Frequency)",
+    toolDesc: "Import aligned FASTA sequences (DNA/RNA/protein), compute the per-position letter composition, and convert the alignment into a single annotated consensus sequence for sequence logo plotting or downstream analysis.",
+    link: "en/055.Fasta_alignment_consensus.html"
 },
         ]
     },

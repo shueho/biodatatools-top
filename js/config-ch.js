@@ -68,6 +68,7 @@ const toolConfig = [
     toolDesc: "用于基因组级别FASTA文件的查看与序列提取。可从CDS、转录本等FASTA数据中按ID提取基因或转录本序列；不支持按染色体拆分导出，但支持预览。",
     link: "ch/053.FASTA_view_extract.html"
 },
+
         ]
     },
     {
@@ -144,6 +145,12 @@ const toolConfig = [
     toolName: "转换/颠换计算（多序列比对FASTA文件）",
     toolDesc: "计算比对好的多条序列两两之间的转换、颠换、总数及比值R，支持频数/频率输出。",
     link: "ch/051.Transition_transversion_matrix.html"
+},
+
+{
+    toolName: "FASTA比对序列转单行序列（各位点频数统计）",
+    toolDesc: "导入已比对的FASTA序列（DNA/RNA/氨基酸均可），按位点统计各字母的组成，转换为一行带注释的序列，用于绘制序列Logo或后续分析。",
+    link: "ch/055.Fasta_alignment_consensus.html"
 },
         ]
     },
