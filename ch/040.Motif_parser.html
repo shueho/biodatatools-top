@@ -31,9 +31,9 @@
             </div>
             <div class="info-box">
                 <strong>文件来源：</strong><br>
-                ① 在线运行：访问 <a href="https://meme-suite.org/meme/tools/meme" target="_blank">MEME Suite</a> 运行MEM（或MAST），在结果页下载 <strong>“MEME XML output”</strong>（MAST 对应 <strong>MAST XML output</strong>）。<br>
+                ① 在线运行：访问 <a href="https://meme-suite.org/meme/tools/meme" target="_blank">MEME Suite</a> 运行MEME（或MAST），在结果页下载 <strong>“MEME XML output”</strong>（MAST 对应 <strong>MAST XML output</strong>）。<br>
                 ② 本地运行：命令行执行 <code>meme</code> 或 <code>mast</code>，输出目录里的 <code>meme.xml</code>（或 <code>mast.xml</code>）。<br>
-                将上述任一文件上传或粘贴到上方即可，导出的结果可以用于进化树中的<a href="../BioStatPlot/ch/t001.html" target="_blank">结构域/基序轨道</a>的绘制。
+                将上述任一文件上传或粘贴到上方即可，导出的结果可以用于进化树中的<a href="../BioStatPlot/ch/t001.html" target="_blank">结构域/基序轨道</a>的绘制。<br>
             </div>
             <div class="param-group" style="margin-top:15px;">
                 <button class="btn" id="importFileBtn">导入并解析</button>
@@ -44,9 +44,17 @@
         </div>
 
         <div class="step-card">
-            <div class="step-title">第二步：Motif信息预览</div>
+            <div class="step-title">第二步：Motif序列及碱基/氨基酸占比</div>
+            <div class="result-toolbar">
+                <button class="btn" id="copyProportionBtn" disabled>复制结果</button>
+                <button class="btn" id="downloadProportionBtn" disabled>导出表格</button>
+                <span id="proportionTip" class="tip-text"></span>
+            </div>
             <div id="motifBox">
-                <p style="color:#999; text-align:center; padding:30px 0;">解析后，motif的编号、序列及同级信息将展示在此处</p>
+                <p style="color:#999; text-align:center; padding:30px 0;">解析后，各motif的序列及每位碱基/氨基酸占比将展示在此处</p>
+            </div>
+            <div class="info-box">
+                <strong>说明：</strong>可用于绘制序列Logo图。
             </div>
         </div>
 
@@ -87,8 +95,11 @@
         let parsedSequences = [];
         let parsedMotifs = [];
         let tsvOutput = '';
+        let proportionTsv = '';
         let pendingContent = '';
 
+const PROB_PRECISION = 4; // 概率保留小数位（去尾零后输出）
+const PROB_MIN = 0.001;   // 兜底：概率低于此值视为0（nsites吸附正常时不会触发）
         const msgTip = document.getElementById('msgTip');
         const motifBox = document.getElementById('motifBox');
         const outputBox = document.getElementById('outputBox');
@@ -96,6 +107,9 @@
         const copyBtn = document.getElementById('copyBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const toolbarTip = document.getElementById('toolbarTip');
+        const copyProportionBtn = document.getElementById('copyProportionBtn');
+        const downloadProportionBtn = document.getElementById('downloadProportionBtn');
+        const proportionTip = document.getElementById('proportionTip');
         const resultFile = document.getElementById('resultFile');
         const resultText = document.getElementById('resultText');
 
@@ -124,6 +138,8 @@
             showMsg('');
         }
 
+        /* ===================== 通用工具 ===================== */
+
         function normalizeStrand(v) {
             if (v === null || v === undefined) return 'none';
             const s = String(v).trim().toLowerCase();
@@ -132,15 +148,36 @@
             return 'none';
         }
 
-        function detectFormat(content) {
-            const t = (content || '').trim();
-            if (!t) return 'unknown';
-            if (/^<\?xml/i.test(t) || /^</.test(t)) {
-                if (/<MEME\b/i.test(t) || /^<meme\b/i.test(t)) return 'meme-xml';
-                if (/<mast\b/i.test(t) || /^<mast\b/i.test(t)) return 'mast-xml';
-                return 'unknown';
-            }
-            return 'unknown';
+        function normalizeMotifId(raw, fallbackIdx) {
+            const m = String(raw || '').match(/(\d+)/);
+            if (m) return 'motif_' + m[1];
+            return 'motif_' + (fallbackIdx + 1);
+        }
+
+        function normalizeMemeMotifId(rawId, idx) {
+            const s = String(rawId || '');
+            if (/^motif_\d+$/i.test(s)) return s;
+            const m = s.match(/(\d+)/);
+            if (m) return 'motif_' + m[1];
+            return 'motif_' + (idx + 1);
+        }
+
+        /* ===================== 解析 MEME XML ===================== */
+
+        function parseProbMatrix(motifEl) {
+            const probs = [];
+            const probEl = motifEl.querySelector('probabilities');
+            if (!probEl) return probs;
+            probEl.querySelectorAll('alphabet_matrix > alphabet_array').forEach(function (arrEl) {
+                const row = {};
+                arrEl.querySelectorAll('value').forEach(function (vEl) {
+                    const letter = vEl.getAttribute('letter_id');
+                    const val = parseFloat(vEl.textContent);
+                    if (letter && !isNaN(val)) row[letter] = val;
+                });
+                probs.push(row);
+            });
+            return probs;
         }
 
         function parseMemeXmlContent(content) {
@@ -154,7 +191,7 @@
                 const id = el.getAttribute('id');
                 sequences[id] = {
                     id: id,
-                    name: el.getAttribute('name'),
+                    name: el.getAttribute('name') || id,
                     length: parseInt(el.getAttribute('length'), 10),
                     sites: []
                 };
@@ -162,12 +199,26 @@
 
             const motifInfo = {};
             const motifs = [];
-            doc.querySelectorAll('motifs > motif').forEach(function (el) {
-                const id = el.getAttribute('id');
+            doc.querySelectorAll('motifs > motif').forEach(function (el, idx) {
+                const rawId = el.getAttribute('id');
+                const displayId = normalizeMemeMotifId(rawId, idx);
+
+                // 优先使用 regular_expression 作为 Motif 序列（DNA / 蛋白通用）
+                let consensus = el.getAttribute('name') || '';
+                const regexEl = el.querySelector('regular_expression');
+                if (regexEl) {
+                    const rx = (regexEl.textContent || '').replace(/\s+/g, '');
+                    if (rx) consensus = rx;
+                }
+
+                const probs = parseProbMatrix(el);
+
                 const info = {
-                    id: id,
-                    alt: el.getAttribute('alt'),
-                    consensus: el.getAttribute('name'),
+                    id: displayId,
+                    rawId: rawId,
+                    alt: el.getAttribute('alt') || '',
+                    consensus: consensus,
+                    probs: probs,
                     width: parseInt(el.getAttribute('width'), 10),
                     sites: parseInt(el.getAttribute('sites'), 10),
                     eValue: el.getAttribute('e_value'),
@@ -175,7 +226,7 @@
                     llr: el.getAttribute('llr'),
                     ic: el.getAttribute('ic')
                 };
-                motifInfo[id] = info;
+                motifInfo[rawId] = info;
                 motifs.push(info);
             });
 
@@ -188,7 +239,7 @@
                     if (!mi) return;
                     const pos = parseInt(siteEl.getAttribute('position'), 10);
                     sequences[seqId].sites.push({
-                        motifId: motifId,
+                        motifId: mi.id,
                         motifName: mi.consensus,
                         motifAlt: mi.alt,
                         width: mi.width,
@@ -216,20 +267,124 @@
             };
         }
 
+        /* ===================== 解析 MAST XML ===================== */
+
+        function parseBackground(bgEl) {
+            const bg = {};
+            if (!bgEl) return bg;
+            for (let i = 0; i < bgEl.attributes.length; i++) {
+                const attr = bgEl.attributes[i];
+                const v = parseFloat(attr.value);
+                if (!isNaN(v)) bg[attr.name] = v;
+            }
+            return bg;
+        }
+
+// log-odds（MEME/MAST 以 *100 的整数存储） + background -> 概率
+// nsites > 1 时，把概率吸附到 k/nsites：MEME 的 probabilities 矩阵本质是"计数/nsites"，
+// 这样能把 log-odds 反推产生的 ~1e-4 噪声和 0.8749/0.1248 这类误差还原成 0.875/0.125
+function posToProbs(posEl, bg, nsites) {
+    const letters = Object.keys(bg || {});
+    if (!letters.length) return {};
+    const weights = {};
+    let sum = 0;
+    letters.forEach(function (l) {
+        const raw = parseFloat(posEl.getAttribute(l));
+        const lo = isNaN(raw) ? 0 : raw / 100;      // log2 odds
+        const w = bg[l] * Math.pow(2, lo);          // 还原成概率权重
+        weights[l] = w;
+        sum += w;
+    });
+    const probs = {};
+    if (!(sum > 0)) return probs;
+    letters.forEach(function (l) { probs[l] = weights[l] / sum; });
+
+    // —— 吸附到 k/nsites ——
+    // —— 吸附到 k/nsites（最大余数法）——
+    if (!(nsites > 1)) return probs;
+
+    // 小于半个计数的概率项直接视为 0（拦掉 W 这类噪声）
+    const MIN_COUNT = 0.5 / nsites;
+    const items = letters.map(function (l) { return [l, probs[l]]; })
+        .filter(function (it) { return it[1] >= MIN_COUNT; })
+        .sort(function (a, b) { return b[1] - a[1]; });
+
+    const out = {};
+    letters.forEach(function (l) { out[l] = 0; });
+    if (!items.length) return out;
+
+    // 先 floor，再把剩余计数按小数部分降序分配（不再硬塞给最后一项）
+    const raws = items.map(function (it) { return it[1] * nsites; });
+    const counts = raws.map(function (x) { return Math.floor(x); });
+    let assigned = counts.reduce(function (a, b) { return a + b; }, 0);
+    let remainder = nsites - assigned;
+
+    const order = raws.map(function (x, i) { return [i, x - Math.floor(x)]; })
+        .sort(function (a, b) { return b[1] - a[1]; });
+    for (let j = 0; j < order.length && remainder > 0; j++, remainder--) {
+        counts[order[j][0]]++;
+    }
+    // 浮点兜底：极少数情况剩余仍 >0，补给最大项
+    if (remainder > 0 && items.length) counts[0] += remainder;
+
+    items.forEach(function (it, i) { out[it[0]] = counts[i] / nsites; });
+    return out;
+}
         function parseMastXmlContent(content) {
             const parser = new DOMParser();
             const doc = parser.parseFromString(content, 'text/xml');
             if (doc.querySelector('parsererror')) throw new Error('XML解析失败');
             if (!doc.querySelector('mast')) throw new Error('不是有效的MAST XML文件');
 
+            // 鲁棒收集所有 <background>：按是否位于 <motif_db> 内分类
+            // 不用 doc.querySelector('background')，避免只拿到文档里第一个（根级 --nrdb--）
+            const rootBgEls = [];
+            const dbBgEls = [];
+            const allBgEls = doc.getElementsByTagName('background');
+            for (let i = 0; i < allBgEls.length; i++) {
+                const el = allBgEls[i];
+                let p = el.parentNode, inDb = false;
+                while (p && p.nodeType === 1) {
+                    const name = (p.nodeName || '').toLowerCase();
+                    if (name === 'motif_db') { inDb = true; break; }
+                    p = p.parentNode;
+                }
+                if (inDb) dbBgEls.push(el); else rootBgEls.push(el);
+            }
+
+            // motif_db 的 background（meme.xml 生成 motif 时的矩阵），按出现顺序编号
+            const backgrounds = {};
+            dbBgEls.forEach(function (bgEl, i) { backgrounds[i] = parseBackground(bgEl); });
+
+            // 根级 background（通常 --nrdb--），仅作兜底
+            const rootBgEl = rootBgEls[0] || null;
+            const rootBg = parseBackground(rootBgEl);
+
             const motifs = [];
             const motifByIdx = {};
             doc.querySelectorAll('motifs > motif').forEach(function (el, idx) {
                 const alt = el.getAttribute('alt') || '';
+                const seqStr = el.getAttribute('id') || '';
+                const dbIdx = parseInt(el.getAttribute('db'), 10);
+                const dbBg = backgrounds[isNaN(dbIdx) ? 0 : dbIdx] || backgrounds[0] || {};
+                // 优先用 motif_db（meme.xml）的 background，没有才退回根级
+                const bg = Object.keys(dbBg).length ? dbBg : rootBg;
+                const nsites = parseInt(el.getAttribute('nsites'), 10);
+
+                // 临时调试：确认用的是哪个 background（验证完可删）
+                console.log('[bg] motif', alt, '使用',
+                    Object.keys(dbBg).length ? 'motif_db' : 'root', JSON.stringify(bg));
+
+                const probs = [];
+                el.querySelectorAll('pos').forEach(function (posEl) {
+                    probs.push(posToProbs(posEl, bg, nsites));
+                });
+
                 const info = {
-                    id: alt || el.getAttribute('id'),
+                    id: normalizeMotifId(alt, idx),   // MEME-1 -> motif_1
                     alt: alt,
-                    consensus: el.getAttribute('id'),
+                    consensus: seqStr,                // MAST 用 id 属性里的序列
+                    probs: probs,
                     width: parseInt(el.getAttribute('length'), 10),
                     sites: parseInt(el.getAttribute('nsites'), 10),
                     eValue: el.getAttribute('evalue'),
@@ -254,6 +409,7 @@
                     const mi = motifByIdx[idx];
                     if (!mi) return;
                     const pos = parseInt(hitEl.getAttribute('pos'), 10);
+                    const rc = hitEl.getAttribute('rc');
                     sites.push({
                         motifId: mi.id,
                         motifName: mi.consensus,
@@ -262,7 +418,7 @@
                         start: pos,
                         end: pos + mi.width - 1,
                         pvalue: hitEl.getAttribute('pvalue'),
-                        strand: normalizeStrand(hitEl.getAttribute('rc'))
+                        strand: (rc === '1' || String(rc).toLowerCase() === 'true') ? 'minus' : 'plus'
                     });
                 });
                 sites.sort(function (a, b) { return a.start - b.start; });
@@ -279,12 +435,64 @@
             motifs.sort(function (a, b) { return a.idx - b.idx; });
             return { sequences: sequences, motifs: motifs };
         }
+        /* ===================== 格式识别 ===================== */
+
+        function detectFormat(content) {
+            const t = (content || '').trim();
+            if (!t) return 'unknown';
+            if (/^<\?xml/i.test(t) || /^</.test(t)) {
+                if (/<MEME\b/i.test(t) || /^<meme\b/i.test(t)) return 'meme-xml';
+                if (/<mast\b/i.test(t) || /^<mast\b/i.test(t)) return 'mast-xml';
+                return 'unknown';
+            }
+            return 'unknown';
+        }
 
         function parseContent(content) {
             const fmt = detectFormat(content);
             if (fmt === 'meme-xml') return parseMemeXmlContent(content);
             if (fmt === 'mast-xml') return parseMastXmlContent(content);
             throw new Error('无法识别的内容格式（仅支持MEME/MAST的XML）');
+        }
+
+        /* ===================== 序列与占比构建 ===================== */
+
+        function formatProbability(p) {
+            if (!(p > 0)) return '0';
+            let s = p.toFixed(PROB_PRECISION);
+            s = s.replace(/0+$/, '').replace(/\.$/, '');
+            return s || '0';
+        }
+
+        // 单个位置：一个字母 -> "G"；多个 -> "[T:0.6875;A:0.25;C:0.0625]"（按概率降序）
+        function formatPositionProbs(probs) {
+            if (!probs) return '';
+            const entries = [];
+            Object.keys(probs).forEach(function (letter) {
+                const p = probs[letter];
+                if (!(p > 0)) return;
+                if (p < PROB_MIN) return;              // ← 新增：微小概率直接当0
+                const rounded = parseFloat(p.toFixed(PROB_PRECISION));
+                if (!(rounded > 0)) return;
+                entries.push([letter, rounded]);
+            });
+            if (!entries.length) return 'N';
+            entries.sort(function (a, b) {
+                if (b[1] !== a[1]) return b[1] - a[1];
+                return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0;
+            });
+            if (entries.length === 1) return entries[0][0];
+            return '[' + entries.map(function (e) {
+                return e[0] + ':' + formatProbability(e[1]);
+            }).join(';') + ']';
+        }
+
+        // 带占比注释的 Motif 序列（第二步 / 导出用）
+        function buildConsensusString(m) {
+            if (m.probs && m.probs.length) {
+                return m.probs.map(formatPositionProbs).join('');
+            }
+            return m.consensus || '';
         }
 
         function buildSitesString(seq, useId) {
@@ -298,28 +506,121 @@
             }).join('|');
         }
 
-        function renderMotifPreview() {
+        /* ===================== 表格渲染 / 导出工具 ===================== */
+
+        function rowsToTableHtml(rows) {
+            if (!rows || rows.length === 0) return '';
+            const headers = rows[0];
+            const longCols = {};
+            headers.forEach(function (h, i) {
+                if (h === 'Consensus' || h === 'Domains' || h === 'Sequence') longCols[i] = true;
+            });
+            let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>';
+            headers.forEach(function (h) {
+                html += '<th>' + escapeHtml(h) + '</th>';
+            });
+            html += '</tr></thead><tbody>';
+            for (let i = 1; i < rows.length; i++) {
+                html += '<tr>';
+                rows[i].forEach(function (v, idx) {
+                    let cellStyle = '';
+                    if (idx === 0) cellStyle = 'text-align:left; white-space:nowrap;';
+                    else if (longCols[idx]) cellStyle = 'text-align:left; word-break:break-all;';
+                    html += '<td' + (cellStyle ? ' style="' + cellStyle + '"' : '') + '>' + escapeHtml(v) + '</td>';
+                });
+                html += '</tr>';
+            }
+            html += '</tbody></table></div></div>';
+            return html;
+        }
+
+        function rowsToTsv(rows) {
+            return rows.map(function (r) {
+                return r.map(function (v) { return String(v == null ? '' : v); }).join('\t');
+            }).join('\n') + '\n';
+        }
+
+        function csvValue(v) {
+            const s = String(v == null ? '' : v);
+            if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+            return s;
+        }
+
+        function rowsToCsv(rows) {
+            return rows.map(function (r) {
+                return r.map(csvValue).join(',');
+            }).join('\n') + '\n';
+        }
+
+        function downloadRowsCsv(rows, filename) {
+            const csv = '\ufeff' + rowsToCsv(rows);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            window.showToast && window.showToast('✅ 已导出表格');
+        }
+
+        function copyTextToClipboard(text, tipEl, successText) {
+            if (!text) {
+                if (tipEl) tipEl.innerHTML = '<span class="error">❌ 暂无可复制内容</span>';
+                window.showToast && window.showToast('❌ 暂无可复制内容');
+                return;
+            }
+            function done() {
+                if (tipEl) tipEl.innerHTML = '<span class="success">✅ ' + successText + '</span>';
+                window.showToast && window.showToast('✅ ' + successText);
+            }
+            function fail() {
+                if (tipEl) tipEl.innerHTML = '<span class="error">❌ 复制失败</span>';
+            }
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(done).catch(fail);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); done(); } catch (e) { fail(); }
+                document.body.removeChild(ta);
+            }
+        }
+
+        /* ===================== 第二步：占比预览 ===================== */
+
+        function getProportionRows() {
+            const rows = [['Motif_ID', 'Consensus']];
+            parsedMotifs.forEach(function (m) {
+                rows.push([m.id, buildConsensusString(m)]);
+            });
+            return rows;
+        }
+
+        function renderProportion() {
             if (!parsedMotifs.length) {
+                proportionTsv = '';
                 motifBox.innerHTML = '<p style="color:#999; text-align:center; padding:30px 0;">暂无motif数据</p>';
                 return;
             }
-            let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>'
-                + '<th>Motif ID</th><th>Motif序列（Consensus）</th><th>width</th>'
-                + '<th>sites</th><th>E-value</th><th>LLR</th>'
-                + '</tr></thead><tbody>';
-            parsedMotifs.forEach(function (m) {
-                html += '<tr>'
-                    + '<td>' + escapeHtml(m.id) + '</td>'
-                    + '<td style="text-align:left; word-break:break-all; font-family:Consolas,monospace;">' + escapeHtml(m.consensus || '') + '</td>'
-                    + '<td>' + (m.width != null ? m.width : '') + '</td>'
-                    + '<td>' + (m.sites != null ? m.sites : '') + '</td>'
-                    + '<td>' + escapeHtml(m.eValue || '-') + '</td>'
-                    + '<td>' + escapeHtml(m.llr || '-') + '</td>'
-                    + '</tr>';
-            });
-            html += '</tbody></table></div></div>';
-            motifBox.innerHTML = html;
+            const rows = getProportionRows();
+            proportionTsv = rowsToTsv(rows);
+            motifBox.innerHTML = rowsToTableHtml(rows);
         }
+
+        function updateProportionToolbar() {
+            const has = parsedMotifs.length > 0;
+            copyProportionBtn.disabled = !has;
+            downloadProportionBtn.disabled = !has;
+        }
+
+        /* ===================== 第三步：输出表格 ===================== */
 
         function getOutputRows() {
             const style = outputStyle.value;
@@ -352,47 +653,6 @@
             return rows;
         }
 
-        function rowsToTableHtml(rows) {
-            if (!rows || rows.length === 0) return '';
-            let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>';
-            rows[0].forEach(function (h) {
-                html += '<th>' + escapeHtml(h) + '</th>';
-            });
-            html += '</tr></thead><tbody>';
-            for (let i = 1; i < rows.length; i++) {
-                html += '<tr>';
-                rows[i].forEach(function (v, idx) {
-                    const isFirst = idx === 0;
-                    const isDomains = rows[0].length === 3 && idx === 2;
-                    let cellStyle = '';
-                    if (isFirst) cellStyle = 'text-align:left; white-space:nowrap;';
-                    if (isDomains) cellStyle = 'text-align:left; word-break:break-all;';
-                    html += '<td' + (cellStyle ? ' style="' + cellStyle + '"' : '') + '>' + escapeHtml(v) + '</td>';
-                });
-                html += '</tr>';
-            }
-            html += '</tbody></table></div></div>';
-            return html;
-        }
-
-        function rowsToTsv(rows) {
-            return rows.map(function (r) {
-                return r.map(function (v) { return String(v == null ? '' : v); }).join('\t');
-            }).join('\n') + '\n';
-        }
-
-        function csvValue(v) {
-            const s = String(v == null ? '' : v);
-            if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-            return s;
-        }
-
-        function rowsToCsv(rows) {
-            return rows.map(function (r) {
-                return r.map(csvValue).join(',');
-            }).join('\n') + '\n';
-        }
-
         function renderOutput() {
             if (!parsedSequences.length && !parsedMotifs.length) {
                 tsvOutput = '';
@@ -409,6 +669,8 @@
             copyBtn.disabled = !hasData;
             downloadBtn.disabled = !hasData;
         }
+
+        /* ===================== 主流程 ===================== */
 
         function processContent(content) {
             if (!content || !content.trim()) {
@@ -430,9 +692,10 @@
                 return;
             }
 
-            renderMotifPreview();
+            renderProportion();
             renderOutput();
             updateToolbarState();
+            updateProportionToolbar();
             showMsg('✅ 解析成功：' + parsedMotifs.length + ' 个 motif，' + parsedSequences.length + ' 条序列', 'success');
             window.showToast && window.showToast('✅ 已解析 ' + parsedMotifs.length + ' 个 motif');
         }
@@ -476,6 +739,8 @@
             });
         }
 
+        /* ===================== 事件绑定 ===================== */
+
         document.getElementById('importFileBtn').addEventListener('click', function () {
             const mode = document.querySelector('input[name="inputMode"]:checked').value;
             let content = '';
@@ -511,52 +776,30 @@
             updateToolbarState();
         });
 
+        /* 第二步：复制 / 导出占比 */
+        copyProportionBtn.addEventListener('click', function () {
+            copyTextToClipboard(proportionTsv, proportionTip, '结果已复制');
+        });
+
+        downloadProportionBtn.addEventListener('click', function () {
+            if (!parsedMotifs.length) return;
+            downloadRowsCsv(getProportionRows(), 'motif_consensus_proportions.csv');
+        });
+
+        /* 第三步：复制 / 导出 */
         copyBtn.addEventListener('click', function () {
-            if (!tsvOutput) {
-                window.showToast && window.showToast('❌ 暂无可复制内容');
-                return;
-            }
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(tsvOutput).then(function () {
-                    toolbarTip.innerHTML = '<span class="success">✅ 结果已复制</span>';
-                    window.showToast && window.showToast('✅ 结果已复制');
-                }).catch(function () {
-                    toolbarTip.innerHTML = '<span class="error">❌ 复制失败</span>';
-                });
-            } else {
-                const ta = document.createElement('textarea');
-                ta.value = tsvOutput;
-                document.body.appendChild(ta);
-                ta.select();
-                try {
-                    document.execCommand('copy');
-                    toolbarTip.innerHTML = '<span class="success">✅ 结果已复制</span>';
-                } catch (e) {
-                    toolbarTip.innerHTML = '<span class="error">❌ 复制失败</span>';
-                }
-                document.body.removeChild(ta);
-            }
+            copyTextToClipboard(tsvOutput, toolbarTip, '结果已复制');
         });
 
         downloadBtn.addEventListener('click', function () {
             if (!parsedSequences.length && !parsedMotifs.length) return;
             const rows = getOutputRows();
-            const csv = '\ufeff' + rowsToCsv(rows);
             const style = outputStyle.value;
             let filename = 'sequence_domains_by_id.csv';
             if (style === 'motif') filename = 'motif_info.csv';
             else if (style === 'seq-seq') filename = 'sequence_domains_by_seq.csv';
             else if (style === 'sites') filename = 'motif_sites.csv';
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            window.showToast && window.showToast('✅ 已导出表格');
+            downloadRowsCsv(rows, filename);
         });
 
         switchInput();

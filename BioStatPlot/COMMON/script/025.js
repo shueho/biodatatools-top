@@ -29,6 +29,7 @@
             'densityColor.mode2': '自定义双色',
             'densityColor.mode3': '自定义三色',
             'densityColor.reverse': '反转色板方向',
+            'densityColor.showDensity': '显示密度色（关闭则只显示染色体颜色）',
             'densityColor.low': '低值颜色',
             'densityColor.mid': '中间颜色',
             'densityColor.high': '高值颜色',
@@ -54,6 +55,9 @@
             'layout.labelSize': '编号字号',
             'layout.bold': '加粗',
             'layout.italic': '斜体',
+            'layout.chrOrder': '染色体顺序（逗号/空格分隔，留空自动）',
+            'layout.chrOrderPlaceholder': '自动顺序',
+            'layout.chrOrderReset': '重置为当前顺序',
             'axis.title': '坐标轴（染色体长度轴）',
             'axis.show': '显示坐标轴',
             'axis.groupAlign': '刻度对齐每组最长染色体',
@@ -87,8 +91,8 @@
             'colorbar.thickness': '粗细 (px)',
             'colorbar.length': '长度 (px，留空自动)',
             'colorbar.tickSide': '刻度位置',
-            'colorbar.tickSideLeft': '左 / 上',
-            'colorbar.tickSideRight': '右 / 下',
+            'colorbar.tickSideLeft': '左/上',
+            'colorbar.tickSideRight': '右/下',
             'colorbar.tickMode': '刻度模式',
             'colorbar.tickAuto': '自动',
             'colorbar.tickCustom': '自定义',
@@ -106,6 +110,10 @@
             'labels.side': '标注方向',
             'labels.sideRight': '右侧/下方',
             'labels.sideLeft': '左侧/上方',
+            'labels.alternate': '交替',
+            'labels.offsetMode': '标签偏移方式',
+            'labels.offsetDown': '向下/右偏移',
+            'labels.offsetSymmetric': '对称向两边偏移',
             'labels.fontSize': '字号',
             'labels.color': '文字颜色',
             'labels.leadLen': '引导线长度',
@@ -129,7 +137,9 @@
             'style.export': '导出样式',
             'style.restored': '✅ 样式已恢复',
             'style.exported': '✅ 样式已导出',
-            'style.invalid': '❌ 样式文件无效'
+            'style.invalid': '❌ 样式文件无效',
+            'layout.chrOrderReset': '重置为当前顺序',
+            'layout.resetBtn': '重置布局参数',
         },
         en: {
             'common.auto': 'Auto',
@@ -156,6 +166,7 @@
             'densityColor.mode2': 'Custom two-color',
             'densityColor.mode3': 'Custom three-color',
             'densityColor.reverse': 'Reverse palette direction',
+            'densityColor.showDensity': 'Show density colors (off = chromosome colors only)',
             'densityColor.low': 'Low value color',
             'densityColor.mid': 'Mid value color',
             'densityColor.high': 'High value color',
@@ -181,6 +192,9 @@
             'layout.labelSize': 'Label font size',
             'layout.bold': 'Bold',
             'layout.italic': 'Italic',
+            'layout.chrOrder': 'Chromosome order (comma/space separated; empty = auto)',
+            'layout.chrOrderPlaceholder': 'Auto order',
+            'layout.chrOrderReset': 'Reset to current order',
             'axis.title': 'Axis (chromosome length axis)',
             'axis.show': 'Show axis',
             'axis.groupAlign': 'Align ticks to longest chromosome in each group',
@@ -233,13 +247,17 @@
             'labels.side': 'Label side',
             'labels.sideRight': 'Right / Bottom',
             'labels.sideLeft': 'Left / Top',
+            'labels.alternate': 'Alternate sides',
+            'labels.offsetMode': 'Label offset mode',
+            'labels.offsetDown': 'Down / right offset',
+            'labels.offsetSymmetric': 'Symmetric both sides',
             'labels.fontSize': 'Font size',
             'labels.color': 'Text color',
             'labels.leadLen': 'Leader length',
             'labels.leadColor': 'Leader color',
             'labels.bold': 'Bold',
             'labels.italic': 'Italic',
-            'labels.dataLabel': 'Label data (name · chromosome · position bp)',
+            'labels.dataLabel': 'Label data (name/chromosome/position)',
             'labels.apply': 'Apply text',
             'labels.sample': 'Generate sample',
             'labels.import': 'Import file',
@@ -256,7 +274,9 @@
             'style.export': 'Export Style',
             'style.restored': '✅ Style restored',
             'style.exported': '✅ Style exported',
-            'style.invalid': '❌ Invalid style file'
+            'style.invalid': '❌ Invalid style file',
+            'layout.chrOrderReset': 'Reset to current order',
+            'layout.resetBtn': 'Reset layout',
         }
     };
 
@@ -467,7 +487,6 @@
     const state = {
         genome: { headers: [], data: [], cols: { chr: '', len: '', cen: '' }, fileName: '' },
         density: { headers: [], data: [], cols: { chr: '', start: '', end: '', value: '' }, fileName: '' },
-
         colors: {
             chrMode: 'palette',
             chrPalette: 'tableau10',
@@ -476,6 +495,7 @@
             densityPaletteMode: 'preset',
             densityPalette: 'viridis',
             densityReverse: false,
+            showDensity: true,
             densityCustom2Low: '#2166ac',
             densityCustom2High: '#b2182b',
             densityCustom3Low: '#2166ac',
@@ -492,7 +512,8 @@
             chrGap: 50,
             groupGap: 64,
             curvature: 0.7,
-            showCentromere: true
+            showCentromere: true,
+            chrOrder: ''
         },
         style: {
             chrLabelPos: 'top',
@@ -541,26 +562,31 @@
             labelFontSize: 10,
             titleFontSize: 12,
             tickColor: '#333333',
-            offset: { dx: 0, dy: 0 }
+            offset: { dx: 0, dy: 0 },
+            scale: 1
         },
         labels: {
             show: true,
             data: [],
             side: 'right',
+            alternate: false,
+            offsetMode: 'symmetric',
             size: 10,
             bold: false,
             italic: false,
             color: '#334155',
-            leadLen: 24,
-            leadColor: '#94a3b8',
+            leadLen: 14,
+            leadColor: '#94a3b8'
         },
         currentSvg: null,
-        canvasView: null
+        canvasView: null,
+        _lastCanvasW: 0,
+        _lastCanvasH: 0
     };
-
     const scheduleDraw = debounce(drawChart, 80);
 
-    function buildModel() {
+    function buildModel(opts) {
+        opts = opts || {};
         const g = state.genome, d = state.density;
         const genomeReady = g.data.length > 0 && g.cols.chr && g.cols.len;
         const densityReady = d.data.length > 0 && d.cols.chr && d.cols.start && d.cols.end && d.cols.value;
@@ -601,12 +627,30 @@
             }
         }
 
-        const chromosomes = Array.from(map.values())
+        let chromosomes = Array.from(map.values())
             .filter(function (c) {
                 if (genomeSet.size > 0) return genomeSet.has(c.name) && c.length > 0;
                 return c.length > 0;
             })
             .sort(function (a, b) { return naturalCompare(a.name, b.name); });
+
+        if (!opts.ignoreOrder) {
+            const orderRaw = String(state.layout.chrOrder || '').trim();
+            if (orderRaw) {
+                const wanted = orderRaw.split(/[,，;\s]+/).filter(Boolean);
+                const byName = new Map(chromosomes.map(function (c) { return [c.name, c]; }));
+                const out = [];
+                const used = new Set();
+                wanted.forEach(function (n) {
+                    if (byName.has(n) && !used.has(n)) { out.push(byName.get(n)); used.add(n); }
+                });
+                chromosomes.forEach(function (c) {
+                    if (!used.has(c.name)) out.push(c);
+                });
+                chromosomes = out;
+            }
+        }
+
         const vals = [];
         for (const c of chromosomes)
             for (const b of c.bins) if (isFinite(b.value)) vals.push(b.value);
@@ -619,7 +663,6 @@
 
         return { chromosomes: chromosomes, hasDensity: vals.length > 0, domain: domain };
     }
-
     function chrColor(name, index) {
         if (state.colors.chrCustom[name]) return state.colors.chrCustom[name];
         if (state.colors.chrMode === 'uniform') return state.colors.chrUniform;
@@ -645,6 +688,7 @@
         ].join(' ');
     }
 
+
     function chromosomeLocalPath(thickness, length, radius, cenFrac) {
         const w = thickness, h = length;
         const r = clamp(radius, 0, w / 2);
@@ -654,35 +698,39 @@
 
         const cy = h * cenFrac;
         const neckW = Math.max(w * 0.26, 2.5);
-        const neckH = Math.max(w * 1.35, 12);
+        let neckH = Math.max(w * 1.35, 12);
 
-        const safeTop = Math.max(2, cy - neckH - 2);
-        const safeBot = Math.max(2, h - cy - neckH - 2);
-        const rEff = Math.min(r, safeTop, safeBot);
+        const topSpace = cy - r - 2;
+        const bottomSpace = h - cy - r - 2;
+        const maxNeck = Math.min(topSpace, bottomSpace);
+        if (maxNeck <= 4) {
+            return roundedRectPath(0, 0, w, h, r);
+        }
+        if (neckH > maxNeck) neckH = maxNeck;
 
         const lx = (w - neckW) / 2;
         const rx = lx + neckW;
         const p = [];
 
-        p.push('M ' + rEff + ' 0');
-        p.push('L ' + (w - rEff) + ' 0');
-        if (rEff > 0.5) p.push('A ' + rEff + ' ' + rEff + ' 0 0 1 ' + w + ' ' + rEff);
+        p.push('M ' + r + ' 0');
+        p.push('L ' + (w - r) + ' 0');
+        if (r > 0.5) p.push('A ' + r + ' ' + r + ' 0 0 1 ' + w + ' ' + r);
 
         p.push('L ' + w + ' ' + (cy - neckH));
         p.push('C ' + w + ' ' + (cy - neckH * 0.22) + ' ' + rx + ' ' + (cy - neckH * 0.36) + ' ' + rx + ' ' + cy);
         p.push('C ' + rx + ' ' + (cy + neckH * 0.36) + ' ' + w + ' ' + (cy + neckH * 0.22) + ' ' + w + ' ' + (cy + neckH));
 
-        p.push('L ' + w + ' ' + (h - rEff));
-        if (rEff > 0.5) p.push('A ' + rEff + ' ' + rEff + ' 0 0 1 ' + (w - rEff) + ' ' + h);
-        p.push('L ' + rEff + ' ' + h);
-        if (rEff > 0.5) p.push('A ' + rEff + ' ' + rEff + ' 0 0 1 0 ' + (h - rEff));
+        p.push('L ' + w + ' ' + (h - r));
+        if (r > 0.5) p.push('A ' + r + ' ' + r + ' 0 0 1 ' + (w - r) + ' ' + h);
+        p.push('L ' + r + ' ' + h);
+        if (r > 0.5) p.push('A ' + r + ' ' + r + ' 0 0 1 0 ' + (h - r));
 
         p.push('L 0 ' + (cy + neckH));
         p.push('C 0 ' + (cy + neckH * 0.22) + ' ' + lx + ' ' + (cy + neckH * 0.36) + ' ' + lx + ' ' + cy);
         p.push('C ' + lx + ' ' + (cy - neckH * 0.36) + ' 0 ' + (cy - neckH * 0.22) + ' 0 ' + (cy - neckH));
 
-        p.push('L 0 ' + rEff);
-        if (rEff > 0.5) p.push('A ' + rEff + ' ' + rEff + ' 0 0 1 ' + rEff + ' 0');
+        p.push('L 0 ' + r);
+        if (r > 0.5) p.push('A ' + r + ' ' + r + ' 0 0 1 ' + r + ' 0');
 
         p.push('Z');
         return p.join(' ');
@@ -692,6 +740,8 @@
         const L = state.layout, S = state.style, A = state.axis, CB = state.colorbar, LB = state.labels;
         const chromosomes = model.chromosomes;
         const hasDensity = model.hasDensity;
+        const showDensityColor = state.colors.showDensity !== false;
+        const hasDensityRender = hasDensity && showDensityColor;
         const domain = model.domain;
 
         const isV = L.orientation === 'vertical';
@@ -705,7 +755,7 @@
         const maxLabelW = hasLabels
             ? Math.max.apply(null, LB.data.map(function (l) { return PC.estTextWidth(l.name, LB.size); }).concat([LB.size * 3]))
             : 0;
-        const leadSpan = LB.leadLen;
+        const leadSpan = Math.abs(LB.leadLen);
 
         const cols = isV ? Math.min(perLine, n) : Math.ceil(n / perLine);
         const rows = isV ? Math.ceil(n / perLine) : Math.min(perLine, n);
@@ -717,7 +767,7 @@
 
         let padL = isV ? 72 : 84;
         let padT = 44;
-        let padR = (hasDensity && CB.show) ? 104 : 34;
+        let padR = (hasDensityRender && CB.show) ? 104 : 34;
         let padB = 46;
 
         if (A.show) {
@@ -727,12 +777,19 @@
         }
 
         if (hasLabels) {
-            const axisOff = (A.show && LB.side === 'left') ? A.offset : 0;
-            const labelSpace = leadSpan + maxLabelW + 16 + axisOff;
-            if (isV && LB.side !== 'left') padR += labelSpace;
-            if (isV && LB.side === 'left') padL += labelSpace;
-            if (!isV && LB.side === 'left') padT += labelSpace;
-            if (!isV && LB.side !== 'left') padB += labelSpace;
+            const useBoth = !!LB.alternate;
+            const onLeft = (LB.side === 'left');
+            const labelSpace = leadSpan + maxLabelW + 16;
+            const needLeft = useBoth || onLeft;
+            const needRight = useBoth || !onLeft;
+
+            if (isV) {
+                if (needLeft) padL += labelSpace;
+                if (needRight) padR += labelSpace;
+            } else {
+                if (needLeft) padT += labelSpace;
+                if (needRight) padB += labelSpace;
+            }
         }
 
         const contentW = cols * cellW;
@@ -766,9 +823,9 @@
                 .range(C.densityReverse ? [hi, mid, lo] : [lo, mid, hi])
                 .clamp(true);
         } else {
-            const palEntry = DENSITY_PALETTES[C.densityPalette] || DENSITY_PALETTES.viridis;
-            colorScale = d3.scaleSequential(palEntry.fn)
-                .domain(C.densityReverse ? [domHi, domLo] : [domLo, domHi]);
+            const interp = PC.getContinuousInterpolator(C.densityPalette, C.densityReverse);
+            colorScale = d3.scaleSequential(interp)
+                .domain([domLo, domHi]);
         }
 
         const items = chromosomes.map(function (c, i) {
@@ -822,7 +879,7 @@
 
             body.push('<path d="' + d + '" transform="' + transform + '" fill="' + fill + '" fill-opacity="' + S.chrOpacity + '"/>');
 
-            if (hasDensity) {
+            if (hasDensityRender) {
                 const tiles = [];
 
                 tiles.push('<rect x="-1" y="0" width="' + (T + 2) + '" height="' + lenPx.toFixed(2) +
@@ -903,7 +960,7 @@
 
         if (hasLabels) body.push(renderLabels(items, isV, T));
 
-        if (hasDensity && CB.show) {
+        if (hasDensityRender && CB.show) {
             body.push(renderColorbar(padL, contentW, padT, contentH, colorScale, domLo, domHi));
         }
 
@@ -921,6 +978,10 @@
         const style = LB.italic ? 'italic' : 'normal';
         const fs = LB.size;
         const lineH = fs * 1.35;
+        const symmetric = (LB.offsetMode === 'symmetric');
+        const alternate = !!LB.alternate;
+        const leadLen = Math.abs(LB.leadLen);
+        const overlapGap = Math.max(4, fs * 1.2);
 
         const byChr = new Map();
         for (const lb of LB.data) {
@@ -932,16 +993,41 @@
         function assignTargets(anchors, minGap) {
             const n = anchors.length;
             if (!n) return [];
-            const targets = anchors.slice();
-            for (let i = 1; i < n; i++) {
-                if (targets[i] - targets[i - 1] < minGap) {
-                    targets[i] = targets[i - 1] + minGap;
+            const gap = symmetric ? overlapGap : minGap;
+
+            if (!symmetric) {
+                const targets = anchors.slice();
+                for (let i = 1; i < n; i++) {
+                    if (targets[i] - targets[i - 1] < gap) targets[i] = targets[i - 1] + gap;
                 }
+                for (let i = n - 2; i >= 0; i--) {
+                    if (targets[i + 1] - targets[i] < gap) targets[i] = targets[i + 1] - gap;
+                }
+                return targets;
+            }
+
+            const groups = [];
+            let cur = [0];
+            for (let i = 1; i < n; i++) {
+                if (anchors[i] - anchors[i - 1] < gap) cur.push(i);
+                else { groups.push(cur); cur = [i]; }
+            }
+            groups.push(cur);
+
+            const targets = anchors.slice();
+            groups.forEach(function (g) {
+                const sz = g.length;
+                if (sz === 1) return;
+                const center = (anchors[g[0]] + anchors[g[sz - 1]]) / 2;
+                const totalW = (sz - 1) * gap;
+                for (let k = 0; k < sz; k++) targets[g[k]] = center - totalW / 2 + k * gap;
+            });
+
+            for (let i = 1; i < n; i++) {
+                if (targets[i] - targets[i - 1] < gap) targets[i] = targets[i - 1] + gap;
             }
             for (let i = n - 2; i >= 0; i--) {
-                if (targets[i + 1] - targets[i] < minGap) {
-                    targets[i] = targets[i + 1] - minGap;
-                }
+                if (targets[i + 1] - targets[i] < gap) targets[i] = targets[i + 1] - gap;
             }
             return targets;
         }
@@ -954,50 +1040,78 @@
                 .map(function (l) { return Object.assign({}, l, { _pos: clamp(Number(l.pos) || 0, 0, it.c.length) }); })
                 .sort(function (a, b) { return a._pos - b._pos; });
 
-            const n = sorted.length;
-
             if (isV) {
-                const onRight = LB.side !== 'left';
-                const axisOff = (state.axis.show ? state.axis.offset : 0);
-                const startX = onRight ? it.x + T : it.x;
-                const tx = onRight
-                    ? it.x + T + LB.leadLen
-                    : it.x - axisOff - LB.leadLen;
-                const anchor = onRight ? 'start' : 'end';
-                const textX = tx + (onRight ? 2 : -2);
+                if (alternate) {
+                    const rightList = [], leftList = [];
+                    sorted.forEach(function (lb, i) { (i % 2 === 0 ? rightList : leftList).push(lb); });
 
-                const anchors = sorted.map(function (l) {
-                    return it.y + (l._pos / it.c.length) * it.lenPx;
-                });
-                const targets = assignTargets(anchors, lineH);
+                    const rightStartX = it.x + T;
+                    const rightTx = it.x + T + leadLen;
+                    const rAnchors = rightList.map(function (l) { return it.y + (l._pos / it.c.length) * it.lenPx; });
+                    const rTargets = assignTargets(rAnchors, lineH);
+                    for (let i = 0; i < rightList.length; i++) {
+                        out.push('<line x1="' + rightStartX + '" y1="' + rAnchors[i] + '" x2="' + rightTx + '" y2="' + rTargets[i] + '" stroke="' + LB.leadColor + '" stroke-width="0.9" stroke-linecap="round"/>');
+                        out.push('<text x="' + (rightTx + 2) + '" y="' + rTargets[i] + '" text-anchor="start" dominant-baseline="middle" font-size="' + fs + '" font-weight="' + weight + '" font-style="' + style + '" fill="' + LB.color + '" font-family="inherit">' + escapeXml(rightList[i].name) + '</text>');
+                    }
 
-                for (let i = 0; i < n; i++) {
-                    const lb = sorted[i];
-                    const ay = anchors[i];
-                    const ty = targets[i];
-                    out.push('<line x1="' + startX + '" y1="' + ay + '" x2="' + tx + '" y2="' + ty + '" stroke="' + LB.leadColor + '" stroke-width="0.9" stroke-linecap="round"/>');
-                    out.push('<text x="' + textX + '" y="' + ty + '" text-anchor="' + anchor + '" dominant-baseline="middle" font-size="' + fs + '" font-weight="' + weight + '" font-style="' + style + '" fill="' + LB.color + '" font-family="inherit">' + escapeXml(lb.name) + '</text>');
+                    const leftStartX = it.x;
+                    const leftTx = it.x - leadLen;
+                    const lAnchors = leftList.map(function (l) { return it.y + (l._pos / it.c.length) * it.lenPx; });
+                    const lTargets = assignTargets(lAnchors, lineH);
+                    for (let i = 0; i < leftList.length; i++) {
+                        out.push('<line x1="' + leftStartX + '" y1="' + lAnchors[i] + '" x2="' + leftTx + '" y2="' + lTargets[i] + '" stroke="' + LB.leadColor + '" stroke-width="0.9" stroke-linecap="round"/>');
+                        out.push('<text x="' + (leftTx - 2) + '" y="' + lTargets[i] + '" text-anchor="end" dominant-baseline="middle" font-size="' + fs + '" font-weight="' + weight + '" font-style="' + style + '" fill="' + LB.color + '" font-family="inherit">' + escapeXml(leftList[i].name) + '</text>');
+                    }
+                } else {
+                    const onRight = LB.side !== 'left';
+                    const startX = onRight ? it.x + T : it.x;
+                    const tx = onRight ? it.x + T + leadLen : it.x - leadLen;
+                    const anchor = onRight ? 'start' : 'end';
+                    const textX = tx + (onRight ? 2 : -2);
+
+                    const anchors = sorted.map(function (l) { return it.y + (l._pos / it.c.length) * it.lenPx; });
+                    const targets = assignTargets(anchors, lineH);
+
+                    for (let i = 0; i < sorted.length; i++) {
+                        out.push('<line x1="' + startX + '" y1="' + anchors[i] + '" x2="' + tx + '" y2="' + targets[i] + '" stroke="' + LB.leadColor + '" stroke-width="0.9" stroke-linecap="round"/>');
+                        out.push('<text x="' + textX + '" y="' + targets[i] + '" text-anchor="' + anchor + '" dominant-baseline="middle" font-size="' + fs + '" font-weight="' + weight + '" font-style="' + style + '" fill="' + LB.color + '" font-family="inherit">' + escapeXml(sorted[i].name) + '</text>');
+                    }
                 }
             } else {
-                const onTop = LB.side === 'left';
-                const axisOff = (state.axis.show ? state.axis.offset : 0);
-                const startY = onTop ? it.y : it.y + T;
-                const ty = onTop
-                    ? it.y - axisOff - LB.leadLen
-                    : it.y + T + LB.leadLen;
-                const anchor = onTop ? 'start' : 'end';
+                if (alternate) {
+                    const bottomList = [], topList = [];
+                    sorted.forEach(function (lb, i) { (i % 2 === 0 ? bottomList : topList).push(lb); });
 
-                const anchorsX = sorted.map(function (l) {
-                    return it.x + (l._pos / it.c.length) * it.lenPx;
-                });
-                const targetsX = assignTargets(anchorsX, lineH);
+                    const bottomStartY = it.y + T;
+                    const bottomTy = it.y + T + leadLen;
+                    const bAnchors = bottomList.map(function (l) { return it.x + (l._pos / it.c.length) * it.lenPx; });
+                    const bTargets = assignTargets(bAnchors, lineH);
+                    for (let i = 0; i < bottomList.length; i++) {
+                        out.push('<line x1="' + bAnchors[i] + '" y1="' + bottomStartY + '" x2="' + bTargets[i] + '" y2="' + bottomTy + '" stroke="' + LB.leadColor + '" stroke-width="0.9" stroke-linecap="round"/>');
+                        out.push('<text transform="translate(' + bTargets[i] + ',' + bottomTy + ') rotate(-90)" text-anchor="end" dominant-baseline="middle" font-size="' + fs + '" font-weight="' + weight + '" font-style="' + style + '" fill="' + LB.color + '" font-family="inherit">' + escapeXml(bottomList[i].name) + '</text>');
+                    }
 
-                for (let i = 0; i < n; i++) {
-                    const lb = sorted[i];
-                    const ax = anchorsX[i];
-                    const tx = targetsX[i];
-                    out.push('<line x1="' + ax + '" y1="' + startY + '" x2="' + tx + '" y2="' + ty + '" stroke="' + LB.leadColor + '" stroke-width="0.9" stroke-linecap="round"/>');
-                    out.push('<text transform="translate(' + tx + ',' + ty + ') rotate(-90)" text-anchor="' + anchor + '" dominant-baseline="middle" font-size="' + fs + '" font-weight="' + weight + '" font-style="' + style + '" fill="' + LB.color + '" font-family="inherit">' + escapeXml(lb.name) + '</text>');
+                    const topStartY = it.y;
+                    const topTy = it.y - leadLen;
+                    const tAnchors = topList.map(function (l) { return it.x + (l._pos / it.c.length) * it.lenPx; });
+                    const tTargets = assignTargets(tAnchors, lineH);
+                    for (let i = 0; i < topList.length; i++) {
+                        out.push('<line x1="' + tAnchors[i] + '" y1="' + topStartY + '" x2="' + tTargets[i] + '" y2="' + topTy + '" stroke="' + LB.leadColor + '" stroke-width="0.9" stroke-linecap="round"/>');
+                        out.push('<text transform="translate(' + tTargets[i] + ',' + topTy + ') rotate(-90)" text-anchor="start" dominant-baseline="middle" font-size="' + fs + '" font-weight="' + weight + '" font-style="' + style + '" fill="' + LB.color + '" font-family="inherit">' + escapeXml(topList[i].name) + '</text>');
+                    }
+                } else {
+                    const onTop = LB.side === 'left';
+                    const startY = onTop ? it.y : it.y + T;
+                    const ty = onTop ? it.y - leadLen : it.y + T + leadLen;
+                    const anchor = onTop ? 'start' : 'end';
+
+                    const anchorsX = sorted.map(function (l) { return it.x + (l._pos / it.c.length) * it.lenPx; });
+                    const targetsX = assignTargets(anchorsX, lineH);
+
+                    for (let i = 0; i < sorted.length; i++) {
+                        out.push('<line x1="' + anchorsX[i] + '" y1="' + startY + '" x2="' + targetsX[i] + '" y2="' + ty + '" stroke="' + LB.leadColor + '" stroke-width="0.9" stroke-linecap="round"/>');
+                        out.push('<text transform="translate(' + targetsX[i] + ',' + ty + ') rotate(-90)" text-anchor="' + anchor + '" dominant-baseline="middle" font-size="' + fs + '" font-weight="' + weight + '" font-style="' + style + '" fill="' + LB.color + '" font-family="inherit">' + escapeXml(sorted[i].name) + '</text>');
+                    }
                 }
             }
         }
@@ -1105,7 +1219,7 @@
 
         inner.push('<rect x="-60" y="-30" width="' + (barW + 120) + '" height="' + (barH + 70) + '" fill="transparent" style="cursor:move;pointer-events:all;"/>');
 
-        parts.push('<g id="cv-colorbar" data-base-x="' + baseX + '" data-base-y="' + baseY + '" transform="translate(' + (baseX + CB.offset.dx) + ',' + (baseY + CB.offset.dy) + ')">' + inner.join('') + '</g>');
+        parts.push('<g id="cv-colorbar" data-base-x="' + baseX + '" data-base-y="' + baseY + '" transform="translate(' + (baseX + CB.offset.dx) + ',' + (baseY + CB.offset.dy) + ') scale(' + (CB.scale || 1) + ')">' + inner.join('') + '</g>');
 
         return parts.join('');
     }
@@ -1117,6 +1231,40 @@
         if (pngBtn) pngBtn.disabled = !v;
     }
 
+
+    function applyResizeToLayout(canvasW, canvasH, model) {
+        const L = state.layout;
+        const isV = L.orientation === 'vertical';
+        const n = model.chromosomes.length;
+        if (!n) return;
+
+        const prevW = state._lastCanvasW;
+        const prevH = state._lastCanvasH;
+        if (!prevW || !prevH) return;
+
+        const dw = canvasW - prevW;
+        const dh = canvasH - prevH;
+
+        const bigW = Math.abs(dw) >= 30;
+        const bigH = Math.abs(dh) >= 30;
+        if (!bigW && !bigH) return;
+
+        const ratioW = canvasW / prevW;
+        const ratioH = canvasH / prevH;
+
+        if (isV) {
+            if (bigW) L.chrGap = clamp(L.chrGap * ratioW, 20, 400);
+            if (bigH) L.maxLenPx = clamp(L.maxLenPx * ratioH, 100, 1600);
+        } else {
+            if (bigH) L.chrGap = clamp(L.chrGap * ratioH, 20, 400);
+            if (bigW) L.maxLenPx = clamp(L.maxLenPx * ratioW, 100, 1600);
+        }
+
+        const elGap = document.getElementById('inp-chrGap');
+        if (elGap) elGap.value = Math.round(L.chrGap);
+        const elLen = document.getElementById('inp-maxLenPx');
+        if (elLen) elLen.value = Math.round(L.maxLenPx);
+    }
     function drawChart() {
         const container = document.getElementById('chartPreview');
         if (!container) return;
@@ -1131,10 +1279,17 @@
             return;
         }
 
-        const content = buildSvgContent(model);
-
         const userW = PC.numById('chartWidth', 0);
         const userH = PC.numById('chartHeight', 0);
+        if (userW > 0 && userH > 0 && state._lastCanvasW > 0 && state._lastCanvasH > 0) {
+            if (userW !== state._lastCanvasW || userH !== state._lastCanvasH) {
+                applyResizeToLayout(userW, userH, model);
+            }
+        }
+        if (userW > 0) state._lastCanvasW = userW;
+        if (userH > 0) state._lastCanvasH = userH;
+
+        const content = buildSvgContent(model);
         const canvasW = userW > 0 ? userW : content.width;
         const canvasH = userH > 0 ? userH : content.height;
 
@@ -1156,10 +1311,20 @@
             '<g transform="translate(' + offsetX.toFixed(2) + ',' + offsetY.toFixed(2) +
             ') scale(' + scale.toFixed(4) + ')">' + content.html + '</g>'
         );
+
         (function () {
             const cbNode = canvas.node.querySelector('#cv-colorbar');
             if (!cbNode) return;
             const d3g = d3.select(cbNode);
+
+            function applyCbTransform() {
+                const baseX = parseFloat(cbNode.getAttribute('data-base-x'));
+                const baseY = parseFloat(cbNode.getAttribute('data-base-y'));
+                cbNode.setAttribute('transform',
+                    'translate(' + (baseX + state.colorbar.offset.dx) + ',' +
+                    (baseY + state.colorbar.offset.dy) + ') scale(' + (state.colorbar.scale || 1) + ')');
+            }
+
             let sx = 0, sy = 0;
             d3g.call(d3.drag()
                 .on('start', function (ev) {
@@ -1172,16 +1337,29 @@
                     state.colorbar.offset.dx += ev.x - sx;
                     state.colorbar.offset.dy += ev.y - sy;
                     sx = ev.x; sy = ev.y;
-                    const baseX = parseFloat(cbNode.getAttribute('data-base-x'));
-                    const baseY = parseFloat(cbNode.getAttribute('data-base-y'));
-                    cbNode.setAttribute('transform',
-                        'translate(' + (baseX + state.colorbar.offset.dx) + ',' + (baseY + state.colorbar.offset.dy) + ')');
+                    applyCbTransform();
                 })
                 .on('end', function () {
                     d3g.style('cursor', 'move');
                 })
             );
+
+            d3g.on('wheel.zoom', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const pt = d3.pointer(event, cbNode);
+                const px = pt[0], py = pt[1];
+                const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+                const cur = state.colorbar.scale || 1;
+                const next = Math.max(0.3, Math.min(3, cur * factor));
+                if (next === cur) return;
+                state.colorbar.offset.dx += (cur - next) * px;
+                state.colorbar.offset.dy += (cur - next) * py;
+                state.colorbar.scale = next;
+                applyCbTransform();
+            });
         })();
+
         state.currentSvg = canvas.node;
         setExportEnabled(true);
 
@@ -1346,6 +1524,9 @@
 
         document.getElementById('sel-chr-mode').addEventListener('change', function (e) {
             state.colors.chrMode = e.target.value;
+            if (state.colors.chrMode === 'uniform') {
+                state.colors.chrCustom = {};
+            }
             renderChrColorList();
             scheduleDraw();
         });
@@ -1395,8 +1576,10 @@
             '      <option value="custom2"' + (mode === 'custom2' ? ' selected' : '') + '>' + escapeXml(t('densityColor.mode2')) + '</option>' +
             '      <option value="custom3"' + (mode === 'custom3' ? ' selected' : '') + '>' + escapeXml(t('densityColor.mode3')) + '</option>' +
             '    </select></div>' +
-            '  <div class="param-item" style="grid-column: span 3;"><label class="mini-check"><input type="checkbox" id="chk-density-reverse"' +
+            '  <div class="param-item"><label class="mini-check"><input type="checkbox" id="chk-density-reverse"' +
             (C.densityReverse ? ' checked' : '') + '>' + escapeXml(t('densityColor.reverse')) + '</label></div>' +
+            '  <div class="param-item" style="grid-column: span 2;"><label class="mini-check"><input type="checkbox" id="chk-show-density"' +
+            (C.showDensity !== false ? ' checked' : '') + '>' + escapeXml(t('densityColor.showDensity')) + '</label></div>' +
             '</div>' +
             '<div class="dp-preset-item" style="margin-top:8px;' + (mode === 'preset' ? '' : 'display:none;') + '">' +
             '  <div id="densityPaletteDropdown"></div>' +
@@ -1436,6 +1619,10 @@
         });
         document.getElementById('chk-density-reverse').addEventListener('change', function (e) {
             C.densityReverse = e.target.checked;
+            scheduleDraw();
+        });
+        document.getElementById('chk-show-density').addEventListener('change', function (e) {
+            C.showDensity = e.target.checked;
             scheduleDraw();
         });
         document.getElementById('inp-density-c2-low').addEventListener('input', function (e) {
@@ -1561,6 +1748,14 @@
             (state.style.chrLabelBold ? ' checked' : '') + '>' + escapeXml(t('layout.bold')) + '</label></div>' +
             '  <div class="param-item"><label class="mini-check"><input type="checkbox" id="chk-chrLabelItalic"' +
             (state.style.chrLabelItalic ? ' checked' : '') + '>' + escapeXml(t('layout.italic')) + '</label></div>' +
+            '</div>' +
+            '<div class="param-grid cols-4" style="margin-top:10px;">' +
+            '  <div class="param-item" style="grid-column: span 2;"><label>' + escapeXml(t('layout.chrOrder')) + '</label>' +
+            '    <input type="text" id="inp-chrOrder" value="' + escapeXml(state.layout.chrOrder || '') + '" placeholder="' + escapeXml(t('layout.chrOrderPlaceholder')) + '"></div>' +
+            '  <div class="param-item"><label>&nbsp;</label>' +
+            '    <button class="btn" id="btn-chrOrderReset" type="button">' + escapeXml(t('layout.chrOrderReset')) + '</button></div>' +
+            '  <div class="param-item"><label>&nbsp;</label>' +
+            '    <button class="btn" id="btn-layoutReset" type="button">' + escapeXml(t('layout.resetBtn')) + '</button></div>' +
             '</div>';
 
         document.getElementById('sel-orient').addEventListener('change', function (e) {
@@ -1596,8 +1791,56 @@
         bindNumber('inp-chrLabelSize', 'style.chrLabelSize', 6, 48, true);
         bindCheck('chk-chrLabelBold', 'style.chrLabelBold');
         bindCheck('chk-chrLabelItalic', 'style.chrLabelItalic');
-    }
 
+        const chrOrderEl = document.getElementById('inp-chrOrder');
+        if (chrOrderEl) {
+            chrOrderEl.addEventListener('input', function () {
+                state.layout.chrOrder = chrOrderEl.value;
+                scheduleDraw();
+            });
+            chrOrderEl.addEventListener('change', function () {
+                state.layout.chrOrder = chrOrderEl.value;
+                renderChrColorList();
+                scheduleDraw();
+            });
+        }
+
+        const orderResetBtn = document.getElementById('btn-chrOrderReset');
+        if (orderResetBtn) {
+            orderResetBtn.addEventListener('click', function () {
+                const natural = buildModel({ ignoreOrder: true }).chromosomes
+                    .map(function (c) { return c.name; }).join(',');
+                state.layout.chrOrder = natural;
+                if (chrOrderEl) chrOrderEl.value = natural;
+                renderChrColorList();
+                scheduleDraw();
+            });
+        }
+
+        const layoutResetBtn = document.getElementById('btn-layoutReset');
+        if (layoutResetBtn) {
+            layoutResetBtn.addEventListener('click', function () {
+                state.layout.maxLenPx = 320;
+                state.layout.chrWidth = 22;
+                state.layout.chrGap = 50;
+                state.layout.groupGap = 64;
+                state.layout.curvature = 0.7;
+                const el1 = document.getElementById('inp-maxLenPx');
+                const el2 = document.getElementById('inp-chrWidth');
+                const el3 = document.getElementById('inp-chrGap');
+                const el4 = document.getElementById('inp-groupGap');
+                const el5 = document.getElementById('inp-curvature');
+                if (el1) el1.value = 320;
+                if (el2) el2.value = 22;
+                if (el3) el3.value = 50;
+                if (el4) el4.value = 64;
+                if (el5) el5.value = 0.7;
+                const lbl = document.getElementById('lbl-curv');
+                if (lbl) lbl.textContent = '0.70';
+                scheduleDraw();
+            });
+        }
+    }
     function renderAxisPanel() {
         const box = document.getElementById('axisPanel');
         if (!box) return;
@@ -1824,6 +2067,13 @@
             '      <option value="right"' + (state.labels.side === 'right' ? ' selected' : '') + '>' + escapeXml(t('labels.sideRight')) + '</option>' +
             '      <option value="left"' + (state.labels.side === 'left' ? ' selected' : '') + '>' + escapeXml(t('labels.sideLeft')) + '</option>' +
             '    </select></div>' +
+            '  <div class="param-item"><label class="mini-check"><input type="checkbox" id="chk-labelAlternate"' +
+            (state.labels.alternate ? ' checked' : '') + '>' + escapeXml(t('labels.alternate')) + '</label></div>' +
+            '  <div class="param-item"><label>' + escapeXml(t('labels.offsetMode')) + '</label>' +
+            '    <select id="sel-labelOffsetMode">' +
+            '      <option value="symmetric"' + ((state.labels.offsetMode || 'symmetric') === 'symmetric' ? ' selected' : '') + '>' + escapeXml(t('labels.offsetSymmetric')) + '</option>' +
+            '      <option value="down"' + (state.labels.offsetMode === 'down' ? ' selected' : '') + '>' + escapeXml(t('labels.offsetDown')) + '</option>' +
+            '    </select></div>' +
             '  <div class="param-item"><label>' + escapeXml(t('labels.fontSize')) + '</label>' +
             '    <input type="number" id="inp-labelSize" value="' + state.labels.size + '" min="6" max="24"></div>' +
             '  <div class="param-item"><label>' + escapeXml(t('labels.color')) + '</label>' +
@@ -1851,9 +2101,11 @@
 
         bindCheck('chk-labelsShow', 'labels.show');
         bindSelect('sel-labelSide', 'labels.side');
+        bindCheck('chk-labelAlternate', 'labels.alternate');
+        bindSelect('sel-labelOffsetMode', 'labels.offsetMode');
         bindNumber('inp-labelSize', 'labels.size', 6, 30, true);
         bindColor('inp-labelColor', 'labels.color');
-        bindNumber('inp-labelLead', 'labels.leadLen', -200, 400, true);
+        bindNumber('inp-labelLead', 'labels.leadLen', 0, 400, true);
         bindColor('inp-labelLeadColor', 'labels.leadColor');
         bindCheck('chk-labelBold', 'labels.bold');
         bindCheck('chk-labelItalic', 'labels.italic');
@@ -1914,8 +2166,7 @@
         scheduleDraw();
     }
 
-    const DATA_STATE_FIELDS = ['currentSvg', 'genome', 'density'];
-
+    const DATA_STATE_FIELDS = ['currentSvg', 'genome', 'density', '_lastCanvasW', '_lastCanvasH'];
     function collectFormState() {
         const out = {};
         document.querySelectorAll('input[id], select[id], textarea[id]').forEach(function (el) {
@@ -2002,6 +2253,10 @@
         });
 
         if (!state.colorbar.offset) state.colorbar.offset = { dx: 0, dy: 0 };
+        if (!state.labels) state.labels = {};
+        if (state.labels.alternate === undefined) state.labels.alternate = false;
+        if (state.labels.offsetMode === undefined) state.labels.offsetMode = 'symmetric';
+        if (state.colors.showDensity === undefined) state.colors.showDensity = true;
 
         applyFormState(data.form);
 
@@ -2063,7 +2318,14 @@
             exportBtn.addEventListener('click', exportStateToFile);
         }
     }
-
+    function syncChrOrderAfterImport() {
+        if (state.layout.chrOrder) return;
+        const natural = buildModel({ ignoreOrder: true }).chromosomes.map(function (c) { return c.name; });
+        if (!natural.length) return;
+        state.layout.chrOrder = natural.join(',');
+        const el = document.getElementById('inp-chrOrder');
+        if (el) el.value = state.layout.chrOrder;
+    }
     function init() {
         injectPageStyle();
         initPalettes();
@@ -2086,6 +2348,7 @@
             onImport: function (res) {
                 state.genome = { headers: res.headers, data: res.data, cols: { chr: '', len: '', cen: '' }, fileName: '' };
                 autoDetectGenomeCols();
+                syncChrOrderAfterImport();
                 renderGenomeColPanel();
                 renderChrColorList();
                 renderColorbarPanel();
@@ -2110,6 +2373,7 @@
             onImport: function (res) {
                 state.density = { headers: res.headers, data: res.data, cols: { chr: '', start: '', end: '', value: '' }, fileName: '' };
                 autoDetectDensityCols();
+                syncChrOrderAfterImport();
                 renderDensityColPanel();
                 renderChrColorList();
                 renderColorbarPanel();
@@ -2147,7 +2411,6 @@
 
         drawChart();
     }
-
     function boot() {
         PlotBootstrap.ensureD3().then(init).catch(function (err) {
             console.error(err);
