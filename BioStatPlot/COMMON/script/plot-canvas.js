@@ -148,8 +148,8 @@
 
             let w = drag.startW + ((drag.pos === 'e' || drag.pos === 'se') ? dx : 0);
             let h = drag.startH + ((drag.pos === 's' || drag.pos === 'se') ? dy : 0);
-            w = Math.max(300, Math.min(4000, w));
-            h = Math.max(300, Math.min(4000, h));
+            w = Math.max(100, Math.min(4000, w));
+            h = Math.max(50, Math.min(4000, h));
 
             svgNode.setAttribute('width', w);
             svgNode.setAttribute('height', h);

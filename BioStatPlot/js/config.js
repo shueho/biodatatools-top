@@ -88,6 +88,14 @@
 
                 ]
             },
+            {
+                zh: '韦恩图',
+                en: 'Venn Diagram',
+                tools: [
+                    { id: '027', zh: '椭圆韦恩图（1-5集合）', en: 'Ellipse Venn Diagram (1-5 Sets)'},
+
+                ]
+            },
         ]
     },
 

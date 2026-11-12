@@ -591,7 +591,7 @@
             bottomPad += opts.axisTitleFontSize + 10;
         }
         
-        const plotH = Math.max(20, opts.h - topPad - bottomPad);
+        const plotH = Math.max(5, opts.h - topPad - bottomPad);
         const yScale = d3.scaleLinear().domain([0, opts.yMax]).range([plotY + plotH, plotY]);
 
         if (opts.showTitle && opts.titlePos !== 'none') {
@@ -917,7 +917,7 @@
 
         const plotWMax = bandW * nPosMax + Math.max(0, nPosMax - 1) * p.positionGap;
         const width = leftPad + plotWMax + fixedRight + 2 * outerMargin;
-        const height = Math.max(200, PC.num(app, 'chartHeight', 600));
+        const height = Math.max(50, PC.num(app, 'chartHeight', 600));
 
         const K = getAlphabetSize(seqType);
         const maxBits = Math.log2(K);
@@ -949,7 +949,7 @@
 
         const n = toDraw.length;
         const gap = p.facetGap;
-        const eachH = Math.max(30, (outerH - gap * (n - 1)) / n);
+        const eachH = Math.max(5, (outerH - gap * (n - 1)) / n);
 
         toDraw.forEach(function (m, idx) {
             const y0 = outerY + idx * (eachH + gap);

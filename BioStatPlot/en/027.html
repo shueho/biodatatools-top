@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ellipse Venn Diagram (1-5 Sets) - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Ellipse Venn Diagram (1-5 Sets)</h2>
+            <p>Display intersections and differences among multiple sets, supporting up to 5 sets. Click region labels to view and copy the element list of each region.</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Select Set Columns</div>
+            <div class="param-panel">
+                <div class="param-panel-title">Set columns</div>
+                <div id="setColsBox" class="param-inline" style="gap:10px 24px;">
+                    <span style="color:#999;">Select set columns after importing data</span>
+                </div>
+                <div class="info-box" style="margin-top:10px;">
+                    Each column represents a set; the values in that column are the elements of the set. Up to 5 sets are supported.
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Select Palette and Colors</div>
+            <div class="param-panel">
+                <div class="param-panel-title">Categorical palette</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">Reverse palette order</label>
+                    <label><input type="checkbox" id="cycleColors">Cycle colors</label>
+                </div>
+            </div>
+            <div id="colorAssignContainer" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Configure Plot Parameters</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Venn Settings</div>
+
+                <div class="param-subsection">Shape style</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Fill opacity</label>
+                        <input type="number" id="vennOpacity" value="0.35" min="0.05" max="1" step="0.05" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Stroke width</label>
+                        <input type="number" id="vennStrokeWidth" value="2" min="0" max="10" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Stroke color</label>
+                        <select id="vennStrokeColorMode" data-redraw>
+                            <option value="group" selected>Same as group</option>
+                            <option value="uniform">Uniform color</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Uniform stroke color</label>
+                        <input type="color" id="vennStrokeColor" value="#333333" data-redraw>
+                    </div>
+                    <div class="param-item" id="vennCircleOffsetItem" style="display:none;">
+                        <label id="vennCircleOffsetLabel">Set spacing (2, 3 sets)</label>
+                        <input type="number" id="vennCircleOffset" value="0.5" min="0.2" max="0.75" step="0.05" data-redraw>
+                    </div>
+                    <div class="param-item" id="vennTriangleLayoutItem" style="display:none;">
+                        <label>Layout (3 sets)</label>
+                        <select id="vennTriangleLayout" data-redraw>
+                            <option value="up">Two bottom, one top</option>
+                            <option value="down">Two top, one bottom</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Display options</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="vennShowLabels" checked data-redraw> Show region counts</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="vennShowZeroLabels" data-redraw> Show zero-count regions</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="vennShowSetNames" checked data-redraw> Show set names</label>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Region labels</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Font size</label>
+                        <input type="number" id="vennLabelFontSize" value="14" min="8" max="36" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="vennLabelBold" data-redraw> Bold</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="vennLabelItalic" data-redraw> Italic</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Color</label>
+                        <input type="color" id="vennLabelColor" value="#333333" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Content</label>
+                        <select id="vennLabelContent" data-redraw>
+                            <option value="count" selected>Count</option>
+                            <option value="percent">Percentage (of union)</option>
+                            <option value="both">Count + percentage</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="param-inline" style="margin-top:4px;">
+                    <span style="font-weight:700;color:#4a6784;font-size:12px;margin-right:8px;">Zero-region style</span>
+                    <label class="mini-check"><input type="checkbox" id="vennZeroBold" data-redraw>Bold</label>
+                    <label class="mini-check"><input type="checkbox" id="vennZeroItalic" data-redraw checked>Italic</label>
+                    <label>Color
+                        <input type="color" id="vennZeroColor" value="#999999" data-redraw>
+                    </label>
+                </div>
+
+                <div class="param-subsection">Set names</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Font size</label>
+                        <input type="number" id="vennSetNameFontSize" value="16" min="8" max="36" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="vennSetNameBold" checked data-redraw> Bold</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="vennSetNameItalic" data-redraw> Italic</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Color mode</label>
+                        <select id="vennSetNameColorMode" data-redraw>
+                            <option value="group" selected>Same as group</option>
+                            <option value="uniform">Uniform color</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Uniform color</label>
+                        <input type="color" id="vennSetNameColor" value="#333333" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Radial offset</label>
+                        <input type="number" id="vennSetNameOffset" value="20" min="0" max="120" step="2" data-redraw>
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top:10px;">
+                    Tip: Click a number label in any region to view and copy its element list. Hovering over a region label highlights the corresponding ellipses.
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">Draw Chart</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 5: Preview and Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">After importing data and configuring parameters, click "Draw Chart" to see the result</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer-en.js"></script>
+    <script src="../COMMON/donate-widget-left.js"></script>
+
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/027.js"></script>
+</body>
+</html>

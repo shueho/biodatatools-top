@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>椭圆韦恩图（1-5集合） - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>椭圆韦恩图（1-5集合）</h2>
+            <p>展示多个集合之间的交集与差集关系，支持最多5个集合。点击区域标签可查看并复制该区域的元素列表。</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：选择集合列</div>
+            <div class="param-panel">
+                <div class="param-panel-title">分组列</div>
+                <div id="setColsBox" class="param-inline" style="gap:10px 24px;">
+                    <span style="color:#999;">导入数据后可选择</span>
+                </div>
+                <div class="info-box" style="margin-top:10px;">
+                    每一列代表一个集合，同一列中出现的元素即属于该集合。最多支持5个集合。
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：选择色板与颜色</div>
+            <div class="param-panel">
+                <div class="param-panel-title">分类色板</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
+                    <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
+                </div>
+            </div>
+            <div id="colorAssignContainer" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第四步：设置绘图参数</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+
+<div class="param-panel">
+    <div class="param-panel-title">韦恩图设置</div>
+
+    <div class="param-subsection">图形样式</div>
+    <div class="param-grid cols-4" style="margin-bottom:10px;">
+        <div class="param-item">
+            <label>填充透明度</label>
+            <input type="number" id="vennOpacity" value="0.35" min="0.05" max="1" step="0.05" data-redraw>
+        </div>
+        <div class="param-item">
+            <label>描边宽度</label>
+            <input type="number" id="vennStrokeWidth" value="2" min="0" max="10" step="0.5" data-redraw>
+        </div>
+        <div class="param-item">
+            <label>轮廓颜色</label>
+            <select id="vennStrokeColorMode" data-redraw>
+                <option value="group" selected>同分组颜色</option>
+                <option value="uniform">统一颜色</option>
+            </select>
+        </div>
+        <div class="param-item">
+            <label>统一轮廓色</label>
+            <input type="color" id="vennStrokeColor" value="#333333" data-redraw>
+        </div>
+        <div class="param-item" id="vennCircleOffsetItem" style="display:none;">
+            <label id="vennCircleOffsetLabel">集合间距（2、3集合）</label>
+            <input type="number" id="vennCircleOffset" value="0.5" min="0.2" max="0.75" step="0.05" data-redraw>
+        </div>
+        <div class="param-item" id="vennTriangleLayoutItem" style="display:none;">
+            <label>布局（3集合）</label>
+            <select id="vennTriangleLayout" data-redraw>
+                <option value="up">下二上一</option>
+                <option value="down">上二下一</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="param-subsection">显示开关</div>
+    <div class="param-grid cols-4" style="margin-bottom:10px;">
+        <div class="param-item">
+            <label class="mini-check"><input type="checkbox" id="vennShowLabels" checked data-redraw> 显示区域数字</label>
+        </div>
+        <div class="param-item">
+            <label class="mini-check"><input type="checkbox" id="vennShowZeroLabels" data-redraw> 显示数量为0的区域</label>
+        </div>
+        <div class="param-item">
+            <label class="mini-check"><input type="checkbox" id="vennShowSetNames" checked data-redraw> 显示集合名称</label>
+        </div>
+    </div>
+
+    <div class="param-subsection">区域标签</div>
+    <div class="param-grid cols-4" style="margin-bottom:10px;">
+        <div class="param-item">
+            <label>字号</label>
+            <input type="number" id="vennLabelFontSize" value="14" min="8" max="36" data-redraw>
+        </div>
+        <div class="param-item">
+            <label class="mini-check"><input type="checkbox" id="vennLabelBold" data-redraw> 加粗</label>
+        </div>
+        <div class="param-item">
+            <label class="mini-check"><input type="checkbox" id="vennLabelItalic" data-redraw> 斜体</label>
+        </div>
+        <div class="param-item">
+            <label>颜色</label>
+            <input type="color" id="vennLabelColor" value="#333333" data-redraw>
+        </div>
+        <div class="param-item">
+            <label>内容</label>
+            <select id="vennLabelContent" data-redraw>
+                <option value="count" selected>数量</option>
+                <option value="percent">百分比（占并集）</option>
+                <option value="both">数量+百分比</option>
+            </select>
+        </div>
+    </div>
+    <div class="param-inline" style="margin-top:4px;">
+        <span style="font-weight:700;color:#4a6784;font-size:12px;margin-right:8px;">0区域样式</span>
+        <label class="mini-check"><input type="checkbox" id="vennZeroBold" data-redraw>加粗</label>
+        <label class="mini-check"><input type="checkbox" id="vennZeroItalic" data-redraw checked>斜体</label>
+        <label>颜色
+            <input type="color" id="vennZeroColor" value="#999999" data-redraw>
+        </label>
+    </div>
+
+    <div class="param-subsection">集合名称</div>
+    <div class="param-grid cols-4" style="margin-bottom:10px;">
+        <div class="param-item">
+            <label>字号</label>
+            <input type="number" id="vennSetNameFontSize" value="16" min="8" max="36" data-redraw>
+        </div>
+        <div class="param-item">
+            <label class="mini-check"><input type="checkbox" id="vennSetNameBold" checked data-redraw> 加粗</label>
+        </div>
+        <div class="param-item">
+            <label class="mini-check"><input type="checkbox" id="vennSetNameItalic" data-redraw> 斜体</label>
+        </div>
+        <div class="param-item">
+            <label>颜色模式</label>
+            <select id="vennSetNameColorMode" data-redraw>
+                <option value="group" selected>同分组颜色</option>
+                <option value="uniform">统一颜色</option>
+            </select>
+        </div>
+        <div class="param-item">
+            <label>统一颜色</label>
+            <input type="color" id="vennSetNameColor" value="#333333" data-redraw>
+        </div>
+        <div class="param-item">
+            <label>径向偏移</label>
+            <input type="number" id="vennSetNameOffset" value="20" min="0" max="120" step="2" data-redraw>
+        </div>
+    </div>
+
+    <div class="info-box" style="margin-top:10px;">
+        提示：点击区域中的数字标签可以查看并复制该区域的元素列表；鼠标悬停区域标签时会展示对应的椭圆。
+    </div>
+</div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">绘制图表</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第五步：预览与导出</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>导出SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>导出PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">导入数据并完成设置后，点击“绘制图表”查看结果</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer.js"></script>
+    <script src="../COMMON/donate-widget-left.js"></script>
+
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/027.js"></script>
+</body>
+</html>
