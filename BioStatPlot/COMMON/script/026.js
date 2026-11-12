@@ -10,8 +10,14 @@
         noValid: EN ? '❌ No valid sequences found' : '❌ 未找到有效的序列',
         colorEmpty: EN ? 'Color groups will appear here after importing data' : '导入数据后将在此处显示每个分组的颜色',
         importInfo: EN
-            ? 'Headers required. Optionally one column as <strong>sequence ID</strong> (text), and another as <strong>Consensus</strong> sequence in MEME/minimal motif format, e.g. <code>AC[M:0.6;T:0.4]GT</code>. If no ID column is selected, sequences will be auto-numbered.'
-            : '需包含表头。可选一列作为 <strong>序列 ID</strong>（文本），另一列为 <strong>Consensus 序列</strong>，格式如 <code>AC[M:0.6;T:0.4]GT</code>（方括号内为「字母:频率」，未加方括号的单个字母表示频率 1.0）。未选择 ID 列时自动编号为 Sequence 1、Sequence 2……'
+            ? 'Headers required. Optionally one column as <strong>Sequence ID</strong> (text), and another as <strong>Consensus</strong> sequence in MEME/minimal motif format, e.g. <code>AC[M:0.6;T:0.4]GT</code>. If no ID column is selected, sequences will be auto-numbered.' +
+              '<br><strong>Need to convert your data?</strong><br>' +
+              '· If you have a <strong>Motif (MEME/MAST) result file</strong>, please use the <a href="../../en/040.Motif_parser.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">Motif (MEME/MAST) Result Parser</a> to convert it.<br>' +
+              '· If you have a <strong>Multiple Sequence Alignment</strong>, please use the <a href="../../en/055.Fasta_alignment_consensus.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">FASTA Alignment to Single-Line Consensus</a> tool to convert it.'
+            : '需包含表头。可选一列作为 <strong>序列ID</strong>（文本），另一列为<strong>Consensus序列</strong>，格式如 AC[M:0.6;T:0.4]GT（方括号内为“字母:频率”，未加方括号的单个字母表示频率1.0）。未选择ID列时自动编号为Sequence 1、Sequence 2……' +
+              '<br><strong>需要转换数据？</strong><br>' +
+              '· 如果您有 <strong>Motif（MEME/MAST）结果文件</strong>，请前往 <a href="../../ch/040.Motif_parser.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">Motif（MEME/MAST）结果解析器</a> 进行转换。<br>' +
+              '· 如果您的数据是 <strong>多序列比对结果（FASTA aligned）</strong>，请前往 <a href="../../ch/055.Fasta_alignment_consensus.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">FASTA比对序列转单行序列</a> 进行转换。'
     };
 
     const EX_DATA = 'Motif_ID\tConsensus\n' +
@@ -485,12 +491,12 @@
     function readParams(app) {
         const $ = app.$;
         const p = PC.readCommonParams(app, { width: 800, height: 600 });
-        
         p.yMode = ($('logoYMode') && $('logoYMode').value) || 'bits';
-        
+        p.sampleSize = Math.max(0, parseInt(PC.num(app, 'logoSampleSize', 0), 10));
         p.legendShowLetters = $('logoLegendShowLetters') ? $('logoLegendShowLetters').checked : true;
         
-        p.letterFont = app.state.logoLetterFont || ($('logoLetterFont') && $('logoLetterFont').value) || 'Arial';
+        p.letterFont = app.state.logoLetterFont ||
+            ($('logoLetterFont') && $('logoLetterFont').value) || 'Arial';
         p.minBand = Math.max(8, PC.num(app, 'logoMinBand', 14));
         p.positionGap = Math.max(0, PC.num(app, 'logoPositionGap', 0));
 
@@ -541,6 +547,7 @@
 
         return p;
     }
+
     function drawOneLogo(svg, seq, opts) {
         const positions = seq.positions;
         const nPos = positions.length;
@@ -596,6 +603,17 @@
         const outlineColor = opts.outlineColor || '#333333';
         const strokeW = Math.max(1, Math.min(2.5, bandW * 0.1));
 
+        const clipId = 'clip_' + Math.random().toString(36).substr(2, 9);
+        svg.append('defs').append('clipPath')
+            .attr('id', clipId)
+            .append('rect')
+            .attr('x', plotX - 10) 
+            .attr('y', plotY - 10) 
+            .attr('width', dataW + 20)
+            .attr('height', plotH + 10); 
+
+        const lettersG = svg.append('g').attr('clip-path', 'url(#' + clipId + ')');
+
         if (opts.showYGrid) {
             const yAxisTemp = d3.axisLeft(yScale);
             let tickVals = yAxisTemp.scale().ticks(5);
@@ -626,7 +644,13 @@
             sorted.forEach(function (l) {
                 if (l.freq > 0) H -= l.freq * Math.log2(l.freq);
             });
-            const R = Math.max(0, opts.maxBits - H);
+            
+            let e_n = 0;
+            if (opts.sampleSize > 0) {
+                const K = Math.pow(2, opts.maxBits);
+                e_n = (K - 1) / (2 * Math.LN2 * opts.sampleSize);
+            }
+            const R = Math.max(0, opts.maxBits - (H + e_n));
             const totalH = opts.yMode === 'bits' ? R : 1.0;
 
             let cum = totalH;
@@ -647,7 +671,7 @@
 
                 const letterColor = opts.colorOfLetter(l.letter);
 
-                const t = svg.append('text')
+                const t = lettersG.append('text')
                     .attr('class', 'logo-letter')
                     .attr('text-anchor', 'start')
                     .attr('font-size', BASE_FS)
@@ -857,11 +881,8 @@
         const targetCanvasW = PC.num(app, 'chartWidth', 800);
 
         const totalGap = Math.max(0, nPosMax - 1) * p.positionGap;
-        
         let bandW = (targetCanvasW - leftPad - fixedRight - 2 * outerMargin - totalGap) / nPosMax;
         if (!isFinite(bandW) || bandW <= 0) bandW = 2;
-        
-        // 允许自由缩小，只限制最大宽度
         bandW = Math.min(60, bandW);
 
         const plotWMax = bandW * nPosMax + Math.max(0, nPosMax - 1) * p.positionGap;
@@ -908,6 +929,7 @@
                 leftPad: leftPad,
                 yMax: yMax, maxBits: maxBits,
                 yMode: p.yMode,
+                sampleSize: p.sampleSize, 
                 xLabelMode: p.xLabelMode,
                 letterFont: p.letterFont,
                 capRatio: capRatio,
@@ -1208,7 +1230,7 @@
             setV('logoYTitleFontSize', 13);
             setC('logoYTitleBold', true);
             setC('logoYTitleItalic', false);
-            setV('logoXTitleText', '');
+            setV('logoXTitleText', 'Position');
             setV('logoXTitleFontSize', 13);
             setC('logoXTitleBold', true);
             setC('logoXTitleItalic', false);
@@ -1239,6 +1261,7 @@
             setC('logoAxisTitleBold', true);
             setC('logoAxisTitleItalic', false);
             setC('logoLegendShowLetters', true);
+            setV('logoSampleSize', 0);
             fillLogoFontSelect(app);
 
             fillSeqIdSelect(app);

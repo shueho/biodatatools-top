@@ -850,3 +850,19 @@ details.param-panel[open] > summary {
 details.param-panel > summary::marker {
   color: #1f4068;
 }
+
+/* ============================================================
+   参数面板内部的分块小标题（通用）
+============================================================ */
+.param-subsection {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 16px 0 8px 0;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+}
+
+.param-panel .param-subsection:first-of-type {
+    margin-top: 4px;
+}

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequence Logo - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Sequence Logo</h2>
+            <p>Display the conservation and base/amino acid preferences at each position of a multiple sequence alignment.</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Specify Data Columns and Grouping Method</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Data Columns</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Sequence ID column (optional)</label>
+                        <select id="seqIdColSel" disabled><option value="">None (Auto-number)</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label>Sequence column</label>
+                        <select id="seqColSel" disabled><option value="">— Please import data first —</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Grouping Method</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Sequence Type</label>
+                        <select id="seqType" data-redraw>
+                            <option value="dna">DNA/RNA</option>
+                            <option value="protein" selected>Protein</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="param-inline" style="margin-bottom:10px;">
+                    <label><input type="radio" name="colorMode" value="builtin" checked> Built-in groups</label>
+                    <label><input type="radio" name="colorMode" value="custom"> Custom groups</label>
+                    <label><input type="radio" name="colorMode" value="none"> No grouping</label>
+                </div>
+                <div id="builtinSchemeWrap">
+                    <label style="font-size:14px;color:#666;">Built-in scheme: 
+                        <select id="builtinSchemeSel"></select>
+                    </label>
+                    <div id="builtinGroupHint" class="info-box" style="margin-top:8px;"></div>
+                </div>
+                <div id="customGroupWrap" style="display:none;">
+                    <label style="font-size:14px;color:#666;">Custom groups (one group per line, or separated by semicolon; letters in the same group separated by space. Can be written as <code>Group name: A V L I M</code>)</label>
+                    <textarea id="customGroupText" rows="5" placeholder="e.g.&#10;Hydrophobic: A V L I M&#10;Aromatic: F W Y&#10;Basic: K R H&#10;Acidic: D E&#10;Polar: S T N Q&#10;Special: G P C" style="margin-top:6px;"></textarea>
+                    <div class="param-inline" style="margin-top:8px;">
+                        <label>Import group file (.txt / .csv / .tsv)
+                            <input type="file" id="customGroupFile" accept=".txt,.csv,.tsv,.text" style="margin-left:6px;">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Select Palette and Colors</div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Palette</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">Reverse palette order</label>
+                    <label><input type="checkbox" id="cycleColors">Cycle palette colors</label>
+                </div>
+                <div style="font-size:12px;color:#999;margin-top:4px;">Selecting a palette will reassign colors based on the group order; the grouping scheme is set in Step 2, and group colors can be adjusted individually here.</div>
+            </div>
+
+            <div id="colorAssignContainer"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Set Plotting Parameters</div>
+
+            <div id="globalSettingsPanel"></div>
+            <div id="legendSettingsPanel"></div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Sequence Logo Settings</div>
+
+                <div class="param-subsection">Core Parameters</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Y-axis Encoding</label>
+                        <select id="logoYMode" data-redraw>
+                            <option value="bits" selected>Information (bits)</option>
+                            <option value="probability">Frequency (probability)</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label title="Small sample error correction e(n) for MEME; fill 0 for no correction">Sample size (n)</label>
+                        <input type="number" id="logoSampleSize" value="0" min="0" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoLegendShowLetters" checked data-redraw> Legend includes letters</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Min width per position</label>
+                        <input type="number" id="logoMinBand" value="14" min="8" max="60" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Position gap</label>
+                        <input type="number" id="logoPositionGap" value="0" min="0" max="20" step="1" data-redraw>
+                    </div>
+                </div>
+                <div class="info-box" style="margin-bottom:16px;">
+                    <strong>About sample size (n):</strong> Referring to the small sample error correction method of <a href="https://meme-suite.org/meme/doc/ceqlogo.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">ceqlogo</a> in the MEME suite, the smaller the sample size, the more the graphic height is compressed to reflect statistical uncertainty. If you are using site frequencies calculated by this tool from alignment results, please set the number of samples manually; fill 0 if correction is not needed. If probability is used as the Y-axis, this parameter can be ignored.
+                </div>
+
+                <div class="param-subsection">Logo Letter Style</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Font</label>
+                        <select id="logoLetterFont">
+                            <option value="Arial" selected>Arial</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoLetterBold" checked data-redraw> Bold</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoLetterItalic" data-redraw> Italic</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Outline Mode</label>
+                        <select id="logoOutlineMode" data-redraw>
+                            <option value="none" selected>None</option>
+                            <option value="outline">Fill + Outline</option>
+                            <option value="outlineOnly">Outline only (group color)</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Outline color</label>
+                        <input type="color" id="logoOutlineColor" value="#333333" data-redraw>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Sequence Name Style</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Name position</label>
+                        <select id="logoTitlePos" data-redraw>
+                            <option value="top" selected>Top</option>
+                            <option value="left">Left</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Offset</label>
+                        <input type="number" id="logoTitleLeftOffset" value="8" min="-100" max="200" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Font size</label>
+                        <input type="number" id="logoTitleFontSize" value="14" min="6" max="36" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Color</label>
+                        <input type="color" id="logoTitleColor" value="#1f4068" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoTitleBold" checked data-redraw> Bold</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoTitleItalic" data-redraw> Italic</label>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Facet Layout</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Sequence gap</label>
+                        <input type="number" id="logoFacetGap" value="16" min="0" max="100" step="1" data-redraw>
+                    </div>
+                </div>
+            </div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">Axis Settings</div>
+                
+                <div class="param-subsection">Y-axis Settings</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Max value</label>
+                        <select id="logoYMaxMode" data-redraw>
+                            <option value="auto" selected>Auto (Theoretical max)</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Custom max value</label>
+                        <input type="number" id="logoYMax" value="4.5" min="0.1" max="10" step="0.1" disabled data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Tick interval</label>
+                        <input type="number" id="logoYTickInterval" value="0" min="0" max="10" step="0.1" data-redraw title="0 = Auto">
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoShowYAxisLine" checked data-redraw> Show axis</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Title position</label>
+                        <select id="logoYTitleMode" data-redraw>
+                            <option value="none">None</option>
+                            <option value="perFacet" selected>Show per facet</option>
+                            <option value="single">Single (centered)</option>
+                        </select>
+                    </div>
+                    <div class="param-item" style="grid-column: span 3;">
+                        <label>Axis title content</label>
+                        <input type="text" id="logoYTitleText" value="Information (bits)" data-redraw style="flex:1;">
+                    </div>
+                </div>
+
+                <div class="param-subsection">X-axis Settings</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Label</label>
+                        <select id="logoXLabelMode" data-redraw>
+                            <option value="number" selected>Number (1 ~ L)</option>
+                            <option value="letter">Most frequent letter</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Tick interval</label>
+                        <input type="number" id="logoXTickInterval" value="1" min="0" max="100" step="1" data-redraw title="0 = Auto; 1 = Every position">
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoShowXTickLabels" checked data-redraw> Show tick values</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Title position</label>
+                        <select id="logoXTitleMode" data-redraw>
+                            <option value="none">None</option>
+                            <option value="perFacet" selected>Show per facet</option>
+                            <option value="single">Single (centered)</option>
+                        </select>
+                    </div>
+                    <div class="param-item" style="grid-column: span 3;">
+                        <label>Axis title content</label>
+                        <input type="text" id="logoXTitleText" value="Position" placeholder="Leave blank to hide" data-redraw style="flex:1;">
+                    </div>
+                </div>
+
+                <div class="param-subsection">General Settings</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Tick font size</label>
+                        <input type="number" id="logoTickFontSize" value="11" min="6" max="24" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoTickBold" data-redraw> Tick bold</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoTickItalic" data-redraw> Tick italic</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Title font size</label>
+                        <input type="number" id="logoAxisTitleFontSize" value="13" min="6" max="36" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoAxisTitleBold" checked data-redraw> Title bold</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoAxisTitleItalic" data-redraw> Title italic</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Axis/Text color</label>
+                        <input type="color" id="logoAxisColor" value="#333333" data-redraw>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Axis Line and Grid</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label>Axis line width</label>
+                        <input type="number" id="logoAxisWidth" value="1" min="0" max="5" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Tick length</label>
+                        <input type="number" id="logoTickLength" value="4" min="0" max="10" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Tick width</label>
+                        <input type="number" id="logoTickWidth" value="1" min="0" max="5" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoShowYGrid" data-redraw> Show Y-axis grid</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Grid color</label>
+                        <input type="color" id="logoGridColor" value="#e8edf2" data-redraw>
+                    </div>
+                </div>
+                <div class="info-box" style="margin-top:10px;">
+                    <strong>Y-axis Description:</strong> In Information (bits) mode, the total height at each position = log₂(K) - entropy, where K is the alphabet size (DNA=4, protein=20). A fully conserved position reaches the maximum, and a fully random position is 0; in Frequency mode, the total height at each position is fixed at 1.0.
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">Draw Chart</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 5: Preview and Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">After importing data and completing settings, click "Draw Chart" to see the result</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer-en.js"></script>
+    <script src="../COMMON/donate-widget-left.js"></script>
+
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/026.js"></script>
+</body>
+</html>

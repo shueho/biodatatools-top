@@ -6,6 +6,7 @@
     <title>序列Logo图 - BioDataTools</title>
     <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/plot-common.css">
+
 </head>
 <body>
 
@@ -14,7 +15,7 @@
     <div class="main">
         <div class="page-intro">
             <h2>序列Logo图</h2>
-            <p>展示多条对齐序列在每个位置的保守性与碱基/氨基酸偏好。纵轴信息量（bits）= log₂(K) − 熵，可切换为频率（probability）模式。</p>
+            <p>展示多序列比对在每个位置的保守性与碱基/氨基酸偏好。</p>
         </div>
 
         <div id="importPanel"></div>
@@ -34,9 +35,7 @@
                         <select id="seqColSel" disabled><option value="">— 请先导入数据 —</option></select>
                     </div>
                 </div>
-                <div style="font-size:12px;color:#999;margin-top:8px;">
-                    导入格式：可选一列 <strong>序列 ID</strong>（文本），另一列为 <strong>Consensus 序列</strong>。序列格式示例：<code>AC[M:0.6;T:0.4]GT</code>，方括号内为「字母:频率」，未加方括号的单个字母表示频率 1.0。若没有 ID 列，将自动编号为 Sequence 1、Sequence 2……所有序列会全部绘制为分面。
-                </div>
+
             </div>
 
             <div class="param-panel">
@@ -45,15 +44,15 @@
                     <div class="param-item">
                         <label>序列类型</label>
                         <select id="seqType" data-redraw>
-                            <option value="dna">DNA / RNA</option>
+                            <option value="dna">DNA/RNA</option>
                             <option value="protein" selected>蛋白质</option>
                         </select>
                     </div>
                 </div>
                 <div class="param-inline" style="margin-bottom:10px;">
-                    <label><input type="radio" name="colorMode" value="builtin" checked> 内置理化分组</label>
+                    <label><input type="radio" name="colorMode" value="builtin" checked> 内置分组</label>
                     <label><input type="radio" name="colorMode" value="custom"> 自定义分组</label>
-                    <label><input type="radio" name="colorMode" value="none"> 无分组（每字母独立）</label>
+                    <label><input type="radio" name="colorMode" value="none"> 无分组</label>
                 </div>
                 <div id="builtinSchemeWrap">
                     <label style="font-size:14px;color:#666;">内置方案：
@@ -83,7 +82,7 @@
                     <label><input type="checkbox" id="reversePalette">反转色板顺序</label>
                     <label><input type="checkbox" id="cycleColors">色板颜色循环</label>
                 </div>
-                <div style="font-size:12px;color:#999;margin-top:4px;">选择色板会按分组顺序重新分配颜色；分组方案在第二步设置，逐组颜色可在此微调。</div>
+                <div style="font-size:12px;color:#999;margin-top:4px;">选择色板会按分组顺序重新分配颜色；分组方案在第二步设置，组别颜色可在此单独调整。</div>
             </div>
 
             <div id="colorAssignContainer"></div>
@@ -96,8 +95,10 @@
             <div id="legendSettingsPanel"></div>
 
             <div class="param-panel">
-                <div class="param-panel-title">序列Logo与排版设置</div>
-                <div class="param-grid cols-4">
+                <div class="param-panel-title">序列Logo图设置</div>
+
+                <div class="param-subsection">核心参数</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
                     <div class="param-item">
                         <label>纵轴编码</label>
                         <select id="logoYMode" data-redraw>
@@ -106,19 +107,11 @@
                         </select>
                     </div>
                     <div class="param-item">
+                        <label title="用于MEME的小样本误差校正e(n)；填0表示不校正">样本量（n）</label>
+                        <input type="number" id="logoSampleSize" value="0" min="0" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
                         <label class="mini-check"><input type="checkbox" id="logoLegendShowLetters" checked data-redraw> 图例包含字母</label>
-                    </div>
-                    <div class="param-item">
-                        <label>字母字体</label>
-                        <select id="logoLetterFont">
-                            <option value="Arial" selected>Arial</option>
-                        </select>
-                    </div>
-                    <div class="param-item">
-                        <label class="mini-check"><input type="checkbox" id="logoLetterBold" checked data-redraw> 字母加粗</label>
-                    </div>
-                    <div class="param-item">
-                        <label class="mini-check"><input type="checkbox" id="logoLetterItalic" data-redraw> 字母斜体</label>
                     </div>
                     <div class="param-item">
                         <label>每位置最小宽度</label>
@@ -128,31 +121,70 @@
                         <label>位点间距</label>
                         <input type="number" id="logoPositionGap" value="0" min="0" max="20" step="1" data-redraw>
                     </div>
+                </div>
+<div class="info-box" style="margin-bottom:16px;">
+    <strong>关于样本量 (n)：</strong>参考MEME套件中 <a href="https://meme-suite.org/meme/doc/ceqlogo.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">ceqlogo</a> 的小样本误差校正方法，样本量越小，图形高度压缩越明显，以反映统计不确定性。若您使用的是本工具从比对结果统计得到的位点频率，请自行设置样本个数；如果不需要校正，请填0。如果以概率作为纵坐标可以忽略该参数。
+</div>
+
+                <div class="param-subsection">Logo字母样式</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
                     <div class="param-item">
-                        <label>序列名称位置</label>
+                        <label>字体</label>
+                        <select id="logoLetterFont">
+                            <option value="Arial" selected>Arial</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoLetterBold" checked data-redraw> 加粗</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="logoLetterItalic" data-redraw> 斜体</label>
+                    </div>
+                    <div class="param-item">
+                        <label>轮廓模式</label>
+                        <select id="logoOutlineMode" data-redraw>
+                            <option value="none" selected>无</option>
+                            <option value="outline">填充+轮廓</option>
+                            <option value="outlineOnly">只显示轮廓（分组色）</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>轮廓颜色</label>
+                        <input type="color" id="logoOutlineColor" value="#333333" data-redraw>
+                    </div>
+                </div>
+
+                <div class="param-subsection">序列名称样式</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>名称位置</label>
                         <select id="logoTitlePos" data-redraw>
                             <option value="top" selected>上方</option>
                             <option value="left">左侧</option>
                         </select>
                     </div>
                     <div class="param-item">
-                        <label>序列名偏移</label>
+                        <label>偏移</label>
                         <input type="number" id="logoTitleLeftOffset" value="8" min="-100" max="200" step="1" data-redraw>
                     </div>
                     <div class="param-item">
-                        <label>序列名字号</label>
+                        <label>字号</label>
                         <input type="number" id="logoTitleFontSize" value="14" min="6" max="36" step="1" data-redraw>
                     </div>
                     <div class="param-item">
-                        <label>序列名颜色</label>
+                        <label>颜色</label>
                         <input type="color" id="logoTitleColor" value="#1f4068" data-redraw>
                     </div>
                     <div class="param-item">
-                        <label class="mini-check"><input type="checkbox" id="logoTitleBold" checked data-redraw> 序列名加粗</label>
+                        <label class="mini-check"><input type="checkbox" id="logoTitleBold" checked data-redraw> 加粗</label>
                     </div>
                     <div class="param-item">
-                        <label class="mini-check"><input type="checkbox" id="logoTitleItalic" data-redraw> 序列名斜体</label>
+                        <label class="mini-check"><input type="checkbox" id="logoTitleItalic" data-redraw> 斜体</label>
                     </div>
+                </div>
+
+                <div class="param-subsection">分面排版</div>
+                <div class="param-grid cols-4">
                     <div class="param-item">
                         <label>序列间隔</label>
                         <input type="number" id="logoFacetGap" value="16" min="0" max="100" step="1" data-redraw>
@@ -163,28 +195,28 @@
             <div class="param-panel">
                 <div class="param-panel-title">坐标轴设置</div>
                 
-                <div class="axis-subsection">Y 轴设置</div>
+                <div class="param-subsection">Y轴设置</div>
                 <div class="param-grid cols-4" style="margin-bottom:10px;">
                     <div class="param-item">
-                        <label>Y 轴最大值</label>
+                        <label>最大值</label>
                         <select id="logoYMaxMode" data-redraw>
                             <option value="auto" selected>自动（理论最大值）</option>
                             <option value="custom">自定义</option>
                         </select>
                     </div>
                     <div class="param-item">
-                        <label>自定义 Y 最大值</label>
+                        <label>自定义最大值</label>
                         <input type="number" id="logoYMax" value="4.5" min="0.1" max="10" step="0.1" disabled data-redraw>
                     </div>
                     <div class="param-item">
-                        <label>Y 轴刻度间隔</label>
+                        <label>刻度间隔</label>
                         <input type="number" id="logoYTickInterval" value="0" min="0" max="10" step="0.1" data-redraw title="0 = 自动">
                     </div>
                     <div class="param-item">
-                        <label class="mini-check"><input type="checkbox" id="logoShowYAxisLine" checked data-redraw> 显示 Y 轴主体</label>
+                        <label class="mini-check"><input type="checkbox" id="logoShowYAxisLine" checked data-redraw> 显示轴</label>
                     </div>
                     <div class="param-item">
-                        <label>Y 轴标题位置</label>
+                        <label>标题位置</label>
                         <select id="logoYTitleMode" data-redraw>
                             <option value="none">不显示</option>
                             <option value="perFacet" selected>每个序列都显示</option>
@@ -192,29 +224,29 @@
                         </select>
                     </div>
                     <div class="param-item" style="grid-column: span 3;">
-                        <label>Y 轴标题内容</label>
+                        <label>轴标题内容</label>
                         <input type="text" id="logoYTitleText" value="Information (bits)" data-redraw style="flex:1;">
                     </div>
                 </div>
 
-                <div class="axis-subsection">X 轴设置</div>
+                <div class="param-subsection">X轴设置</div>
                 <div class="param-grid cols-4" style="margin-bottom:10px;">
                     <div class="param-item">
-                        <label>X 轴标签</label>
+                        <label>标签</label>
                         <select id="logoXLabelMode" data-redraw>
                             <option value="number" selected>数字（1 ~ L）</option>
                             <option value="letter">最高频字母</option>
                         </select>
                     </div>
                     <div class="param-item">
-                        <label>X 轴刻度间隔</label>
+                        <label>刻度间隔</label>
                         <input type="number" id="logoXTickInterval" value="1" min="0" max="100" step="1" data-redraw title="0 = 自动；1 = 每个位置都显示">
                     </div>
                     <div class="param-item">
-                        <label class="mini-check"><input type="checkbox" id="logoShowXTickLabels" checked data-redraw> 显示 X 轴刻度值</label>
+                        <label class="mini-check"><input type="checkbox" id="logoShowXTickLabels" checked data-redraw> 显示刻度值</label>
                     </div>
                     <div class="param-item">
-                        <label>X 轴标题位置</label>
+                        <label>标题位置</label>
                         <select id="logoXTitleMode" data-redraw>
                             <option value="none">不显示</option>
                             <option value="perFacet" selected>每个序列都显示</option>
@@ -222,12 +254,12 @@
                         </select>
                     </div>
                     <div class="param-item" style="grid-column: span 3;">
-                        <label>X 轴标题内容</label>
-                        <input type="text" id="logoXTitleText" value="" placeholder="不填则不显示" data-redraw style="flex:1;">
+                        <label>轴标题内容</label>
+                        <input type="text" id="logoXTitleText" value="Position" placeholder="不填则不显示" data-redraw style="flex:1;">
                     </div>
                 </div>
 
-                <div class="axis-subsection">刻度与标题样式（统一）</div>
+                <div class="param-subsection">通用设置</div>
                 <div class="param-grid cols-4" style="margin-bottom:10px;">
                     <div class="param-item">
                         <label>刻度字号</label>
@@ -255,7 +287,7 @@
                     </div>
                 </div>
 
-                <div class="axis-subsection">轴线与网格</div>
+                <div class="param-subsection">轴线与网格</div>
                 <div class="param-grid cols-4">
                     <div class="param-item">
                         <label>轴线粗细</label>
@@ -270,7 +302,7 @@
                         <input type="number" id="logoTickWidth" value="1" min="0" max="5" step="0.5" data-redraw>
                     </div>
                     <div class="param-item">
-                        <label class="mini-check"><input type="checkbox" id="logoShowYGrid" data-redraw> 显示 Y 轴网格线</label>
+                        <label class="mini-check"><input type="checkbox" id="logoShowYGrid" data-redraw> 显示Y轴网格线</label>
                     </div>
                     <div class="param-item">
                         <label>网格线颜色</label>
@@ -278,25 +310,7 @@
                     </div>
                 </div>
                 <div class="info-box" style="margin-top:10px;">
-                    <strong>纵轴说明：</strong>信息量（bits）模式中，每个位置的总高度 = log₂(K) − 熵，K 为字母表大小（DNA=4，蛋白质=20），完全保守的位置达到最大值，完全随机为 0；频率模式中每个位置总高度固定为 1.0。
-                </div>
-            </div>
-
-            <div class="param-panel">
-                <div class="param-panel-title">文字轮廓</div>
-                <div class="param-grid cols-4">
-                    <div class="param-item">
-                        <label>轮廓模式</label>
-                        <select id="logoOutlineMode" data-redraw>
-                            <option value="none" selected>无</option>
-                            <option value="outline">填充 + 轮廓</option>
-                            <option value="outlineOnly">只显示轮廓（分组色）</option>
-                        </select>
-                    </div>
-                    <div class="param-item">
-                        <label>轮廓颜色</label>
-                        <input type="color" id="logoOutlineColor" value="#333333" data-redraw>
-                    </div>
+                    <strong>纵轴说明：</strong>信息量（bits）模式中，每个位置的总高度 = log₂(K) - 熵，K为字母表大小（DNA=4，蛋白质=20），完全保守的位置达到最大值，完全随机为0；频率模式中每个位置总高度固定为1.0。
                 </div>
             </div>
 
