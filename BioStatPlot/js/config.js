@@ -84,7 +84,7 @@
                 en: 'structural scheme',
                 tools: [
                     { id: '023', zh: '结构域/基序示意图（无方向）', en: 'Structural Domain / Motif Diagram (No Direction)' },
-                    { id: '026', zh: '序列Logo图', en: 'Sequence Logo' },
+                    { id: '026', zh: '序列Logo图', en: 'Sequence Logo', ext: 'jpg' },
 
                 ]
             },
