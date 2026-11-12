@@ -33,6 +33,17 @@
                         <label>Sequence column</label>
                         <select id="seqColSel" disabled><option value="">— Please import data first —</option></select>
                     </div>
+                    <div class="param-item">
+                        <label>Sample size column (optional)</label>
+                        <select id="sampleSizeColSel" disabled><option value="">None (Use global)</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label title="Takes effect when no sample size column is selected">Global sample size (n)</label>
+                        <input type="number" id="logoSampleSizeGlobal" value="0" min="0" step="1" data-redraw>
+                    </div>
+                </div>
+                <div class="info-box" style="margin-top:16px;">
+                    <strong>About sample size (n):</strong> Referring to the small sample error correction method of <a href="https://meme-suite.org/meme/doc/ceqlogo.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">ceqlogo</a> in the MEME suite, the smaller the sample size, the more the graphic height is compressed to reflect statistical uncertainty. If you are using site frequencies calculated by this tool from alignment results, please set the number of samples manually; fill 0 if correction is not needed. If probability is used as the Y-axis, this parameter can be ignored.
                 </div>
             </div>
 
@@ -105,10 +116,6 @@
                         </select>
                     </div>
                     <div class="param-item">
-                        <label title="Small sample error correction e(n) for MEME; fill 0 for no correction">Sample size (n)</label>
-                        <input type="number" id="logoSampleSize" value="0" min="0" step="1" data-redraw>
-                    </div>
-                    <div class="param-item">
                         <label class="mini-check"><input type="checkbox" id="logoLegendShowLetters" checked data-redraw> Legend includes letters</label>
                     </div>
                     <div class="param-item">
@@ -119,9 +126,6 @@
                         <label>Position gap</label>
                         <input type="number" id="logoPositionGap" value="0" min="0" max="20" step="1" data-redraw>
                     </div>
-                </div>
-                <div class="info-box" style="margin-bottom:16px;">
-                    <strong>About sample size (n):</strong> Referring to the small sample error correction method of <a href="https://meme-suite.org/meme/doc/ceqlogo.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">ceqlogo</a> in the MEME suite, the smaller the sample size, the more the graphic height is compressed to reflect statistical uncertainty. If you are using site frequencies calculated by this tool from alignment results, please set the number of samples manually; fill 0 if correction is not needed. If probability is used as the Y-axis, this parameter can be ignored.
                 </div>
 
                 <div class="param-subsection">Logo Letter Style</div>
@@ -159,6 +163,7 @@
                         <select id="logoTitlePos" data-redraw>
                             <option value="top" selected>Top</option>
                             <option value="left">Left</option>
+                            <option value="none">None</option>
                         </select>
                     </div>
                     <div class="param-item">

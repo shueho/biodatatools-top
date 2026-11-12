@@ -258,18 +258,22 @@
                 }
                 const consensus = buildConsensus();
                 let html = '<div class="result-item"><div class="table-scroll"><table><thead><tr>';
-                html += '<th>Name</th><th>Sequence</th>';
+                html += '<th>Motif_ID</th><th>Consensus</th><th>Sample_Size</th>';
                 html += '</tr></thead><tbody>';
                 html += '<tr>';
                 html += '<td style="text-align:left; white-space:nowrap;">Consensus</td>';
                 html += '<td style="text-align:left; word-break:break-all; font-family:Consolas,monospace;">' + escapeHtml(consensus) + '</td>';
+                html += '<td style="text-align:left; font-family:Consolas,monospace;">' + state.seqs.length + '</td>';
                 html += '</tr>';
                 html += '</tbody></table></div></div>';
                 motifBox.innerHTML = html;
             }
 
             function getOutputRows() {
-                return [['Name', 'Sequence'], ['Consensus', buildConsensus()]];
+                return [
+                    ['Motif_ID', 'Consensus', 'Sample_Size'],
+                    ['Consensus', buildConsensus(), String(state.seqs.length)]
+                ];
             }
 
             function rowsToTsv(rows) {

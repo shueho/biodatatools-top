@@ -6,7 +6,6 @@
     <title>序列Logo图 - BioDataTools</title>
     <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="../COMMON/plot-common.css">
-
 </head>
 <body>
 
@@ -34,8 +33,18 @@
                         <label>序列列</label>
                         <select id="seqColSel" disabled><option value="">— 请先导入数据 —</option></select>
                     </div>
+                    <div class="param-item">
+                        <label>样本量列（可选）</label>
+                        <select id="sampleSizeColSel" disabled><option value="">无（使用统一值）</option></select>
+                    </div>
+                    <div class="param-item">
+                        <label title="当未选择样本量列时生效">统一样本量 (n)</label>
+                        <input type="number" id="logoSampleSizeGlobal" value="0" min="0" step="1" data-redraw>
+                    </div>
                 </div>
-
+                <div class="info-box" style="margin-top:16px;">
+                    <strong>关于样本量 (n)：</strong>参考MEME套件中 <a href="https://meme-suite.org/meme/doc/ceqlogo.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">ceqlogo</a> 的小样本误差校正方法，样本量越小，图形高度压缩越明显，以反映统计不确定性。若您使用的是本工具从比对结果统计得到的位点频率，请自行设置样本个数；如果不需要校正，请填0。如果以概率作为纵坐标可以忽略该参数。
+                </div>
             </div>
 
             <div class="param-panel">
@@ -107,10 +116,6 @@
                         </select>
                     </div>
                     <div class="param-item">
-                        <label title="用于MEME的小样本误差校正e(n)；填0表示不校正">样本量（n）</label>
-                        <input type="number" id="logoSampleSize" value="0" min="0" step="1" data-redraw>
-                    </div>
-                    <div class="param-item">
                         <label class="mini-check"><input type="checkbox" id="logoLegendShowLetters" checked data-redraw> 图例包含字母</label>
                     </div>
                     <div class="param-item">
@@ -122,9 +127,6 @@
                         <input type="number" id="logoPositionGap" value="0" min="0" max="20" step="1" data-redraw>
                     </div>
                 </div>
-<div class="info-box" style="margin-bottom:16px;">
-    <strong>关于样本量 (n)：</strong>参考MEME套件中 <a href="https://meme-suite.org/meme/doc/ceqlogo.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">ceqlogo</a> 的小样本误差校正方法，样本量越小，图形高度压缩越明显，以反映统计不确定性。若您使用的是本工具从比对结果统计得到的位点频率，请自行设置样本个数；如果不需要校正，请填0。如果以概率作为纵坐标可以忽略该参数。
-</div>
 
                 <div class="param-subsection">Logo字母样式</div>
                 <div class="param-grid cols-4" style="margin-bottom:10px;">
@@ -161,6 +163,7 @@
                         <select id="logoTitlePos" data-redraw>
                             <option value="top" selected>上方</option>
                             <option value="left">左侧</option>
+                            <option value="none">不显示</option>
                         </select>
                     </div>
                     <div class="param-item">

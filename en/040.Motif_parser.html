@@ -53,10 +53,9 @@
             <div id="motifBox">
                 <p style="color:#999; text-align:center; padding:30px 0;">After parsing, the sequence and per-position base/amino acid proportions of each motif will be displayed here.</p>
             </div>
-            <div class="info-box">
-                <strong>Note:</strong> Can be used to draw sequence logo plots.
-            </div>
-        </div>
+<div class="info-box">
+    <strong>Note:</strong> Can be used to draw <a href="../BioStatPlot/en/026.html" target="_blank">sequence logo</a> plots; <code>Sites</code> indicates the number of occurrences of the current motif.
+</div>
 
         <div class="step-card">
             <div class="step-title">Step 3: Select Output Style and Export</div>
@@ -568,9 +567,9 @@
         }
 
         function getProportionRows() {
-            const rows = [['Motif_ID', 'Consensus']];
+            const rows = [['Motif_ID', 'Consensus', 'Sites']];
             parsedMotifs.forEach(function (m) {
-                rows.push([m.id, buildConsensusString(m)]);
+                rows.push([m.id, buildConsensusString(m), m.sites != null ? m.sites : '']);
             });
             return rows;
         }

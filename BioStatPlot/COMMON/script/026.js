@@ -10,20 +10,20 @@
         noValid: EN ? '❌ No valid sequences found' : '❌ 未找到有效的序列',
         colorEmpty: EN ? 'Color groups will appear here after importing data' : '导入数据后将在此处显示每个分组的颜色',
         importInfo: EN
-            ? 'Headers required. Optionally one column as <strong>Sequence ID</strong> (text), and another as <strong>Consensus</strong> sequence in MEME/minimal motif format, e.g. <code>AC[M:0.6;T:0.4]GT</code>. If no ID column is selected, sequences will be auto-numbered.' +
+            ? 'Headers required. Optionally one column as <strong>Sequence ID</strong> (text), another as <strong>Consensus</strong> sequence in MEME/minimal motif format, e.g. <code>AC[M:0.6;T:0.4]GT</code>, and optionally a column as <strong>Sample Size</strong> (numeric). If no ID column is selected, sequences will be auto-numbered.' +
               '<br><strong>Need to convert your data?</strong><br>' +
               '· If you have a <strong>Motif (MEME/MAST) result file</strong>, please use the <a href="../../en/040.Motif_parser.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">Motif (MEME/MAST) Result Parser</a> to convert it.<br>' +
               '· If you have a <strong>Multiple Sequence Alignment</strong>, please use the <a href="../../en/055.Fasta_alignment_consensus.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">FASTA Alignment to Single-Line Consensus</a> tool to convert it.'
-            : '需包含表头。可选一列作为 <strong>序列ID</strong>（文本），另一列为<strong>Consensus序列</strong>，格式如 AC[M:0.6;T:0.4]GT（方括号内为“字母:频率”，未加方括号的单个字母表示频率1.0）。未选择ID列时自动编号为Sequence 1、Sequence 2……' +
+            : '需包含表头。可选一列作为 <strong>序列ID</strong>（文本），一列为<strong>Consensus序列</strong>，格式如 <code>AC[M:0.6;T:0.4]GT</code>（方括号内为“字母:频率”，未加方括号的单个字母表示频率1.0），以及可选一列作为 <strong>样本量</strong>（数字）。未选择ID列时自动编号为Sequence 1、Sequence 2……。' +
               '<br><strong>需要转换数据？</strong><br>' +
               '· 如果您有 <strong>Motif（MEME/MAST）结果文件</strong>，请前往 <a href="../../ch/040.Motif_parser.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">Motif（MEME/MAST）结果解析器</a> 进行转换。<br>' +
               '· 如果您的数据是 <strong>多序列比对结果（FASTA aligned）</strong>，请前往 <a href="../../ch/055.Fasta_alignment_consensus.html" target="_blank" style="color:#1f4068;font-weight:600;text-decoration:underline;">FASTA比对序列转单行序列</a> 进行转换。'
     };
 
-    const EX_DATA = 'Motif_ID\tConsensus\n' +
-        'motif_1\tCRLRW[M:0.3125;T:0.1875;I:0.125;K:0.125;L:0.125;V:0.125]NYL[R:0.9375;K:0.0625]P[D:0.4375;G:0.3125;N:0.125;S:0.125][I:0.6875;V:0.1875;L:0.125]KRG[N:0.625;H:0.125;K:0.125;M:0.125][F:0.625;I:0.1875;M:0.125;L:0.0625][S:0.625;T:0.375][E:0.25;P:0.1875;Q:0.1875;F:0.125;K:0.125;R:0.0625;S:0.0625][D:0.5625;E:0.4375]E[E:0.75;D:0.125;K:0.125][D:0.875;E:0.125][L:0.75;T:0.1875;S:0.0625]I[I:0.6875;V:0.1875;L:0.125][R:0.625;H:0.125;K:0.125;Q:0.125]L[H:0.9375;Y:0.0625][S:0.4375;K:0.1875;E:0.125;N:0.125;R:0.125][L:0.75;I:0.125;M:0.125]LG[N:0.9375;S:0.0625][R:0.75;K:0.25]WS[L:0.625;A:0.25;V:0.125]IA[G:0.875;A:0.125][R:0.9375;K:0.0625][L:0.8125;I:0.1875]PGRTDN\n' +
-        'motif_2\t[M:0.9286;T:0.0714][G:0.9286;K:0.0714][R:0.9286;V:0.0714][K:0.3571;A:0.2143;T:0.2143;S:0.1429;P:0.0714][P:0.9286;A:0.0714]CC[E:0.2857;S:0.2857;A:0.2143;D:0.1429;V:0.0714]K[E:0.4286;A:0.1429;M:0.1429;N:0.1429;V:0.1429][G:0.8571;H:0.1429][L:0.8571;T:0.1429][K:0.4286;R:0.3571;N:0.2143][K:0.9286;R:0.0714]G[P:0.7857;A:0.1429;T:0.0714]W[T:0.7857;S:0.2143][P:0.4286;S:0.2143;K:0.1429;T:0.1429;A:0.0714][E:0.5714;K:0.3571;M:0.0714]ED[Q:0.4286;E:0.1429;K:0.1429;L:0.1429;M:0.0714;S:0.0714][I:0.3571;L:0.3571;K:0.1429;R:0.1429]L[T:0.4286;I:0.3571;V:0.1429;S:0.0714][N:0.6429;D:0.2143;S:0.1429][Y:0.8571;F:0.1429]I[K:0.4286;N:0.2143;Q:0.2143;R:0.1429][E:0.2857;K:0.2857;Q:0.1429;S:0.1429;T:0.0714;V:0.0714][N:0.5;H:0.3571;E:0.1429]G[E:0.7143;H:0.1429;S:0.1429]G[Q:0.2857;N:0.2143;C:0.1429;K:0.1429;R:0.1429;G:0.0714]WR[S:0.5714;T:0.2143;A:0.1429;N:0.0714]LP[K:0.9286;R:0.0714][K:0.2857;N:0.2857;A:0.1429;R:0.1429;L:0.0714;Q:0.0714]AGL[L:0.6429;Q:0.2143;K:0.1429]RCG\n' +
-        'motif_3\tE[I:0.75;V:0.1875;L:0.0625]KN[Y:0.6875;F:0.1875;V:0.125]W[N:0.9375;H:0.0625]T[H:0.9375;N:0.0625][L:0.6875;I:0.3125][K:0.3125;I:0.1875;S:0.1875;R:0.125;G:0.0625;L:0.0625;N:0.0625][K:0.9375;R:0.0625][K:0.875;R:0.125][L:0.875;S:0.125][K:0.4375;I:0.25;C:0.125;L:0.125;Q:0.0625]';
+    const EX_DATA = 'Motif_ID\tConsensus\tSample_Size\n' +
+        'motif_1\tCRLRW[M:0.3125;T:0.1875;I:0.125;K:0.125;L:0.125;V:0.125]NYL[R:0.9375;K:0.0625]P[D:0.4375;G:0.3125;N:0.125;S:0.125][I:0.6875;V:0.1875;L:0.125]KRG[N:0.625;H:0.125;K:0.125;M:0.125][F:0.625;I:0.1875;M:0.125;L:0.0625][S:0.625;T:0.375][E:0.25;P:0.1875;Q:0.1875;F:0.125;K:0.125;R:0.0625;S:0.0625][D:0.5625;E:0.4375]E[E:0.75;D:0.125;K:0.125][D:0.875;E:0.125][L:0.75;T:0.1875;S:0.0625]I[I:0.6875;V:0.1875;L:0.125][R:0.625;H:0.125;K:0.125;Q:0.125]L[H:0.9375;Y:0.0625][S:0.4375;K:0.1875;E:0.125;N:0.125;R:0.125][L:0.75;I:0.125;M:0.125]LG[N:0.9375;S:0.0625][R:0.75;K:0.25]WS[L:0.625;A:0.25;V:0.125]IA[G:0.875;A:0.125][R:0.9375;K:0.0625][L:0.8125;I:0.1875]PGRTDN\t32\n' +
+        'motif_2\t[M:0.9286;T:0.0714][G:0.9286;K:0.0714][R:0.9286;V:0.0714][K:0.3571;A:0.2143;T:0.2143;S:0.1429;P:0.0714][P:0.9286;A:0.0714]CC[E:0.2857;S:0.2857;A:0.2143;D:0.1429;V:0.0714]K[E:0.4286;A:0.1429;M:0.1429;N:0.1429;V:0.1429][G:0.8571;H:0.1429][L:0.8571;T:0.1429][K:0.4286;R:0.3571;N:0.2143][K:0.9286;R:0.0714]G[P:0.7857;A:0.1429;T:0.0714]W[T:0.7857;S:0.2143][P:0.4286;S:0.2143;K:0.1429;T:0.1429;A:0.0714][E:0.5714;K:0.3571;M:0.0714]ED[Q:0.4286;E:0.1429;K:0.1429;L:0.1429;M:0.0714;S:0.0714][I:0.3571;L:0.3571;K:0.1429;R:0.1429]L[T:0.4286;I:0.3571;V:0.1429;S:0.0714][N:0.6429;D:0.2143;S:0.1429][Y:0.8571;F:0.1429]I[K:0.4286;N:0.2143;Q:0.2143;R:0.1429][E:0.2857;K:0.2857;Q:0.1429;S:0.1429;T:0.0714;V:0.0714][N:0.5;H:0.3571;E:0.1429]G[E:0.7143;H:0.1429;S:0.1429]G[Q:0.2857;N:0.2143;C:0.1429;K:0.1429;R:0.1429;G:0.0714]WR[S:0.5714;T:0.2143;A:0.1429;N:0.0714]LP[K:0.9286;R:0.0714][K:0.2857;N:0.2857;A:0.1429;R:0.1429;L:0.0714;Q:0.0714]AGL[L:0.6429;Q:0.2143;K:0.1429]RCG\t14\n' +
+        'motif_3\tE[I:0.75;V:0.1875;L:0.0625]KN[Y:0.6875;F:0.1875;V:0.125]W[N:0.9375;H:0.0625]T[H:0.9375;N:0.0625][L:0.6875;I:0.3125][K:0.3125;I:0.1875;S:0.1875;R:0.125;G:0.0625;L:0.0625;N:0.0625][K:0.9375;R:0.0625][K:0.875;R:0.125][L:0.875;S:0.125][K:0.4375;I:0.25;C:0.125;L:0.125;Q:0.0625]\t16';
 
     const BUILTIN_SCHEMES = {
         dna: [
@@ -228,6 +228,9 @@
         const seqCol = s.roles.seq;
         if (!seqCol) return [];
         const idCol = s.roles.id && s.roles.id !== seqCol ? s.roles.id : null;
+        const sampleCol = s.roles.sampleSize || null;
+        const globalSample = Math.max(0, parseInt(PC.num(app, 'logoSampleSizeGlobal', 0), 10));
+
         const out = [];
         s.data.forEach(function (row, idx) {
             const raw = row[seqCol];
@@ -237,7 +240,14 @@
             const id = idCol
                 ? (String(row[idCol] || '').trim() || ('Sequence ' + (idx + 1)))
                 : ('Sequence ' + (idx + 1));
-            out.push({ id: id, positions: positions });
+            
+            let rowSample = globalSample;
+            if (sampleCol && row[sampleCol]) {
+                const parsed = parseInt(row[sampleCol], 10);
+                if (isFinite(parsed) && parsed > 0) rowSample = parsed;
+            }
+
+            out.push({ id: id, positions: positions, sampleSize: rowSample });
         });
         return out;
     }
@@ -385,6 +395,23 @@
         }).join('');
     }
 
+    function fillSampleColSelect(app) {
+        const sel = app.$('sampleSizeColSel');
+        if (!sel) return;
+        const s = app.state;
+        if (!s.headers.length) {
+            sel.innerHTML = `<option value="">${EN ? 'None' : '无'}</option>`;
+            sel.disabled = true;
+            return;
+        }
+        sel.disabled = false;
+        let html = `<option value="">${EN ? 'None (Use global)' : '无（使用统一值）'}</option>`;
+        html += s.headers.map(function (h) {
+            return '<option value="' + esc(h) + '"' + (h === s.roles.sampleSize ? ' selected' : '') + '>' + esc(h) + '</option>';
+        }).join('');
+        sel.innerHTML = html;
+    }
+
     function refreshBuiltinSchemeSelect(app) {
         const sel = app.$('builtinSchemeSel');
         if (!sel) return;
@@ -492,7 +519,6 @@
         const $ = app.$;
         const p = PC.readCommonParams(app, { width: 800, height: 600 });
         p.yMode = ($('logoYMode') && $('logoYMode').value) || 'bits';
-        p.sampleSize = Math.max(0, parseInt(PC.num(app, 'logoSampleSize', 0), 10));
         p.legendShowLetters = $('logoLegendShowLetters') ? $('logoLegendShowLetters').checked : true;
         
         p.letterFont = app.state.logoLetterFont ||
@@ -568,7 +594,7 @@
         const plotH = Math.max(20, opts.h - topPad - bottomPad);
         const yScale = d3.scaleLinear().domain([0, opts.yMax]).range([plotY + plotH, plotY]);
 
-        if (opts.showTitle) {
+        if (opts.showTitle && opts.titlePos !== 'none') {
             if (opts.titlePos === 'left') {
                 svg.append('text')
                     .attr('class', 'logo-seq-title')
@@ -816,6 +842,7 @@
                 .text(opts.xTitleText);
         }
     }
+
     function drawGroupLegend(svg, groups, groupColors, p, canvasW, canvasH) {
         if (!p.showLegend || !groups.length) return;
         const items = groups.map(function (g) { 
@@ -831,10 +858,11 @@
             anchor: 'top-right',
             margin: 15,
             labelFormatter: function (it) {
+                let baseName = it.name.replace(/\s*[\(（][^\)）]*[\)）]/g, '').trim();
                 if (p.legendShowLetters && it.letters && it.letters.length) {
-                    return it.name + ' (' + it.letters.join('') + ')';
+                    return baseName + ' (' + it.letters.join('') + ')';
                 }
-                return it.name;
+                return baseName;
             }
         });
     }
@@ -881,9 +909,11 @@
         const targetCanvasW = PC.num(app, 'chartWidth', 800);
 
         const totalGap = Math.max(0, nPosMax - 1) * p.positionGap;
+        
         let bandW = (targetCanvasW - leftPad - fixedRight - 2 * outerMargin - totalGap) / nPosMax;
-        if (!isFinite(bandW) || bandW <= 0) bandW = 2;
-        bandW = Math.min(60, bandW);
+        if (!isFinite(bandW) || bandW <= 0) bandW = 26;
+        
+        bandW = Math.max(p.minBand, Math.min(60, bandW));
 
         const plotWMax = bandW * nPosMax + Math.max(0, nPosMax - 1) * p.positionGap;
         const width = leftPad + plotWMax + fixedRight + 2 * outerMargin;
@@ -929,7 +959,7 @@
                 leftPad: leftPad,
                 yMax: yMax, maxBits: maxBits,
                 yMode: p.yMode,
-                sampleSize: p.sampleSize, 
+                sampleSize: m.sampleSize,
                 xLabelMode: p.xLabelMode,
                 letterFont: p.letterFont,
                 capRatio: capRatio,
@@ -1011,13 +1041,14 @@
         app.exportPngBtn.disabled = false;
         app.showTip('msgTip3', PlotI18N.t('drawDone'), 'success');
     }
+
     PlotApp.create({
         exportName: 'seq_logo',
         exampleData: EX_DATA,
         importInfo: T.importInfo,
 
         stateExtra: {
-            roles: { id: '', seq: '' },
+            roles: { id: '', seq: '', sampleSize: '' },
             colorMode: 'builtin',
             builtinScheme: '',
             customGroupsText: '',
@@ -1052,6 +1083,14 @@
             if (seqSel) {
                 seqSel.addEventListener('change', function () {
                     s.roles.seq = seqSel.value;
+                    if (s.currentSvg) app.drawChart();
+                });
+            }
+
+            const sampleSel = app.$('sampleSizeColSel');
+            if (sampleSel) {
+                sampleSel.addEventListener('change', function () {
+                    s.roles.sampleSize = sampleSel.value;
                     if (s.currentSvg) app.drawChart();
                 });
             }
@@ -1154,6 +1193,7 @@
 
             fillSeqIdSelect(app);
             fillSeqColSelect(app);
+            fillSampleColSelect(app);
             refreshBuiltinSchemeSelect(app);
             if (!s.builtinScheme) {
                 const seqType = getSeqType(app);
@@ -1179,6 +1219,7 @@
 
             s.roles.id = idCol;
             s.roles.seq = seqCol;
+            s.roles.sampleSize = '';
             s.customColors = {};
             s.colorMode = 'builtin';
 
@@ -1197,6 +1238,7 @@
 
             fillSeqIdSelect(app);
             fillSeqColSelect(app);
+            fillSampleColSelect(app);
             refreshBuiltinSchemeSelect(app);
             const schemes = BUILTIN_SCHEMES[seqType] || [];
             if (schemes.length) applyBuiltinScheme(app, schemes[0].key);
@@ -1206,7 +1248,7 @@
         onReset: function (app) {
             const s = app.state;
             s.columnTypes = {};
-            s.roles = { id: '', seq: '' };
+            s.roles = { id: '', seq: '', sampleSize: '' };
             s.customColors = {};
             s.colorMode = 'builtin';
             s.builtinScheme = '';
@@ -1221,6 +1263,7 @@
 
             const setV = function (id, v) { const el = app.$(id); if (el) el.value = v; };
             const setC = function (id, v) { const el = app.$(id); if (el) el.checked = v; };
+            setV('logoSampleSizeGlobal', 0);
             setV('logoXTickInterval', 1);
             setV('logoYTickInterval', 0);
             setC('logoShowXTickLabels', true);
@@ -1261,11 +1304,11 @@
             setC('logoAxisTitleBold', true);
             setC('logoAxisTitleItalic', false);
             setC('logoLegendShowLetters', true);
-            setV('logoSampleSize', 0);
             fillLogoFontSelect(app);
 
             fillSeqIdSelect(app);
             fillSeqColSelect(app);
+            fillSampleColSelect(app);
             refreshBuiltinSchemeSelect(app);
             updateColorModeUI(app);
             refreshColorAssign(app);
@@ -1282,6 +1325,7 @@
 
             fillSeqIdSelect(app);
             fillSeqColSelect(app);
+            fillSampleColSelect(app);
             refreshBuiltinSchemeSelect(app);
             updateColorModeUI(app);
             refreshColorAssign(app);

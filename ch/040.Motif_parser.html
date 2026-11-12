@@ -53,9 +53,9 @@
             <div id="motifBox">
                 <p style="color:#999; text-align:center; padding:30px 0;">解析后，各motif的序列及每位碱基/氨基酸占比将展示在此处</p>
             </div>
-            <div class="info-box">
-                <strong>说明：</strong>可用于绘制序列Logo图。
-            </div>
+<div class="info-box">
+    <strong>说明：</strong>可用于绘制<a href="../BioStatPlot/ch/026.html" target="_blank">序列Logo图</a>；Sites表示当前Motif在序列中出现的次数。
+</div>
         </div>
 
         <div class="step-card">
@@ -573,9 +573,9 @@ function posToProbs(posEl, bg, nsites) {
 
 
         function getProportionRows() {
-            const rows = [['Motif_ID', 'Consensus']];
+            const rows = [['Motif_ID', 'Consensus', 'Sites']];
             parsedMotifs.forEach(function (m) {
-                rows.push([m.id, buildConsensusString(m)]);
+                rows.push([m.id, buildConsensusString(m), m.sites != null ? m.sites : '']);
             });
             return rows;
         }
