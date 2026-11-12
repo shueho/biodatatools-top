@@ -385,9 +385,18 @@ window.toggleCategory = function(id) {
     if (el) el.classList.toggle('open');
 };
 
-window.toggleSubCategory = function(id) {
+window.toggleSubCategory = function (id) {
     const el = document.getElementById(id);
-    if (el) el.classList.toggle('open');
+    if (!el) return;
+    const willOpen = !el.classList.contains('open');
+
+    el.parentElement.parentElement
+      .querySelectorAll(':scope > li > ul.sub-sub-menu')
+      .forEach(ul => {
+          if (ul !== el) ul.classList.remove('open');
+      });
+
+    el.classList.toggle('open', willOpen);
 };
 
 /* 滚动到工具卡片 */
