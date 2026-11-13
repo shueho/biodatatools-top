@@ -399,7 +399,6 @@ window.toggleSubCategory = function (id) {
     el.classList.toggle('open', willOpen);
 };
 
-/* 滚动到工具卡片 */
 window.scrollToTool = function(toolId) {
     const target = document.getElementById(`tool-${toolId}`);
     if (!target) return;

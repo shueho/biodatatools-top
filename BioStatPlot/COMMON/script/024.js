@@ -78,11 +78,7 @@
 #transformPanelContainer .vt-row:first-of-type { margin-top: 0; }
 #transformPanelContainer .vt-base-item { min-width: 110px; }
 
-#colorAssignContainer .color-assign-item { padding: 4px 8px !important; gap: 4px !important; }
-#colorAssignContainer .color-assign-item input[type="color"] {
-    width: 22px !important; height: 22px !important; min-width: 22px !important; padding: 0 !important;
-}
-#colorAssignContainer .color-assign-item .cat-name { font-size: 12px !important; }
+
 `;
         document.head.appendChild(s);
     }
@@ -869,20 +865,8 @@ c.querySelectorAll('input, select, textarea').forEach(function (el) {
             }
         }
 
-        const ptsG = svg.append('g').attr('class', 'volcano-points');
-        pts.forEach(function (pt) {
-            const px = xScale(pt.x);
-            const py = yScale(pt.y);
-            if (!isFinite(px) || !isFinite(py)) return;
-            ptsG.append('circle')
-                .attr('cx', px).attr('cy', py)
-                .attr('r', v.pointSize / 2)
-                .attr('fill', colorOf(pt.cat))
-                .attr('opacity', v.pointAlpha);
-        });
-
+        let labelItems = [];
         if (v.labelShow) {
-            const labelsG = svg.append('g').attr('class', 'volcano-labels');
             let list = [];
             if (v.labelMode === 'top') {
                 const n = Math.max(1, Math.round(v.labelTopN));
@@ -896,7 +880,7 @@ c.querySelectorAll('input, select, textarea').forEach(function (el) {
                 list = upPts.concat(downPts);
             } else {
                 const names = String(v.labelCustomNames || '')
-                    .split(/[,，\s]+/)
+                    .split(/[\r\n]+/)
                     .map(function (s) { return s.trim(); })
                     .filter(Boolean);
                 const set = new Set(names);
@@ -906,7 +890,6 @@ c.querySelectorAll('input, select, textarea').forEach(function (el) {
             const leaderLen = 10;
             const offX = isFinite(v.labelLeaderOffsetX) ? v.labelLeaderOffsetX : 0;
             const offY = isFinite(v.labelLeaderOffsetY) ? v.labelLeaderOffsetY : 0;
-            const leaderColor = v.labelLeaderColor || '#999999';
 
             list.forEach(function (pt) {
                 const px = xScale(pt.x);
@@ -920,33 +903,80 @@ c.querySelectorAll('input, select, textarea').forEach(function (el) {
                 const dir = side === 'left' ? -1 : 1;
 
                 const r = v.pointSize / 2;
-                const lineStartX = px + dir * r;
-                const lineStartY = py;
                 const lineEndX = px + dir * (r + leaderLen + offX);
                 const lineEndY = py + offY;
                 const textX = lineEndX + dir * 2;
-                const textY = lineEndY;
-                const anchor = side === 'left' ? 'end' : 'start';
-                const textColor = v.labelTextColor[pt.cat] || '#333';
 
-                labelsG.append('line')
-                    .attr('x1', lineStartX).attr('y1', lineStartY)
-                    .attr('x2', lineEndX).attr('y2', lineEndY)
+                labelItems.push({
+                    pt: pt,
+                    px: px,
+                    py: py,
+                    lineEndX: lineEndX,
+                    lineEndY: lineEndY,
+                    textX: textX,
+                    textY: lineEndY,
+                    anchor: side === 'left' ? 'end' : 'start',
+                    textColor: v.labelTextColor[pt.cat] || '#333'
+                });
+            });
+        }
+
+        if (labelItems.length) {
+            const defs = svg.append('defs');
+            const linesG = svg.append('g').attr('class', 'volcano-labels-lines');
+            const leaderColor = v.labelLeaderColor || '#999999';
+            const r = v.pointSize / 2;
+            labelItems.forEach(function (it, idx) {
+                const maskId = 'vlmask-024-' + idx + '-' + Math.random().toString(36).slice(2, 8);
+                const mask = defs.append('mask')
+                    .attr('id', maskId)
+                    .attr('maskUnits', 'userSpaceOnUse')
+                    .attr('x', 0).attr('y', 0)
+                    .attr('width', p.width).attr('height', p.height);
+                mask.append('rect')
+                    .attr('x', 0).attr('y', 0)
+                    .attr('width', p.width).attr('height', p.height)
+                    .attr('fill', 'white');
+                mask.append('circle')
+                    .attr('cx', it.px).attr('cy', it.py).attr('r', r)
+                    .attr('fill', 'black');
+
+                linesG.append('line')
+                    .attr('x1', it.px).attr('y1', it.py)
+                    .attr('x2', it.lineEndX).attr('y2', it.lineEndY)
+                    .attr('mask', 'url(#' + maskId + ')')
                     .attr('stroke', leaderColor)
                     .attr('stroke-width', 1)
                     .attr('stroke-linecap', 'round');
+            });
+        }
 
-                const gLabel = labelsG.append('g');
+        const ptsG = svg.append('g').attr('class', 'volcano-points');
+        pts.forEach(function (pt) {
+            const px = xScale(pt.x);
+            const py = yScale(pt.y);
+            if (!isFinite(px) || !isFinite(py)) return;
+            ptsG.append('circle')
+                .attr('cx', px).attr('cy', py)
+                .attr('r', v.pointSize / 2)
+                .attr('fill', colorOf(pt.cat))
+                .attr('opacity', v.pointAlpha);
+        });
+
+        if (labelItems.length) {
+            const textG = svg.append('g').attr('class', 'volcano-labels-text');
+            labelItems.forEach(function (it) {
+                const gLabel = textG.append('g');
                 const txt = gLabel.append('text')
-                    .attr('x', textX)
-                    .attr('y', textY)
+                    .attr('x', it.textX)
+                    .attr('y', it.textY)
                     .attr('dy', '0.35em')
-                    .attr('text-anchor', anchor)
+                    .attr('text-anchor', it.anchor)
                     .attr('font-size', v.labelFontSize)
                     .attr('font-weight', v.labelBold ? 'bold' : 'normal')
                     .attr('font-style', v.labelItalic ? 'italic' : 'normal')
-                    .attr('fill', textColor)
-                    .text(pt.id);
+                    .attr('fill', it.textColor)
+                    .text(it.pt.id);
 
                 if (v.labelShowBg) {
                     let bb = null;
@@ -958,7 +988,7 @@ c.querySelectorAll('input, select, textarea').forEach(function (el) {
                             .attr('width', bb.width + 6)
                             .attr('height', bb.height + 4)
                             .attr('rx', 2)
-                            .attr('fill', v.labelBgColor[pt.cat] || '#ffffff')
+                            .attr('fill', v.labelBgColor[it.pt.cat] || '#ffffff')
                             .attr('stroke', v.labelBorderColor || '#000000')
                             .attr('stroke-width', 1);
                     }

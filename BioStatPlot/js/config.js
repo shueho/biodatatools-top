@@ -46,7 +46,6 @@
                 tools: [
                     { id: '017', zh: '分组拟合散点图', en: 'Grouped Fit Scatter Plot' },
                     { id: '021', zh: '带误差棒的散点图', en: 'Scatter Plot with Error Bars' },
-                    { id: '024', zh: '火山图', en: 'Volcano Plot' },
 
                 ]
             },
@@ -93,6 +92,15 @@
                 en: 'Venn Diagram',
                 tools: [
                     { id: '027', zh: '椭圆韦恩图（1-5集合）', en: 'Ellipse Venn Diagram (1-5 Sets)'},
+
+                ]
+            },
+            {
+                zh: '火山图',
+                en: 'Volcano Plot',
+                tools: [
+                    { id: '024', zh: '火山图', en: 'Volcano Plot' },
+                    { id: '028', zh: '火山图（按分组着色）', en: 'Volcano Plot (Grouped Coloring)' },
 
                 ]
             },
