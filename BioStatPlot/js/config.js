@@ -25,6 +25,7 @@
                     { id: '010', zh: '堆积柱状图（宽表/丰度表）', en: 'Stacked Bar Chart (Wide / Abundance Table)' },
                     { id: '011', zh: '显著性柱状图', en: 'Significance Bar Chart' },
                     { id: '016', zh: '直方图', en: 'Histogram' },
+                    { id: '029', zh: '双向条形图', en: 'Bidirectional Bar Chart' },
 
                 ]
             },
