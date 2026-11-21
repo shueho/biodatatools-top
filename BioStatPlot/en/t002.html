@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tree Comparison - BioDataTools</title>
+<link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="../COMMON/tree/tree-theme.css">
+<style>
+  #chartPreview { display:block; padding:8px; min-height:auto; }
+  #tgSvg { display:block; width:100%; height:auto; background:#fff; }
+  #tgLegend .tg-swatch { display:inline-block; width:20px; height:3px; border-radius:2px; vertical-align:middle; margin-right:6px; }
+</style>
+</head>
+<body>
+<div id="common-header"></div>
+<div class="main">
+  <div class="page-intro">
+    <h2>Tree Comparison</h2>
+    <p>Import two trees and a group table, click internal nodes to rotate child branches, minimize link crossings, and export the adjusted trees.</p>
+  </div>
+  <div class="step-card" id="step1">
+    <div class="step-title">Step 1: Import left tree</div>
+    <div id="leftImportHost"></div>
+    <div id="leftMsg" class="tip-text"></div>
+  </div>
+  <div class="step-card" id="step2">
+    <div class="step-title">Step 2: Import right tree</div>
+    <div id="rightImportHost"></div>
+    <div id="rightMsg" class="tip-text"></div>
+  </div>
+  <div class="step-card" id="step3">
+    <div class="step-title">Step 3: Import group table (optional)</div>
+    <div id="groupsImportHost"></div>
+    <div id="groupsMsg" class="tip-text"></div>
+    <div id="groupStyleHost" style="margin-top:16px;"></div>
+  </div>
+  <div class="step-card" id="step4">
+    <div class="step-title">Step 4: Layout settings</div>
+    <div class="param-panel">
+      <div class="param-panel-title">Display</div>
+      <div class="param-grid cols-4">
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tgIgnoreLength" checked> Ignore branch lengths</label></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tgHideLabels"> Hide leaf labels</label></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tgHighlightMismatch" checked> Highlight depth mismatch</label></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tgTopoHighlight" checked> Highlight topology mismatch (branches)</label></div>
+        <div class="param-item"><label>Depth tolerance</label>
+          <input type="number" id="tgDepthTolerance" value="" min="0" step="any" placeholder="0.1"></div>
+        <div class="param-item"><label>Label sort</label>
+          <select id="tgSortMode">
+            <option value="none">None</option>
+            <option value="labelAsc">Label ascending</option>
+            <option value="labelDesc">Label descending</option>
+            <option value="group">By group</option>
+          </select></div>
+      </div>
+    </div>
+    <div class="param-panel">
+      <div class="param-panel-title">Size</div>
+      <div class="param-grid cols-4">
+        <div class="param-item"><label>Leaf row height</label><input type="number" id="tgLeafRowH" value="22" min="6" max="60" step="1"></div>
+        <div class="param-item"><label>Tree width</label><input type="number" id="tgTreeWidth" value="280" min="80" max="800" step="10"></div>
+        <div class="param-item"><label>Tree gap</label>
+          <input type="number" id="tgGapWidth" value="460" min="0" max="2000" step="10" style="width:70px;" readonly>
+          <label class="mini-check"><input type="checkbox" id="tgGapAuto" checked> Auto</label></div>
+        <div class="param-item"><label>Label size</label><input type="number" id="tgLabelFontSize" value="13" min="6" max="40" step="1"></div>
+      </div>
+    </div>
+    <div class="param-panel">
+      <div class="param-panel-title">Link style</div>
+      <div class="param-grid cols-4">
+        <div class="param-item"><label>Link width</label><input type="number" id="tgLinkWidth" value="1.5" min="0.5" max="8" step="0.1"></div>
+        <div class="param-item"><label>Link opacity</label><input type="number" id="tgLinkOpacity" value="0.65" min="0" max="1" step="0.05"></div>
+        <div class="param-item"><label>Link curvature</label><input type="number" id="tgLinkCurve" value="0.5" min="0" max="1" step="0.05"></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tgLinkMatchBranch"> Link width matches label spacing</label></div>
+        <div class="param-item"><label class="mini-check"><input type="checkbox" id="tgLinkDashed"> Dashed links</label></div>
+        <div class="param-item"><label>Label alignment</label>
+          <select id="tgLabelAlignMode">
+            <option value="none">At node tip</option>
+            <option value="outer">Align to outer sides</option>
+            <option value="center">Center-aligned</option>
+            <option value="inner">Align to inner sides</option>
+          </select></div>
+        <div class="param-item"><label>Label offset</label>
+          <input type="number" id="tgLabelOffset" value="0" min="-200" max="200" step="1"></div>
+        <div class="param-item"><label>Link alignment</label>
+          <select id="tgLinkAlignMode">
+            <option value="label">Fixed distance from label</option>
+            <option value="alignStart">Align link starts/ends</option>
+            <option value="node">At node tips</option>
+          </select></div>
+        <div class="param-item"><label>Link offset</label>
+          <input type="number" id="tgLinkPadding" value="8" min="-100" max="100" step="1"></div>
+      </div>
+    </div>
+    <div class="info-box">
+      <b>Operation:</b> click an internal node → it highlights and a panel opens → click "Confirm rotate" to reverse its child branches → links reflow automatically; use "Undo last rotate" to revert.<br/>
+      <b>Depth mismatch:</b> for identical leaf names, compare relative depth (level count when branch lengths are ignored); links whose difference exceeds "Depth tolerance" are drawn in the highlight color.<br/>
+      <b>Topology mismatch:</b> each branch is colored when the leaf set below its child differs from the other tree; the same divergence uses the same color on both sides.
+    </div>
+  </div>
+  <div class="step-card" id="step5">
+    <div class="step-title">Step 5: Preview &amp; export</div>
+    <div class="result-toolbar">
+      <button class="btn" type="button" data-export="left">Export left tree</button>
+      <button class="btn" type="button" data-export="right">Export right tree</button>
+      <button class="btn" type="button" data-export="svg">Export SVG</button>
+      <button class="btn" type="button" data-export="png">Export PNG</button>
+      <label class="mini-check"><input type="checkbox" id="tgIncludeMeta" checked> Include metadata</label>
+      <span class="spacer"></span>
+      <span id="tgMsg" class="tip-text"></span>
+    </div>
+    <div class="info-box" style="margin:8px 0 12px;line-height:1.75;">
+      <b>Note:</b> matching depth only means this leaf sits at a similar relative position in both trees; <b>it does not imply identical topology</b>. It is recommended to sort the labels before adjusting the nodes.
+    </div>
+    <div id="tgLegend" class="param-inline"></div>
+    <div class="chart-preview" id="chartPreview">
+      <svg id="tgSvg" preserveAspectRatio="xMidYMin meet"></svg>
+    </div>
+  </div>
+</div>
+<div class="node-action-panel" id="tgActionPanel">
+  <div class="nap-title" id="tgApTitle">Rotate children of this node?</div>
+  <button class="nap-btn" type="button" data-tgact="confirm">Confirm rotate</button>
+  <button class="nap-btn" type="button" data-tgact="undo" disabled>Undo last rotate</button>
+  <button class="nap-btn nap-close" type="button" data-tgact="cancel">Cancel</button>
+</div>
+
+<div id="common-footer"></div>
+<script src="../COMMON/script/plot-header.js"></script>
+<script src="../COMMON/script/plot-footer-en.js"></script>
+<script>
+  window.headerConfig = {};
+</script>
+<script src="../COMMON/tree/tree-bootstrap.js"></script>
+<script src="../COMMON/tree/tree-i18n.js"></script>
+<script src="../COMMON/tree/tree-common.js"></script>
+<script src="../COMMON/tree/tree-text.js"></script>
+<script src="../COMMON/tree/tree-palette.js"></script>
+<script src="../COMMON/tree/tree-style-types.js"></script>
+<script src="../COMMON/tree/tree-core.js"></script>
+<script src="../COMMON/tree/tree-parser.js"></script>
+<script src="../COMMON/tree/tree-traverse.js"></script>
+<script src="../COMMON/tree/tree-common-widgets.js"></script>
+<script src="../COMMON/tree/tree-ui-shared.js"></script>
+<script src="../COMMON/tree/tanglegram-main.js"></script>
+<script src="../../COMMON/donate-widget.js"></script>
+</body>
+</html>

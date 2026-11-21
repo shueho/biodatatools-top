@@ -80,7 +80,8 @@ connectCurveInsetHint:'0 = 直线，1 = 最大弯曲；留空默认矩形1、环
 featureColumn:'结构域列（必需）',featureLengthColumn:'总长度列（可选）',
 featureAxisTitle:'坐标轴',featureBarTitle:'区间与骨架线',
 featureAlign:'对齐到轴最大值（骨架线延伸到最长位置）',
-featureBarHeight:'区间高度',featureLineColor:'骨架线颜色',featureLineWidth:'骨架线宽度',featureLineGap:'骨架线内端留白',featureLineGapHint:'骨架线靠近轴起点的一端向内缩进的距离（像素）；防止相邻叶子的射线在圆心附近挤在一起。',
+featureBarHeight:'区间高度',featureLineColor:'骨架线颜色',featureLineWidth:'骨架线宽度',featureLineGap:'骨架线内端留白',
+featureBaselineRect:'骨架画成矩形（作为背景条）',featureBaselineRectHeight:'矩形骨架高度（相对行高）',featureBaselineRectOpacity:'矩形骨架透明度',featureLineGapHint:'骨架线靠近轴起点的一端向内缩进的距离（像素）；防止相邻叶子的射线在圆心附近挤在一起。',
 featureShowLabel:'显示结构域名',featureLabelFontSize:'域名字号',featureLabelColor:'域名颜色',
 featureHint:'格式：名称=起始-终止|名称=起始-终止（如 TM=20-40|Kinase=80-260）。总长度列留空时，系统将自动取所有终止位置的最大值作为总长度。<br/>提示：可使用 <a href="../../ch/040.Motif_parser.html" target="_blank" rel="noopener noreferrer">Motif（MEME/MAST）结果解析器</a> 生成基序的结构信息列；若您已有其他格式的注释数据（如 GFF/GTF、BED 或自定义表格），请先根据页面提示转换为标准长表格格式（至少包含基因/蛋白质名称、结构域名称、起始位置、终止位置），再使用 <a href="../../ch/042.Domain_annotation_merger.html" target="_blank" rel="noopener noreferrer">结构域/基序位置信息合并工具</a> 完成转换，转换后的结果再粘贴或导入到此处。',
 
@@ -177,7 +178,8 @@ connectCurveInsetHint:'0 = straight, 1 = maximum bend; empty defaults to 1 for r
 featureColumn:'Feature column (required)',featureLengthColumn:'Total length column (optional)',
 featureAxisTitle:'Axis',featureBarTitle:'Features & baseline',
 featureAlign:'Align to axis max (baseline spans full axis)',
-featureBarHeight:'Bar height',featureLineColor:'Baseline color',featureLineWidth:'Baseline width',featureLineGap:'Baseline inner gap',featureLineGapHint:'Distance (px) the baseline is pulled back from the axis start, to prevent rays from crowding near the center.',
+featureBarHeight:'Bar height',featureLineColor:'Baseline color',featureLineWidth:'Baseline width',featureLineGap:'Baseline inner gap',
+featureBaselineRect:'Draw baseline as rectangle',featureBaselineRectHeight:'Rect height (× row)',featureBaselineRectOpacity:'Rect opacity',featureLineGapHint:'Distance (px) the baseline is pulled back from the axis start, to prevent rays from crowding near the center.',
 featureShowLabel:'Show feature names',featureLabelFontSize:'Feature label size',featureLabelColor:'Feature label color',
 featureHint:'Format: name=start-end|name=start-end (e.g., TM=20-40|Kinase=80-260). If the total length column is left blank, the system will automatically use the maximum end position across all domains as the total length.<br/>Tip: You can use the <a href="../../en/040.Motif_parser.html" target="_blank" rel="noopener noreferrer">Motif (MEME/MAST) Result Parser</a> to generate the structural information column for motifs. If you already have annotation data in other formats (e.g., GFF/GTF, BED, or custom tables), first convert it to the standard long-table format (including at least gene/protein name, domain name, start position, and end position) according to the hints on the page, and then use the <a href="../../en/042.Domain_annotation_merger.html" target="_blank" rel="noopener noreferrer">Domain/Motif Position Info Merger</a> web tool to complete the conversion.',
 

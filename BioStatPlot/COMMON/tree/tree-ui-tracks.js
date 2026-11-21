@@ -207,6 +207,13 @@ function refreshTrackList(container) {
           <div class="param-item"><label>${I.t('featureLineGap')}</label>
             <input type="number" data-tprop="featureLineGap" data-tid="${t.id}" value="${t.featureLineGap||0}" min="0" max="80" step="1"
                    title="${I.t('featureLineGapHint')}"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="featureBaselineRect" data-tid="${t.id}" ${t.featureBaselineRect?'checked':''}> ${I.t('featureBaselineRect')}</label></div>
+          ${t.featureBaselineRect ? `
+            <div class="param-item"><label>${I.t('featureBaselineRectHeight')}</label>
+              <input type="number" data-tprop="featureBaselineRectHeight" data-tid="${t.id}" value="${t.featureBaselineRectHeight!=null?t.featureBaselineRectHeight:0.6}" min="0.05" max="1.5" step="0.05"></div>
+            <div class="param-item"><label>${I.t('featureBaselineRectOpacity')}</label>
+              <input type="number" data-tprop="featureBaselineRectOpacity" data-tid="${t.id}" value="${t.featureBaselineRectOpacity!=null?t.featureBaselineRectOpacity:1}" min="0" max="1" step="0.05"></div>
+          ` : ''}
           <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="featureShowLabel" data-tid="${t.id}" ${t.featureShowLabel?'checked':''}> ${I.t('featureShowLabel')}</label></div>
           <div class="param-item"><label>${I.t('featureLabelFontSize')}</label>
             <input type="number" data-tprop="featureLabelFontSize" data-tid="${t.id}" value="${t.featureLabelFontSize||8}" min="5" max="20"></div>
@@ -718,7 +725,7 @@ function refreshTrackList(container) {
           || prop === 'textAutoWidth' || prop === 'barColorMode' || prop === 'barColorColumn'
           || prop === 'textOrientation' || prop === 'showText' || prop === 'legendOrientation'
           || prop === 'bubbleSizeMode' || prop === 'bubbleBgShow'
-          || prop === 'featureInputMode') {
+          || prop === 'featureInputMode' || prop === 'featureBaselineRect') {
         setTimeout(() => refreshTrackList(container), 0);
       }
     });

@@ -134,6 +134,9 @@ function newTrackDefaults(type) {
     featureShowLabel: false, featureLabelFontSize: 8, featureLabelColor: '#ffffff',
     featureLineColor: '#888888', featureLineWidth: 1,
     featureLineGap: 0,
+    featureBaselineRect: false,
+    featureBaselineRectHeight: 0.6,
+    featureBaselineRectOpacity: 1,
     connectHeaders: [], connectSourceColumn: '', connectTargetColumn: '', connectColorColumn: '',
     connectOffset: 0, connectOffsetRect: null, curveInset: null, connectReverse: false,
     connectArrow: 'off',
@@ -1352,11 +1355,26 @@ function drawFeatureTrackRect(track, x, w, leaves, rowOf, invert) {
 
     const endValue = alignRight ? axMax : (rowMax > axMin ? rowMax : 0);
     if (endValue > axMin) {
-      C.el('line', {
-        x1: pos(axMin), y1: cy, x2: pos(endValue), y2: cy,
-        stroke: lineC, 'stroke-width': lineW, 'stroke-linecap': 'round',
-        'pointer-events': 'none'
-      });
+      const px1 = pos(axMin), px2 = pos(endValue);
+      const left = Math.min(px1, px2);
+      const right = Math.max(px1, px2);
+      if (track.featureBaselineRect) {
+        const ratio = Math.max(0.05, Math.min(1.5, Number(track.featureBaselineRectHeight) || 0.6));
+        const rectH = rowH * ratio;
+        const rectY = cy - rectH / 2;
+        C.el('rect', {
+          x: left, y: rectY, width: Math.max(0.5, right - left), height: rectH,
+          fill: lineC,
+          opacity: track.featureBaselineRectOpacity != null ? Number(track.featureBaselineRectOpacity) : 1,
+          'pointer-events': 'none'
+        });
+      } else {
+        C.el('line', {
+          x1: px1, y1: cy, x2: px2, y2: cy,
+          stroke: lineC, 'stroke-width': lineW, 'stroke-linecap': 'round',
+          'pointer-events': 'none'
+        });
+      }
     }
 
     doms.forEach(d => {
