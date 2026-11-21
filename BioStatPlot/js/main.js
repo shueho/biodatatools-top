@@ -36,14 +36,23 @@ function injectRotatorStyles() {
             transition: transform ${ICON_SLIDE_DURATION}ms cubic-bezier(.4,0,.2,1);
             will-change: transform;
             backface-visibility: hidden;
+            image-rendering: auto;
+            image-rendering: -webkit-optimize-contrast;
         }
         .icon-rotator .icon-slide-in   { transform: translateX(0); }
         .icon-rotator .icon-slide-out  { transform: translateX(-100%); }
         .icon-rotator .icon-slide-wait { transform: translateX(100%); }
         .icon-rotator .icon-slide-reset { transition: none !important; }
+
+        .icon-img, .icon {
+            object-fit: contain;
+            image-rendering: auto;
+            image-rendering: -webkit-optimize-contrast;
+        }
     `;
     document.head.appendChild(style);
 }
+
 
 /* ============================================================
    图标探测
@@ -153,6 +162,7 @@ function iconImgTag(filename, cls = '', style = '') {
     return `<img src="${cdn}" class="${cls}" style="${style}"
                  onerror="this.onerror=null;this.src='${local}';">`;
 }
+
 
 function buildSlidesHtml(files) {
     return files.map((f, i) => {
