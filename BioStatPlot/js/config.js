@@ -76,7 +76,7 @@
                 en: 'phylogenetic tree',
                 tools: [
                     { id: 't001', zh: '进化树可视化', en: 'Phylogenetic Tree Visualization', ext: 'png' },
-                    { id: 't002', zh: '进化树对比图（纠缠图）', en: 'Tree Comparison (Tanglegram Plot)', ext: 'png' },
+                    { id: 't002', zh: '进化树对比图（纠缠图）', en: 'Tree Comparison (Tanglegram Plot)' },
 
                 ]
             },
