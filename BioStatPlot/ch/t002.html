@@ -64,6 +64,28 @@
           <input type="number" id="tgGapWidth" value="460" min="0" max="2000" step="10" style="width:70px;" readonly>
           <label class="mini-check"><input type="checkbox" id="tgGapAuto" checked> 自动</label></div>
         <div class="param-item"><label>标签字号</label><input type="number" id="tgLabelFontSize" value="13" min="6" max="40" step="1"></div>
+        <div class="param-item"><label>叶标签字体</label>
+          <select id="tgFontFamily">
+            <option value="Times New Roman" selected>Times New Roman</option>
+            <option value="Arial">Arial</option>
+            <option value="Helvetica">Helvetica</option>
+            <option value="Calibri">Calibri</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Courier New">Courier New</option>
+            <option value="SimSun">宋体</option>
+            <option value="SimHei">黑体</option>
+            <option value="Microsoft YaHei">微软雅黑</option>
+            <option value="KaiTi">楷体</option>
+          </select></div>
+        <div class="param-item"><label>标签样式</label>
+          <label class="mini-check"><input type="checkbox" id="tgLabelBold"> 加粗</label>
+          <label class="mini-check"><input type="checkbox" id="tgLabelItalic"> 斜体</label></div>
+        <div class="param-item"><label>纵向对齐</label>
+          <select id="tgHeightMode">
+            <option value="adaptive">自适应高度</option>
+            <option value="uniform">统一行距</option>
+            <option value="match">标签匹配</option>
+          </select></div>
       </div>
     </div>
     <div class="param-panel">
@@ -94,9 +116,10 @@
       </div>
     </div>
     <div class="info-box">
-      <b>操作：</b>点击内部节点 → 高亮 + 弹出面板 → 点“确认旋转”反转它的子分支 → 连线自动重排；可点“恢复上次调整”撤销。<br/>
-      <b>深度不一致标色：</b>对相同叶名比较两棵树的相对深度（忽略枝长时=层数），差超过“深度容差”的连线画成标红色。<br/>
-      <b>拓扑不一致标色：</b>每条树枝按“父节点到该节点”叶集合是否与另一棵树一致判断。
+      <b>操作：</b>点击内部节点，点“确认旋转”反转子分支，连线自动重排；“自动对齐”按标签顺序重排两棵树；“恢复上次调整”可撤销。<br/>
+      <b>深度不一致：</b>同名叶在两棵树的相对深度差超过“深度容差”时，连线标红。<br/>
+      <b>拓扑不一致：</b>树枝按“到该节点为止的叶集合”是否在另一棵树中也存在来判定。<br/>
+      <b>纵向对齐：</b>自适应高度＝按叶多的那棵拉齐总高；统一行距＝行距一致、顶部对齐；标签匹配＝让同名叶尽量同高。
     </div>
   </div>
   <div class="step-card" id="step5">
@@ -111,7 +134,7 @@
       <span id="tgMsg" class="tip-text"></span>
     </div>
     <div class="info-box" style="margin:8px 0 12px;line-height:1.75;">
-      <b>说明：</b>深度一致仅表示该叶在两棵树中的相对位置接近，<b>并不意味着拓扑结构相同</b>。建议先对标签进行排序之后再对节点进行调整。
+      <b>说明：</b>深度一致只说明该叶在两侧位置相近，<b>不代表拓扑相同</b>。彩色树枝标出的是拓扑发生变化的位置；如果某个节点以下没有颜色，说明这一段局部结构在两棵树中是一致的。建议先排序标签，再调整节点。
     </div>
     <div id="tgLegend" class="param-inline"></div>
     <div class="chart-preview" id="chartPreview">
@@ -122,6 +145,7 @@
 <div class="node-action-panel" id="tgActionPanel">
   <div class="nap-title" id="tgApTitle">旋转此节点的子分支？</div>
   <button class="nap-btn" type="button" data-tgact="confirm">确认旋转</button>
+  <button class="nap-btn" type="button" data-tgact="align">自动对齐</button>
   <button class="nap-btn" type="button" data-tgact="undo" disabled>恢复上次调整</button>
   <button class="nap-btn nap-close" type="button" data-tgact="cancel">取消</button>
 </div>

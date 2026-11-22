@@ -64,6 +64,28 @@
           <input type="number" id="tgGapWidth" value="460" min="0" max="2000" step="10" style="width:70px;" readonly>
           <label class="mini-check"><input type="checkbox" id="tgGapAuto" checked> Auto</label></div>
         <div class="param-item"><label>Label size</label><input type="number" id="tgLabelFontSize" value="13" min="6" max="40" step="1"></div>
+        <div class="param-item"><label>Leaf label font</label>
+          <select id="tgFontFamily">
+            <option value="Times New Roman" selected>Times New Roman</option>
+            <option value="Arial">Arial</option>
+            <option value="Helvetica">Helvetica</option>
+            <option value="Calibri">Calibri</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Courier New">Courier New</option>
+            <option value="SimSun">SimSun</option>
+            <option value="SimHei">SimHei</option>
+            <option value="Microsoft YaHei">Microsoft YaHei</option>
+            <option value="KaiTi">KaiTi</option>
+          </select></div>
+        <div class="param-item"><label>Label style</label>
+          <label class="mini-check"><input type="checkbox" id="tgLabelBold"> Bold</label>
+          <label class="mini-check"><input type="checkbox" id="tgLabelItalic"> Italic</label></div>
+        <div class="param-item"><label>Vertical alignment</label>
+          <select id="tgHeightMode">
+            <option value="adaptive">Adaptive height</option>
+            <option value="uniform">Uniform spacing</option>
+            <option value="match">Label match</option>
+          </select></div>
       </div>
     </div>
     <div class="param-panel">
@@ -94,9 +116,10 @@
       </div>
     </div>
     <div class="info-box">
-      <b>Operation:</b> click an internal node → it highlights and a panel opens → click "Confirm rotate" to reverse its child branches → links reflow automatically; use "Undo last rotate" to revert.<br/>
-      <b>Depth mismatch:</b> for identical leaf names, compare relative depth (level count when branch lengths are ignored); links whose difference exceeds "Depth tolerance" are drawn in the highlight color.<br/>
-      <b>Topology mismatch:</b> each branch is colored when the leaf set below its child differs from the other tree; the same divergence uses the same color on both sides.
+      <b>Operation:</b> click an internal node, then "Confirm rotate" to reverse its children; links reflow automatically. "Auto align" reorders both trees by label order; "Undo last rotate" reverts the last change.<br/>
+      <b>Depth mismatch:</b> links turn red when the relative depth of a same-named leaf differs by more than the depth tolerance.<br/>
+      <b>Topology mismatch:</b> a branch is judged by whether the leaf set up to that node also exists in the other tree.<br/>
+      <b>Vertical alignment:</b> Adaptive height matches total height to the larger tree; Uniform spacing keeps equal row spacing, top-aligned; Label match puts same-named leaves at the same height when possible.
     </div>
   </div>
   <div class="step-card" id="step5">
@@ -111,7 +134,7 @@
       <span id="tgMsg" class="tip-text"></span>
     </div>
     <div class="info-box" style="margin:8px 0 12px;line-height:1.75;">
-      <b>Note:</b> matching depth only means this leaf sits at a similar relative position in both trees; <b>it does not imply identical topology</b>. It is recommended to sort the labels before adjusting the nodes.
+      <b>Note:</b> matching depth only means a leaf sits at a similar position on both sides, <b>not that the topology is the same</b>. Colored branches mark where the topology changes; if nothing below a node is colored, that local region is identical in both trees. Sorting labels before adjusting nodes is recommended.
     </div>
     <div id="tgLegend" class="param-inline"></div>
     <div class="chart-preview" id="chartPreview">
@@ -122,13 +145,14 @@
 <div class="node-action-panel" id="tgActionPanel">
   <div class="nap-title" id="tgApTitle">Rotate children of this node?</div>
   <button class="nap-btn" type="button" data-tgact="confirm">Confirm rotate</button>
+  <button class="nap-btn" type="button" data-tgact="align">Auto align</button>
   <button class="nap-btn" type="button" data-tgact="undo" disabled>Undo last rotate</button>
   <button class="nap-btn nap-close" type="button" data-tgact="cancel">Cancel</button>
 </div>
 
 <div id="common-footer"></div>
 <script src="../COMMON/script/plot-header.js"></script>
-<script src="../COMMON/script/plot-footer-en.js"></script>
+<script src="../COMMON/script/plot-footer.js"></script>
 <script>
   window.headerConfig = {};
 </script>

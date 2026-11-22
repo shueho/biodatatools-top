@@ -210,7 +210,7 @@ function refreshTrackList(container) {
           <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="featureBaselineRect" data-tid="${t.id}" ${t.featureBaselineRect?'checked':''}> ${I.t('featureBaselineRect')}</label></div>
           ${t.featureBaselineRect ? `
             <div class="param-item"><label>${I.t('featureBaselineRectHeight')}</label>
-              <input type="number" data-tprop="featureBaselineRectHeight" data-tid="${t.id}" value="${t.featureBaselineRectHeight!=null?t.featureBaselineRectHeight:0.6}" min="0.05" max="1.5" step="0.05"></div>
+              <input type="number" data-tprop="featureBaselineRectHeight" data-tid="${t.id}" value="${t.featureBaselineRectHeight!=null?t.featureBaselineRectHeight:1}" min="0.1" max="5" step="0.1"></div>
             <div class="param-item"><label>${I.t('featureBaselineRectOpacity')}</label>
               <input type="number" data-tprop="featureBaselineRectOpacity" data-tid="${t.id}" value="${t.featureBaselineRectOpacity!=null?t.featureBaselineRectOpacity:1}" min="0" max="1" step="0.05"></div>
           ` : ''}

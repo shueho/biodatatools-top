@@ -53,7 +53,15 @@ function renderBasicPanel(container) {
         <option value="Arial" ${st.fontFamily==='Arial'?'selected':''}>Arial</option>
         <option value="Helvetica" ${st.fontFamily==='Helvetica'?'selected':''}>Helvetica</option>
         <option value="Georgia" ${st.fontFamily==='Georgia'?'selected':''}>Georgia</option>
+        <option value="Calibri" ${st.fontFamily==='Calibri'?'selected':''}>Calibri</option>
+        <option value="Cambria" ${st.fontFamily==='Cambria'?'selected':''}>Cambria</option>
+        <option value="Verdana" ${st.fontFamily==='Verdana'?'selected':''}>Verdana</option>
+        <option value="Courier New" ${st.fontFamily==='Courier New'?'selected':''}>Courier New</option>
         <option value="Microsoft YaHei" ${st.fontFamily==='Microsoft YaHei'?'selected':''}>${I.t('optMicrosoftYaHei')}</option>
+        <option value="SimSun" ${st.fontFamily==='SimSun'?'selected':''}>${I.t('optSimSun')}</option>
+        <option value="SimHei" ${st.fontFamily==='SimHei'?'selected':''}>${I.t('optSimHei')}</option>
+        <option value="KaiTi" ${st.fontFamily==='KaiTi'?'selected':''}>${I.t('optKaiTi')}</option>
+        <option value="FangSong" ${st.fontFamily==='FangSong'?'selected':''}>${I.t('optFangSong')}</option>
       </select></div>
   </div>
 

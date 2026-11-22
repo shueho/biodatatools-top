@@ -135,7 +135,7 @@ function newTrackDefaults(type) {
     featureLineColor: '#888888', featureLineWidth: 1,
     featureLineGap: 0,
     featureBaselineRect: false,
-    featureBaselineRectHeight: 0.6,
+    featureBaselineRectHeight: 1,
     featureBaselineRectOpacity: 1,
     connectHeaders: [], connectSourceColumn: '', connectTargetColumn: '', connectColorColumn: '',
     connectOffset: 0, connectOffsetRect: null, curveInset: null, connectReverse: false,
@@ -1359,8 +1359,8 @@ function drawFeatureTrackRect(track, x, w, leaves, rowOf, invert) {
       const left = Math.min(px1, px2);
       const right = Math.max(px1, px2);
       if (track.featureBaselineRect) {
-        const ratio = Math.max(0.05, Math.min(1.5, Number(track.featureBaselineRectHeight) || 0.6));
-        const rectH = rowH * ratio;
+        const ratio = Math.max(0.05, Math.min(5, Number(track.featureBaselineRectHeight) || 1));
+        const rectH = barH * ratio;
         const rectY = cy - rectH / 2;
         C.el('rect', {
           x: left, y: rectY, width: Math.max(0.5, right - left), height: rectH,
@@ -2164,11 +2164,23 @@ function renderCustomTracks(radial) {
             const r1 = toR(endValue);
             const p0 = L.polar(cx, cy, Math.max(0, r0), l.angle);
             const p1 = L.polar(cx, cy, Math.max(0, r1), l.angle);
-            C.el('line', {
-              x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
-              stroke: lineC, 'stroke-width': lineW, 'stroke-linecap': 'round',
-              'pointer-events': 'none'
-            });
+            if (track.featureBaselineRect) {
+              const rectRatio = Math.max(0.05, Math.min(5, Number(track.featureBaselineRectHeight) || 1));
+              const rectStrokeW = Math.max(1, domStrokeW * rectRatio);
+              const rectOp = track.featureBaselineRectOpacity != null ? Number(track.featureBaselineRectOpacity) : 1;
+              C.el('line', {
+                x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
+                stroke: lineC, 'stroke-width': rectStrokeW, 'stroke-linecap': 'butt',
+                opacity: rectOp,
+                'pointer-events': 'none'
+              });
+            } else {
+              C.el('line', {
+                x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
+                stroke: lineC, 'stroke-width': lineW, 'stroke-linecap': 'round',
+                'pointer-events': 'none'
+              });
+            }
           }
 
           const specialSet = (track.featureSpecialEnable && track.featureSpecialTypes)

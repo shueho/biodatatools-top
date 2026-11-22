@@ -131,6 +131,7 @@ const state = {
   marginX: 40,
   marginY: 50,
   labelFontSize: 13,
+  labelFontFamily: 'Times New Roman',
   linkOpacity: 0.65,
   linkWidth: 1.5,
   linkCurve: 0.5,
@@ -144,7 +145,10 @@ const state = {
 
   gapPadding: 160,
   gapAuto: true,
-
+  treeHeightMode: 'adaptive',
+  labelBold: false,
+  labelItalic: false,
+  labelFontFamily: '',
   labelAlignMode: 'none',
   linkAlignMode: 'label',
   linkPadding: 8,
@@ -223,6 +227,20 @@ function computeDepths(root) {
   raw.forEach((d, k) => map.set(k, d / denom));
   return map;
 }
+function globalFontFamily() {
+  if (state.labelFontFamily) return state.labelFontFamily;
+  const TS = global.TreeStyle;
+  if (TS && (TS.fontFamily || TS.labelFontFamily)) {
+    return TS.fontFamily || TS.labelFontFamily;
+  }
+  const rootStyle = getComputedStyle(document.documentElement);
+  const cssVar = (rootStyle.getPropertyValue('--site-font-family') ||
+                  rootStyle.getPropertyValue('--app-font-family') || '').trim();
+  if (cssVar) return cssVar;
+  const el = document.querySelector('.main') || document.body;
+  const v = el ? getComputedStyle(el).fontFamily : '';
+  return (v && v.trim()) ? v : 'Times New Roman;';
+}
 function rawLabelWidth(s) {
   const t = String(s || '');
   let w = 0;
@@ -230,6 +248,7 @@ function rawLabelWidth(s) {
     const c = t.charCodeAt(i);
     w += (c >= 0x4e00 && c <= 0x9fff) ? state.labelFontSize : state.labelFontSize * 0.55;
   }
+  if (state.labelBold) w *= 1.06;
   return w;
 }
 function labelWidth(s) {
@@ -511,14 +530,31 @@ function autoGapWidth() {
   const pad = Number(state.gapPadding) || 160;
   return Math.max(160, Math.ceil(maxL + maxR + pad));
 }
+function countLeavesOf(root) {
+  let c = 0;
+  (function rec(n) {
+    const kids = (n.children || []).filter(x => !x._deleted);
+    if (!kids.length) { c++; return; }
+    kids.forEach(rec);
+  })(root);
+  return c;
+}
 
-function layoutOne(root, dir, xRoot, y0) {
+function shiftTree(root, dy) {
+  if (!root || !dy) return;
+  (function rec(n) {
+    if (typeof n._y === 'number') n._y += dy;
+    (n.children || []).filter(c => !c._deleted).forEach(rec);
+  })(root);
+}
+function layoutOne(root, dir, xRoot, y0, rowH) {
+  const rh = Number(rowH) > 0 ? Number(rowH) : state.leafRowH;
   const totalD = Math.max(maxDepth(root, 0), 1e-9);
   const scale = state.treeWidth / totalD;
   let yCursor = y0;
   (function assignY(n) {
     const kids = (n.children || []).filter(c => !c._deleted);
-    if (!kids.length) { n._y = yCursor; yCursor += state.leafRowH; return; }
+    if (!kids.length) { n._y = yCursor; yCursor += rh; return; }
     kids.forEach(assignY);
     n._y = (kids[0]._y + kids[kids.length - 1]._y) / 2;
   })(root);
@@ -671,18 +707,124 @@ function drawAll() {
   computeTopologyMismatch();
 
   const marginX = state.marginX, marginY = state.marginY;
+
   state.gapWidth = state.gapAuto
     ? autoGapWidth()
     : Math.max(20, Number(state.gapWidth) || 200);
   const gapInput = document.getElementById('tgGapWidth');
   if (gapInput && state.gapAuto) gapInput.value = state.gapWidth;
+
   const canvasW = marginX * 2 + state.treeWidth * 2 + state.gapWidth;
 
-  let leftH = 0, rightH = 0;
-  if (state.leftRoot) leftH = layoutOne(state.leftRoot, +1, marginX, marginY);
-  if (state.rightRoot) rightH = layoutOne(state.rightRoot, -1, canvasW - marginX, marginY);
+  const nL = state.leftRoot ? countLeavesOf(state.leftRoot) : 0;
+  const nR = state.rightRoot ? countLeavesOf(state.rightRoot) : 0;
+  const heightMode = state.treeHeightMode || 'adaptive';
+  let rowHL = state.leafRowH, rowHR = state.leafRowH;
 
-  const canvasH = Math.max(120, marginY * 2 + Math.max(leftH, rightH, state.leafRowH));
+  if (heightMode === 'adaptive') {
+    const maxN = Math.max(nL, nR, 1);
+    const targetSpan = Math.max(0, maxN - 1) * state.leafRowH;
+    if (nL > 1) rowHL = targetSpan / (nL - 1);
+    if (nR > 1) rowHR = targetSpan / (nR - 1);
+  }
+
+  if (state.leftRoot) layoutOne(state.leftRoot, +1, marginX, marginY, rowHL);
+  if (state.rightRoot) layoutOne(state.rightRoot, -1, canvasW - marginX, marginY, rowHR);
+
+  if (heightMode === 'match' && state.leftRoot && state.rightRoot) {
+    const adjustLeft = nL <= nR;
+    const adjRoot = adjustLeft ? state.leftRoot : state.rightRoot;
+    const refRoot = adjustLeft ? state.rightRoot : state.leftRoot;
+    const refMap = leafMap(refRoot);
+
+    const adjLeaves = [];
+    (function rec(n) {
+      const kids = (n.children || []).filter(c => !c._deleted);
+      if (!kids.length) { adjLeaves.push(n); return; }
+      kids.forEach(rec);
+    })(adjRoot);
+
+    const anchors = adjLeaves.map(an => {
+      const rn = refMap.get(String(an.name || '').trim());
+      return rn && typeof rn._y === 'number' ? rn._y : null;
+    });
+
+    let matched = 0, lastY = -Infinity, monotonic = true;
+    for (const a of anchors) {
+      if (a == null) continue;
+      if (a < lastY) { monotonic = false; break; }
+      lastY = a;
+      matched++;
+    }
+    const embeddable = monotonic && matched > 0 &&
+      matched / adjLeaves.length >= 0.5;
+
+    if (embeddable) {
+      const rowH = state.leafRowH;
+      let i = 0;
+      while (i < adjLeaves.length) {
+        if (anchors[i] != null) {
+          adjLeaves[i]._y = anchors[i];
+          i++;
+          continue;
+        }
+        let j = i;
+        while (j < adjLeaves.length && anchors[j] == null) j++;
+        const prevY = i > 0 ? adjLeaves[i - 1]._y : null;
+        const nextY = j < adjLeaves.length ? anchors[j] : null;
+        const count = j - i;
+        for (let k = 0; k < count; k++) {
+          let y;
+          if (prevY != null && nextY != null) {
+            y = prevY + (nextY - prevY) * (k + 1) / (count + 1);
+          } else if (prevY != null) {
+            y = prevY + rowH * (k + 1);
+          } else if (nextY != null) {
+            y = nextY - rowH * (count - k);
+          } else {
+            y = state.marginY + rowH * k;
+          }
+          adjLeaves[i + k]._y = y;
+        }
+        i = j;
+      }
+
+      (function rec(n) {
+        const kids = (n.children || []).filter(c => !c._deleted);
+        if (!kids.length) return;
+        kids.forEach(rec);
+        let a = Infinity, b = -Infinity;
+        kids.forEach(c => {
+          if (typeof c._y === 'number') {
+            if (c._y < a) a = c._y;
+            if (c._y > b) b = c._y;
+          }
+        });
+        if (isFinite(a)) n._y = (a + b) / 2;
+      })(adjRoot);
+    }
+  }
+
+  let minY = Infinity, maxY = -Infinity;
+  [state.leftRoot, state.rightRoot].forEach(root => {
+    if (!root) return;
+    (function rec(n) {
+      if (typeof n._y === 'number') {
+        if (n._y < minY) minY = n._y;
+        if (n._y > maxY) maxY = n._y;
+      }
+      (n.children || []).filter(c => !c._deleted).forEach(rec);
+    })(root);
+  });
+  if (!isFinite(minY)) { minY = marginY; maxY = marginY; }
+  const dyTop = marginY - minY;
+  if (dyTop !== 0) {
+    if (state.leftRoot) shiftTree(state.leftRoot, dyTop);
+    if (state.rightRoot) shiftTree(state.rightRoot, dyTop);
+  }
+  maxY += dyTop;
+
+  const canvasH = Math.max(120, maxY + marginY);
   svg.setAttribute('viewBox', `0 0 ${canvasW} ${canvasH}`);
 
   state._canvasW = canvasW;
@@ -697,7 +839,6 @@ function drawAll() {
   if (state.rightRoot) drawTree(state.rightRoot, -1, 'right', branchLayer, nodeLayer, labelLayer);
   drawLinks(linkLayer);
 }
-
 function drawTree(root, dir, side, branchLayer, nodeLayer, labelLayer) {
   const stemLen = 8;
   if (root && root._x != null && root._y != null) {
@@ -769,8 +910,9 @@ function drawTree(root, dir, side, branchLayer, nodeLayer, labelLayer) {
       el('text', {
         x: info.labelX, y: n._y + state.labelFontSize * 0.35,
         'font-size': state.labelFontSize,
-        'font-family': 'Times New Roman',
-        'font-weight': 400,
+        'font-family': state.labelFontFamily || 'Times New Roman',
+        'font-weight': state.labelBold ? 700 : 400,
+        'font-style': state.labelItalic ? 'italic' : 'normal',
         'text-anchor': info.anchor, fill: col, 'pointer-events': 'none'
       }, labelLayer).textContent = lbl;
     }
@@ -923,6 +1065,59 @@ function restoreSnapshot(snap) {
     assignIds(state.rightRoot);
   }
 }
+function leafOrderNames(root) {
+  const out = [];
+  (function rec(n) {
+    const kids = (n.children || []).filter(c => !c._deleted);
+    if (!kids.length) {
+      const nm = String(n.name || '').trim();
+      if (nm) out.push(nm);
+      return;
+    }
+    kids.forEach(rec);
+  })(root);
+  return out;
+}
+
+function sortByReference(root, pos) {
+  if (!root) return;
+  (function rec(n) {
+    const kids = (n.children || []).filter(c => !c._deleted);
+    if (!kids.length) return;
+    kids.forEach(rec);
+    const stat = new Map();
+    kids.forEach(c => {
+      let sum = 0, cnt = 0, min = Infinity, max = -Infinity;
+      leafOrderNames(c).forEach(nm => {
+        if (!pos.has(nm)) return;
+        const p = pos.get(nm);
+        sum += p; cnt++;
+        if (p < min) min = p;
+        if (p > max) max = p;
+      });
+      stat.set(c, { mean: cnt ? sum / cnt : Infinity, min, max, cnt });
+    });
+    const active = kids.slice().sort((a, b) => {
+      const sa = stat.get(a), sb = stat.get(b);
+      if (!sa.cnt && !sb.cnt) return 0;
+      if (!sa.cnt) return 1;
+      if (!sb.cnt) return -1;
+      if (sa.mean !== sb.mean) return sa.mean - sb.mean;
+      return sa.min - sb.min;
+    });
+    const deleted = (n.children || []).filter(c => c._deleted);
+    n.children = active.concat(deleted);
+  })(root);
+}
+
+function autoAlignTrees() {
+  if (state.leftRoot && state.rightRoot) {
+    let order = leafOrderNames(state.leftRoot);
+    sortByReference(state.rightRoot, new Map(order.map((nm, i) => [nm, i])));
+    order = leafOrderNames(state.rightRoot);
+    sortByReference(state.leftRoot, new Map(order.map((nm, i) => [nm, i])));
+  }
+}
 function bindActionPanel() {
   const panel = document.getElementById('tgActionPanel');
   if (!panel || panel.dataset.bound === '1') return;
@@ -931,6 +1126,16 @@ function bindActionPanel() {
     const btn = e.target.closest('[data-tgact]');
     if (!btn) return;
     const act = btn.dataset.tgact;
+    if (act === 'align') {
+      if (!state.leftRoot && !state.rightRoot) return;
+      state.history.push(snapshotTrees());
+      if (state.history.length > 50) state.history.shift();
+      autoAlignTrees();
+      state.selectedNode = null;
+      hideActionPanel();
+      drawAll();
+      return;
+    }
     if (act === 'confirm') {
       if (!state.selectedNode) return;
       state.history.push(snapshotTrees());
@@ -1070,7 +1275,7 @@ function importPanelHtml(prefix, accept, placeholder) {
       <input type="file" id="${prefix}FileInput" class="import-file" accept="${accept}">
     </div>
     <div class="text-input">
-      <textarea id="${prefix}TextInput" class="import-text" placeholder="${placeholder}" style="min-height:110px;" disabled></textarea>
+      <textarea id="${prefix}TextInput" class="import-text" placeholder="${placeholder}" disabled></textarea>
     </div>
     <div class="btn-group">
       <button class="btn" type="button" id="${prefix}LoadBtn">${T('loadBtn')}</button>
@@ -1251,7 +1456,30 @@ function buildUI() {
   bindNum('tgLinkMatchBranch', 'linkMatchBranch', 'bool');
   bindNum('tgLinkDashed', 'linkDashed', 'bool');
   bindNum('tgLabelOffset', 'labelOffset');
+  const fontSel = document.getElementById('tgFontFamily');
+  if (fontSel) {
+    fontSel.value = state.labelFontFamily || 'Times New Roman';
+    fontSel.addEventListener('change', () => {
+      state.labelFontFamily = fontSel.value || 'Times New Roman';
+      drawAll();
+    });
+  }
+  bindNum('tgLabelBold', 'labelBold', 'bool');
+  bindNum('tgLabelItalic', 'labelItalic', 'bool');
 
+  const heightSel = document.getElementById('tgHeightMode');
+  if (heightSel) {
+    heightSel.value = state.treeHeightMode;
+    heightSel.addEventListener('change', () => {
+      state.treeHeightMode = heightSel.value;
+      if (state.treeHeightMode === 'match' && state.leftRoot && state.rightRoot) {
+        state.history.push(snapshotTrees());
+        if (state.history.length > 50) state.history.shift();
+        autoAlignTrees();
+      }
+      drawAll();
+    });
+  }
   const gapAutoChk = document.getElementById('tgGapAuto');
   const gapInput = document.getElementById('tgGapWidth');
   if (gapAutoChk && gapInput) {
@@ -1399,4 +1627,4 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 else init();
 
 global.Tanglegram = { state, drawAll };
-})(window);s
+})(window);
