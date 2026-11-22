@@ -2,8 +2,7 @@ function renderSideNav() {
     const navList = document.getElementById('navList');
     navList.innerHTML = '';
 
-    const isChinese = document.documentElement.lang.toLowerCase().startsWith('zh')
-                   || window.location.pathname.includes('index-ch.html');
+    const isChinese = window.location.pathname.includes('index-ch.html');
     const plotHome  = isChinese ? 'BioStatPlot/home-ch.html' : 'BioStatPlot/home.html';
 
     const blogItem = document.createElement('li');
