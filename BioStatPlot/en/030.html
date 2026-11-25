@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UpSet Chart - BioDataTools</title>
+    <link rel="shortcut icon" href="../../images/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../COMMON/plot-common.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>UpSet Chart</h2>
+            <p>Visualize the intersections of multiple sets with a bar chart and dot matrix; well suited for cases with a large number of sets. Click a bar to view and copy the element list for that group.</p>
+        </div>
+
+        <div id="importPanel"></div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Select Set Columns</div>
+            <div class="param-panel">
+                <div class="param-panel-title">Group Columns</div>
+                <div id="setColsBox" class="param-inline" style="gap:10px 24px;">
+                    <span style="color:#999;">Selectable after data import</span>
+                </div>
+                <div class="info-box" style="margin-top:10px;">
+                    Each column represents a set; elements appearing in the same column belong to that set. It is recommended to keep the number of sets within 10.
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Choose Palette and Set Colors</div>
+            <div class="param-panel">
+                <div class="param-panel-title">Categorical Palette</div>
+                <div id="paletteDropdownContainer"></div>
+                <div class="param-inline" style="margin-top:8px;">
+                    <label><input type="checkbox" id="reversePalette">Reverse palette order</label>
+                    <label><input type="checkbox" id="cycleColors">Cycle palette colors</label>
+                </div>
+            </div>
+            <div id="colorAssignContainer" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 4: Set Plotting Parameters</div>
+
+            <div id="globalSettingsPanel"></div>
+
+            <div id="upsetTopAxisPanel"></div>
+
+            <div id="upsetSetAxisPanel"></div>
+
+            <div class="param-panel">
+                <div class="param-panel-title">UpSet Chart Settings</div>
+
+                <div class="param-subsection">Layout</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Top/Bottom Height Ratio</label>
+                        <input type="number" id="upsetTopHeightRatio" value="0.5" min="0.2" max="0.8" step="0.05" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Bar-Matrix Gap (px)</label>
+                        <input type="number" id="upsetGapH" value="20" min="0" max="200" step="1" data-redraw>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Intersection Sorting</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Sort By</label>
+                        <select id="upsetSortBy" data-redraw>
+                            <option value="size" selected>Intersection Size</option>
+                            <option value="degree">Number of Sets</option>
+                            <option value="lex">Set Combination Order</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Sort Direction</label>
+                        <select id="upsetSortDir" data-redraw>
+                            <option value="desc" selected>Descending</option>
+                            <option value="asc">Ascending</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Max Intersections Displayed</label>
+                        <input type="number" id="upsetMaxItems" value="20" min="1" max="500" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Minimum Intersection Size</label>
+                        <input type="number" id="upsetMinCount" value="1" min="1" step="1" data-redraw>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Set Order</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Sort Method</label>
+                        <select id="upsetSetOrder" data-redraw>
+                            <option value="original" selected>Original Order</option>
+                            <option value="sizeDesc">Set Size Descending</option>
+                            <option value="sizeAsc">Set Size Ascending</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="param-item" style="grid-column: span 3;" id="upsetSetCustomOrderItem">
+                        <label>Custom Order (separated by commas or spaces)</label>
+                        <input type="text" id="upsetSetCustomOrder" placeholder="e.g. A, B, C" data-redraw>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Top Section - Intersection Bar Chart</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="upsetTopYAxisShow" checked data-redraw>Show Y Axis (Value Axis)</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Y Axis Position</label>
+                        <select id="upsetTopYAxisPos" data-redraw>
+                            <option value="left" selected>Left</option>
+                            <option value="right">Right</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Bar Width Ratio</label>
+                        <input type="number" id="upsetBarWidth" value="0.6" min="0.1" max="0.95" step="0.05" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Bar Color</label>
+                        <input type="color" id="upsetBarColor" value="#4e79a7" data-redraw>
+                    </div>
+                </div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="upsetShowCount" checked data-redraw>Show Intersection Count</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Count Font Size</label>
+                        <input type="number" id="upsetCountFontSize" value="10" min="6" max="24" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Count Color</label>
+                        <input type="color" id="upsetCountColor" value="#333333" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="upsetCountBold" data-redraw>Bold Count</label>
+                        <label class="mini-check"><input type="checkbox" id="upsetCountItalic" data-redraw>Italic Count</label>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Bottom Section - Dot Matrix</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label>Point Size</label>
+                        <input type="number" id="upsetPointSize" value="9" min="2" max="24" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Connector Line Width</label>
+                        <input type="number" id="upsetLineWidth" value="1.5" min="0.5" max="6" step="0.5" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Connector Line Color</label>
+                        <input type="color" id="upsetLineColor" value="#888888" data-redraw>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Bottom Section - Set Size Bars</div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="upsetShowSetBars" checked data-redraw>Show Set Size Bars</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Bar Width Ratio</label>
+                        <input type="number" id="upsetSetBarWidth" value="0.3" min="0.05" max="1" step="0.05" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Bar Color</label>
+                        <select id="upsetSetBarColorMode" data-redraw>
+                            <option value="set" selected>Follow Set Color</option>
+                            <option value="uniform">Uniform Color</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Uniform Color</label>
+                        <input type="color" id="upsetSetBarColor" value="#999999" data-redraw>
+                    </div>
+                </div>
+                <div class="param-grid cols-4" style="margin-bottom:10px;">
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="upsetShowSetValues" checked data-redraw>Show Set Values</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Set Value Font Size</label>
+                        <input type="number" id="upsetSetValueFontSize" value="10" min="6" max="24" step="1" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="upsetSetValueBold" data-redraw>Bold Value</label>
+                        <label class="mini-check"><input type="checkbox" id="upsetSetValueItalic" data-redraw>Italic Value</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="upsetSetAxisShowX" checked data-redraw title="This axis is hidden when set size bars are disabled">Show X Axis (Size Axis)</label>
+                    </div>
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="upsetSetAxisShowY" checked data-redraw>Show Y Axis (Set Name Axis)</label>
+                    </div>
+                </div>
+
+                <div class="param-subsection">Tracks</div>
+                <div class="param-grid cols-4">
+                    <div class="param-item">
+                        <label class="mini-check"><input type="checkbox" id="upsetShowTrack" checked data-redraw>Show Track Lines</label>
+                    </div>
+                    <div class="param-item">
+                        <label>Track Color</label>
+                        <input type="color" id="upsetTrackColor" value="#e8edf2" data-redraw>
+                    </div>
+                    <div class="param-item">
+                        <label>Track Line Width</label>
+                        <input type="number" id="upsetTrackWidth" value="1" min="0.5" max="6" step="0.5" data-redraw>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn" id="drawBtn">Draw Chart</button>
+            </div>
+            <div id="msgTip3" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 5: Preview and Export</div>
+            <div class="result-toolbar">
+                <button class="btn" id="exportSvgBtn" disabled>Export SVG</button>
+                <button class="btn" id="exportPngBtn" disabled>Export PNG</button>
+                <span class="spacer"></span>
+                <span id="toolbarTip" class="tip-text"></span>
+            </div>
+            <div class="chart-preview" id="chartPreview">
+                <div class="placeholder">Import your data and complete the settings, then click "Draw Chart" to view the result</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script src="../COMMON/script/plot-bootstrap.js"></script>
+    <script src="../COMMON/script/plot-header.js"></script>
+    <script src="../COMMON/script/plot-footer-en.js"></script>
+    <script src="../COMMON/donate-widget-left.js"></script>
+
+    <script src="../COMMON/script/plot-common.js"></script>
+    <script src="../COMMON/script/plot-canvas.js"></script>
+    <script src="../COMMON/script/plot-i18n.js"></script>
+    <script src="../COMMON/script/plot-app.js"></script>
+    <script src="../COMMON/script/plot-mini-preview.js"></script>
+    <script src="../COMMON/script/plot-axis.js"></script>
+    <script src="../COMMON/script/030.js"></script>
+</body>
+</html>

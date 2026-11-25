@@ -94,6 +94,7 @@
                 en: 'Venn Diagram',
                 tools: [
                     { id: '027', zh: '椭圆韦恩图（1-5集合）', en: 'Ellipse Venn Diagram (1-5 Sets)'},
+                    { id: '030', zh: 'UpSet图', en: 'UpSet Chart'},
 
                 ]
             },

@@ -69,11 +69,11 @@
 
             tickValueGroup: '刻度值',
             tickValueShow: '显示',
+            tickFontGroup: '刻度字体',
+            tickRotate: '旋转(°)',
             tickValueAuto: '自动',
             tickValueCustom: '自定义',
             tickValueCustomTip: '逗号分隔，如 0,5,10,15',
-            tickFontGroup: '刻度字体',
-            tickRotate: '旋转(°)',
             tickLabelPosLabel: '位置',
             tickLabelPosOutside: '轴外',
             tickLabelPosInside: '轴内',
@@ -354,6 +354,7 @@
         const tb = st.x.titleBold;
         const ti = st.x.titleItalic;
 
+        /* 用 class 而不是 id：同一个页面可以渲染多个坐标轴面板（如 UpSet 图上下两个柱形图） */
         return `
         <div class="axis-block">
             <div class="axis-block-title">
@@ -361,15 +362,15 @@
             </div>
             <div class="font-row">
                 <span class="font-label">${t.tickFontGroup}</span>
-                <input type="number" id="axisTickFontSize" value="${fs}" min="6" max="36" style="width:60px;">
-                <label class="mini-check"><input type="checkbox" id="axisTickBold" ${fb ? 'checked' : ''}> ${t.bold}</label>
-                <label class="mini-check"><input type="checkbox" id="axisTickItalic" ${fi ? 'checked' : ''}> ${t.italic}</label>
+                <input type="number" class="ax-global-tick-fs" value="${fs}" min="6" max="36" style="width:60px;">
+                <label class="mini-check"><input type="checkbox" class="ax-global-tick-b" ${fb ? 'checked' : ''}> ${t.bold}</label>
+                <label class="mini-check"><input type="checkbox" class="ax-global-tick-i" ${fi ? 'checked' : ''}> ${t.italic}</label>
             </div>
             <div class="font-row">
                 <span class="font-label">${t.titleLabel}</span>
-                <input type="number" id="axisTitleFontSize" value="${tfs}" min="6" max="48" style="width:60px;">
-                <label class="mini-check"><input type="checkbox" id="axisTitleBold" ${tb ? 'checked' : ''}> ${t.bold}</label>
-                <label class="mini-check"><input type="checkbox" id="axisTitleItalic" ${ti ? 'checked' : ''}> ${t.italic}</label>
+                <input type="number" class="ax-global-title-fs" value="${tfs}" min="6" max="48" style="width:60px;">
+                <label class="mini-check"><input type="checkbox" class="ax-global-title-b" ${tb ? 'checked' : ''}> ${t.bold}</label>
+                <label class="mini-check"><input type="checkbox" class="ax-global-title-i" ${ti ? 'checked' : ''}> ${t.italic}</label>
             </div>
         </div>
         `;
@@ -394,9 +395,20 @@
         `;
     }
 
-    function axisPanelHTML(key, cfg, t, axisType) {
+    function normalizeFeatures(feat) {
+        return Object.assign({
+            refLines: true,
+            log: true,
+            break: true,
+            cross: true,
+            grid: true
+        }, feat || {});
+    }
+
+    function axisPanelHTML(key, cfg, t, axisType, features) {
         const isX = (key === 'x');
         const isNumeric = (axisType === 'numeric');
+        const feat = normalizeFeatures(features);
 
         let html = `<div class="axis-block">`;
 
@@ -412,11 +424,6 @@
             <div class="font-row">
                 <label class="mini-check"><input type="checkbox" class="ax-${key}-title-show" ${cfg.titleShow ? 'checked' : ''}> ${t.titleShow}</label>
                 <input type="text" class="ax-${key}-title" value="${escapeHtml(cfg.titleContent)}" style="flex:1;min-width:140px;">
-                <label>${t.fontSize}
-                    <input type="number" class="ax-${key}-title-fs" value="${cfg.titleFontSize}" min="6" max="48" style="width:60px;">
-                </label>
-                <label class="mini-check"><input type="checkbox" class="ax-${key}-title-b" ${cfg.titleBold ? 'checked' : ''}> ${t.bold}</label>
-                <label class="mini-check"><input type="checkbox" class="ax-${key}-title-i" ${cfg.titleItalic ? 'checked' : ''}> ${t.italic}</label>
             </div>
         `;
 
@@ -435,7 +442,10 @@
                         <input type="number" class="ax-${key}-domain-pad" value="${cfg.domainPad}" min="0" max="100" step="1" style="width:60px;">
                     </label>
                 </div>
+            `;
 
+            if (feat.refLines) {
+                html += `
                 <div class="axis-subsection">${t.refLineGroup}</div>
                 <div class="font-row">
                     <input type="text" class="ax-${key}-reflines" value="${escapeHtml(cfg.refLines || '')}" placeholder="${t.refLineTip}" style="flex:1;min-width:150px;">
@@ -447,7 +457,11 @@
                     </label>
                     <label class="mini-check"><input type="checkbox" class="ax-${key}-refline-dash" ${cfg.refLineDash ? 'checked' : ''}> ${t.refLineDash}</label>
                 </div>
+                `;
+            }
 
+            if (feat.log) {
+                html += `
                 <div class="axis-subsection">${t.scaleGroup}</div>
                 <div class="font-row">
                     <select class="ax-${key}-scale-type">
@@ -460,7 +474,11 @@
                         <span class="axis-tip" style="margin-left:8px;">${t.logBaseTip}</span>
                     </label>
                 </div>
+                `;
+            }
 
+            if (feat.break) {
+                html += `
                 <div class="axis-subsection">${t.breakGroup}</div>
                 <div class="font-row">
                     <label class="mini-check"><input type="checkbox" class="ax-${key}-break-en" ${cfg.breakEnable ? 'checked' : ''}> ${t.breakEnable}</label>
@@ -472,7 +490,8 @@
                     </label>
                 </div>
                 <div class="info-box" style="margin-top:8px;">${t.breakTip}</div>
-            `;
+                `;
+            }
         }
 
         html += `
@@ -517,18 +536,14 @@
         html += `
             <div class="font-row">
                 <span class="font-label">${t.tickFontGroup}</span>
-                <label>${t.fontSize}
-                    <input type="number" class="ax-${key}-tick-fs" value="${cfg.tickFontSize}" min="6" max="36" style="width:60px;">
-                </label>
-                <label class="mini-check"><input type="checkbox" class="ax-${key}-tick-b" ${cfg.tickBold ? 'checked' : ''}> ${t.bold}</label>
-                <label class="mini-check"><input type="checkbox" class="ax-${key}-tick-i" ${cfg.tickItalic ? 'checked' : ''}> ${t.italic}</label>
                 <label>${t.tickRotate}
                     <input type="number" class="ax-${key}-tick-rot" value="${cfg.tickRotate}" min="-90" max="90" style="width:60px;">
                 </label>
             </div>
         `;
 
-        html += `
+        if (feat.grid) {
+            html += `
             <div class="axis-subsection">${t.gridGroup}</div>
             <div class="font-row">
                 <label class="mini-check"><input type="checkbox" class="ax-${key}-grid-show" ${cfg.gridShow ? 'checked' : ''}> ${t.gridShow}</label>
@@ -539,7 +554,8 @@
                     <input type="text" class="ax-${key}-grid-dash" value="${escapeHtml(cfg.gridDash)}" style="width:80px;">
                 </label>
             </div>
-        `;
+            `;
+        }
 
         html += `
             <div class="axis-subsection">${t.lineGroup}</div>
@@ -554,7 +570,8 @@
             </div>
         `;
 
-        html += `
+        if (feat.cross) {
+            html += `
             <div class="axis-subsection">${t.crossGroup}</div>
             <div class="font-row">
                 <label>${t.crossMode}
@@ -571,7 +588,8 @@
                 </label>
             </div>
             <div class="info-box" style="margin-top:8px;">${t.crossTip}</div>
-        `;
+            `;
+        }
 
         html += `</div>`;
         return html;
@@ -683,17 +701,21 @@
         if (!st.frame) st.frame = frameDefault();
 
         let currentDirection = opts.direction || 'vertical';
+        const showDirection = opts.showDirection !== false;
+        const useGlobalFont = opts.showGlobalFont !== false;
+        const panelTitle = opts.title || t.panelTitle;
+        const features = normalizeFeatures(opts.features);
 
         function build() {
             const axisTypes = opts.axisTypes || getAxisTypesForDirection(currentDirection);
             container.className = 'param-panel';
             container.innerHTML = `
-                <div class="param-panel-title">${t.panelTitle}</div>
-                ${directionPanelHTML(t, currentDirection)}
-                ${globalFontPanelHTML(t, st)}
+                <div class="param-panel-title">${panelTitle}</div>
+                ${showDirection ? directionPanelHTML(t, currentDirection) : ''}
+                ${useGlobalFont ? globalFontPanelHTML(t, st) : ''}
                 ${framePanelHTML(t, st.frame)}
-                ${axisPanelHTML('x', st.x, t, axisTypes.x)}
-                ${axisPanelHTML('y', st.y, t, axisTypes.y)}
+                ${axisPanelHTML('x', st.x, t, axisTypes.x, features)}
+                ${axisPanelHTML('y', st.y, t, axisTypes.y, features)}
             `;
 
             container.querySelectorAll('input[name="axisDirection"]').forEach(r => {
@@ -722,17 +744,38 @@
                 }
             });
 
-            bindGlobalFont();
+            if (useGlobalFont) bindGlobalFont();
         }
 
         function bindGlobalFont() {
+            const g = sel => container.querySelector(sel);
+
+            /* 把全局字体同步回 X/Y 轴面板的输入框，否则容器上的 readFromDOM 会用旧值覆盖 */
+            function syncFontInputs() {
+                ['x', 'y'].forEach(k => {
+                    const cfg = st[k];
+                    const setVal = (sel, v) => {
+                        const el = container.querySelector('.ax-' + k + '-' + sel);
+                        if (!el) return;
+                        if (el.type === 'checkbox') el.checked = !!v;
+                        else el.value = v;
+                    };
+                    setVal('tick-fs', cfg.tickFontSize);
+                    setVal('tick-b', cfg.tickBold);
+                    setVal('tick-i', cfg.tickItalic);
+                    setVal('title-fs', cfg.titleFontSize);
+                    setVal('title-b', cfg.titleBold);
+                    setVal('title-i', cfg.titleItalic);
+                });
+            }
+
             function readGlobalFont() {
-                const fs = parseFloat((document.getElementById('axisTickFontSize') || {}).value);
-                const fb = !!(document.getElementById('axisTickBold') || {}).checked;
-                const fi = !!(document.getElementById('axisTickItalic') || {}).checked;
-                const tfs = parseFloat((document.getElementById('axisTitleFontSize') || {}).value);
-                const tb = !!(document.getElementById('axisTitleBold') || {}).checked;
-                const ti = !!(document.getElementById('axisTitleItalic') || {}).checked;
+                const fs = parseFloat((g('.ax-global-tick-fs') || {}).value);
+                const fb = !!(g('.ax-global-tick-b') || {}).checked;
+                const fi = !!(g('.ax-global-tick-i') || {}).checked;
+                const tfs = parseFloat((g('.ax-global-title-fs') || {}).value);
+                const tb = !!(g('.ax-global-title-b') || {}).checked;
+                const ti = !!(g('.ax-global-title-i') || {}).checked;
 
                 ['x', 'y'].forEach(k => {
                     if (isFinite(fs)) st[k].tickFontSize = Math.max(6, fs);
@@ -743,36 +786,40 @@
                     st[k].titleItalic = ti;
                 });
 
+                syncFontInputs();
                 if (opts.onGlobalFontChange) opts.onGlobalFontChange();
                 if (opts.onChange) opts.onChange();
             }
 
-            ['axisTickFontSize', 'axisTitleFontSize'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.addEventListener('input', readGlobalFont);
-                    el.addEventListener('change', readGlobalFont);
-                }
+            container.querySelectorAll('.ax-global-tick-fs, .ax-global-title-fs').forEach(el => {
+                el.addEventListener('input', readGlobalFont);
+                el.addEventListener('change', readGlobalFont);
             });
-            ['axisTickBold', 'axisTickItalic', 'axisTitleBold', 'axisTitleItalic'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.addEventListener('change', readGlobalFont);
+            container.querySelectorAll('.ax-global-tick-b, .ax-global-tick-i, .ax-global-title-b, .ax-global-title-i').forEach(el => {
+                el.addEventListener('change', readGlobalFont);
             });
         }
 
         build();
 
-        let raf = null;
-        const onChange = () => {
-            if (raf) return;
-            raf = requestAnimationFrame(() => {
-                raf = null;
-                readFromDOM(container, st);
-                opts.onChange && opts.onChange();
-            });
-        };
-        container.addEventListener('change', onChange);
-        container.addEventListener('input', onChange);
+        /* 同一容器可能被重复渲染（例如载入样式后），监听器只绑定一次，读取最新的 state/opts */
+        if (!container._plotAxisBinding) {
+            const binding = container._plotAxisBinding = { state: st, opts: opts };
+            let raf = null;
+            const onChange = () => {
+                if (raf) return;
+                raf = requestAnimationFrame(() => {
+                    raf = null;
+                    readFromDOM(container, binding.state);
+                    binding.opts.onChange && binding.opts.onChange();
+                });
+            };
+            container.addEventListener('change', onChange);
+            container.addEventListener('input', onChange);
+        } else {
+            container._plotAxisBinding.state = st;
+            container._plotAxisBinding.opts = opts;
+        }
     }
 
     function applyAxis(axisG, cfg, orientation, breakPos) {
@@ -841,33 +888,31 @@
             .style('font-style', cfg.tickItalic ? 'italic' : 'normal')
             .style('font-family', cfg.fontFamily || null);
 
+        if (cfg.tickColor) {
+            axisG.selectAll('.tick text').attr('fill', cfg.tickColor);
+        }
+
         const labelPos = cfg.tickLabelPos || 'outside';
         const tickLen = cfg.tickShow ? cfg.tickLength : 0;
 
+        /* 刻度文字放在轴线外侧/内侧，左右上下四个方向都按 outwardSign 定位 */
         if (horiz) {
-            if (labelPos === 'inside') {
-                axisG.selectAll('.tick text')
-                    .attr('y', -(tickLen + 4))
-                    .attr('dy', '0.35em')
-                    .attr('text-anchor', 'middle');
-            } else {
-                axisG.selectAll('.tick text')
-                    .attr('y', tickLen + 6)
-                    .attr('dy', '0.71em')
-                    .attr('text-anchor', 'middle');
-            }
+            const outY = outwardSign > 0 ? (tickLen + 6) : -(tickLen + 6);
+            const inY = outwardSign > 0 ? -(tickLen + 4) : (tickLen + 4);
+            const outDy = outwardSign > 0 ? '0.71em' : '0em';
+            axisG.selectAll('.tick text')
+                .attr('y', labelPos === 'inside' ? inY : outY)
+                .attr('dy', labelPos === 'inside' ? '0.35em' : outDy)
+                .attr('text-anchor', 'middle');
         } else {
-            if (labelPos === 'inside') {
-                axisG.selectAll('.tick text')
-                    .attr('x', tickLen + 4)
-                    .attr('dy', '0.35em')
-                    .attr('text-anchor', 'start');
-            } else {
-                axisG.selectAll('.tick text')
-                    .attr('x', -(tickLen + 6))
-                    .attr('dy', '0.35em')
-                    .attr('text-anchor', 'end');
-            }
+            const outX = outwardSign * (tickLen + 6);
+            const inX = -outwardSign * (tickLen + 4);
+            axisG.selectAll('.tick text')
+                .attr('x', labelPos === 'inside' ? inX : outX)
+                .attr('dy', '0.35em')
+                .attr('text-anchor', (labelPos === 'inside')
+                    ? (outwardSign > 0 ? 'end' : 'start')
+                    : (outwardSign > 0 ? 'start' : 'end'));
         }
 
         if (cfg.tickRotate) {
