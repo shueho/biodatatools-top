@@ -202,7 +202,10 @@ function applyStrokeThreshold(svgEl) {
     const rect = bodyEl.getBoundingClientRect();
     const scale = rect.width > 0 ? rect.width / vbW : 1;
     const MIN_STROKE = Math.min(2, Math.max(0.6, 0.8 / Math.max(scale, 0.1)));
-    svgEl.querySelectorAll('line, path, polyline, rect, circle, ellipse').forEach(el => {
+    svgEl.querySelectorAll('line, path, polyline, rect, circle, ellipse, polygon').forEach(el => {
+        const cls = el.getAttribute('class') || '';
+        if (cls.indexOf('gene-shape') >= 0) return;
+        if (el.getAttribute('data-gene-shape')) return;
         const sw = parseFloat(el.getAttribute('stroke-width') || '0');
         if (sw > 0 && sw < MIN_STROKE) el.setAttribute('stroke-width', String(MIN_STROKE));
     });

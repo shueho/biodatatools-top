@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>进化树叶标签重命名 - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>进化树叶标签重命名</h2>
+            <p>导入Newick/NEXUS格式进化树文件，批量修改叶标签（tips）名称，并按所选格式导出。</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第一步：导入树文件</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()"> 上传文件</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()"> 粘贴文本</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="treeFile" accept=".nwk,.newick,.tree,.tre,.nex,.nexus,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="treeText" placeholder="粘贴 Newick 或 NEXUS 文本，例如：((A:0.1,B:0.2)95:0.3,C:0.4);" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>使用说明：</strong> 支持Newick与NEXUS；NEXUS会读取第一条tree，并自动套用translate块里的名称。标签可用单引号包裹（如 'Danio rerio'），支持率、枝长与元数据会被保留。
+            </div>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="loadBtn">导入树文件</button>
+                <button class="btn" id="exampleBtn">加载示例</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="treeInfo" class="tip-text" style="color:#1f4068;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第二步：编辑标签对照表</div>
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:6px;">
+                <span><strong>标签对照表</strong>
+                    <span class="tip-text" style="display:inline; margin-left:10px;" id="leafCount">0 条</span>
+                </span>
+            </div>
+            <div class="info-box">
+                <strong>使用说明：</strong> 第一列为原标签，第二列为新标签，用制表符分隔；新标签留空表示不修改。导入后会先自动生成只有第一列的内容，可复制到 Excel/文本编辑器填写第二列，再整段粘回本框，点“应用修改”。
+            </div>
+            <textarea id="mapText" spellcheck="false" style="min-height:200px; font-family:Consolas,monospace;"
+                placeholder="导入树后此处自动生成单列（每行一个原标签），可复制到Excel编辑第二列后粘回"></textarea>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="copyMapBtn">复制表格</button>
+                <button class="btn" id="applyBtn" disabled>应用修改</button>
+                <button class="btn" id="resetMapBtn">恢复原标签</button>
+            </div>
+            <div id="applyTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">第三步：选择输出格式并导出</div>
+            <div class="filter-box" style="gap:20px;">
+                <label>输出格式：
+                    <select id="outFormat">
+                        <option value="newick">Newick（.nwk）</option>
+                        <option value="nexus">NEXUS（.nex）</option>
+                        <option value="tsv">标签对照表（.tsv）</option>
+                    </select>
+                </label>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin:12px 0 6px;">
+                    <span><strong>输出预览</strong></span>
+                    <span style="font-size:0.85rem; color:#6c757d;">（完整内容请下载查看）</span>
+                </div>
+                <textarea id="resultText" readonly spellcheck="false" style="min-height:180px; background:#f0f2f5; color:#1f4068; font-family:Consolas,monospace;"></textarea>
+                <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                    <button class="btn" id="downloadBtn">下载结果</button>
+                    <button class="btn" id="copyResultBtn">复制结果</button>
+                </div>
+                <div id="resultTip" class="tip-text"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">应用修改后，结果将在此处显示</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const treeFile = document.getElementById('treeFile');
+            const treeText = document.getElementById('treeText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+            const treeInfo = document.getElementById('treeInfo');
+
+            const mapText = document.getElementById('mapText');
+            const leafCount = document.getElementById('leafCount');
+            const copyMapBtn = document.getElementById('copyMapBtn');
+            const applyBtn = document.getElementById('applyBtn');
+            const resetMapBtn = document.getElementById('resetMapBtn');
+            const applyTip = document.getElementById('applyTip');
+
+            const outFormat = document.getElementById('outFormat');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultText = document.getElementById('resultText');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let treeRoot = null;
+            let leafNodes = [];
+            let treeFormat = 'newick';
+            let treeName = 'tree1';
+            let applied = false;
+
+            function escapeHtml(s) {
+                return String(s == null ? '' : s).replace(/[&<>"]/g, function (m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m];
+                });
+            }
+
+            function showMsg(el, msg, type) {
+                const prefix = type === 'success' ? '✅ ' : (type === 'error' ? '❌ ' : (type === 'warn' ? '⚠️ ' : ''));
+                const html = '<span class="' + (type || '') + '">' + prefix + escapeHtml(msg) + '</span>';
+                el.innerHTML = html;
+                setTimeout(function () { if (el.innerHTML === html) el.innerHTML = ''; }, 6000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function stripComments(s) {
+                let out = '';
+                let i = 0;
+                while (i < s.length) {
+                    const ch = s[i];
+                    if (ch === "'") {
+                        out += ch; i++;
+                        while (i < s.length) {
+                            out += s[i];
+                            if (s[i] === "'") {
+                                if (s[i + 1] === "'") { out += s[i + 1]; i += 2; continue; }
+                                i++; break;
+                            }
+                            i++;
+                        }
+                    } else if (ch === '[') {
+                        let depth = 0;
+                        while (i < s.length) {
+                            if (s[i] === '[') depth++;
+                            else if (s[i] === ']') { depth--; if (depth === 0) { i++; break; } }
+                            i++;
+                        }
+                    } else {
+                        out += ch; i++;
+                    }
+                }
+                return out;
+            }
+
+            function splitOutsideQuotes(s, sep) {
+                const out = [];
+                let cur = '';
+                let q = false;
+                for (let i = 0; i < s.length; i++) {
+                    const ch = s[i];
+                    if (ch === "'") {
+                        if (q && s[i + 1] === "'") { cur += "''"; i++; continue; }
+                        q = !q; cur += ch;
+                    } else if (ch === sep && !q) {
+                        out.push(cur); cur = '';
+                    } else {
+                        cur += ch;
+                    }
+                }
+                out.push(cur);
+                return out;
+            }
+
+            function parseNewick(raw, translate) {
+                const s = stripComments(String(raw || ''));
+                let i = 0;
+
+                function skipWs() { while (i < s.length && /\s/.test(s[i])) i++; }
+
+                function readLabel() {
+                    skipWs();
+                    if (s[i] === "'") {
+                        i++;
+                        let out = '';
+                        while (i < s.length) {
+                            if (s[i] === "'") {
+                                if (s[i + 1] === "'") { out += "'"; i += 2; }
+                                else { i++; break; }
+                            } else { out += s[i]; i++; }
+                        }
+                        return out;
+                    }
+                    let out = '';
+                    while (i < s.length && !/[(),:;\[\]\s]/.test(s[i])) out += s[i++];
+                    return out;
+                }
+
+                function readLen() {
+                    skipWs();
+                    let out = '';
+                    while (i < s.length && !/[(),;\[\]\s]/.test(s[i])) out += s[i++];
+                    return out;
+                }
+
+                function parseNode() {
+                    skipWs();
+                    const node = { children: [], name: '', length: null, support: '' };
+                    if (s[i] === '(') {
+                        i++;
+                        while (true) {
+                            node.children.push(parseNode());
+                            skipWs();
+                            if (s[i] === ',') { i++; continue; }
+                            if (s[i] === ')') { i++; break; }
+                            throw new Error('Newick 括号不匹配');
+                        }
+                        skipWs();
+                        const tok = readLabel();
+                        if (tok) {
+                            if (/^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(tok)) node.support = tok;
+                            else node.name = tok;
+                        }
+                    } else {
+                        node.name = readLabel();
+                    }
+                    skipWs();
+                    if (s[i] === ':') { i++; node.length = readLen(); }
+                    return node;
+                }
+
+                const root = parseNode();
+                skipWs();
+                if (s[i] === ';') i++;
+
+                (function applyTranslate(n) {
+                    if (!n.children.length) {
+                        if (translate && Object.prototype.hasOwnProperty.call(translate, n.name)) {
+                            n.name = translate[n.name];
+                        }
+                    } else {
+                        n.children.forEach(applyTranslate);
+                    }
+                })(root);
+
+                return root;
+            }
+
+            function parseNexus(raw) {
+                const translate = {};
+                const tr = raw.match(/translate\s+([\s\S]*?);/i);
+                if (tr) {
+                    splitOutsideQuotes(tr[1], ',').forEach(function (part) {
+                        const m = part.trim().match(/^(\S+)\s+([\s\S]+)$/);
+                        if (!m) return;
+                        let name = m[2].trim();
+                        if (name.length >= 2 && name.charAt(0) === "'" && name.charAt(name.length - 1) === "'") {
+                            name = name.slice(1, -1).replace(/''/g, "'");
+                        }
+                        translate[m[1]] = name;
+                    });
+                }
+
+                const tm = raw.match(/\btree\s+([\s\S]*?)\s*=\s*([\s\S]*?);/i);
+                if (!tm) throw new Error('NEXUS 中未找到 tree 语句');
+                const nameParts = tm[1].trim().split(/\s+/).filter(Boolean);
+                const name = nameParts.length ? nameParts[nameParts.length - 1] : 'tree1';
+                const nwk = tm[2].trim();
+                return { root: parseNewick(nwk, translate), treeName: name };
+            }
+
+            function detectFormat(text) {
+                const t = String(text || '').trim();
+                if (/^#nexus/i.test(t) || /\bbegin\s+trees\b/i.test(t)) return 'nexus';
+                return 'newick';
+            }
+
+            function collectLeaves(root) {
+                const out = [];
+                (function walk(n) {
+                    if (!n.children.length) {
+                        out.push({ node: n, originalName: n.name });
+                        return;
+                    }
+                    n.children.forEach(walk);
+                })(root);
+                return out;
+            }
+
+            function quoteLabel(name) {
+                name = String(name == null ? '' : name);
+                if (!name) return '';
+                if (/[\s,;:()\[\]'"]/.test(name)) return "'" + name.replace(/'/g, "''") + "'";
+                return name;
+            }
+
+            function toNewick(n) {
+                let out = '';
+                if (n.children.length) {
+                    out = '(' + n.children.map(toNewick).join(',') + ')';
+                    if (n.support) out += n.support;
+                    else if (n.name) out += quoteLabel(n.name);
+                } else {
+                    out += quoteLabel(n.name);
+                }
+                if (n.length != null && String(n.length) !== '') out += ':' + n.length;
+                return out;
+            }
+
+            function buildNexus(nwk) {
+                return '#NEXUS\nBegin trees;\n  Tree ' + (treeName || 'tree1') + ' = [&R] ' + nwk + ';\nEnd;\n';
+            }
+
+            function parseMapping(text) {
+                const map = new Map();
+                const dupOld = [];
+                String(text || '').split(/\r?\n/).forEach(function (line) {
+                    if (!line.trim()) return;
+                    const parts = line.split('\t');
+                    const oldName = parts[0].trim();
+                    if (!oldName) return;
+                    if (map.has(oldName)) dupOld.push(oldName);
+                    let newName = parts.length > 1 ? parts.slice(1).join('\t').trim() : '';
+                    if (!newName) newName = oldName;
+                    map.set(oldName, newName);
+                });
+                return { map: map, dupOld: dupOld };
+            }
+
+            function setTree(root, fmt, name, text) {
+                leafNodes = collectLeaves(root);
+                if (!leafNodes.length) throw new Error('未解析到叶标签');
+                treeRoot = root;
+                treeFormat = fmt;
+                treeName = name || 'tree1';
+                applied = false;
+                mapText.value = leafNodes.map(function (l) { return l.originalName; }).join('\n');
+                leafCount.textContent = leafNodes.length + ' 条';
+                applyBtn.disabled = false;
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultText.value = '';
+                applyTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                treeInfo.textContent = '识别格式：' + (fmt === 'nexus' ? 'NEXUS' : 'Newick') +
+                    '；叶标签 ' + leafNodes.length + ' 个' +
+                    (fmt === 'nexus' && name ? '（tree: ' + name + '）' : '');
+                showMsg(msgTip, '导入成功：' + leafNodes.length + ' 个叶标签', 'success');
+                toast('导入成功');
+            }
+
+            function loadTree(text) {
+                try {
+                    const fmt = detectFormat(text);
+                    if (fmt === 'nexus') {
+                        const r = parseNexus(text);
+                        setTree(r.root, 'nexus', r.treeName, text);
+                    } else {
+                        const root = parseNewick(text, null);
+                        setTree(root, 'newick', 'tree1', text);
+                    }
+                } catch (e) {
+                    treeRoot = null;
+                    leafNodes = [];
+                    applied = false;
+                    mapText.value = '';
+                    leafCount.textContent = '0 条';
+                    applyBtn.disabled = true;
+                    treeInfo.textContent = '';
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    showMsg(msgTip, '解析失败：' + e.message, 'error');
+                }
+            }
+
+            function applyMapping() {
+                if (!treeRoot) {
+                    showMsg(applyTip, '请先导入树', 'error');
+                    return;
+                }
+                const parsed = parseMapping(mapText.value);
+                const map = parsed.map;
+                const originals = new Set(leafNodes.map(function (l) { return l.originalName; }));
+                const unmatchedRows = [];
+                map.forEach(function (v, k) { if (!originals.has(k)) unmatchedRows.push(k); });
+
+                leafNodes.forEach(function (l) {
+                    const v = map.has(l.originalName) ? map.get(l.originalName) : l.originalName;
+                    l.node.name = v;
+                });
+
+                const unmappedLeaves = leafNodes.filter(function (l) { return !map.has(l.originalName); });
+                const seen = new Set();
+                const dupNew = [];
+                leafNodes.forEach(function (l) {
+                    if (seen.has(l.node.name)) dupNew.push(l.node.name);
+                    else seen.add(l.node.name);
+                });
+
+                applied = true;
+                renderOutput();
+
+                const parts = ['已应用：' + leafNodes.length + ' 个叶标签'];
+                if (unmatchedRows.length) parts.push('对照表中有 ' + unmatchedRows.length + ' 行未在树中找到');
+                if (unmappedLeaves.length) parts.push(unmappedLeaves.length + ' 个叶标签未在对照表中（保持原名）');
+                if (dupNew.length) parts.push('新标签有重复：' + Array.from(new Set(dupNew)).slice(0, 5).join('、'));
+                showMsg(applyTip, parts.join('；'), dupNew.length ? 'warn' : 'success');
+                if (dupNew.length) toast('已应用，但有重复标签');
+                else toast('已应用修改');
+            }
+
+            function renderOutput() {
+                if (!treeRoot) return;
+                const fmt = outFormat.value;
+                let out = '';
+                if (fmt === 'tsv') {
+                    out = 'Old_label\tNew_label\n' + leafNodes.map(function (l) {
+                        return l.originalName + '\t' + l.node.name;
+                    }).join('\n') + '\n';
+                } else {
+                    const nwk = toNewick(treeRoot) + ';';
+                    out = fmt === 'nexus' ? buildNexus(nwk) : (nwk + '\n');
+                }
+                resultText.value = out;
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+            }
+
+            function resetMapping() {
+                if (!leafNodes.length) return;
+                leafNodes.forEach(function (l) { l.node.name = l.originalName; });
+                mapText.value = leafNodes.map(function (l) { return l.originalName; }).join('\n');
+                applied = false;
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultText.value = '';
+                applyTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                showMsg(applyTip, '已恢复原标签', 'success');
+            }
+
+            function copyText(text, tipEl, okMsg) {
+                if (!text) {
+                    showMsg(tipEl, '没有可复制的内容', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(tipEl, okMsg, 'success');
+                        toast('已复制');
+                    }).catch(function () { fallbackCopy(text, tipEl, okMsg); });
+                } else {
+                    fallbackCopy(text, tipEl, okMsg);
+                }
+            }
+
+            function fallbackCopy(text, tipEl, okMsg) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(tipEl, okMsg, 'success');
+                    toast('已复制');
+                } catch (e) {
+                    showMsg(tipEl, '复制失败，请手动复制', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                const text = resultText.value;
+                if (!text) {
+                    showMsg(resultTip, '请先应用修改', 'error');
+                    return;
+                }
+                const fmt = outFormat.value;
+                const filename = fmt === 'nexus' ? 'renamed_tree.nex'
+                    : (fmt === 'tsv' ? 'label_mapping.tsv' : 'renamed_tree.nwk');
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultTip, '已下载 ' + filename, 'success');
+                toast('已下载');
+            }
+
+            window.switchInputMode = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    treeFile.disabled = false;
+                    treeText.disabled = true;
+                    treeText.value = '';
+                } else {
+                    treeFile.disabled = true;
+                    treeFile.value = '';
+                    treeText.disabled = false;
+                }
+            };
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    const file = treeFile.files[0];
+                    if (!file) {
+                        showMsg(msgTip, '请选择文件', 'error');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        treeText.value = e.target.result;
+                        loadTree(e.target.result);
+                    };
+                    reader.readAsText(file);
+                } else {
+                    const text = treeText.value.trim();
+                    if (!text) {
+                        showMsg(msgTip, '请粘贴树文本', 'error');
+                        return;
+                    }
+                    loadTree(text);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function () {
+                const example = "((Homo_sapiens:0.05,Pan_troglodytes:0.07)95:0.12,(Mus_musculus:0.08,Rattus_norvegicus:0.09)88:0.15,(Gallus_gallus:0.2,'Danio rerio':0.21)76:0.25);";
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInputMode();
+                treeText.value = example;
+                loadTree(example);
+            });
+
+            copyMapBtn.addEventListener('click', function () {
+                copyText(mapText.value, applyTip, '已复制对照表');
+            });
+            applyBtn.addEventListener('click', applyMapping);
+            resetMapBtn.addEventListener('click', resetMapping);
+            downloadBtn.addEventListener('click', downloadResult);
+            copyResultBtn.addEventListener('click', function () {
+                copyText(resultText.value, resultTip, '已复制结果');
+            });
+
+            outFormat.addEventListener('change', function () {
+                if (applied) renderOutput();
+            });
+
+            mapText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    applyBtn.click();
+                }
+            });
+
+            window.switchInputMode();
+        })();
+    </script>
+</body>
+</html>

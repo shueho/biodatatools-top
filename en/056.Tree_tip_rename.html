@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phylogenetic Tree Tip Label Renaming - BioDataTools</title>
+    <link rel="shortcut icon" href="../images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../COMMON/global.css">
+</head>
+<body>
+
+    <div id="common-header"></div>
+
+    <div class="main">
+        <div class="page-intro">
+            <h2>Phylogenetic Tree Tip Label Renaming</h2>
+            <p>Import a Newick/NEXUS tree file, batch-rename leaf labels (tips), and export in the selected format.</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 1: Import Tree File</div>
+            <div class="mode-tabs">
+                <label><input type="radio" name="inputMode" value="file" checked onchange="switchInputMode()"> Upload File</label>
+                <label><input type="radio" name="inputMode" value="text" onchange="switchInputMode()"> Paste Text</label>
+            </div>
+            <div class="file-input">
+                <input type="file" id="treeFile" accept=".nwk,.newick,.tree,.tre,.nex,.nexus,.txt">
+            </div>
+            <div class="text-input">
+                <textarea id="treeText" placeholder="Paste Newick or NEXUS text, e.g.: ((A:0.1,B:0.2)95:0.3,C:0.4);" disabled></textarea>
+            </div>
+            <div class="info-box">
+                <strong>Instructions:</strong> Newick and NEXUS are supported; for NEXUS, the first tree is read and names from the translate block are applied automatically. Labels may be wrapped in single quotes (e.g., 'Danio rerio'); support values, branch lengths, and metadata are preserved.
+            </div>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="loadBtn">Import Tree File</button>
+                <button class="btn" id="exampleBtn">Load Example</button>
+            </div>
+            <div id="msgTip" class="tip-text"></div>
+            <div id="treeInfo" class="tip-text" style="color:#1f4068;"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 2: Edit Label Mapping Table</div>
+            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:6px;">
+                <span><strong>Label Mapping Table</strong>
+                    <span class="tip-text" style="display:inline; margin-left:10px;" id="leafCount">0 rows</span>
+                </span>
+            </div>
+            <div class="info-box">
+                <strong>Instructions:</strong> The first column is the old label, the second column is the new label, separated by a tab; leave the new label blank to keep it unchanged. After importing, a single-column list is generated automatically. You can copy it to Excel/a text editor, fill in the second column, then paste the whole thing back here and click "Apply Changes".
+            </div>
+            <textarea id="mapText" spellcheck="false" style="min-height:200px; font-family:Consolas,monospace;"
+                placeholder="After importing a tree, a single column (one old label per line) is generated here. Copy it to Excel, edit the second column, and paste it back."></textarea>
+            <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                <button class="btn" id="copyMapBtn">Copy Table</button>
+                <button class="btn" id="applyBtn" disabled>Apply Changes</button>
+                <button class="btn" id="resetMapBtn">Restore Original Labels</button>
+            </div>
+            <div id="applyTip" class="tip-text"></div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-title">Step 3: Choose Output Format and Export</div>
+            <div class="filter-box" style="gap:20px;">
+                <label>Output Format:
+                    <select id="outFormat">
+                        <option value="newick">Newick (.nwk)</option>
+                        <option value="nexus">NEXUS (.nex)</option>
+                        <option value="tsv">Label Mapping Table (.tsv)</option>
+                    </select>
+                </label>
+            </div>
+            <div id="resultArea" style="display:none;">
+                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin:12px 0 6px;">
+                    <span><strong>Output Preview</strong></span>
+                    <span style="font-size:0.85rem; color:#6c757d;">(Download to view the full content)</span>
+                </div>
+                <textarea id="resultText" readonly spellcheck="false" style="min-height:180px; background:#f0f2f5; color:#1f4068; font-family:Consolas,monospace;"></textarea>
+                <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:10px;">
+                    <button class="btn" id="downloadBtn">Download Result</button>
+                    <button class="btn" id="copyResultBtn">Copy Result</button>
+                </div>
+                <div id="resultTip" class="tip-text"></div>
+            </div>
+            <div id="emptyResult" class="empty-tip">After applying changes, the result will be shown here</div>
+        </div>
+    </div>
+
+    <div id="common-footer"></div>
+
+    <script>
+        window.headerConfig = {};
+    </script>
+    <script src="../COMMON/utils.js"></script>
+    <script src="../COMMON/header.js"></script>
+    <script src="../COMMON/footer-en.js"></script>
+    <script src="../COMMON/donate-widget.js"></script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const treeFile = document.getElementById('treeFile');
+            const treeText = document.getElementById('treeText');
+            const loadBtn = document.getElementById('loadBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const msgTip = document.getElementById('msgTip');
+            const treeInfo = document.getElementById('treeInfo');
+
+            const mapText = document.getElementById('mapText');
+            const leafCount = document.getElementById('leafCount');
+            const copyMapBtn = document.getElementById('copyMapBtn');
+            const applyBtn = document.getElementById('applyBtn');
+            const resetMapBtn = document.getElementById('resetMapBtn');
+            const applyTip = document.getElementById('applyTip');
+
+            const outFormat = document.getElementById('outFormat');
+            const resultArea = document.getElementById('resultArea');
+            const emptyResult = document.getElementById('emptyResult');
+            const resultText = document.getElementById('resultText');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const copyResultBtn = document.getElementById('copyResultBtn');
+            const resultTip = document.getElementById('resultTip');
+
+            let treeRoot = null;
+            let leafNodes = [];
+            let treeFormat = 'newick';
+            let treeName = 'tree1';
+            let applied = false;
+
+            function escapeHtml(s) {
+                return String(s == null ? '' : s).replace(/[&<>"]/g, function (m) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m];
+                });
+            }
+
+            function showMsg(el, msg, type) {
+                const prefix = type === 'success' ? '✅ ' : (type === 'error' ? '❌ ' : (type === 'warn' ? '⚠️ ' : ''));
+                const html = '<span class="' + (type || '') + '">' + prefix + escapeHtml(msg) + '</span>';
+                el.innerHTML = html;
+                setTimeout(function () { if (el.innerHTML === html) el.innerHTML = ''; }, 6000);
+            }
+
+            function toast(msg) {
+                if (window.showToast) window.showToast(msg);
+            }
+
+            function stripComments(s) {
+                let out = '';
+                let i = 0;
+                while (i < s.length) {
+                    const ch = s[i];
+                    if (ch === "'") {
+                        out += ch; i++;
+                        while (i < s.length) {
+                            out += s[i];
+                            if (s[i] === "'") {
+                                if (s[i + 1] === "'") { out += s[i + 1]; i += 2; continue; }
+                                i++; break;
+                            }
+                            i++;
+                        }
+                    } else if (ch === '[') {
+                        let depth = 0;
+                        while (i < s.length) {
+                            if (s[i] === '[') depth++;
+                            else if (s[i] === ']') { depth--; if (depth === 0) { i++; break; } }
+                            i++;
+                        }
+                    } else {
+                        out += ch; i++;
+                    }
+                }
+                return out;
+            }
+
+            function splitOutsideQuotes(s, sep) {
+                const out = [];
+                let cur = '';
+                let q = false;
+                for (let i = 0; i < s.length; i++) {
+                    const ch = s[i];
+                    if (ch === "'") {
+                        if (q && s[i + 1] === "'") { cur += "''"; i++; continue; }
+                        q = !q; cur += ch;
+                    } else if (ch === sep && !q) {
+                        out.push(cur); cur = '';
+                    } else {
+                        cur += ch;
+                    }
+                }
+                out.push(cur);
+                return out;
+            }
+
+            function parseNewick(raw, translate) {
+                const s = stripComments(String(raw || ''));
+                let i = 0;
+
+                function skipWs() { while (i < s.length && /\s/.test(s[i])) i++; }
+
+                function readLabel() {
+                    skipWs();
+                    if (s[i] === "'") {
+                        i++;
+                        let out = '';
+                        while (i < s.length) {
+                            if (s[i] === "'") {
+                                if (s[i + 1] === "'") { out += "'"; i += 2; }
+                                else { i++; break; }
+                            } else { out += s[i]; i++; }
+                        }
+                        return out;
+                    }
+                    let out = '';
+                    while (i < s.length && !/[(),:;\[\]\s]/.test(s[i])) out += s[i++];
+                    return out;
+                }
+
+                function readLen() {
+                    skipWs();
+                    let out = '';
+                    while (i < s.length && !/[(),;\[\]\s]/.test(s[i])) out += s[i++];
+                    return out;
+                }
+
+                function parseNode() {
+                    skipWs();
+                    const node = { children: [], name: '', length: null, support: '' };
+                    if (s[i] === '(') {
+                        i++;
+                        while (true) {
+                            node.children.push(parseNode());
+                            skipWs();
+                            if (s[i] === ',') { i++; continue; }
+                            if (s[i] === ')') { i++; break; }
+                            throw new Error('Unmatched parentheses in Newick');
+                        }
+                        skipWs();
+                        const tok = readLabel();
+                        if (tok) {
+                            if (/^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(tok)) node.support = tok;
+                            else node.name = tok;
+                        }
+                    } else {
+                        node.name = readLabel();
+                    }
+                    skipWs();
+                    if (s[i] === ':') { i++; node.length = readLen(); }
+                    return node;
+                }
+
+                const root = parseNode();
+                skipWs();
+                if (s[i] === ';') i++;
+
+                (function applyTranslate(n) {
+                    if (!n.children.length) {
+                        if (translate && Object.prototype.hasOwnProperty.call(translate, n.name)) {
+                            n.name = translate[n.name];
+                        }
+                    } else {
+                        n.children.forEach(applyTranslate);
+                    }
+                })(root);
+
+                return root;
+            }
+
+            function parseNexus(raw) {
+                const translate = {};
+                const tr = raw.match(/translate\s+([\s\S]*?);/i);
+                if (tr) {
+                    splitOutsideQuotes(tr[1], ',').forEach(function (part) {
+                        const m = part.trim().match(/^(\S+)\s+([\s\S]+)$/);
+                        if (!m) return;
+                        let name = m[2].trim();
+                        if (name.length >= 2 && name.charAt(0) === "'" && name.charAt(name.length - 1) === "'") {
+                            name = name.slice(1, -1).replace(/''/g, "'");
+                        }
+                        translate[m[1]] = name;
+                    });
+                }
+
+                const tm = raw.match(/\btree\s+([\s\S]*?)\s*=\s*([\s\S]*?);/i);
+                if (!tm) throw new Error('No tree statement found in NEXUS');
+                const nameParts = tm[1].trim().split(/\s+/).filter(Boolean);
+                const name = nameParts.length ? nameParts[nameParts.length - 1] : 'tree1';
+                const nwk = tm[2].trim();
+                return { root: parseNewick(nwk, translate), treeName: name };
+            }
+
+            function detectFormat(text) {
+                const t = String(text || '').trim();
+                if (/^#nexus/i.test(t) || /\bbegin\s+trees\b/i.test(t)) return 'nexus';
+                return 'newick';
+            }
+
+            function collectLeaves(root) {
+                const out = [];
+                (function walk(n) {
+                    if (!n.children.length) {
+                        out.push({ node: n, originalName: n.name });
+                        return;
+                    }
+                    n.children.forEach(walk);
+                })(root);
+                return out;
+            }
+
+            function quoteLabel(name) {
+                name = String(name == null ? '' : name);
+                if (!name) return '';
+                if (/[\s,;:()\[\]'"]/.test(name)) return "'" + name.replace(/'/g, "''") + "'";
+                return name;
+            }
+
+            function toNewick(n) {
+                let out = '';
+                if (n.children.length) {
+                    out = '(' + n.children.map(toNewick).join(',') + ')';
+                    if (n.support) out += n.support;
+                    else if (n.name) out += quoteLabel(n.name);
+                } else {
+                    out += quoteLabel(n.name);
+                }
+                if (n.length != null && String(n.length) !== '') out += ':' + n.length;
+                return out;
+            }
+
+            function buildNexus(nwk) {
+                return '#NEXUS\nBegin trees;\n  Tree ' + (treeName || 'tree1') + ' = [&R] ' + nwk + ';\nEnd;\n';
+            }
+
+            function parseMapping(text) {
+                const map = new Map();
+                const dupOld = [];
+                String(text || '').split(/\r?\n/).forEach(function (line) {
+                    if (!line.trim()) return;
+                    const parts = line.split('\t');
+                    const oldName = parts[0].trim();
+                    if (!oldName) return;
+                    if (map.has(oldName)) dupOld.push(oldName);
+                    let newName = parts.length > 1 ? parts.slice(1).join('\t').trim() : '';
+                    if (!newName) newName = oldName;
+                    map.set(oldName, newName);
+                });
+                return { map: map, dupOld: dupOld };
+            }
+
+            function setTree(root, fmt, name, text) {
+                leafNodes = collectLeaves(root);
+                if (!leafNodes.length) throw new Error('No leaf labels parsed');
+                treeRoot = root;
+                treeFormat = fmt;
+                treeName = name || 'tree1';
+                applied = false;
+                mapText.value = leafNodes.map(function (l) { return l.originalName; }).join('\n');
+                leafCount.textContent = leafNodes.length + ' rows';
+                applyBtn.disabled = false;
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultText.value = '';
+                applyTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                treeInfo.textContent = 'Detected format: ' + (fmt === 'nexus' ? 'NEXUS' : 'Newick') +
+                    '; leaf labels: ' + leafNodes.length +
+                    (fmt === 'nexus' && name ? ' (tree: ' + name + ')' : '');
+                showMsg(msgTip, 'Imported successfully: ' + leafNodes.length + ' leaf labels', 'success');
+                toast('Imported successfully');
+            }
+
+            function loadTree(text) {
+                try {
+                    const fmt = detectFormat(text);
+                    if (fmt === 'nexus') {
+                        const r = parseNexus(text);
+                        setTree(r.root, 'nexus', r.treeName, text);
+                    } else {
+                        const root = parseNewick(text, null);
+                        setTree(root, 'newick', 'tree1', text);
+                    }
+                } catch (e) {
+                    treeRoot = null;
+                    leafNodes = [];
+                    applied = false;
+                    mapText.value = '';
+                    leafCount.textContent = '0 rows';
+                    applyBtn.disabled = true;
+                    treeInfo.textContent = '';
+                    resultArea.style.display = 'none';
+                    emptyResult.style.display = 'block';
+                    showMsg(msgTip, 'Parsing failed: ' + e.message, 'error');
+                }
+            }
+
+            function applyMapping() {
+                if (!treeRoot) {
+                    showMsg(applyTip, 'Please import a tree first', 'error');
+                    return;
+                }
+                const parsed = parseMapping(mapText.value);
+                const map = parsed.map;
+                const originals = new Set(leafNodes.map(function (l) { return l.originalName; }));
+                const unmatchedRows = [];
+                map.forEach(function (v, k) { if (!originals.has(k)) unmatchedRows.push(k); });
+
+                leafNodes.forEach(function (l) {
+                    const v = map.has(l.originalName) ? map.get(l.originalName) : l.originalName;
+                    l.node.name = v;
+                });
+
+                const unmappedLeaves = leafNodes.filter(function (l) { return !map.has(l.originalName); });
+                const seen = new Set();
+                const dupNew = [];
+                leafNodes.forEach(function (l) {
+                    if (seen.has(l.node.name)) dupNew.push(l.node.name);
+                    else seen.add(l.node.name);
+                });
+
+                applied = true;
+                renderOutput();
+
+                const parts = ['Applied to ' + leafNodes.length + ' leaf labels'];
+                if (unmatchedRows.length) parts.push(unmatchedRows.length + ' row(s) in the mapping table not found in the tree');
+                if (unmappedLeaves.length) parts.push(unmappedLeaves.length + ' leaf label(s) not in the mapping table (kept original name)');
+                if (dupNew.length) parts.push('Duplicate new labels: ' + Array.from(new Set(dupNew)).slice(0, 5).join(', '));
+                showMsg(applyTip, parts.join('; '), dupNew.length ? 'warn' : 'success');
+                if (dupNew.length) toast('Applied, but duplicate labels exist');
+                else toast('Changes applied');
+            }
+
+            function renderOutput() {
+                if (!treeRoot) return;
+                const fmt = outFormat.value;
+                let out = '';
+                if (fmt === 'tsv') {
+                    out = 'Old_label\tNew_label\n' + leafNodes.map(function (l) {
+                        return l.originalName + '\t' + l.node.name;
+                    }).join('\n') + '\n';
+                } else {
+                    const nwk = toNewick(treeRoot) + ';';
+                    out = fmt === 'nexus' ? buildNexus(nwk) : (nwk + '\n');
+                }
+                resultText.value = out;
+                resultArea.style.display = 'block';
+                emptyResult.style.display = 'none';
+            }
+
+            function resetMapping() {
+                if (!leafNodes.length) return;
+                leafNodes.forEach(function (l) { l.node.name = l.originalName; });
+                mapText.value = leafNodes.map(function (l) { return l.originalName; }).join('\n');
+                applied = false;
+                resultArea.style.display = 'none';
+                emptyResult.style.display = 'block';
+                resultText.value = '';
+                applyTip.innerHTML = '';
+                resultTip.innerHTML = '';
+                showMsg(applyTip, 'Original labels restored', 'success');
+            }
+
+            function copyText(text, tipEl, okMsg) {
+                if (!text) {
+                    showMsg(tipEl, 'Nothing to copy', 'error');
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        showMsg(tipEl, okMsg, 'success');
+                        toast('Copied');
+                    }).catch(function () { fallbackCopy(text, tipEl, okMsg); });
+                } else {
+                    fallbackCopy(text, tipEl, okMsg);
+                }
+            }
+
+            function fallbackCopy(text, tipEl, okMsg) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showMsg(tipEl, okMsg, 'success');
+                    toast('Copied');
+                } catch (e) {
+                    showMsg(tipEl, 'Copy failed, please copy manually', 'error');
+                }
+                document.body.removeChild(ta);
+            }
+
+            function downloadResult() {
+                const text = resultText.value;
+                if (!text) {
+                    showMsg(resultTip, 'Please apply changes first', 'error');
+                    return;
+                }
+                const fmt = outFormat.value;
+                const filename = fmt === 'nexus' ? 'renamed_tree.nex'
+                    : (fmt === 'tsv' ? 'label_mapping.tsv' : 'renamed_tree.nwk');
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMsg(resultTip, 'Downloaded ' + filename, 'success');
+                toast('Downloaded');
+            }
+
+            window.switchInputMode = function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    treeFile.disabled = false;
+                    treeText.disabled = true;
+                    treeText.value = '';
+                } else {
+                    treeFile.disabled = true;
+                    treeFile.value = '';
+                    treeText.disabled = false;
+                }
+            };
+
+            loadBtn.addEventListener('click', function () {
+                const mode = document.querySelector('input[name="inputMode"]:checked').value;
+                if (mode === 'file') {
+                    const file = treeFile.files[0];
+                    if (!file) {
+                        showMsg(msgTip, 'Please select a file', 'error');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        treeText.value = e.target.result;
+                        loadTree(e.target.result);
+                    };
+                    reader.readAsText(file);
+                } else {
+                    const text = treeText.value.trim();
+                    if (!text) {
+                        showMsg(msgTip, 'Please paste tree text', 'error');
+                        return;
+                    }
+                    loadTree(text);
+                }
+            });
+
+            exampleBtn.addEventListener('click', function () {
+                const example = "((Homo_sapiens:0.05,Pan_troglodytes:0.07)95:0.12,(Mus_musculus:0.08,Rattus_norvegicus:0.09)88:0.15,(Gallus_gallus:0.2,'Danio rerio':0.21)76:0.25);";
+                const radio = document.querySelector('input[name="inputMode"][value="text"]');
+                if (radio) radio.checked = true;
+                window.switchInputMode();
+                treeText.value = example;
+                loadTree(example);
+            });
+
+            copyMapBtn.addEventListener('click', function () {
+                copyText(mapText.value, applyTip, 'Mapping table copied');
+            });
+            applyBtn.addEventListener('click', applyMapping);
+            resetMapBtn.addEventListener('click', resetMapping);
+            downloadBtn.addEventListener('click', downloadResult);
+            copyResultBtn.addEventListener('click', function () {
+                copyText(resultText.value, resultTip, 'Result copied');
+            });
+
+            outFormat.addEventListener('change', function () {
+                if (applied) renderOutput();
+            });
+
+            mapText.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    applyBtn.click();
+                }
+            });
+
+            window.switchInputMode();
+        })();
+    </script>
+</body>
+</html>

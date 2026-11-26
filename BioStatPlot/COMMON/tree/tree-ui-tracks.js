@@ -231,6 +231,115 @@ function refreshTrackList(container) {
         <div class="style-box" style="margin-top:8px;">${styleBoxTitle('groupPaletteLabel')}<div data-track-palette-host></div></div>
         ${legendBlock(t)}`;
     }
+    if (t.type === 'gene') {
+      const geneTypes = TT.geneTypesOf(t);
+      const geneMap = t.geneTypeMap || {};
+      const geneNames = TT.geneUniqueNames(t);
+      const geneText = t.geneRaw || '';
+      const isTextMode = (t.geneInputMode || 'text') !== 'column';
+      const modeHint = isTextMode ? I.t('geneDataHint') : I.t('geneColumnHint');
+      body = `
+        <div class="param-grid cols-4">
+          <div class="param-item"><label>${I.t('trackNameLabel')}</label>
+            <input type="text" data-tprop="name" data-tid="${t.id}" value="${escA(t.name)}"></div>
+          <div class="param-item"><label>${I.t('trackOffsetLabel')}</label>
+            <input type="number" data-tprop="offset" data-tid="${t.id}" value="${t.offset}" step="1"></div>
+          <div class="param-item"><label>${I.t('trackTrackLength')}</label>
+            <input type="number" data-tprop="width" data-tid="${t.id}" value="${t.width || ''}" min="0" max="1600" step="10" placeholder="${escA(I.t('phAuto'))}"></div>
+          <div class="param-item"><label>${I.t('geneHeight')}</label>
+            <input type="number" data-tprop="geneHeight" data-tid="${t.id}" value="${t.geneHeight != null ? t.geneHeight : 12}" min="4" max="80" step="1"></div>
+          <div class="param-item"><label>${I.t('geneGap')}</label>
+            <input type="number" data-tprop="geneGapX" data-tid="${t.id}" value="${t.geneGapX != null ? t.geneGapX : 2}" min="0" max="20" step="1"></div>
+          <div class="param-item"><label>${I.t('geneFontSize')}</label>
+            <input type="number" data-tprop="geneFontSize" data-tid="${t.id}" value="${t.geneFontSize != null ? t.geneFontSize : 9}" min="4" max="30" step="1"></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="geneFontBold" data-tid="${t.id}" ${t.geneFontBold !== false ? 'checked' : ''}> ${I.t('geneFontBold')}</label></div>
+          <div class="param-item"><label class="mini-check"><input type="checkbox" data-tprop="geneArrowMode" data-tid="${t.id}" ${t.geneArrowMode ? 'checked' : ''}> ${I.t('geneArrowMode')}</label></div>
+          <div class="param-item"><label>${I.t('geneArrowScale')}</label>
+            <input type="number" data-tprop="geneArrowScale" data-tid="${t.id}" value="${t.geneArrowScale != null ? t.geneArrowScale : 0.7}" min="0.1" max="1" step="0.05"></div>
+        </div>
+        ${(C.state.mode !== 'rectangular') ? `<div class="info-box" style="margin-top:6px;font-size:12px;line-height:1.6;color:#a33;">${I.t('geneOnlyRectHint')}</div>` : ''}
+        <div class="style-box" style="margin-top:8px;">
+          <div class="style-box-title">${I.t('geneDataTitle')}</div>
+          <div class="param-grid cols-4">
+            <div class="param-item"><label>${I.t('geneInputMode')}</label>
+              <select data-tprop="geneInputMode" data-tid="${t.id}">
+                <option value="column" ${!isTextMode ? 'selected' : ''}>${I.t('geneInputModeColumn')}</option>
+                <option value="text" ${isTextMode ? 'selected' : ''}>${I.t('geneInputModeText')}</option>
+              </select></div>
+            ${!isTextMode ? `<div class="param-item" style="grid-column: span 2;"><label>${I.t('geneColumn')}</label>
+              <select data-tprop="geneColumn" data-tid="${t.id}">${colOpts(t.geneColumn)}</select></div>` : ''}
+          </div>
+          ${isTextMode ? `
+          <textarea data-gene-textarea="${t.id}" rows="5" class="import-text" spellcheck="false" placeholder="${escA(I.t('geneTextPlaceholder'))}" style="width:100%;font-family:Consolas,monospace;font-size:12px;box-sizing:border-box;">${escA(geneText)}</textarea>
+          <div class="info-box" style="margin-top:6px;font-size:12px;line-height:1.65;">${modeHint}</div>
+          <div class="btn-group" style="margin-top:6px;">
+            <button class="btn" data-gene-apply="${t.id}" type="button">${I.t('geneApply')}</button>
+            <button class="btn" data-gene-sample="${t.id}" type="button">${I.t('geneSample')}</button>
+            <button class="btn btn-outline" data-gene-upload="${t.id}" type="button">${I.t('geneUpload')}</button>
+            <input type="file" data-gene-file="${t.id}" accept=".txt,.tsv,.tab" style="display:none;">
+          </div>` : `
+          <div class="info-box" style="margin-top:6px;font-size:12px;line-height:1.65;">${modeHint}</div>`}
+        </div>
+        <div class="style-box" style="margin-top:8px;">
+          <div class="style-box-title">${I.t('geneTypeTitle')}</div>
+          <div class="gene-type-grid gene-type-head">
+            <div>${I.t('geneTypeName')}</div><div>${I.t('geneTypeLegend')}</div><div>${I.t('geneTypeColor')}</div><div>${I.t('geneTypeWidth')}</div>
+            <div>${I.t('geneTypeFont')}</div><div>${I.t('geneTypeRotate')}</div><div></div>
+          </div>
+          <div class="gene-type-grid">
+            ${geneTypes.map((ty, i) => `
+              <input type="text" data-gtf="name" data-gti="${i}" data-tid="${t.id}" value="${escA(ty.name || '')}">
+              <input type="text" data-gtf="legend" data-gti="${i}" data-tid="${t.id}" value="${escA(ty.legend != null ? ty.legend : (ty.name || ''))}" placeholder="${escA(ty.name || '')}">
+              <input type="color" data-gtf="color" data-gti="${i}" data-tid="${t.id}" value="${ty.color || '#cccccc'}">
+              <input type="number" data-gtf="widthRatio" data-gti="${i}" data-tid="${t.id}" value="${ty.widthRatio != null ? ty.widthRatio : 0.67}" min="0.1" max="10" step="0.05" title="${escA(I.t('geneTypeWidthHint'))}">
+              <select data-gtf="fontStyle" data-gti="${i}" data-tid="${t.id}">
+                <option value="normal" ${ty.fontStyle !== 'italic' ? 'selected' : ''}>${I.t('geneFontNormal')}</option>
+                <option value="italic" ${ty.fontStyle === 'italic' ? 'selected' : ''}>${I.t('geneFontItalic')}</option>
+              </select>
+              <label class="mini-check" style="margin:0;"><input type="checkbox" data-gtf="rotate" data-gti="${i}" data-tid="${t.id}" ${ty.rotate ? 'checked' : ''}></label>
+              <span><button class="btn btn-outline" data-gt-del="${i}" data-tid="${t.id}" type="button" style="padding:2px 8px;color:#a33;">×</button></span>
+            `).join('')}
+          </div>
+          <button class="btn btn-outline" data-gt-add="${t.id}" type="button" style="margin-top:8px;">${I.t('geneTypeAdd')}</button>
+        </div>
+        <div class="style-box" style="margin-top:8px;">
+          <div class="style-box-title">${I.t('geneAssignTitle')}</div>
+          ${geneNames.length ? `<div class="gene-assign-list">
+            ${geneNames.map(g => `<div><label>${esc(g)}</label>
+              <select data-gene-assign="${escA(g)}" data-tid="${t.id}">
+                ${geneTypes.map(ty => `<option value="${ty.id}" ${((geneMap[g] || TT.geneRuleType(g)) === ty.id) ? 'selected' : ''}>${esc(ty.name || '')}</option>`).join('')}
+              </select></div>`).join('')}
+          </div>` : `<div class="info-box" style="font-size:12px;">${I.t('geneNoData')}</div>`}
+          <button class="btn btn-outline" data-gene-autoassign="${t.id}" type="button" style="margin-top:8px;">${I.t('geneAssignAuto')}</button>
+        </div>
+        <div class="style-box" style="margin-top:8px;">
+          <div class="style-box-title">${I.t('geneOutlineTitle')}</div>
+          <div class="param-grid cols-4">
+            <div class="param-item"><label>${I.t('geneOutlineWidth')}</label>
+              <input type="number" data-tprop="geneOutlineWidth" data-tid="${t.id}" value="${t.geneOutlineWidth != null ? t.geneOutlineWidth : 0.4}" min="0" max="8" step="0.1"></div>
+            <div class="param-item"><label>${I.t('geneOutlineMode')}</label>
+              <select data-tprop="geneOutlineMode" data-tid="${t.id}">
+                <option value="uniform" ${t.geneOutlineMode !== 'fill' ? 'selected' : ''}>${I.t('geneOutlineUniform')}</option>
+                <option value="fill" ${t.geneOutlineMode === 'fill' ? 'selected' : ''}>${I.t('geneOutlineFill')}</option>
+              </select></div>
+            <div class="param-item"><label>${I.t('geneOutlineColor')}</label>
+              <input type="color" data-tprop="geneOutlineColor" data-tid="${t.id}" value="${t.geneOutlineColor || '#333333'}" ${t.geneOutlineMode === 'fill' ? 'disabled' : ''}></div>
+          </div>
+        </div>
+        <div class="style-box" style="margin-top:8px;">
+          <div class="style-box-title">${I.t('geneExclTitle')}</div>
+          <div class="param-grid cols-4">
+            <div class="param-item"><label>${I.t('geneExclColor')}</label>
+              <input type="color" data-tprop="geneExclColor" data-tid="${t.id}" value="${t.geneExclColor || '#0000cc'}"></div>
+            <div class="param-item"><label>${I.t('geneExclLineLength')}</label>
+              <input type="number" data-tprop="geneExclLineLength" data-tid="${t.id}" value="${t.geneExclLineLength != null ? t.geneExclLineLength : 0}" min="0" max="400" step="1" placeholder="${escA(I.t('phAuto'))}" title="${escA(I.t('geneExclHint'))}"></div>
+            <div class="param-item"><label>${I.t('geneExclFontSize')}</label>
+              <input type="number" data-tprop="geneExclFontSize" data-tid="${t.id}" value="${t.geneExclFontSize != null ? t.geneExclFontSize : 0}" min="0" max="60" step="1" placeholder="${escA(I.t('phAuto'))}"></div>
+          </div>
+          <div class="info-box" style="margin-top:6px;font-size:12px;line-height:1.65;">${I.t('geneExclHint')}</div>
+        </div>
+        ${legendBlock(t)}`;
+    }
     if (t.type === 'legend') {
       const items = t.legendItems || [];
       body = `
@@ -725,7 +834,8 @@ function refreshTrackList(container) {
           || prop === 'textAutoWidth' || prop === 'barColorMode' || prop === 'barColorColumn'
           || prop === 'textOrientation' || prop === 'showText' || prop === 'legendOrientation'
           || prop === 'bubbleSizeMode' || prop === 'bubbleBgShow'
-          || prop === 'featureInputMode' || prop === 'featureBaselineRect') {
+          || prop === 'featureInputMode' || prop === 'featureBaselineRect'
+          || prop === 'geneInputMode' || prop === 'geneOutlineMode' || prop === 'geneColumn') {
         setTimeout(() => refreshTrackList(container), 0);
       }
     });
@@ -948,6 +1058,128 @@ function refreshTrackList(container) {
       if (!t) return;
       t.excludedValues = [];
       t._colorCache = null; t._barColorMap = null;
+      refreshTrackList(container);
+      global.TreeRenderer.draw();
+    });
+  });
+
+  box.querySelectorAll('textarea[data-gene-textarea]').forEach(ta => {
+    ta.addEventListener('input', () => {
+      const t = TT.tracks.find(x => x.id === Number(ta.dataset.geneTextarea));
+      if (t) t.geneRaw = ta.value;
+    });
+  });
+  const geneApply = (id, text) => {
+    const t = TT.tracks.find(x => x.id === id);
+    if (!t) return;
+    TT.applyGeneText(t, text);
+    global.TreeRenderer.draw();
+    refreshTrackList(container);
+  };
+  box.querySelectorAll('[data-gene-apply]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.geneApply);
+      const t = TT.tracks.find(x => x.id === id);
+      if (!t) return;
+      const ta = box.querySelector(`textarea[data-gene-textarea="${id}"]`);
+      geneApply(id, ta ? ta.value : t.geneRaw);
+    });
+  });
+  box.querySelectorAll('[data-gene-sample]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.geneSample);
+      const t = TT.tracks.find(x => x.id === id);
+      if (!t) return;
+      const text = TT.generateGeneExample();
+      const ta = box.querySelector(`textarea[data-gene-textarea="${id}"]`);
+      if (ta) ta.value = text;
+      geneApply(id, text);
+    });
+  });
+  box.querySelectorAll('[data-gene-upload]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.geneUpload);
+      const inp = box.querySelector(`input[type="file"][data-gene-file="${id}"]`);
+      if (inp) inp.click();
+    });
+  });
+  box.querySelectorAll('input[type="file"][data-gene-file]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const id = Number(inp.dataset.geneFile);
+      const f = inp.files && inp.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const text = String(ev.target.result || '');
+        const ta = box.querySelector(`textarea[data-gene-textarea="${id}"]`);
+        if (ta) ta.value = text;
+        geneApply(id, text);
+      };
+      reader.readAsText(f);
+      inp.value = '';
+    });
+  });
+  box.querySelectorAll('[data-gtf]').forEach(el => {
+    const sync = (rerender) => {
+      const t = TT.tracks.find(x => x.id === Number(el.dataset.tid));
+      if (!t) return;
+      const types = TT.geneTypesOf(t);
+      const ty = types[Number(el.dataset.gti)];
+      if (!ty) return;
+      const f = el.dataset.gtf;
+      if (f === 'rotate') ty.rotate = !!el.checked;
+      else if (f === 'widthRatio') ty.widthRatio = Math.max(0.1, Number(el.value) || 0.67);
+      else ty[f] = el.value;
+      global.TreeRenderer.draw();
+      if (rerender) refreshTrackList(container);
+    };
+    if (el.type === 'color') el.addEventListener('input', () => sync(false));
+    else el.addEventListener('change', () => sync(true));
+  });
+  box.querySelectorAll('[data-gt-add]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = TT.tracks.find(x => x.id === Number(btn.dataset.gtAdd));
+      if (!t) return;
+      const types = TT.geneTypesOf(t);
+      types.push({ id: 'gt' + Date.now() + '_' + types.length, name: I.t('geneTypeNew') + (types.length + 1), width: 20, fontStyle: 'normal', rotate: false, color: '#999999' });
+      refreshTrackList(container);
+      global.TreeRenderer.draw();
+    });
+  });
+  box.querySelectorAll('[data-gt-del]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = TT.tracks.find(x => x.id === Number(btn.dataset.tid));
+      if (!t) return;
+      const types = TT.geneTypesOf(t);
+      const idx = Number(btn.dataset.gtDel);
+      const ty = types[idx];
+      if (!ty) return;
+      types.splice(idx, 1);
+      const map = t.geneTypeMap || {};
+      Object.keys(map).forEach(g => { if (map[g] === ty.id) delete map[g]; });
+      refreshTrackList(container);
+      global.TreeRenderer.draw();
+    });
+  });
+  box.querySelectorAll('[data-gene-assign]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const t = TT.tracks.find(x => x.id === Number(sel.dataset.tid));
+      if (!t) return;
+      t.geneTypeMap = t.geneTypeMap || {};
+      t.geneTypeMap[sel.dataset.geneAssign] = sel.value;
+      global.TreeRenderer.draw();
+    });
+  });
+  box.querySelectorAll('[data-gene-autoassign]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = TT.tracks.find(x => x.id === Number(btn.dataset.geneAutoassign));
+      if (!t) return;
+      t.geneTypeMap = {};
+      const geneTypesNow = TT.geneTypesOf(t);
+      TT.geneUniqueNames(t).forEach(n => {
+        const id = TT.geneRuleType(n);
+        t.geneTypeMap[n] = geneTypesNow.some(x => x.id === id) ? id : (geneTypesNow[0] ? geneTypesNow[0].id : '');
+      });
       refreshTrackList(container);
       global.TreeRenderer.draw();
     });
@@ -1508,6 +1740,7 @@ function renderDatasetsPanel(container) {
         <select id="newTrackType">
             <option value="legend">${I.t('optLegend')}</option>
             <option value="feature">${I.t('optFeature')}</option>
+            <option value="gene">${I.t('optGene')}</option>
             <option value="connect">${I.t('optConnect')}</option>
             <option value="colorstrip">${I.t('optColorstrip')}</option>
             <option value="binary">${I.t('optBinary')}</option>

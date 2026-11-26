@@ -52,7 +52,11 @@ function layoutRect() {
   const isSlanted = (st.lineShape === 'slanted') && (st.mode === 'rectangular');
   const isInv = C.isTrue(st.invert);
   const scaleH = st.scaleH || 1;
-  const rowH = Math.max(14, st.fontSize * 1.05) * (st.scaleV || 1);
+  let genePitch = 0;
+  try {
+    if (global.TreeTracks && typeof global.TreeTracks.geneRowPitch === 'function') genePitch = Number(global.TreeTracks.geneRowPitch()) || 0;
+  } catch (_) {}
+  const rowH = Math.max(Math.max(14, st.fontSize * 1.05) * (st.scaleV || 1), genePitch);
 
   let maxD;
   if (isSlanted) {
@@ -434,6 +438,7 @@ function getRadialInnerBase() {
     if (global.TreeTracks && Array.isArray(global.TreeTracks.tracks)) {
       global.TreeTracks.tracks.forEach(t => {
         const w = global.TreeTracks.computeTrackWidth(t, { radial: true });
+        if (!(w > 0)) return;
         tracksW += gap + Math.max(6, w);
       });
     }
@@ -539,6 +544,7 @@ function layoutRadial() {
     const gap = Math.max(0, Number(tc.trackGap) || 0);
     global.TreeTracks.tracks.forEach(t => {
       const w = (global.TreeTracks.computeTrackWidth && global.TreeTracks.computeTrackWidth(t, { radial: true })) || 0;
+      if (!(w > 0)) return;
       tracksExtra += gap + Math.max(6, w);
     });
   }

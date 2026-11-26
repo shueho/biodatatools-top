@@ -213,6 +213,12 @@ const toolConfig = [
     toolDesc: "Merge DnaSP-generated ARP and HAP files into a single ARP file for import into SAMOVA.",
     link: "en/021.Arp_hap_merger.html"
 },
+
+{
+    toolName: "Phylogenetic Tree Tip Label Renaming",
+    toolDesc: "Import a Newick/NEXUS tree file, batch-rename leaf labels (tips), and export in the selected format.",
+    link: "en/056.Tree_tip_rename.html"
+},
         ]
     },
     {

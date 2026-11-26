@@ -216,6 +216,12 @@ const toolConfig = [
     toolDesc: "将DnaSP生成的ARP文件和HAP文件合并为单个ARP文件，可以用于导入SAMOVA软件。",
     link: "ch/021.Arp_hap_merger.html"
 },
+
+{
+    toolName: "进化树叶标签重命名",
+    toolDesc: "导入Newick/NEXUS格式进化树文件，批量修改叶标签（tips）名称，并按所选格式导出。",
+    link: "ch/056.Tree_tip_rename.html"
+},
         ]
     },
     {

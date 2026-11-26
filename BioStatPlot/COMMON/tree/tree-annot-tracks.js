@@ -77,7 +77,7 @@ const TRACK_TYPE_LABEL_KEYS = {
   bar: 'trackTypeBar', text: 'trackTypeText', multisymbol: 'trackTypeMultisymbol',
   stackedbar: 'trackTypeStackedbar', pie: 'trackTypePie', groupedbar: 'trackTypeGroupedbar',
   multiheatmap: 'trackTypeMultiheatmap', legend: 'trackTypeLegend', connect: 'trackTypeConnect',
-  feature: 'trackTypeFeature'
+  feature: 'trackTypeFeature', gene: 'trackTypeGene'
 };
 
 function trackTypeLabel(type) { const k = TRACK_TYPE_LABEL_KEYS[type]; return k ? I.t(k) : type; }
@@ -122,6 +122,11 @@ function newTrackDefaults(type) {
     showLegend: true, legendTitle: '', legendOrientation: 'horizontal',
     legendX: null, legendY: null,
     featureColumn: '', featureLengthColumn: '',
+    geneRaw: '', geneHeight: 12, geneGapX: 2, geneFontSize: 9, geneFontBold: true,
+    geneInputMode: 'text', geneColumn: '', geneArrowMode: false, geneArrowScale: 0.7,
+    geneOutlineMode: 'uniform', geneOutlineColor: '#333333', geneOutlineWidth: 0.4,
+    geneExclColor: '#0000cc', geneExclLineLength: 0, geneExclFontSize: 0,
+    geneTypes: null, geneTypeMap: {},
     featureInputMode: 'string',
     featureTableRows: [], featureTableRaw: '',
     featureSpecialEnable: false,
@@ -289,6 +294,27 @@ function refreshTrackData(t) {
     t._colorCache = null;
     return;
   }
+  if (t.type === 'gene') {
+    const data = {};
+    if (t.geneInputMode === 'column' && t.geneColumn) {
+      const ld = getLeafData();
+      if (ld && ld.rows) ld.rows.forEach(r => {
+        const k = String(r.Leaf || '').trim(); if (!k) return;
+        const rawVal = String(r[t.geneColumn] == null ? '' : r[t.geneColumn]).trim();
+        if (!rawVal) return;
+        const genes = rawVal.split('|').map(s => s.trim()).filter(Boolean)
+          .map(parseGeneToken).filter(g => g.name);
+        if (!genes.length) return;
+        data[k] = genes.map(geneTokenString).join('\t');
+      });
+    } else {
+      geneParseRows(t.geneRaw).forEach(r => {
+        data[r.leaf] = r.genes.map(geneTokenString).join('\t');
+      });
+    }
+    t.data = data;
+    return;
+  }
   if (t.type === 'connect') {
     const rawRows = Array.isArray(t._connectRawRows) ? t._connectRawRows : [];
     t._connectRawRows = rawRows;
@@ -311,12 +337,18 @@ function defaultLegendTitle(t) {
   if (t.type === 'stackedbar' || t.type === 'pie' || t.type === 'groupedbar') return (t.columns && t.columns[0]) || '';
   if (t.type === 'multisymbol') return t.column || t.shapeColumn || '';
   if (t.type === 'feature') return t.featureColumn || '';
+  if (t.type === 'gene') return 'Gene order';
   return t.column || '';
 }
 function addCustomTrack(cfg) {
   const t = newTrackDefaults(cfg.type || 'colorstrip');
   Object.assign(t, cfg);
   if (t.type === 'multisymbol' && !t.column && t.shapeColumn) t.column = t.shapeColumn;
+  if (t.type === 'gene') {
+    t.geneTypes = geneTypesOf(t);
+    t.geneTypeMap = (t.geneTypeMap && typeof t.geneTypeMap === 'object') ? t.geneTypeMap : {};
+    if (!t.geneInputMode) t.geneInputMode = 'text';
+  }
   refreshTrackData(t);
   t.base = t.barColor || t.fill1 || '#4DBBD5';
   if (!t.legendTitle) t.legendTitle = defaultLegendTitle(t);
@@ -328,7 +360,7 @@ function updateCustomTrack(id, patch) {
   const oldDefault = defaultLegendTitle(t);
   const titleWasDefault = !t.legendTitle || t.legendTitle === oldDefault;
   Object.assign(t, patch);
-  if (['column', 'columns', 'shapeColumn', 'colorColumn', 'featureColumn', 'featureLengthColumn'].some(k => k in patch)) {
+  if (['column', 'columns', 'shapeColumn', 'colorColumn', 'featureColumn', 'featureLengthColumn', 'geneColumn', 'geneInputMode'].some(k => k in patch)) {
     refreshTrackData(t);
     if (titleWasDefault) t.legendTitle = defaultLegendTitle(t);
   }
@@ -349,6 +381,7 @@ function collectUniqueValues(t) {
   const excluded = new Set((t.excludedValues || []).map(String));
   const leaves = T.visibleLeaves(C.getRoot());
   const add = v => { const s = String(v); if (excluded.has(s)) return; if (!seen.has(s)) { seen.add(s); out.push(s); } };
+  if (t.type === 'gene') return out;
   if (t.type === 'feature') {
     leaves.forEach(l => {
       const info = datasetValue(t, l);
@@ -407,6 +440,7 @@ function isExcluded(track, value) {
 function computeTrackWidth(track, opts) {
   opts = opts || {};
   if (track.type === 'legend') return 0;
+  if (opts.radial && track.type === 'gene') return 0;
   if (!opts.radial && track.type === 'colorstrip' && track.textAutoWidth && track.showText) {
     const ld = getLeafData();
     const ts = trackTextStyle(track);
@@ -436,6 +470,7 @@ function computeTrackWidth(track, opts) {
     case 'stackedbar': return 80;
     case 'connect': return Math.max(40, Number(track.width) || 80);
     case 'feature': return Math.max(60, Number(track.width) || 140);
+    case 'gene': return Math.max(24, geneNaturalWidth(track) + 2);
     case 'pie': return 30;
     case 'groupedbar': return 100;
     case 'multiheatmap': {
@@ -452,6 +487,345 @@ function computeTrackWidth(track, opts) {
     default: return 22;
   }
 }
+/* ---------- 基因排列（gene order）轨道 ---------- */
+function geneDefaultTypes() {
+  return [
+    { id: 't1', name: I.t('geneType1'), legend: 'tRNA', widthRatio: 0.67, fontStyle: 'normal', rotate: false, color: '#C3D899', preset: true },
+    { id: 't2', name: I.t('geneType2'), legend: 'tRNA', widthRatio: 0.67, fontStyle: 'normal', rotate: true, color: '#C3D899', preset: true },
+    { id: 't3', name: I.t('geneType3'), legend: 'Protein/rRNA', widthRatio: 2, fontStyle: 'italic', rotate: false, color: '#8FB5E4', preset: true },
+    { id: 't4', name: I.t('geneType4'), legend: 'Short protein', widthRatio: 0.67, fontStyle: 'italic', rotate: true, color: '#8064A0', preset: true }
+  ];
+}
+
+function parseGeneToken(token) {
+  const src = String(token == null ? '' : token).trim();
+  let hasMinus = false, hasColon = false, hasExclam = false;
+  let geneName = '';
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === '-') hasMinus = true;
+    else if (ch === ':') hasColon = true;
+    else if (ch === '!') hasExclam = true;
+    else if (ch === ' ') continue;
+    else { geneName = src.substring(i).replace(/\s/g, ''); break; }
+  }
+  return { name: geneName, minus: hasMinus, colon: hasColon, excl: hasExclam, brk: geneName === '//' };
+}
+
+function geneTokenString(g) {
+  return (g.minus ? '-' : '') + (g.colon ? ':' : '') + (g.excl ? '!' : '') + (g.name || '');
+}
+
+function geneParseRows(raw) {
+  const rows = [];
+  String(raw == null ? '' : raw).split(/\r?\n/).forEach(line => {
+    const s = String(line).replace(/\s+$/, '');
+    if (!s.trim()) return;
+    if (/^\s*#/.test(s)) return;
+    const parts = s.split(/\t/);
+    if (parts.length < 2) return;
+    const leaf = String(parts[0] || '').trim();
+    if (!leaf) return;
+    const genes = [];
+    for (let i = 1; i < parts.length; i++) {
+      const tok = String(parts[i] == null ? '' : parts[i]).trim();
+      if (!tok) continue;
+      const g = parseGeneToken(tok);
+      if (!g.name) continue;
+      genes.push(g);
+    }
+    rows.push({ leaf, genes });
+  });
+  return rows;
+}
+
+function geneTypesOf(t) {
+  if (!t) return geneDefaultTypes();
+  if (!Array.isArray(t.geneTypes)) t.geneTypes = geneDefaultTypes();
+  return t.geneTypes;
+}
+
+function geneRuleType(name) {
+  const geneName = String(name || '');
+  const up = geneName.toUpperCase();
+  if (/^[A-Z]$/.test(geneName) && !/^[BZX]$/i.test(geneName)) return 't1';
+  if (/(NAD|COX|ATP|CYTB|COB|RRN)/.test(up)) return 't3';
+  if (/\d/.test(geneName)) return 't2';
+  if (/^(RRNS|RRNL)$/.test(up)) return 't2';
+  if (/^ATP8$/.test(up)) return 't4';
+  if (geneName.length >= 4) return 't3';
+  return 't1';
+}
+
+function geneTypeOf(t, name) {
+  const map = (t && t.geneTypeMap) || {};
+  const id = map[name];
+  if (!id) return null;
+  const types = geneTypesOf(t);
+  for (let i = 0; i < types.length; i++) if (types[i].id === id) return types[i];
+  return null;
+}
+
+function geneRowsOf(t) {
+  const data = (t && t.data) || {};
+  const out = [];
+  Object.keys(data).forEach(k => {
+    const genes = String(data[k] == null ? '' : data[k]).split('\t').filter(Boolean)
+      .map(parseGeneToken).filter(g => g.name);
+    out.push({ leaf: k, genes });
+  });
+  return out;
+}
+
+function geneH(t) {
+  return Math.max(2, Math.min(80, Number(t && t.geneHeight) || 12));
+}
+function geneTypeWidth(t, ty) {
+  const H = geneH(t);
+  let r = Number(ty && ty.widthRatio);
+  if (!Number.isFinite(r) || r <= 0) {
+    const legacy = Number(ty && ty.width);
+    r = (Number.isFinite(legacy) && legacy > 0) ? legacy / H : 0.67;
+  }
+  return Math.max(2, r * H);
+}
+function geneBreakFontSize(H) {
+  return Math.max(4, H * 1.4);
+}
+function geneBreakWidth(t) {
+  const H = geneH(t);
+  const fs = geneBreakFontSize(H);
+  let w = fs * 0.55;
+  try {
+    if (global.PlotCommon && typeof global.PlotCommon.measureText === 'function') w = global.PlotCommon.measureText('//', fs);
+  } catch (_) {}
+  return Math.max(4, w);
+}
+function geneNodeWidth(t, ty, g) {
+  if (g && g.brk) return geneBreakWidth(t);
+  const H = geneH(t);
+  let base = geneTypeWidth(t, ty);
+  if (t && t.geneArrowMode && !(g && g.excl)) {
+    const aScale = Math.max(0.1, Number(t.geneArrowScale) || 0.7);
+    base += Math.max(2, H * aScale);
+  }
+  const exclLen = Math.max(0, Number(t && t.geneExclLineLength) || 0);
+  if (g && g.excl && exclLen > base) return exclLen;
+  return base;
+}
+function geneNaturalWidth(t) {
+  const types = geneTypesOf(t);
+  const byId = {};
+  types.forEach(ty => { byId[ty.id] = ty; });
+  const gap = Math.max(0, Number(t.geneGapX) || 0);
+  let maxW = 0;
+  geneRowsOf(t).forEach(row => {
+    let w = 0;
+    row.genes.forEach((g, i) => {
+      const ty = geneTypeOf(t, g.name) || byId[geneRuleType(g.name)] || types[0];
+      w += geneNodeWidth(t, ty, g) + (i ? gap : 0);
+    });
+    if (w > maxW) maxW = w;
+  });
+  return maxW;
+}
+
+function geneRowPitch() {
+  let pitch = 0;
+  customTracks.forEach(t => {
+    if (!t || t.type !== 'gene') return;
+    const H = geneH(t);
+    const arrow = !!t.geneArrowMode;
+    let two = false;
+    if (!arrow) geneRowsOf(t).forEach(row => { if (row.genes.some(g => g.minus)) two = true; });
+    pitch = Math.max(pitch, two ? 2 * H + 4 : H + 4);
+  });
+  return pitch;
+}
+
+function geneUniqueNames(t) {
+  const out = []; const seen = {};
+  geneRowsOf(t).forEach(row => row.genes.forEach(g => {
+    if (g.brk) return;
+    if (seen[g.name]) return;
+    seen[g.name] = 1; out.push(g.name);
+  }));
+  out.sort();
+  return out;
+}
+
+function applyGeneText(t, text) {
+  if (!t) return 0;
+  t.geneRaw = text == null ? '' : String(text);
+  t.geneTypes = geneTypesOf(t);
+  t.geneTypeMap = (t.geneTypeMap && typeof t.geneTypeMap === 'object') ? t.geneTypeMap : {};
+  refreshTrackData(t);
+  const types = geneTypesOf(t);
+  geneUniqueNames(t).forEach(n => {
+    if (t.geneTypeMap[n]) return;
+    const rule = geneRuleType(n);
+    const exists = types.some(ty => ty.id === rule);
+    t.geneTypeMap[n] = exists ? rule : (types.length ? types[0].id : '');
+  });
+  return geneUniqueNames(t).length;
+}
+
+function geneFillLeaves() {
+  const leaves = T.visibleLeaves(C.getRoot());
+  return leaves.map(l => T.labelOf(l) + '\t').join('\n');
+}
+
+function generateGeneExample() {
+  const EX = [
+    ['cox1', 'L2', 'cox2', 'K', 'D', 'atp8', 'atp6', 'cox3', 'G', 'R', 'nad3', 'A', '-nad1', '-L1', 'N', 'rrnS', '-W', ':I', ':E', ':S1', '!-CR', '-cob', '-T', 'nad5', 'F', '-H', '-nad4', '-nad4L', '-P', 'nad6', 'S2', 'rrnL', '-V', '-Q', 'M', 'nad2', '-C', '-Y'],
+    ['cox1', 'L2', 'cox2', ':K', 'D', 'atp8', 'atp6', 'cox3', 'G', 'R', 'nad3', 'A', '-nad1', '-L1', 'N', 'rrnS', ':-W', ':I', '-S1', '-E', '!CR', '-cob', '-T', 'nad5', 'F', '-H', '-nad4', '-nad4L', '-P', 'nad6', 'S2', '-rrnL', '-V', '-Q', 'M', 'nad2', '-C', '-Y'],
+    ['cox1', 'L2', 'cox2', 'K', 'D', 'atp8', 'atp6', 'cox3', '//', 'G', 'R'],
+    ['cox1', 'L2', 'cox2', ':K', 'D', 'atp8', 'atp6', 'cox3', 'G', 'R', 'nad3', '//', 'A', '-nad1', '-L1', 'N'],
+    ['cox1', 'L2', 'cox2', ':K', 'D', 'atp8', 'atp6', 'cox3', 'G', 'R', 'nad3', 'A', '-nad1', '-L1', 'N', 'rrnS', ':-W', ':I', '-S1', '-//', '-E', '!CR', '-cob', '-T']
+  ];
+  const leaves = T.visibleLeaves(C.getRoot());
+  return leaves.map(l => T.labelOf(l) + '\t' + EX[Math.floor(Math.random() * EX.length)].join('\t')).join('\n');
+}
+
+function fitGeneFs(text, maxLen, fsBase) {
+  let fs = Math.max(4, Number(fsBase) || 9);
+  if (!text || !(maxLen > 2)) return fs;
+  if (!global.PlotCommon || typeof global.PlotCommon.measureText !== 'function') return fs;
+  while (fs > 4.5) {
+    let w = 0;
+    try { w = global.PlotCommon.measureText(String(text), fs); } catch (_) { return fs; }
+    if (w <= maxLen) break;
+    fs -= 0.5;
+  }
+  return Math.max(4.5, fs);
+}
+
+function drawGeneTrackRect(track, x, w, leaves, rowOf) {
+  const types = geneTypesOf(track);
+  if (!types || !types.length) return;
+  const byId = {};
+  types.forEach(ty => { byId[ty.id] = ty; });
+  const ff = fontFam();
+  const ow = Math.max(0, track.geneOutlineWidth == null ? 0.4 : Number(track.geneOutlineWidth) || 0);
+  const uniformOutline = track.geneOutlineMode !== 'fill';
+  const outlineColor = track.geneOutlineColor || '#333333';
+  const exclColor = track.geneExclColor || '#0000cc';
+  const strokeW = Math.max(0.4, ow);
+  const H = geneH(track);
+  const gap = Math.max(0, Number(track.geneGapX) || 0);
+  const fsBase = Math.max(4, Number(track.geneFontSize) || 9);
+  const bold = track.geneFontBold !== false;
+  const arrow = !!track.geneArrowMode;
+  const nat = geneNaturalWidth(track);
+  const k = (Number(track.width) > 0 && nat > 0) ? Math.max(0.05, w / nat) : 1;
+  const pick = g => geneTypeOf(track, g.name) || byId[geneRuleType(g.name)] || types[0];
+
+  leaves.forEach(l => {
+    const raw = datasetValue(track, l);
+    if (raw == null || raw === '') return;
+    const genes = String(raw).split('\t').filter(Boolean).map(parseGeneToken).filter(g => g.name);
+    if (!genes.length) return;
+    const row = rowOf(l);
+    const cy = (row.top + row.bottom) / 2;
+    const hasMinus = genes.some(g => g.minus);
+    const two = hasMinus && !arrow;
+    let cur = x + 1;
+    genes.forEach((g, idx) => {
+      const ty = pick(g);
+      let slot = 0;
+      if (g.brk) {
+        slot = Math.max(4, geneBreakWidth(track) * k);
+        const cx = cur + slot / 2;
+        const by = arrow ? cy : (two ? (g.minus ? cy + H / 2 : cy - H / 2) : cy);
+        const st = TT.fromParts({ font: ff, size: geneBreakFontSize(H), bold: false, italic: false, color: '#000000' });
+        TT.draw(null, cx, by, '//', st, { 'text-anchor': 'middle', dy: '0.35em', 'pointer-events': 'none' });
+      } else if (g.excl) {
+        const baseW = geneTypeWidth(track, ty);
+        const exclLenRaw = Math.max(0, Number(track.geneExclLineLength) || 0);
+        slot = Math.max(2, (exclLenRaw > baseW ? exclLenRaw : baseW) * k);
+        const lineLen = Math.max(2, (exclLenRaw > 0 ? exclLenRaw : baseW) * k);
+        const exclFs = Math.max(0, Number(track.geneExclFontSize) || 0);
+        const fs = exclFs > 0 ? exclFs : fitGeneFs(g.name, lineLen - 2, Math.min(fsBase, H * 0.9));
+        let ly, textY, textDy = null;
+        if (two) {
+          ly = cy;
+          if (g.minus) textY = cy + fs + 2;
+          else textY = cy - 2;
+        } else {
+          ly = cy + H / 2;
+          textY = cy;
+          textDy = '0.35em';
+        }
+        const cx = cur + slot / 2;
+        C.el('line', {
+          x1: cx - lineLen / 2, y1: ly, x2: cx + lineLen / 2, y2: ly,
+          stroke: exclColor, 'stroke-width': strokeW, 'pointer-events': 'none', class: 'gene-shape', 'data-gene-shape': '1'
+        });
+        if (fs >= 3) {
+          const st = TT.fromParts({ font: ff, size: fs, bold, italic: ty.fontStyle === 'italic', color: exclColor });
+          const extra = { 'text-anchor': 'middle', 'pointer-events': 'none' };
+          if (textDy) extra.dy = textDy;
+          TT.draw(null, cx, textY, g.name, st, extra);
+        }
+      } else if (arrow) {
+        const rw = Math.max(2, geneTypeWidth(track, ty) * k);
+        const aScale = Math.max(0.1, Number(track.geneArrowScale) || 0.7);
+        const tl = Math.max(2, H * aScale * k);
+        slot = rw + tl;
+        const fill = g.colon ? '#ffffff' : (ty.color || '#cccccc');
+        const strokeC = uniformOutline ? outlineColor : (ty.color || '#333333');
+        const sw = g.colon ? strokeW : ow;
+        const x0 = cur;
+        const pts = g.minus
+          ? `${x0},${cy} ${x0 + tl},${cy - H / 2} ${x0 + tl + rw},${cy - H / 2} ${x0 + tl + rw},${cy + H / 2} ${x0 + tl},${cy + H / 2}`
+          : `${x0},${cy - H / 2} ${x0 + rw},${cy - H / 2} ${x0 + rw + tl},${cy} ${x0 + rw},${cy + H / 2} ${x0},${cy + H / 2}`;
+        const poly = { points: pts, fill: fill, 'pointer-events': 'none', class: 'gene-shape', 'data-gene-shape': '1' };
+        if (sw > 0) { poly.stroke = strokeC; poly['stroke-width'] = sw; }
+        if (g.colon) { poly['stroke-dasharray'] = '4 2'; }
+        C.el('polygon', poly);
+        const cx = (g.minus ? x0 + tl : x0) + rw / 2;
+        const fs0 = ty.rotate ? Math.min(fsBase, Math.max(3, rw * 0.9)) : fsBase;
+        const fs = fitGeneFs(g.name, ty.rotate ? H - 1 : rw - 2, fs0);
+        if (fs >= 3) {
+          const st = TT.fromParts({ font: ff, size: fs, bold, italic: ty.fontStyle === 'italic', color: '#000000' });
+          const extra = { 'text-anchor': 'middle', dy: '0.35em', 'pointer-events': 'none' };
+          if (ty.rotate) extra.transform = `rotate(-90 ${cx} ${cy})`;
+          TT.draw(null, cx, cy, g.name, st, extra);
+        }
+      } else {
+        slot = Math.max(2, geneTypeWidth(track, ty) * k);
+        const boxY = two ? (g.minus ? cy : cy - H) : (cy - H / 2);
+        const cx = cur + slot / 2;
+        const cyy = boxY + H / 2;
+        const attrs = {
+          x: cur, y: boxY, width: slot, height: H,
+          fill: g.colon ? '#ffffff' : (ty.color || '#cccccc'),
+          'pointer-events': 'none', class: 'gene-shape', 'data-gene-shape': '1'
+        };
+        if (g.colon) {
+          attrs.stroke = uniformOutline ? outlineColor : '#333333';
+          attrs['stroke-width'] = strokeW;
+          attrs['stroke-dasharray'] = '4 2';
+        } else if (ow > 0) {
+          attrs.stroke = uniformOutline ? outlineColor : (ty.color || '#333333');
+          attrs['stroke-width'] = ow;
+        }
+        C.el('rect', attrs);
+        const fs0 = ty.rotate ? Math.min(fsBase, Math.max(3, slot * 0.9)) : fsBase;
+        const fs = fitGeneFs(g.name, ty.rotate ? H - 1 : slot - 2, fs0);
+        if (fs >= 3) {
+          const st = TT.fromParts({ font: ff, size: fs, bold, italic: ty.fontStyle === 'italic', color: '#000000' });
+          const extra = { 'text-anchor': 'middle', dy: '0.35em', 'pointer-events': 'none' };
+          if (ty.rotate) extra.transform = `rotate(-90 ${cx} ${cyy})`;
+          TT.draw(null, cx, cyy, g.name, st, extra);
+        }
+      }
+      const nextBrk = !!(genes[idx + 1] && genes[idx + 1].brk);
+      cur += slot + ((idx < genes.length - 1 && !g.brk && !nextBrk) ? gap : 0);
+    });
+  });
+}
+
 function drawTrackSymbol(shape, cx, cy, s, fill, stroke, sw, parent, fillOpacity) {
   const attrs = { fill };
   if (fillOpacity != null && fillOpacity < 1) attrs["fill-opacity"] = fillOpacity;
@@ -756,6 +1130,8 @@ function drawOneTrack(track, x, w, leaves, rowH, rowBounds, invert) {
     drawBubbleTrackRect(track, x, w, leaves, rowOf);
   } else if (track.type === 'feature') {
     drawFeatureTrackRect(track, x, w, leaves, rowOf, invert);
+  } else if (track.type === 'gene') {
+    drawGeneTrackRect(track, x, w, leaves, rowOf);
   }
 
   const _yTop = Math.min(...leaves.map(l => rowOf(l).top));
@@ -1491,6 +1867,26 @@ function drawTrackLegend(track, x, y, colorMap) {
     items = collectUniqueValues(track).map(v => ({ label: v, color: colorOf(track, v, colorMap), shape: (track.shapeMap && track.shapeMap[v]) || track.uniformShape || 'square' }));
   } else if (track.type === 'colorstrip' || track.type === 'text' || track.type === 'feature') {
     items = collectUniqueValues(track).map(v => ({ label: v, color: colorOf(track, v, colorMap) }));
+  } else if (track.type === 'gene') {
+    const gTypes = geneTypesOf(track);
+    const byId = {};
+    gTypes.forEach(ty => { byId[ty.id] = ty; });
+    const used = new Set();
+    geneRowsOf(track).forEach(row => row.genes.forEach(g => {
+      if (g.brk) return;
+      const ty = geneTypeOf(track, g.name) || byId[geneRuleType(g.name)] || gTypes[0];
+      if (ty) used.add(ty.id);
+    }));
+    const seen = new Set();
+    gTypes.forEach(ty => {
+      if (!used.has(ty.id)) return;
+      const label = (ty.legend != null && String(ty.legend) !== '') ? String(ty.legend) : String(ty.name || '');
+      const color = ty.color || '#cccccc';
+      const key = label + '\u0000' + color;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({ label, color });
+    });
   } else if (track.type === 'binary') {
     items = [{ label: 'True', color: track.binaryTrueColor }, { label: 'False', color: track.binaryFalseColor }];
   } else if (track.type === 'connect') {
@@ -1831,6 +2227,7 @@ function renderCustomTracks(radial) {
     customTracks.forEach(track => {
       if (track.type === 'legend') { placed.push({ track, ringW: 0, ringStart: rBase }); return; }
       if (track.type === 'connect') return;
+      if (track.type === 'gene') return;
       const ringW = Math.max(6, computeTrackWidth(track, { radial: true }));
       const colorMap = getTrackColorMap(track);
       const trackOffset = Number(track.offset) || 0;
@@ -2368,6 +2765,35 @@ C.registerSnapshot('customTracks', () => ({
       if (!t.customColors || typeof t.customColors !== 'object') t.customColors = {};
       if (!t.columnColors || typeof t.columnColors !== 'object') t.columnColors = {};
       if (!t.shapeMap || typeof t.shapeMap !== 'object') t.shapeMap = {};
+      if (t.type === 'gene') {
+        if (t.geneRaw == null) t.geneRaw = '';
+        if (!Array.isArray(t.geneTypes)) t.geneTypes = geneDefaultTypes();
+        if (!t.geneTypeMap || typeof t.geneTypeMap !== 'object' || Array.isArray(t.geneTypeMap)) t.geneTypeMap = {};
+        if (t.geneHeight == null) t.geneHeight = 12;
+        if (t.geneGapX == null) t.geneGapX = 2;
+        if (t.geneFontSize == null) t.geneFontSize = 9;
+        if (t.geneFontBold == null) t.geneFontBold = true;
+        if (t.geneInputMode !== 'column') t.geneInputMode = 'text';
+        if (t.geneColumn == null) t.geneColumn = '';
+        if (t.geneOutlineMode !== 'fill') t.geneOutlineMode = 'uniform';
+        if (t.geneOutlineColor == null) t.geneOutlineColor = '#333333';
+        if (t.geneOutlineWidth == null) t.geneOutlineWidth = 0.4;
+        if (t.geneExclColor == null) t.geneExclColor = '#0000cc';
+        if (t.geneExclLineLength == null) t.geneExclLineLength = 0;
+        if (t.geneExclFontSize == null) t.geneExclFontSize = 0;
+        if (t.geneArrowMode == null) t.geneArrowMode = false;
+        if (t.geneArrowScale == null) t.geneArrowScale = 0.7;
+        const defTypes = geneDefaultTypes();
+        t.geneTypes.forEach(ty => {
+          const d = defTypes.find(x => x.id === ty.id);
+          if (ty.widthRatio == null) {
+            if (d && d.widthRatio != null) ty.widthRatio = d.widthRatio;
+            else ty.widthRatio = Math.max(0.1, (Number(ty.width) || 20) / Math.max(4, Number(t.geneHeight) || 12));
+          }
+          if (ty.legend == null) ty.legend = d ? d.legend : String(ty.name || '');
+        });
+        if (!t.legendTitle || t.legendTitle === I.t('trackTypeGene')) t.legendTitle = 'Gene order';
+      }
       if (t.type === 'feature') {
         if (!t.featureInputMode) t.featureInputMode = 'string';
         if (!Array.isArray(t.featureTableRows)) t.featureTableRows = [];
@@ -2402,6 +2828,7 @@ global.TreeTracks = {
   addCustomTrack, updateCustomTrack, removeCustomTrack, toggleCustomTrack,
   buildTrackData, buildMultiTrackData, refreshTrackData,
   parseFeatureTableText, applyFeatureTable, generateRandomFeatureTable,
+  geneTypesOf, geneRuleType, geneUniqueNames, geneRowPitch, applyGeneText, generateGeneExample, geneFillLeaves,
   getTrackColorMap, collectUniqueValues, renderCustomTracks,
   computeTrackWidth, datasetValue, getBarColumnValues, getBarColorMap,
   drawTrackSymbol, sampleTrackColor, evalBinaryLogic,
